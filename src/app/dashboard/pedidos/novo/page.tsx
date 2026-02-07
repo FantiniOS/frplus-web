@@ -102,6 +102,14 @@ export default function NovoPedidoPage() {
         }));
     };
 
+    const setQuantidade = (index: number, value: number) => {
+        setItens(prev => prev.map((item, i) => {
+            if (i !== index) return item;
+            const newQtd = Math.max(1, value);
+            return { ...item, quantidade: newQtd, total: newQtd * item.precoUnitario };
+        }));
+    };
+
     const removeItem = (index: number) => {
         setItens(prev => prev.filter((_, i) => i !== index));
     };
@@ -352,24 +360,34 @@ export default function NovoPedidoPage() {
                                 </div>
 
                                 {/* Controles de quantidade */}
-                                <div className="flex items-center gap-1 bg-black/30 rounded-lg p-1">
-                                    <button
-                                        onClick={() => updateQuantidade(index, -1)}
-                                        className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
-                                    >
-                                        -
-                                    </button>
-                                    <span className="w-8 text-center text-sm font-bold text-white">{item.quantidade}</span>
-                                    <button
-                                        onClick={() => updateQuantidade(index, 1)}
-                                        className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
-                                    >
-                                        +
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={() => updateQuantidade(index, -1)}
+                                    className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
+                                >
+                                    -
+                                </button>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={item.quantidade}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        if (!isNaN(val) && val > 0) {
+                                            setQuantidade(index, val);
+                                        }
+                                    }}
+                                    className="w-12 text-center text-sm font-bold text-white bg-transparent border-none focus:ring-0 p-0 appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <button
+                                    onClick={() => updateQuantidade(index, 1)}
+                                    className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
+                                >
+                                    +
+                                </button>
+                            </div>
 
-                                {/* Total e remover */}
-                                <div className="text-right">
+                                {/* Total e remover */ }
+                            < div className = "text-right" >
                                     <p className="text-sm font-bold text-green-400">R$ {item.total.toFixed(2)}</p>
                                     <button
                                         onClick={() => removeItem(index)}
@@ -378,31 +396,33 @@ export default function NovoPedidoPage() {
                                         remover
                                     </button>
                                 </div>
-                            </motion.div>
+            </motion.div>
                         ))}
-                    </AnimatePresence>
+        </AnimatePresence>
 
-                    {itens.length === 0 && (
-                        <div className="text-center py-8 text-gray-500">
-                            <Sparkles className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">Clique nos produtos para adicionar</p>
-                        </div>
-                    )}
-                </div>
+                    {
+        itens.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+                <Sparkles className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Clique nos produtos para adicionar</p>
+            </div>
+        )
+    }
+                </div >
 
-                {/* Observações */}
-                <div className="px-4 pb-2">
-                    <input
-                        type="text"
-                        value={observacoes}
-                        onChange={(e) => setObservacoes(e.target.value)}
-                        placeholder="Observações do pedido..."
-                        className="input-compact w-full text-sm"
-                    />
-                </div>
+        {/* Observações */ }
+        < div className = "px-4 pb-2" >
+            <input
+                type="text"
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                placeholder="Observações do pedido..."
+                className="input-compact w-full text-sm"
+            />
+                </div >
 
-                {/* Footer - Total e Finalizar */}
-                <div className="p-4 border-t border-white/10 bg-gradient-to-r from-green-600/10 to-emerald-600/10">
+        {/* Footer - Total e Finalizar */ }
+        < div className = "p-4 border-t border-white/10 bg-gradient-to-r from-green-600/10 to-emerald-600/10" >
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-gray-400">Total</span>
                         <div className="flex items-center gap-2">
@@ -421,8 +441,8 @@ export default function NovoPedidoPage() {
                         <Save className="h-4 w-4" />
                         Finalizar Pedido
                     </button>
-                </div>
-            </div>
-        </div>
+                </div >
+            </div >
+        </div >
     );
 }
