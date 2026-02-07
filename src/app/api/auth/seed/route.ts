@@ -2,8 +2,10 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
-// POST /api/auth/seed - Create initial admin user (only if no users exist)
-export async function POST() {
+// GET /api/auth/seed - Create initial admin user (only if no users exist)
+export const dynamic = 'force-dynamic'
+
+export async function GET() {
     try {
         // Check if any users exist
         const userCount = await prisma.usuario.count()
