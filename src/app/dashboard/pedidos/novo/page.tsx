@@ -388,7 +388,7 @@ export default function NovoPedidoPage() {
                                 </div>
 
                                 {/* Total e remover */}
-                                < div className="text-right" >
+                                <div className="text-right">
                                     <p className="text-sm font-bold text-green-400">R$ {item.total.toFixed(2)}</p>
                                     <button
                                         onClick={() => removeItem(index)}
@@ -397,54 +397,51 @@ export default function NovoPedidoPage() {
                                         remover
                                     </button>
                                 </div>
-                            </div>
                             </motion.div>
                         ))}
-                </AnimatePresence>
+                    </AnimatePresence>
 
-                {
-                    itens.length === 0 && (
+                    {itens.length === 0 && (
                         <div className="text-center py-8 text-gray-500">
                             <Sparkles className="h-6 w-6 mx-auto mb-2 opacity-50" />
                             <p className="text-sm">Clique nos produtos para adicionar</p>
                         </div>
-                    )
-                }
-            </div >
-
-            {/* Observações */}
-            < div className="px-4 pb-2" >
-                <input
-                    type="text"
-                    value={observacoes}
-                    onChange={(e) => setObservacoes(e.target.value)}
-                    placeholder="Observações do pedido..."
-                    className="input-compact w-full text-sm"
-                />
-            </div >
-
-            {/* Footer - Total e Finalizar */}
-            < div className="p-4 border-t border-white/10 bg-gradient-to-r from-green-600/10 to-emerald-600/10" >
-                <div className="flex items-center justify-between mb-3">
-                    <span className="text-gray-400">Total</span>
-                    <div className="flex items-center gap-2">
-                        <DollarSign className="h-5 w-5 text-green-400" />
-                        <span className="text-2xl font-bold text-white">
-                            {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                    </div>
+                    )}
                 </div>
 
-                <button
-                    onClick={handleSubmit}
-                    disabled={!clienteId || itens.length === 0}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold flex items-center justify-center gap-2 hover:from-blue-500 hover:to-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/30"
-                >
-                    <Save className="h-4 w-4" />
-                    Finalizar Pedido
-                </button>
+                {/* Observações */}
+                <div className="px-4 pb-2">
+                    <input
+                        type="text"
+                        value={observacoes}
+                        onChange={(e) => setObservacoes(e.target.value)}
+                        placeholder="Observações do pedido..."
+                        className="input-compact w-full text-sm"
+                    />
+                </div>
+
+                {/* Footer - Total e Finalizar */}
+                <div className="p-4 border-t border-white/10 bg-gradient-to-r from-green-600/10 to-emerald-600/10">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-gray-400">Total</span>
+                        <div className="flex items-center gap-2">
+                            <DollarSign className="h-5 w-5 text-green-400" />
+                            <span className="text-2xl font-bold text-white">
+                                {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!clienteId || itens.length === 0}
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold flex items-center justify-center gap-2 hover:from-blue-500 hover:to-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/30"
+                    >
+                        <Save className="h-4 w-4" />
+                        Finalizar Pedido
+                    </button>
+                </div>
             </div>
         </div>
-        </div >
     );
 }
