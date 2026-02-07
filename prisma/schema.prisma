@@ -1,0 +1,103 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Fabrica {
+  id        String    @id @default(cuid())
+  nome      String
+  produtos  Produto[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Produto {
+  id                 String       @id @default(cuid())
+  codigo             String
+  nome               String
+  preco50a199        Decimal      @db.Decimal(10, 2)
+  preco200a699       Decimal      @db.Decimal(10, 2)
+  precoAtacado       Decimal      @db.Decimal(10, 2)
+  precoAtacadoAVista Decimal      @db.Decimal(10, 2)
+  precoRedes         Decimal      @db.Decimal(10, 2)
+  imagem             String?
+  fabricaId          String
+  fabrica            Fabrica      @relation(fields: [fabricaId], references: [id])
+  itensPedido        ItemPedido[]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model Cliente {
+  id                String           @id @default(cuid())
+  razaoSocial       String
+  nomeFantasia      String
+  cnpj              String           @unique
+  inscricaoEstadual String?
+  email             String
+  telefone          String
+  celular           String
+  endereco          String
+  bairro            String
+  cidade            String
+  estado            String
+  cep               String
+  pedidos           Pedido[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  contatoClientes   ContatoCliente[]
+}
+
+model Pedido {
+  id                String       @id @default(cuid())
+  clienteId         String
+  cliente           Cliente      @relation(fields: [clienteId], references: [id])
+  data              DateTime     @default(now())
+  status            String       @default("Pendente") // Pendente, Processando, Concluido, Cancelado
+  valorTotal        Decimal      @db.Decimal(10, 2)
+  tabelaPreco       String // 50a199, 200a699, atacado, avista, redes
+  condicaoPagamento String
+  observacoes       String?
+  itens             ItemPedido[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model ItemPedido {
+  id            String  @id @default(cuid())
+  pedidoId      String
+  pedido        Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produtoId     String
+  produto       Produto @relation(fields: [produtoId], references: [id])
+  quantidade    Int
+  precoUnitario Decimal @db.Decimal(10, 2)
+  total         Decimal @db.Decimal(10, 2)
+}
+
+model ContatoCliente {
+  id        String   @id @default(cuid())
+  clienteId String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  tipo      String // 'whatsapp' | 'email'
+  mensagem  String
+  status    String   @default("enviado") // enviado, entregue, lido, erro
+  createdAt DateTime @default(now())
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  nome      String
+  username  String   @unique
+  email     String? // Opcional
+  senha     String // Hash bcrypt
+  role      String   @default("vendedor") // admin, vendedor
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
