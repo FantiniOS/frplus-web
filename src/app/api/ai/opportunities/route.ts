@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
 // GET /api/ai/opportunities - Get sales opportunities
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
     try {
         // 1. Get all clients with their order history

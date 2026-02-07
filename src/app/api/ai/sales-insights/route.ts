@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
 // GET /api/ai/sales-insights - Get sales leverage insights
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
     try {
         // Get all clients with order statistics

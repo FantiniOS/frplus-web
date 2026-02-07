@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
 // GET /api/ai/inactive-clients - Get clients sorted by inactivity
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url)
