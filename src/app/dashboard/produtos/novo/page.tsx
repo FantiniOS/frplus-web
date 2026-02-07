@@ -58,7 +58,8 @@ export default function NovoProdutoPage() {
             precoAtacadoAVista: Number(formData.precoAtacadoAVista) || 0,
             precoRedes: Number(formData.precoRedes) || 0,
             unidade: formData.unidade || 'CX',
-            descricao: formData.descricao
+            descricao: formData.descricao,
+            imagem: formData.imagemUrl // Ensure backend receives 'imagem'
         };
 
         addProduct(newProduct);

@@ -159,8 +159,8 @@ export default function ProdutosPage() {
 
                                             {/* Imagem à direita */}
                                             <div className="w-20 h-20 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                                {product.imagemUrl ? (
-                                                    <img src={product.imagemUrl} alt={product.nome} className="w-full h-full object-cover" />
+                                                {(product.imagem || product.imagemUrl) ? (
+                                                    <img src={product.imagem || product.imagemUrl} alt={product.nome} className="w-full h-full object-cover" />
                                                 ) : (
                                                     <Package className="h-8 w-8 text-gray-600" />
                                                 )}
