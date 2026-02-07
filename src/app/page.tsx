@@ -130,9 +130,7 @@ export default function LoginPage() {
 
           {/* Footer */}
           <div className="mt-6 text-center space-y-3">
-            <p className="text-xs text-gray-500">
-              Credenciais padrão: <span className="text-gray-400">admin</span> / <span className="text-gray-400">admin123</span>
-            </p>
+
             <p className="text-xs text-gray-600">
               Protegido por criptografia de ponta a ponta.
             </p>
