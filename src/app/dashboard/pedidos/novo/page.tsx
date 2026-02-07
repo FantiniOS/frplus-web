@@ -208,37 +208,37 @@ export default function NovoPedidoPage() {
                                                     animate={{ opacity: 1, scale: 1 }}
                                                     transition={{ delay: index * 0.03 }}
                                                     onClick={() => addItem(product)}
-                                                    className={`relative group p-3 rounded-xl border text-left transition-all hover:scale-[1.02] ${isInCart
+                                                    className={`relative group p-2 rounded-xl border text-left transition-all hover:scale-[1.02] ${isInCart
                                                         ? 'border-green-500/50 bg-green-500/10'
                                                         : 'border-white/10 bg-white/5 hover:border-blue-500/50 hover:bg-blue-500/5'
                                                         }`}
                                                 >
                                                     {/* Badge no carrinho */}
                                                     {isInCart && (
-                                                        <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center z-10 shadow-lg shadow-green-500/20">
-                                                            <span className="text-[10px] font-bold text-white">
+                                                        <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center z-10 shadow-lg shadow-green-500/20">
+                                                            <span className="text-[9px] font-bold text-white">
                                                                 {itens.find(i => i.produtoId === product.id)?.quantidade}
                                                             </span>
                                                         </div>
                                                     )}
 
-                                                    <div className="flex items-start gap-3">
+                                                    <div className="flex items-start gap-2">
                                                         {/* Imagem/Ícone */}
-                                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden ${isInCart ? 'bg-green-500/20' : 'bg-white/5'}`}>
+                                                        <div className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden ${isInCart ? 'bg-green-500/20' : 'bg-white/5'}`}>
                                                             {product.imagem ? (
                                                                 <img src={product.imagem} alt={product.nome} className="w-full h-full object-cover" />
                                                             ) : (
-                                                                <Package className={`h-5 w-5 ${isInCart ? 'text-green-400' : 'text-gray-400'}`} />
+                                                                <Package className={`h-4 w-4 ${isInCart ? 'text-green-400' : 'text-gray-400'}`} />
                                                             )}
                                                         </div>
 
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex justify-between items-start">
-                                                                <p className="text-[10px] text-gray-500 font-mono">{product.codigo}</p>
-                                                                {isInCart && <Check className="h-3 w-3 text-green-400" />}
+                                                                <p className="text-[9px] text-gray-500 font-mono leading-none">{product.codigo}</p>
+                                                                {isInCart && <Check className="h-2.5 w-2.5 text-green-400" />}
                                                             </div>
-                                                            <p className="text-xs font-medium text-white truncate my-0.5" title={product.nome}>{product.nome}</p>
-                                                            <p className="text-sm font-bold text-green-400">
+                                                            <p className="text-[10px] font-medium text-white leading-tight my-0.5 line-clamp-2" title={product.nome}>{product.nome}</p>
+                                                            <p className="text-sm font-bold text-green-400 leading-none">
                                                                 R$ {preco.toFixed(2)}
                                                             </p>
                                                         </div>
@@ -246,7 +246,7 @@ export default function NovoPedidoPage() {
 
                                                     {/* Overlay de adicionar */}
                                                     <div className="absolute inset-0 rounded-xl bg-blue-600/0 group-hover:bg-blue-600/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all pointer-events-none">
-                                                        <Plus className="h-6 w-6 text-blue-400 drop-shadow-lg" />
+                                                        <Plus className="h-5 w-5 text-blue-400 drop-shadow-lg" />
                                                     </div>
                                                 </motion.button>
                                             );
