@@ -48,8 +48,8 @@ export interface Product {
     imagemUrl?: string; // Alias for backward compatibility
     fabricaId: string;
     fabricaNome?: string;
-    // Backward compatibility
     categoria?: string;
+    // Backward compatibility
     unidade?: string;
     descricao?: string;
 }

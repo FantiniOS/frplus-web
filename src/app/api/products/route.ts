@@ -21,7 +21,8 @@ export async function GET() {
             precoRedes: Number(p.precoRedes),
             imagem: p.imagem,
             fabricaId: p.fabricaId,
-            fabricaNome: p.fabrica.nome
+            fabricaNome: p.fabrica.nome,
+            categoria: p.categoria || 'Geral'
         }))
 
         return NextResponse.json(formattedProducts)
@@ -46,7 +47,8 @@ export async function POST(request: Request) {
                 precoAtacadoAVista: body.precoAtacadoAVista,
                 precoRedes: body.precoRedes,
                 imagem: body.imagem,
-                fabricaId: body.fabricaId
+                fabricaId: body.fabricaId,
+                categoria: body.categoria
             }
         })
 

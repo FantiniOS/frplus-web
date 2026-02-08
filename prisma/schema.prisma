@@ -27,6 +27,7 @@ model Produto {
   precoAtacadoAVista Decimal      @db.Decimal(10, 2)
   precoRedes         Decimal      @db.Decimal(10, 2)
   imagem             String?
+  categoria          String?
   fabricaId          String
   fabrica            Fabrica      @relation(fields: [fabricaId], references: [id])
   itensPedido        ItemPedido[]
