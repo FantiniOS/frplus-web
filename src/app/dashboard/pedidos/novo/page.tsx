@@ -318,8 +318,8 @@ export default function NovoPedidoPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-white truncate">{clienteSelecionado.nome}</p>
-                                <p className="text-[10px] text-gray-400">
-                                    Tabela: {clienteSelecionado.tabelaPreco || '50a199'}
+                                <p className="text-[10px] text-gray-500 truncate">
+                                    {clienteSelecionado.cnpj || clienteSelecionado.cpf || 'Sem documento'}
                                 </p>
                             </div>
                             <button

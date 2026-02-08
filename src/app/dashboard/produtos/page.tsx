@@ -142,27 +142,27 @@ export default function ProdutosPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Grid de Preços Unificado */}
-                                            <div className="mt-3 pt-2 border-t border-white/5 grid grid-cols-5 gap-1">
-                                                <div className="text-center bg-white/5 rounded py-1">
-                                                    <p className="text-[8px] text-gray-500 uppercase">50-199</p>
-                                                    <p className="text-[10px] text-green-400 font-bold">R$ {product.preco50a199?.toFixed(2)}</p>
+                                            {/* Grid de Preços Legível */}
+                                            <div className="mt-3 pt-2 border-t border-white/5 grid grid-cols-2 gap-2">
+                                                <div className="flex justify-between items-center bg-white/5 px-2 py-1.5 rounded">
+                                                    <span className="text-[10px] text-gray-400">50-199</span>
+                                                    <span className="text-sm text-green-400 font-bold">R$ {product.preco50a199?.toFixed(2)}</span>
                                                 </div>
-                                                <div className="text-center bg-white/5 rounded py-1">
-                                                    <p className="text-[8px] text-gray-500 uppercase">200-699</p>
-                                                    <p className="text-[10px] text-green-400 font-bold">R$ {product.preco200a699?.toFixed(2)}</p>
+                                                <div className="flex justify-between items-center bg-white/5 px-2 py-1.5 rounded">
+                                                    <span className="text-[10px] text-gray-400">200-699</span>
+                                                    <span className="text-sm text-green-400 font-bold">R$ {product.preco200a699?.toFixed(2)}</span>
                                                 </div>
-                                                <div className="text-center bg-white/5 rounded py-1">
-                                                    <p className="text-[8px] text-gray-500 uppercase">Atacado</p>
-                                                    <p className="text-[10px] text-green-400 font-bold">R$ {product.precoAtacado?.toFixed(2)}</p>
+                                                <div className="flex justify-between items-center bg-white/5 px-2 py-1.5 rounded">
+                                                    <span className="text-[10px] text-gray-400">Atacado</span>
+                                                    <span className="text-sm text-green-400 font-bold">R$ {product.precoAtacado?.toFixed(2)}</span>
                                                 </div>
-                                                <div className="text-center bg-white/5 rounded py-1">
-                                                    <p className="text-[8px] text-gray-500 uppercase">À Vista</p>
-                                                    <p className="text-[10px] text-green-400 font-bold">R$ {product.precoAtacadoAVista?.toFixed(2)}</p>
+                                                <div className="flex justify-between items-center bg-white/5 px-2 py-1.5 rounded">
+                                                    <span className="text-[10px] text-gray-400">À Vista</span>
+                                                    <span className="text-sm text-green-400 font-bold">R$ {product.precoAtacadoAVista?.toFixed(2)}</span>
                                                 </div>
-                                                <div className="text-center bg-white/5 rounded py-1">
-                                                    <p className="text-[8px] text-gray-500 uppercase">Redes</p>
-                                                    <p className="text-[10px] text-green-400 font-bold">R$ {product.precoRedes?.toFixed(2)}</p>
+                                                <div className="col-span-2 flex justify-between items-center bg-blue-500/10 border border-blue-500/20 px-2 py-1.5 rounded">
+                                                    <span className="text-[10px] text-blue-300 uppercase font-bold">Preço Redes</span>
+                                                    <span className="text-sm text-blue-400 font-bold">R$ {product.precoRedes?.toFixed(2)}</span>
                                                 </div>
                                             </div>
                                         </div>
