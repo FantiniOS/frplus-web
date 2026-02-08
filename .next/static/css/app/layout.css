@@ -773,6 +773,9 @@ video {
 .h-screen {
   height: 100vh;
 }
+.h-14 {
+  height: 3.5rem;
+}
 .max-h-32 {
   max-height: 8rem;
 }
@@ -853,6 +856,9 @@ video {
 }
 .w-px {
   width: 1px;
+}
+.w-14 {
+  width: 3.5rem;
 }
 .min-w-0 {
   min-width: 0px;
@@ -1634,6 +1640,9 @@ video {
 .opacity-50 {
   opacity: 0.5;
 }
+.opacity-100 {
+  opacity: 1;
+}
 .shadow-2xl {
   --tw-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   --tw-shadow-colored: 0 25px 50px -12px var(--tw-shadow-color);
@@ -2046,6 +2055,12 @@ body {
 }
 .group:hover .group-hover\:opacity-100 {
   opacity: 1;
+}
+@media (min-width: 640px) {
+
+  .sm\:opacity-0 {
+    opacity: 0;
+  }
 }
 @media (min-width: 768px) {
 

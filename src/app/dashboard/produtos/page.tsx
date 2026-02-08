@@ -103,37 +103,45 @@ export default function ProdutosPage() {
                                         transition={{ delay: index * 0.03 }}
                                         className="form-card group hover:bg-white/5 transition-colors p-3"
                                     >
-                                        <div className="flex gap-3">
-                                            {/* Conteúdo à esquerda */}
-                                            <div className="flex-1 min-w-0">
-                                                {/* Header com código e ações */}
-                                                <div className="flex items-center justify-between mb-0.5">
-                                                    <p className="text-[10px] font-mono text-gray-500">{product.codigo}</p>
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button
-                                                            onClick={() => setDeleteId(product.id)}
-                                                            className="p-1 rounded text-red-400 hover:bg-red-500/10"
-                                                        >
-                                                            <Trash2 className="h-3 w-3" />
+                                        {/* Card Content Wrapper */}
+                                        <div className="flex flex-col gap-2">
+
+                                            {/* Row 1: Nome e Ações */}
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 min-h-[2.5em] flex items-center">
+                                                    {product.nome}
+                                                </h3>
+                                                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                    <button
+                                                        onClick={() => setDeleteId(product.id)}
+                                                        className="p-1 rounded text-red-400 hover:bg-red-500/10"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </button>
+                                                    <Link href={`/dashboard/produtos/${product.id}`}>
+                                                        <button className="p-1 rounded text-blue-400 hover:bg-blue-500/10">
+                                                            <Edit className="h-3 w-3" />
                                                         </button>
-                                                        <Link href={`/dashboard/produtos/${product.id}`}>
-                                                            <button className="p-1 rounded text-blue-400 hover:bg-blue-500/10">
-                                                                <Edit className="h-3 w-3" />
-                                                            </button>
-                                                        </Link>
+                                                    </Link>
+                                                </div>
+                                            </div>
+
+                                            {/* Row 2: Info e Imagem */}
+                                            <div className="flex justify-between items-end gap-3">
+                                                <div className="flex-1 space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-mono text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
+                                                            {product.codigo}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="inline-flex items-center rounded-md bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-medium text-blue-400 border border-blue-500/20">
+                                                            {product.categoria || 'Sem Categoria'}
+                                                        </span>
                                                     </div>
                                                 </div>
 
-                                                <p className="text-sm font-medium text-white leading-tight line-clamp-2 mb-1.5 min-h-[2.5em]">{product.nome}</p>
-
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="inline-flex items-center rounded-md bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-medium text-blue-400 border border-blue-500/20">
-                                                        {product.categoria || 'Sem Categoria'}
-                                                    </span>
-                                                </div>
-
-                                                {/* Imagem à direita - Reduzida */}
-                                                <div className="w-16 h-16 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                <div className="w-14 h-14 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
                                                     {(product.imagem || product.imagemUrl) ? (
                                                         <img src={product.imagem || product.imagemUrl} alt={product.nome} className="w-full h-full object-cover" />
                                                     ) : (
