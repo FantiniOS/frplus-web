@@ -319,7 +319,7 @@ export default function NovoPedidoPage() {
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-white truncate">{clienteSelecionado.nome}</p>
                                 <p className="text-[10px] text-gray-500 truncate">
-                                    {clienteSelecionado.cnpj || clienteSelecionado.cpf || 'Sem documento'}
+                                    {clienteSelecionado.cnpj || 'Sem documento'}
                                 </p>
                             </div>
                             <button
