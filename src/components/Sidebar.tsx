@@ -11,7 +11,8 @@ import {
   Factory,
   BarChart3,
   Shield,
-  Lightbulb
+  Lightbulb,
+  MessageCircle
 } from "lucide-react";
 import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +41,7 @@ export function Sidebar() {
       items: [
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
         { icon: BarChart3, label: "Relatórios", href: "/dashboard/relatorios" },
+        { icon: MessageCircle, label: "WhatsApp", href: "/dashboard/whatsapp" },
       ]
     }
   ];
