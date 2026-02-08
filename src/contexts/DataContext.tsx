@@ -67,6 +67,7 @@ export interface Order {
     id: string;
     clienteId: string;
     nomeCliente: string;
+    fabricaId?: string;
     data: string;
     status: string;
     valorTotal: number;

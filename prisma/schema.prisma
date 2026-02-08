@@ -13,6 +13,7 @@ model Fabrica {
   id        String    @id @default(cuid())
   nome      String
   produtos  Produto[]
+  pedidos   Pedido[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -59,6 +60,8 @@ model Pedido {
   id                String       @id @default(cuid())
   clienteId         String
   cliente           Cliente      @relation(fields: [clienteId], references: [id])
+  fabricaId         String?
+  fabrica           Fabrica?     @relation(fields: [fabricaId], references: [id])
   data              DateTime     @default(now())
   status            String       @default("Pendente") // Pendente, Processando, Concluido, Cancelado
   valorTotal        Decimal      @db.Decimal(10, 2)

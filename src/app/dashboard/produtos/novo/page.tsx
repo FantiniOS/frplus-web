@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowLeft, Save, Package, DollarSign, Factory, Image, Upload } from "lucide-react";
+import { ArrowLeft, Save, Package, DollarSign, Factory, Image as ImageIcon, Upload } from "lucide-react";
 import { useData, Product } from "@/contexts/DataContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -85,13 +85,16 @@ export default function NovoProdutoPage() {
                 {/* Foto do Produto */}
                 <div className="form-card">
                     <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/5">
-                        <Image className="h-4 w-4 text-pink-400" />
+                        <ImageIcon className="h-4 w-4 text-pink-400" />
                         <span className="text-sm font-medium text-white">Foto do Produto</span>
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="w-24 h-24 rounded-lg border-2 border-dashed border-white/20 bg-white/5 flex items-center justify-center overflow-hidden">
                             {formData.imagemUrl ? (
-                                <img src={formData.imagemUrl} alt="Preview" className="w-full h-full object-cover" />
+                                <>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={formData.imagemUrl} alt="Preview" className="w-full h-full object-cover" />
+                                </>
                             ) : (
                                 <Package className="h-8 w-8 text-gray-500" />
                             )}

@@ -218,7 +218,10 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                                                     {/* Imagem/Ícone */}
                                                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden ${isInCart ? 'bg-green-500/20' : 'bg-white/5'}`}>
                                                         {product.imagem ? (
-                                                            <img src={product.imagem} alt={product.nome} className="w-full h-full object-cover" />
+                                                            <>
+                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                <img src={product.imagem} alt={product.nome} className="w-full h-full object-cover" />
+                                                            </>
                                                         ) : (
                                                             <Package className={`h-5 w-5 ${isInCart ? 'text-green-400' : 'text-gray-400'}`} />
                                                         )}

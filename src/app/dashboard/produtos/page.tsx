@@ -143,6 +143,7 @@ export default function ProdutosPage() {
 
                                                 <div className="w-14 h-14 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
                                                     {(product.imagem || product.imagemUrl) ? (
+                                                        /* eslint-disable-next-line @next/next/no-img-element */
                                                         <img src={product.imagem || product.imagemUrl} alt={product.nome} className="w-full h-full object-cover" />
                                                     ) : (
                                                         <Package className="h-6 w-6 text-gray-600" />

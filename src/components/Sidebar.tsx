@@ -13,6 +13,7 @@ import {
   Shield,
   Lightbulb
 } from "lucide-react";
+import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function Sidebar() {
@@ -58,7 +59,7 @@ export function Sidebar() {
       <div className="flex h-full flex-col px-3 py-4">
         {/* Logo */}
         <div className="mb-8 flex items-center px-2">
-          <img src="/logo.png" alt="Logo" className="h-10 w-auto mr-3" />
+          <NextImage src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-auto mr-3" />
         </div>
 
         {/* Menu Principal */}

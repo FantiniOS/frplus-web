@@ -56,6 +56,7 @@ export async function POST(request: Request) {
         const order = await prisma.pedido.create({
             data: {
                 clienteId: body.clienteId,
+                fabricaId: body.fabricaId,
                 status: 'Pendente',
                 valorTotal: valorTotal,
                 tabelaPreco: body.tabelaPreco,

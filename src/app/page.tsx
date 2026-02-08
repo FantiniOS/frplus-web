@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight, Lock, User, Loader2 } from "lucide-react";
+import NextImage from "next/image";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -75,7 +76,9 @@ export default function LoginPage() {
 
           {/* Header */}
           <div className="mb-8 text-center">
-            <img src="/logo.png" alt="Logo" className="h-16 w-auto mx-auto mb-4" />
+            <div className="flex justify-center mb-4">
+              <NextImage src="/logo.png" alt="Logo" width={64} height={64} className="h-16 w-auto" />
+            </div>
             <p className="text-sm text-gray-400">
               Acesse seu painel de inteligência comercial
             </p>

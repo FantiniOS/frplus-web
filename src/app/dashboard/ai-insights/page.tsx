@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw } from 'lucide-react';
 
@@ -51,7 +51,7 @@ export default function AIInsightsPage() {
         insights: { total: 0, lowTicket: 0, decliningVolume: 0, untappedPotential: 0 }
     });
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const [inactiveRes, oppRes, insightsRes] = await Promise.all([
@@ -82,11 +82,11 @@ export default function AIInsightsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [daysFilter]);
 
     useEffect(() => {
         fetchData();
-    }, [daysFilter]);
+    }, [fetchData]);
 
     const alertColors = {
         vermelho: 'bg-red-500/20 text-red-400 border-red-500/30',
