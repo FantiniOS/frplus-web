@@ -142,27 +142,31 @@ export default function ProdutosPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Grid de Preços Legível */}
-                                            <div className="mt-3 pt-2 border-t border-white/5 grid grid-cols-2 gap-2">
-                                                <div className="flex justify-between items-center bg-white/5 px-2 py-1.5 rounded">
-                                                    <span className="text-[10px] text-gray-400">50-199</span>
-                                                    <span className="text-sm text-green-400 font-bold">R$ {product.preco50a199?.toFixed(2)}</span>
+                                            {/* Grid de Preços em Linha Única */}
+                                            <div className="mt-2 pt-2 border-t border-white/5 flex justify-between gap-1 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
+                                                <div className="flex flex-col items-center min-w-[50px]">
+                                                    <span className="text-[9px] text-gray-500 uppercase leading-none mb-0.5">50-199</span>
+                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {product.preco50a199?.toFixed(2)}</span>
                                                 </div>
-                                                <div className="flex justify-between items-center bg-white/5 px-2 py-1.5 rounded">
-                                                    <span className="text-[10px] text-gray-400">200-699</span>
-                                                    <span className="text-sm text-green-400 font-bold">R$ {product.preco200a699?.toFixed(2)}</span>
+                                                <div className="w-px bg-white/5 mx-0.5"></div>
+                                                <div className="flex flex-col items-center min-w-[50px]">
+                                                    <span className="text-[9px] text-gray-500 uppercase leading-none mb-0.5">200-699</span>
+                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {product.preco200a699?.toFixed(2)}</span>
                                                 </div>
-                                                <div className="flex justify-between items-center bg-white/5 px-2 py-1.5 rounded">
-                                                    <span className="text-[10px] text-gray-400">Atacado</span>
-                                                    <span className="text-sm text-green-400 font-bold">R$ {product.precoAtacado?.toFixed(2)}</span>
+                                                <div className="w-px bg-white/5 mx-0.5"></div>
+                                                <div className="flex flex-col items-center min-w-[50px]">
+                                                    <span className="text-[9px] text-gray-500 uppercase leading-none mb-0.5">Atacado</span>
+                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {product.precoAtacado?.toFixed(2)}</span>
                                                 </div>
-                                                <div className="flex justify-between items-center bg-white/5 px-2 py-1.5 rounded">
-                                                    <span className="text-[10px] text-gray-400">À Vista</span>
-                                                    <span className="text-sm text-green-400 font-bold">R$ {product.precoAtacadoAVista?.toFixed(2)}</span>
+                                                <div className="w-px bg-white/5 mx-0.5"></div>
+                                                <div className="flex flex-col items-center min-w-[50px]">
+                                                    <span className="text-[9px] text-gray-500 uppercase leading-none mb-0.5">À Vista</span>
+                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {product.precoAtacadoAVista?.toFixed(2)}</span>
                                                 </div>
-                                                <div className="col-span-2 flex justify-between items-center bg-blue-500/10 border border-blue-500/20 px-2 py-1.5 rounded">
-                                                    <span className="text-[10px] text-blue-300 uppercase font-bold">Preço Redes</span>
-                                                    <span className="text-sm text-blue-400 font-bold">R$ {product.precoRedes?.toFixed(2)}</span>
+                                                <div className="w-px bg-white/5 mx-0.5"></div>
+                                                <div className="flex flex-col items-center min-w-[50px]">
+                                                    <span className="text-[9px] text-gray-500 uppercase leading-none mb-0.5">Redes</span>
+                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {product.precoRedes?.toFixed(2)}</span>
                                                 </div>
                                             </div>
                                         </div>
