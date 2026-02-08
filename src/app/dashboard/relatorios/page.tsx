@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
 import {
     FileText, Calendar, Download, TrendingUp, Users, Package,
-    DollarSign, BarChart3, PieChart, Filter, Printer, ChevronDown, Check, ChevronUp, FileDown
+    DollarSign, BarChart3, PieChart, Filter, Printer, ChevronDown, Check, ChevronUp, FileDown, MessageCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -669,7 +669,42 @@ export default function RelatoriosPage() {
                                                             <td className="py-2 text-gray-400 print:text-gray-600">{new Date(order.data).toLocaleDateString('pt-BR')}</td>
                                                             <td className="py-2 text-center text-gray-400 print:text-gray-600">{order.itens.length}</td>
                                                             <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
-                                                                R$ {order.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    <span>R$ {order.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const phone = clients.find(c => c.id === order.clienteId)?.celular || '';
+                                                                            if (!phone) {
+                                                                                alert('Cliente sem celular cadastrado');
+                                                                                return;
+                                                                            }
+                                                                            const message = `Olá *${order.nomeCliente}*, segue o resumo do seu pedido *#${order.id.slice(-6)}*:\n\n` +
+                                                                                order.itens.map(i => `- ${i.quantidade}x ${i.nomeProduto} (R$ ${i.total.toFixed(2)})`).join('\n') +
+                                                                                `\n\n*Total: R$ ${order.valorTotal.toFixed(2)}*`;
+
+                                                                            // Clean phone number
+                                                                            const cleanPhone = phone.replace(/\D/g, '');
+                                                                            // Use API to send (or fallback to wa.me if API fails/not implemented fully yet)
+                                                                            // For now, let's use the API we just built!
+                                                                            fetch('/api/whatsapp/send-text', {
+                                                                                method: 'POST',
+                                                                                body: JSON.stringify({ phone: '55' + cleanPhone, message })
+                                                                            }).then(async res => {
+                                                                                if (res.ok) alert('Mensagem enviada via Evolution API!');
+                                                                                else {
+                                                                                    // Fallback to wa.me
+                                                                                    window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+                                                                                    alert('Erro na API, abrindo WhatsApp Web...');
+                                                                                }
+                                                                            });
+                                                                        }}
+                                                                        className="p-1 rounded bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white transition-colors"
+                                                                        title="Enviar no WhatsApp"
+                                                                    >
+                                                                        <MessageCircle size={14} />
+                                                                    </button>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                         {expandedOrderId === order.id && (
