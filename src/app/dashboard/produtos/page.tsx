@@ -101,69 +101,73 @@ export default function ProdutosPage() {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: index * 0.03 }}
-                                        className="form-card group hover:bg-white/5 transition-colors"
+                                        className="form-card group hover:bg-white/5 transition-colors p-3"
                                     >
                                         <div className="flex gap-3">
                                             {/* Conteúdo à esquerda */}
                                             <div className="flex-1 min-w-0">
                                                 {/* Header com código e ações */}
-                                                <div className="flex items-center justify-between mb-1">
+                                                <div className="flex items-center justify-between mb-0.5">
                                                     <p className="text-[10px] font-mono text-gray-500">{product.codigo}</p>
                                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button
                                                             onClick={() => setDeleteId(product.id)}
-                                                            className="p-1 rounded text-gray-400 hover:bg-red-500/10 hover:text-red-400"
+                                                            className="p-1 rounded text-red-400 hover:bg-red-500/10"
                                                         >
                                                             <Trash2 className="h-3 w-3" />
                                                         </button>
                                                         <Link href={`/dashboard/produtos/${product.id}`}>
-                                                            <button className="p-1 rounded text-gray-400 hover:bg-white/10 hover:text-white">
+                                                            <button className="p-1 rounded text-blue-400 hover:bg-blue-500/10">
                                                                 <Edit className="h-3 w-3" />
                                                             </button>
                                                         </Link>
                                                     </div>
                                                 </div>
 
-                                                <p className="font-medium text-white truncate">{product.nome}</p>
+                                                <p className="text-sm font-medium text-white leading-tight line-clamp-2 mb-1.5 min-h-[2.5em]">{product.nome}</p>
 
-                                                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                                    <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-400 border border-blue-500/20">
-                                                        {product.categoria}
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="inline-flex items-center rounded-md bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-medium text-blue-400 border border-blue-500/20">
+                                                        {product.categoria || 'Sem Categoria'}
                                                     </span>
                                                 </div>
 
-                                                {/* Preços - 5 tabelas em linha */}
-                                                <div className="mt-3 pt-3 border-t border-white/5 flex gap-2 text-xs">
-                                                    <div className="text-center">
-                                                        <p className="text-gray-500 text-[9px]">50-199</p>
-                                                        <p className="text-green-400 font-medium text-[11px]">R$ {product.preco50a199?.toFixed(2) || '0.00'}</p>
+                                                {/* Preços - Grid compacto */}
+                                                <div className="pt-2 border-t border-white/5 grid grid-cols-3 gap-y-1 gap-x-2">
+                                                    <div>
+                                                        <p className="text-[9px] text-gray-500 leading-none">50-199</p>
+                                                        <p className="text-[10px] text-green-400 font-bold">R$ {product.preco50a199?.toFixed(2)}</p>
                                                     </div>
-                                                    <div className="text-center">
-                                                        <p className="text-gray-500 text-[9px]">200-699</p>
-                                                        <p className="text-green-400 font-medium text-[11px]">R$ {product.preco200a699?.toFixed(2) || '0.00'}</p>
+                                                    <div>
+                                                        <p className="text-[9px] text-gray-500 leading-none">200-699</p>
+                                                        <p className="text-[10px] text-green-400 font-bold">R$ {product.preco200a699?.toFixed(2)}</p>
                                                     </div>
-                                                    <div className="text-center">
-                                                        <p className="text-gray-500 text-[9px]">Atacado</p>
-                                                        <p className="text-green-400 font-medium text-[11px]">R$ {product.precoAtacado?.toFixed(2) || '0.00'}</p>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-gray-500 text-[9px]">À Vista</p>
-                                                        <p className="text-green-400 font-medium text-[11px]">R$ {product.precoAtacadoAVista?.toFixed(2) || '0.00'}</p>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-gray-500 text-[9px]">Redes</p>
-                                                        <p className="text-green-400 font-medium text-[11px]">R$ {product.precoRedes?.toFixed(2) || '0.00'}</p>
+                                                    <div>
+                                                        <p className="text-[9px] text-gray-500 leading-none">Atacado</p>
+                                                        <p className="text-[10px] text-green-400 font-bold">R$ {product.precoAtacado?.toFixed(2)}</p>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            {/* Imagem à direita */}
-                                            <div className="w-20 h-20 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                                {(product.imagem || product.imagemUrl) ? (
-                                                    <img src={product.imagem || product.imagemUrl} alt={product.nome} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <Package className="h-8 w-8 text-gray-600" />
-                                                )}
+                                            {/* Imagem à direita - Reduzida */}
+                                            <div className="flex flex-col gap-2">
+                                                <div className="w-16 h-16 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                    {(product.imagem || product.imagemUrl) ? (
+                                                        <img src={product.imagem || product.imagemUrl} alt={product.nome} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <Package className="h-6 w-6 text-gray-600" />
+                                                    )}
+                                                </div>
+                                                <div className="space-y-1 text-right">
+                                                    <div>
+                                                        <p className="text-[9px] text-gray-500 leading-none">À Vista</p>
+                                                        <p className="text-[10px] text-green-400 font-bold">R$ {product.precoAtacadoAVista?.toFixed(2)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] text-gray-500 leading-none">Redes</p>
+                                                        <p className="text-[10px] text-green-400 font-bold">R$ {product.precoRedes?.toFixed(2)}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </motion.div>
