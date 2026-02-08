@@ -11,14 +11,8 @@ export default function NovoPedidoPage() {
     const { clients, products, addOrder, showToast, fabricas } = useData();
     const router = useRouter();
 
-    const [clienteId, setClienteId] = useState('');
-    const [searchClient, setSearchClient] = useState('');
-    const [searchProduct, setSearchProduct] = useState('');
-    const [itens, setItens] = useState<OrderItem[]>([]);
-    const [observacoes, setObservacoes] = useState('');
-    const [dataPedido, setDataPedido] = useState(new Date().toISOString().split('T')[0]);
-    const [tabelaPreco, setTabelaPreco] = useState('preco50a199');
-    const [condicaoPagamento, setCondicaoPagamento] = useState('30 dias');
+    const [selectedFabricaId, setSelectedFabricaId] = useState('all');
+    const [selectedCategoria, setSelectedCategoria] = useState('all');
 
     // Cliente selecionado
     const clienteSelecionado = clients.find(c => c.id === clienteId);
@@ -32,33 +26,60 @@ export default function NovoPedidoPage() {
         ).slice(0, 5);
     }, [clients, searchClient]);
 
-    // Filtrar produtos
+    // Filtrar produtos (Lógica em Cascata: Busca -> Fábrica -> Categoria)
     const filteredProducts = useMemo(() => {
-        if (!searchProduct) return products;
-        return products.filter(p =>
-            p.nome.toLowerCase().includes(searchProduct.toLowerCase()) ||
-            p.codigo.toLowerCase().includes(searchProduct.toLowerCase())
-        );
-    }, [products, searchProduct]);
+        let result = products;
+
+        // 1. Busca por texto
+        if (searchProduct) {
+            const term = searchProduct.toLowerCase();
+            result = result.filter(p =>
+                p.nome.toLowerCase().includes(term) ||
+                p.codigo.toLowerCase().includes(term)
+            );
+        }
+
+        // 2. Filtro de Fábrica
+        if (selectedFabricaId !== 'all') {
+            result = result.filter(p => p.fabricaId === selectedFabricaId);
+        }
+
+        // 3. Filtro de Categoria
+        if (selectedCategoria !== 'all') {
+            result = result.filter(p => (p.categoria || 'Geral') === selectedCategoria);
+        }
+
+        return result;
+    }, [products, searchProduct, selectedFabricaId, selectedCategoria]);
+
+    // Categorias disponíveis (Baseado na Fábrica selecionada)
+    const availableCategories = useMemo(() => {
+        let baseProducts = products;
+
+        // Se tiver fábrica selecionada, pega só as categorias dela
+        if (selectedFabricaId !== 'all') {
+            baseProducts = baseProducts.filter(p => p.fabricaId === selectedFabricaId);
+        }
+
+        const categories = new Set<string>();
+        baseProducts.forEach(p => {
+            categories.add(p.categoria || 'Geral');
+        });
+
+        return Array.from(categories).sort();
+    }, [products, selectedFabricaId]);
+
+    // Resetar categoria quando mudar fábrica
+    const handleFabricaChange = (fabricaId: string) => {
+        setSelectedFabricaId(fabricaId);
+        setSelectedCategoria('all');
+    };
 
     const getFabricaNome = (fabricaId?: string) => {
         if (!fabricaId) return '-';
         return fabricas.find(f => f.id === fabricaId)?.nome || '-';
     };
 
-    // Agrupar produtos por fábrica
-    const productsByFabrica = useMemo(() => {
-        return filteredProducts.reduce((acc, product) => {
-            const fabricaId = product.fabricaId || 'sem-fabrica';
-            if (!acc[fabricaId]) {
-                acc[fabricaId] = [];
-            }
-            acc[fabricaId].push(product);
-            return acc;
-        }, {} as Record<string, typeof products>);
-    }, [filteredProducts]);
-
-    // Obter preço baseado na tabela do cliente
     // Obter preço baseado na tabela do cliente
     const getPrecoForTable = (product: typeof products[0], tabela: string) => {
         switch (tabela) {
@@ -176,7 +197,7 @@ export default function NovoPedidoPage() {
 
             {/* Coluna Esquerda - Tabela de Produtos */}
             <div className="flex-1 flex flex-col bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-                {/* Header da Tabela */}
+                {/* Header Superior: Título e Busca */}
                 <div className="p-4 border-b border-white/10 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <Link href="/dashboard/pedidos" className="p-2 rounded-lg hover:bg-white/10 text-gray-400">
@@ -187,7 +208,6 @@ export default function NovoPedidoPage() {
                         </div>
                     </div>
 
-                    {/* Busca Rápida */}
                     <div className="relative flex-1 max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                         <input
@@ -196,9 +216,63 @@ export default function NovoPedidoPage() {
                             onChange={(e) => setSearchProduct(e.target.value)}
                             placeholder="Buscar produto por nome ou código..."
                             className="input-compact pl-10 w-full"
-                            autoFocus
                         />
                     </div>
+                </div>
+
+                {/* Filtros: Fábricas e Categorias */}
+                <div className="bg-black/20 border-b border-white/5 p-2">
+                    {/* Abas de Fábricas */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-2">
+                        <button
+                            onClick={() => handleFabricaChange('all')}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${selectedFabricaId === 'all'
+                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                                }`}
+                        >
+                            Todas as Fábricas
+                        </button>
+                        {fabricas.map(f => (
+                            <button
+                                key={f.id}
+                                onClick={() => handleFabricaChange(f.id)}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${selectedFabricaId === f.id
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                                    }`}
+                            >
+                                {f.nome}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Chips de Categorias */}
+                    {availableCategories.length > 0 && (
+                        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                            <button
+                                onClick={() => setSelectedCategoria('all')}
+                                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${selectedCategoria === 'all'
+                                        ? 'bg-purple-500/20 border-purple-500/50 text-purple-200'
+                                        : 'bg-transparent border-white/10 text-gray-500 hover:border-white/30 hover:text-gray-300'
+                                    }`}
+                            >
+                                Todas
+                            </button>
+                            {availableCategories.map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setSelectedCategoria(cat)}
+                                    className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${selectedCategoria === cat
+                                            ? 'bg-purple-500/20 border-purple-500/50 text-purple-200'
+                                            : 'bg-transparent border-white/10 text-gray-500 hover:border-white/30 hover:text-gray-300'
+                                        }`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Tabela de Produtos (Estilo Excel) */}
@@ -231,7 +305,16 @@ export default function NovoPedidoPage() {
                                         <td className="px-4 py-2">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-medium text-white">{product.nome}</span>
-                                                <span className="text-[10px] text-gray-500">{product.categoria || '-'}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
+                                                        {getFabricaNome(product.fabricaId)}
+                                                    </span>
+                                                    {product.categoria && (
+                                                        <span className="text-[10px] text-gray-500 border border-white/10 px-1.5 py-0.5 rounded">
+                                                            {product.categoria}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-4 py-2 text-right text-sm text-gray-300">
@@ -254,11 +337,6 @@ export default function NovoPedidoPage() {
                                                                 setQuantidade(existingIndex, val);
                                                             }
                                                         } else if (val > 0) {
-                                                            addItem({ ...product, quantidade: val } as any); // Modified addItem to accept quantity or just wrap logic
-                                                            // Since addItem in original code takes a product and adds 1, we need to adapt logic or call specific setter
-                                                            // For this implementation, let's assume we use a direct state update helper or refactor addItem:
-                                                            // We'll fix functionality in next steps if needed, but for now relying on existing state logic
-                                                            // Actually, let's implement a direct `updateOrAdd` logic here for clarity
                                                             setItens(prev => {
                                                                 const exists = prev.find(i => i.produtoId === product.id);
                                                                 if (exists) {
