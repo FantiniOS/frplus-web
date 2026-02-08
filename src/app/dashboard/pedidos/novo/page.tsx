@@ -318,7 +318,7 @@ export default function NovoPedidoPage() {
                             <div className="flex items-center gap-2 p-2 rounded bg-blue-500/10 border border-blue-500/20 mb-2">
                                 <User className="h-4 w-4 text-blue-400" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-white truncate">{clienteSelecionado.nome}</p>
+                                    <p className="text-sm font-bold text-white truncate">{clienteSelecionado.nomeFantasia || clienteSelecionado.razaoSocial}</p>
                                 </div>
                                 <button onClick={() => setClienteId('')} className="text-red-400 hover:bg-red-500/10 p-1 rounded">
                                     <Trash2 className="h-3 w-3" />
@@ -334,19 +334,22 @@ export default function NovoPedidoPage() {
                                     placeholder="Buscar cliente..."
                                     className="input-compact pl-7 w-full text-sm"
                                 />
-                                {searchClient && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/10 rounded-lg shadow-xl z-20 max-h-40 overflow-auto">
-                                        {filteredClients.map(c => (
+                                <div className="max-h-60 overflow-y-auto space-y-1 mt-2 border-t border-white/10 pt-2">
+                                    {filteredClients.length > 0 ? (
+                                        filteredClients.map(c => (
                                             <button
                                                 key={c.id}
                                                 onClick={() => { setClienteId(c.id); setSearchClient(''); }}
-                                                className="w-full text-left p-2 hover:bg-white/10 text-xs text-gray-300"
+                                                className="w-full text-left p-2 rounded-lg hover:bg-white/10 text-xs text-gray-300 hover:text-white transition-colors flex flex-col"
                                             >
-                                                {c.nome}
+                                                <span className="font-bold">{c.nomeFantasia || c.razaoSocial}</span>
+                                                <span className="text-[10px] text-gray-500">{c.cnpj}</span>
                                             </button>
-                                        ))}
-                                    </div>
-                                )}
+                                        ))
+                                    ) : (
+                                        <p className="text-xs text-gray-500 text-center py-2">Nenhum cliente encontrado</p>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
