@@ -59,15 +59,42 @@ export default function NovoPedidoPage() {
     }, [filteredProducts]);
 
     // Obter preço baseado na tabela do cliente
-    const getPrecoCliente = (product: typeof products[0]) => {
-        const tabela = clienteSelecionado?.tabelaPreco || '50a199';
+    // Obter preço baseado na tabela do cliente
+    const getPrecoForTable = (product: typeof products[0], tabela: string) => {
         switch (tabela) {
-            case '200a699': return product.preco200a699;
-            case 'atacado': return product.precoAtacado;
-            case 'atacadoAVista': return product.precoAtacadoAVista;
-            case 'redes': return product.precoRedes;
-            default: return product.preco50a199;
+            case '200a699': return Number(product.preco200a699);
+            case 'atacado': return Number(product.precoAtacado);
+            case 'atacadoAVista': return Number(product.precoAtacadoAVista);
+            case 'redes': return Number(product.precoRedes);
+            default: return Number(product.preco50a199);
         }
+    };
+
+    const getPrecoCliente = (product: typeof products[0]) => {
+        return getPrecoForTable(product, tabelaPreco);
+    };
+
+    // Atualizar tabela quando seleciona cliente
+    useMemo(() => {
+        if (clienteSelecionado?.tabelaPreco) {
+            setTabelaPreco(clienteSelecionado.tabelaPreco);
+        }
+    }, [clienteSelecionado]);
+
+    // Mudar tabela e atualizar preços dos itens no carrinho
+    const handleTabelaChange = (novaTabela: string) => {
+        setTabelaPreco(novaTabela);
+        setItens(prev => prev.map(item => {
+            const product = products.find(p => p.id === item.produtoId);
+            if (!product) return item;
+
+            const newPrice = getPrecoForTable(product, novaTabela);
+            return {
+                ...item,
+                precoUnitario: newPrice,
+                total: newPrice * item.quantidade
+            };
+        }));
     };
 
     // Adicionar item ao pedido
@@ -327,6 +354,25 @@ export default function NovoPedidoPage() {
                             </div>
                         </div>
                     )}
+                </div>
+
+                {/* Tabela de Preço */}
+                <div className="px-4 pb-2 border-b border-white/10">
+                    <label className="text-xs text-gray-400 mb-1 block flex items-center gap-1">
+                        <DollarSign className="h-3 w-3" />
+                        Tabela de Preço
+                    </label>
+                    <select
+                        value={tabelaPreco}
+                        onChange={(e) => handleTabelaChange(e.target.value)}
+                        className="input-compact w-full text-sm"
+                    >
+                        <option value="50a199">50 a 199 CX</option>
+                        <option value="200a699">200 a 699 CX</option>
+                        <option value="atacado">Atacado</option>
+                        <option value="atacadoAVista">Atacado à Vista</option>
+                        <option value="redes">Redes</option>
+                    </select>
                 </div>
 
                 {/* Data do Pedido */}
