@@ -430,7 +430,9 @@ export default function NovoPedidoPage() {
                                     className="w-full bg-gray-800 border border-gray-700 rounded text-xs px-2 py-1.5 outline-none text-white"
                                 >
                                     <option value="preco50a199">Padrão</option>
+                                    <option value="preco200a699">200 a 699</option>
                                     <option value="atacado">Atacado</option>
+                                    <option value="atacadoAVista">Atacado à Vista</option>
                                     <option value="redes">Redes</option>
                                 </select>
                             </div>
