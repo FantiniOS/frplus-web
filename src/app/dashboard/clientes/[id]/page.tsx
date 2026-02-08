@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowLeft, Save, Building2, MapPin, DollarSign, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Building2, MapPin, DollarSign, Search, Loader2, User } from "lucide-react";
 import { useData, Client } from "@/contexts/DataContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -154,6 +154,28 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                         <div>
                             <label className="label-compact">Nome Fantasia</label>
                             <input name="nomeFantasia" value={formData.nomeFantasia || ''} onChange={handleChange} className="input-compact" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Contato */}
+                <div className="form-card">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/5">
+                        <User className="h-4 w-4 text-purple-400" />
+                        <span className="text-sm font-medium text-white">Contato</span>
+                    </div>
+                    <div className="grid gap-3 grid-cols-3">
+                        <div>
+                            <label className="label-compact">Email</label>
+                            <input name="email" type="email" value={formData.email || ''} onChange={handleChange} placeholder="contato@empresa.com" className="input-compact" />
+                        </div>
+                        <div>
+                            <label className="label-compact">Telefone Fixo</label>
+                            <input name="telefone" value={formData.telefone || ''} onChange={handleChange} placeholder="(00) 0000-0000" className="input-compact" />
+                        </div>
+                        <div>
+                            <label className="label-compact">Celular / WhatsApp</label>
+                            <input name="celular" value={formData.celular || ''} onChange={handleChange} placeholder="(00) 90000-0000" className="input-compact" />
                         </div>
                     </div>
                 </div>
