@@ -415,5 +415,4 @@ export default function NovoPedidoPage() {
         </div>
     );
 }
-    );
-}
+

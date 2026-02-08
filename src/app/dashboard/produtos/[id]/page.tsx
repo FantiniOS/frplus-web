@@ -43,7 +43,11 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
             return;
         }
         if (formData.id) {
-            updateProduct(formData.id, formData);
+            const updateData = {
+                ...formData,
+                imagem: formData.imagemUrl || formData.imagem // Ensure backend receives the updated image
+            };
+            updateProduct(formData.id, updateData);
             router.push('/dashboard/produtos');
         }
     };
