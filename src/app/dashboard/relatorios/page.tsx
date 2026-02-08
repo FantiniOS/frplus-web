@@ -9,15 +9,31 @@ import {
 import { motion } from 'framer-motion';
 
 export default function RelatoriosPage() {
-    const { orders, clients, products, fabricas } = useData();
+    const { orders, clients, products, fabricas, refreshData } = useData();
+
+    // Force refresh on mount to ensure up-to-date data
+    useEffect(() => {
+        refreshData();
+    }, [refreshData]);
 
     const [tipoRelatorio, setTipoRelatorio] = useState<'vendas' | 'produtos' | 'clientes' | 'tabela'>('vendas');
-    const [periodoInicio, setPeriodoInicio] = useState(() => {
+
+    // Helpers for local date strings
+    const getLocalDate = () => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().split('T')[0];
+    };
+
+    const getLastMonthDate = () => {
         const d = new Date();
         d.setMonth(d.getMonth() - 1);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
         return d.toISOString().split('T')[0];
-    });
-    const [periodoFim, setPeriodoFim] = useState(new Date().toISOString().split('T')[0]);
+    };
+
+    const [periodoInicio, setPeriodoInicio] = useState(getLastMonthDate());
+    const [periodoFim, setPeriodoFim] = useState(getLocalDate());
     const [exportando, setExportando] = useState(false);
     const [tabelaPrecoSelecionada, setTabelaPrecoSelecionada] = useState<'todas' | '50a199' | '200a699' | 'atacado' | 'avista' | 'redes'>('todas');
     const [fabricaSelecionada, setFabricaSelecionada] = useState<string>('todas');
