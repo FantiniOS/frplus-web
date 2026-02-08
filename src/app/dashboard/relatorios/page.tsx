@@ -27,9 +27,10 @@ export default function RelatoriosPage() {
     const pedidosFiltrados = useMemo(() => {
         return orders.filter(o => {
             const dataOrder = new Date(o.data);
-            const inicio = new Date(periodoInicio);
-            const fim = new Date(periodoFim);
-            fim.setHours(23, 59, 59);
+            // Construct dates using local time to ensure full day coverage
+            const inicio = new Date(periodoInicio + 'T00:00:00');
+            const fim = new Date(periodoFim + 'T23:59:59');
+
             return dataOrder >= inicio && dataOrder <= fim;
         });
     }, [orders, periodoInicio, periodoFim]);
