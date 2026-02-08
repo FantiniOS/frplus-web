@@ -132,25 +132,7 @@ export default function ProdutosPage() {
                                                     </span>
                                                 </div>
 
-                                                {/* Preços - Grid compacto */}
-                                                <div className="pt-2 border-t border-white/5 grid grid-cols-3 gap-y-1 gap-x-2">
-                                                    <div>
-                                                        <p className="text-[9px] text-gray-500 leading-none">50-199</p>
-                                                        <p className="text-[10px] text-green-400 font-bold">R$ {product.preco50a199?.toFixed(2)}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[9px] text-gray-500 leading-none">200-699</p>
-                                                        <p className="text-[10px] text-green-400 font-bold">R$ {product.preco200a699?.toFixed(2)}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[9px] text-gray-500 leading-none">Atacado</p>
-                                                        <p className="text-[10px] text-green-400 font-bold">R$ {product.precoAtacado?.toFixed(2)}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Imagem à direita - Reduzida */}
-                                            <div className="flex flex-col gap-2">
+                                                {/* Imagem à direita - Reduzida */}
                                                 <div className="w-16 h-16 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
                                                     {(product.imagem || product.imagemUrl) ? (
                                                         <img src={product.imagem || product.imagemUrl} alt={product.nome} className="w-full h-full object-cover" />
@@ -158,15 +140,29 @@ export default function ProdutosPage() {
                                                         <Package className="h-6 w-6 text-gray-600" />
                                                     )}
                                                 </div>
-                                                <div className="space-y-1 text-right">
-                                                    <div>
-                                                        <p className="text-[9px] text-gray-500 leading-none">À Vista</p>
-                                                        <p className="text-[10px] text-green-400 font-bold">R$ {product.precoAtacadoAVista?.toFixed(2)}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[9px] text-gray-500 leading-none">Redes</p>
-                                                        <p className="text-[10px] text-green-400 font-bold">R$ {product.precoRedes?.toFixed(2)}</p>
-                                                    </div>
+                                            </div>
+
+                                            {/* Grid de Preços Unificado */}
+                                            <div className="mt-3 pt-2 border-t border-white/5 grid grid-cols-5 gap-1">
+                                                <div className="text-center bg-white/5 rounded py-1">
+                                                    <p className="text-[8px] text-gray-500 uppercase">50-199</p>
+                                                    <p className="text-[10px] text-green-400 font-bold">R$ {product.preco50a199?.toFixed(2)}</p>
+                                                </div>
+                                                <div className="text-center bg-white/5 rounded py-1">
+                                                    <p className="text-[8px] text-gray-500 uppercase">200-699</p>
+                                                    <p className="text-[10px] text-green-400 font-bold">R$ {product.preco200a699?.toFixed(2)}</p>
+                                                </div>
+                                                <div className="text-center bg-white/5 rounded py-1">
+                                                    <p className="text-[8px] text-gray-500 uppercase">Atacado</p>
+                                                    <p className="text-[10px] text-green-400 font-bold">R$ {product.precoAtacado?.toFixed(2)}</p>
+                                                </div>
+                                                <div className="text-center bg-white/5 rounded py-1">
+                                                    <p className="text-[8px] text-gray-500 uppercase">À Vista</p>
+                                                    <p className="text-[10px] text-green-400 font-bold">R$ {product.precoAtacadoAVista?.toFixed(2)}</p>
+                                                </div>
+                                                <div className="text-center bg-white/5 rounded py-1">
+                                                    <p className="text-[8px] text-gray-500 uppercase">Redes</p>
+                                                    <p className="text-[10px] text-green-400 font-bold">R$ {product.precoRedes?.toFixed(2)}</p>
                                                 </div>
                                             </div>
                                         </div>
