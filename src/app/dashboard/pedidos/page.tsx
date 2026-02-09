@@ -111,14 +111,6 @@ export default function PedidosPage() {
                                                     <ChevronDown className="h-3 w-3 text-blue-400" />
                                                 )}
                                             </div>
-
-                                            {/* Número do Pedido */}
-                                            <div className="min-w-0">
-                                                <p className="font-mono text-xs md:text-sm font-bold text-white leading-none">
-                                                    {new Date(order.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '')}
-                                                    -{new Date(order.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', '')}
-                                                </p>
-                                            </div>
                                         </div>
 
                                         {/* Data (Mobile: Top Right) */}
@@ -186,10 +178,19 @@ export default function PedidosPage() {
                             {expandedOrderId === order.id && (
                                 <div className="bg-black/20 border-t border-white/5 p-4 animate-in slide-in-from-top-2 duration-200">
                                     <div className="bg-gray-900/50 rounded-lg p-4 border border-white/5">
-                                        <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-                                            <Package className="h-4 w-4 text-blue-400" />
-                                            Itens do Pedido
-                                        </h4>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                                                <Package className="h-4 w-4 text-blue-400" />
+                                                Itens do Pedido
+                                            </h4>
+                                            <div className="text-right">
+                                                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Pedido</p>
+                                                <p className="font-mono text-xs text-gray-400">
+                                                    {new Date(order.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '')}
+                                                    -{new Date(order.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', '')}
+                                                </p>
+                                            </div>
+                                        </div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-sm text-left">
                                                 <thead>
