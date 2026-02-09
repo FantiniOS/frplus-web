@@ -101,9 +101,9 @@ export default function PedidosPage() {
                                 className="p-3 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors group gap-3 md:gap-0 cursor-pointer"
                             >
                                 <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4 w-full min-w-0">
+                                    {/* Mobile Top Row: Icon + Date */}
                                     <div className="flex items-center justify-between md:justify-start gap-2 w-full md:w-auto">
                                         <div className="flex items-center gap-2">
-                                            {/* Ícone */}
                                             <div className="p-1 rounded bg-blue-500/10 shrink-0">
                                                 {expandedOrderId === order.id ? (
                                                     <ChevronUp className="h-3 w-3 text-blue-400" />
@@ -122,10 +122,10 @@ export default function PedidosPage() {
                                         </div>
                                     </div>
 
-                                    {/* Cliente */}
+                                    {/* Cliente - Full Width on Mobile */}
                                     <div className="w-full md:w-48 min-w-0 pl-1 md:pl-0 mt-1 md:mt-0">
                                         <p className="md:hidden text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Cliente</p>
-                                        <p className="text-sm font-medium text-white line-clamp-1 md:truncate leading-tight w-full">{order.nomeCliente}</p>
+                                        <p className="text-sm font-medium text-white break-words leading-tight w-full">{order.nomeCliente}</p>
                                     </div>
 
                                     {/* Data (Desktop) e Itens */}
