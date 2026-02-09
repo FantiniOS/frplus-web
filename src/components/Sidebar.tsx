@@ -47,7 +47,6 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       items: [
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
         { icon: BarChart3, label: "Relatórios", href: "/dashboard/relatorios" },
-        { icon: MessageCircle, label: "WhatsApp", href: "/dashboard/whatsapp" },
       ]
     },
   ];
