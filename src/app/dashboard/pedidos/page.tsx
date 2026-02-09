@@ -131,7 +131,8 @@ export default function PedidosPage() {
                                     </div>
 
                                     {/* Cliente */}
-                                    <div className="w-full md:w-48 min-w-0">
+                                    <div className="w-full md:w-48 min-w-0 pl-1 md:pl-0 mt-1 md:mt-0">
+                                        <p className="md:hidden text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Cliente</p>
                                         <p className="text-sm font-medium text-white truncate leading-tight w-full">{order.nomeCliente}</p>
                                     </div>
 
