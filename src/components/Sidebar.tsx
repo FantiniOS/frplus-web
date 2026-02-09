@@ -91,6 +91,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={onClose}
                       className="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
                     >
                       <item.icon className="mr-3 h-5 w-5 text-gray-400" />
@@ -113,13 +114,17 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
             <Link
               href="/dashboard/configuracoes"
+              onClick={onClose}
               className="flex items-center rounded-lg px-3 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white"
             >
               <Settings className="mr-3 h-5 w-5 text-gray-400" />
               Configurações
             </Link>
             <button
-              onClick={logout}
+              onClick={() => {
+                logout();
+                if (onClose) onClose();
+              }}
               className="mt-1 flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10"
             >
               <LogOut className="mr-3 h-5 w-5" />

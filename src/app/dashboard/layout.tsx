@@ -31,7 +31,7 @@ function ProtectedContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col md:flex-row">
+    <div className="min-h-screen bg-black text-white flex flex-col md:flex-row overflow-x-hidden">
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b border-white/10 bg-black sticky top-0 z-30">
         <div className="flex items-center gap-3">
