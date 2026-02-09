@@ -280,47 +280,48 @@ export default function NovoPedidoPage() {
     return (
         <div className="h-[calc(100vh-100px)] flex flex-col bg-gray-900 text-white animate-in slide-in-from-right duration-300">
             {/* Top Bar: Fábrica e Ações */}
-            <div className="h-14 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 sticky top-0 z-20 shadow-md">
-                <div className="flex items-center gap-4">
+            <div className="bg-gray-800 border-b border-gray-700 flex flex-col md:flex-row items-center justify-between px-4 py-2 md:py-0 md:h-14 sticky top-0 z-20 shadow-md gap-3">
+                <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 w-full md:w-auto">
                     <button onClick={() => setStep('client')} className="text-gray-400 hover:text-white flex items-center gap-2 text-sm font-medium">
                         <ArrowLeft className="h-4 w-4" />
-                        Trocar Cliente
+                        <span className="hidden sm:inline">Trocar Cliente</span>
                     </button>
-                    <div className="h-6 w-px bg-gray-600 mx-2" />
+                    <div className="hidden md:block h-6 w-px bg-gray-600 mx-2" />
                     <div className="flex items-center gap-2">
                         <Factory className="h-4 w-4 text-blue-400" />
-                        <span className="font-bold text-lg">{fabricaSelecionada?.nome}</span>
+                        <span className="font-bold text-sm md:text-lg truncate max-w-[120px] md:max-w-none">{fabricaSelecionada?.nome}</span>
                     </div>
-                    <div className="h-6 w-px bg-gray-600 mx-2" />
+                    <div className="hidden md:block h-6 w-px bg-gray-600 mx-2" />
                     <div className="flex items-center gap-2 text-sm">
                         <User className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-300">{clienteSelecionado?.nomeFantasia}</span>
+                        <span className="font-medium text-gray-300 truncate max-w-[120px] md:max-w-none">{clienteSelecionado?.nomeFantasia}</span>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between w-full md:w-auto gap-4">
                     <div className="text-right">
-                        <p className="text-xs text-gray-400 uppercase">Total do Pedido</p>
-                        <p className="text-xl font-bold text-green-400 leading-none">
+                        <p className="text-[10px] md:text-xs text-gray-400 uppercase">Total do Pedido</p>
+                        <p className="text-lg md:text-xl font-bold text-green-400 leading-none">
                             {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
                     </div>
                     <button
                         onClick={handleSubmit}
                         disabled={itens.length === 0}
-                        className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="bg-green-600 hover:bg-green-500 text-white px-4 md:px-6 py-2 rounded font-bold text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
                     >
                         <Save className="h-4 w-4" />
-                        FINALIZAR (F2)
+                        <span className="hidden md:inline">FINALIZAR (F2)</span>
+                        <span className="md:hidden">SALVAR</span>
                     </button>
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                 {/* Painel Esquerdo: Lista de Produtos (ERP Grid) */}
-                <div className="flex-1 flex flex-col border-r border-gray-700">
+                <div className="flex-1 flex flex-col border-r border-gray-700 order-2 md:order-1 overflow-hidden">
                     {/* Barra de Filtros Compacta */}
-                    <div className="bg-gray-800 p-2 flex gap-2 border-b border-gray-700">
+                    <div className="bg-gray-800 p-2 flex flex-col md:flex-row gap-2 border-b border-gray-700">
                         <div className="relative flex-1">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                             <input
@@ -328,14 +329,14 @@ export default function NovoPedidoPage() {
                                 type="text"
                                 value={searchProduct}
                                 onChange={(e) => setSearchProduct(e.target.value)}
-                                placeholder={`Buscar produto em ${fabricaSelecionada?.nome}...`}
+                                placeholder={`Buscar produto...`}
                                 className="w-full bg-gray-900 border border-gray-600 rounded text-sm px-8 py-1 focus:border-blue-500 outline-none text-white h-8"
                             />
                         </div>
                         <select
                             value={selectedCategoria}
                             onChange={(e) => setSelectedCategoria(e.target.value)}
-                            className="bg-gray-900 border border-gray-600 rounded text-sm px-3 py-1 outline-none text-white h-8 w-48"
+                            className="bg-gray-900 border border-gray-600 rounded text-sm px-3 py-1 outline-none text-white h-8 w-full md:w-48"
                         >
                             <option value="all">Todas Categorias</option>
                             {availableCategories.map(cat => (
@@ -346,15 +347,15 @@ export default function NovoPedidoPage() {
 
                     {/* Grid de Dados */}
                     <div className="flex-1 overflow-auto bg-gray-900">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-collapse min-w-[600px] md:min-w-0">
                             <thead className="bg-gray-800 text-xs text-gray-400 uppercase font-semibold sticky top-0 z-10 shadow-sm">
                                 <tr>
                                     <th className="px-3 py-2 border-b border-gray-700 w-20">Cód</th>
                                     <th className="px-3 py-2 border-b border-gray-700">Produto</th>
-                                    <th className="px-3 py-2 border-b border-gray-700 w-32">Categ.</th>
+                                    <th className="px-3 py-2 border-b border-gray-700 w-32 hidden sm:table-cell">Categ.</th>
                                     <th className="px-3 py-2 border-b border-gray-700 w-28 text-right">Preço</th>
                                     <th className="px-3 py-2 border-b border-gray-700 w-24 text-center bg-gray-700/50">Qtd.</th>
-                                    <th className="px-3 py-2 border-b border-gray-700 w-32 text-right">Total</th>
+                                    <th className="px-3 py-2 border-b border-gray-700 w-32 text-right hidden sm:table-cell">Total</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
@@ -372,8 +373,13 @@ export default function NovoPedidoPage() {
                                             `}
                                         >
                                             <td className="px-3 py-1.5 text-xs text-gray-500 font-mono border-r border-gray-800/50">{product.codigo}</td>
-                                            <td className="px-3 py-1.5 text-sm font-medium text-gray-200 border-r border-gray-800/50">{product.nome}</td>
-                                            <td className="px-3 py-1.5 text-xs text-gray-500 border-r border-gray-800/50 truncate max-w-[100px]">{product.categoria || '-'}</td>
+                                            <td className="px-3 py-1.5 text-sm font-medium text-gray-200 border-r border-gray-800/50">
+                                                <div className="line-clamp-2">{product.nome}</div>
+                                                <div className="sm:hidden text-xs text-green-400 font-bold mt-1">
+                                                    {qtd > 0 && (qtd * preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-1.5 text-xs text-gray-500 border-r border-gray-800/50 truncate max-w-[100px] hidden sm:table-cell">{product.categoria || '-'}</td>
                                             <td className="px-3 py-1.5 text-sm text-gray-400 text-right border-r border-gray-800/50">
                                                 {preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                             </td>
@@ -392,7 +398,7 @@ export default function NovoPedidoPage() {
                                                     placeholder="-"
                                                 />
                                             </td>
-                                            <td className="px-3 py-1.5 text-sm text-right">
+                                            <td className="px-3 py-1.5 text-sm text-right hidden sm:table-cell">
                                                 {qtd > 0 ? (
                                                     <span className="text-green-400 font-bold">{(qtd * preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                                 ) : <span className="text-gray-700">-</span>}
@@ -409,10 +415,10 @@ export default function NovoPedidoPage() {
                 </div>
 
                 {/* Painel Direito: Configurações do Pedido (SIMPLIFICADO) */}
-                <div className="w-80 bg-gray-900 border-l border-gray-700 flex flex-col">
-                    <div className="p-4 space-y-6">
+                <div className="w-full md:w-80 bg-gray-900 border-t md:border-t-0 md:border-l border-gray-700 flex flex-col order-1 md:order-2 max-h-[250px] md:max-h-none overflow-y-auto">
+                    <div className="p-4 space-y-4">
                         {/* Info Cliente (Read-Only) */}
-                        <div className="space-y-2">
+                        <div className="space-y-2 hidden md:block">
                             <label className="text-xs uppercase font-bold text-gray-500">Cliente Selecionado</label>
                             <div className="bg-gray-800 border-l-4 border-blue-500 p-3 rounded">
                                 <div className="font-bold text-white leading-tight">{clienteSelecionado?.nomeFantasia}</div>
@@ -450,17 +456,27 @@ export default function NovoPedidoPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <label className="text-xs uppercase font-bold text-gray-500">Data de Emissão</label>
-                            <input
-                                type="date"
-                                value={dataPedido}
-                                onChange={(e) => setDataPedido(e.target.value)}
-                                className="w-full bg-gray-800 border border-gray-700 rounded text-xs px-2 py-1.5 outline-none text-white"
-                            />
+                        <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+                            <div className="space-y-1">
+                                <label className="text-xs uppercase font-bold text-gray-500">Emissão</label>
+                                <input
+                                    type="date"
+                                    value={dataPedido}
+                                    onChange={(e) => setDataPedido(e.target.value)}
+                                    className="w-full bg-gray-800 border border-gray-700 rounded text-xs px-2 py-1.5 outline-none text-white"
+                                />
+                            </div>
+
+                            <div className="space-y-1 md:hidden">
+                                <label className="text-xs uppercase font-bold text-gray-500">Itens/Total</label>
+                                <div className="bg-gray-800 border border-gray-700 rounded text-xs px-2 py-1.5 text-white flex justify-between">
+                                    <span>{totalItens} itens</span>
+                                    <span className="font-bold text-green-400">R$ {valorTotal.toFixed(2)}</span>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="space-y-1">
+                        <div className="space-y-1 hidden md:block">
                             <label className="text-xs uppercase font-bold text-gray-500">Observações</label>
                             <textarea
                                 value={observacoes}
@@ -472,7 +488,7 @@ export default function NovoPedidoPage() {
                         </div>
                     </div>
 
-                    <div className="mt-auto p-4 bg-gray-800/50 border-t border-gray-700">
+                    <div className="mt-auto p-4 bg-gray-800/50 border-t border-gray-700 hidden md:block">
                         <div className="flex justify-between text-sm mb-1">
                             <span className="text-gray-500">Itens</span>
                             <span className="text-white font-mono">{totalItens}</span>

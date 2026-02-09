@@ -112,7 +112,7 @@ export default function ProdutosPage() {
                                                 <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 min-h-[2.5em] flex items-center">
                                                     {product.nome}
                                                 </h3>
-                                                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0">
                                                     <button
                                                         onClick={() => setDeleteId(product.id)}
                                                         className="p-1 rounded text-red-400 hover:bg-red-500/10"
