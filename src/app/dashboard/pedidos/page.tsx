@@ -98,54 +98,66 @@ export default function PedidosPage() {
                             {/* Card Header (Clickable) */}
                             <div
                                 onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
-                                className="py-2 px-3 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors group gap-1 md:gap-0 cursor-pointer"
+                                className="p-3 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors group gap-3 md:gap-0 cursor-pointer"
                             >
-                                <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4 w-full">
-                                    <div className="flex items-center gap-2">
-                                        {/* Ícone */}
-                                        <div className="p-1 rounded bg-blue-500/10 shrink-0">
-                                            {expandedOrderId === order.id ? (
-                                                <ChevronUp className="h-3 w-3 text-blue-400" />
-                                            ) : (
-                                                <ChevronDown className="h-3 w-3 text-blue-400" />
-                                            )}
+                                <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4 w-full min-w-0">
+                                    <div className="flex items-center justify-between md:justify-start gap-2 w-full md:w-auto">
+                                        <div className="flex items-center gap-2">
+                                            {/* Ícone */}
+                                            <div className="p-1 rounded bg-blue-500/10 shrink-0">
+                                                {expandedOrderId === order.id ? (
+                                                    <ChevronUp className="h-3 w-3 text-blue-400" />
+                                                ) : (
+                                                    <ChevronDown className="h-3 w-3 text-blue-400" />
+                                                )}
+                                            </div>
+
+                                            {/* Número do Pedido */}
+                                            <div className="min-w-0">
+                                                <p className="font-mono text-xs md:text-sm font-bold text-white leading-none">
+                                                    {new Date(order.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '')}
+                                                    -{new Date(order.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', '')}
+                                                </p>
+                                            </div>
                                         </div>
 
-                                        {/* Número do Pedido */}
-                                        <div className="md:w-24">
-                                            <p className="text-[10px] text-gray-500 uppercase tracking-wider hidden md:block">Pedido</p>
-                                            <p className="font-mono text-xs md:text-sm font-bold text-white leading-none">
-                                                {new Date(order.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '')}
-                                                -{new Date(order.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', '')}
+                                        {/* Data (Mobile: Top Right) */}
+                                        <div className="md:hidden flex items-center gap-1">
+                                            <Calendar className="h-3 w-3 text-gray-500" />
+                                            <p className="text-xs text-gray-400 leading-none">
+                                                {new Date(order.data).toLocaleDateString('pt-BR')}
                                             </p>
                                         </div>
                                     </div>
 
                                     {/* Cliente */}
-                                    <div className="md:w-48 pl-6 md:pl-0">
-                                        <p className="text-sm font-medium text-white truncate leading-tight">{order.nomeCliente}</p>
+                                    <div className="w-full md:w-48 min-w-0">
+                                        <p className="text-sm font-medium text-white truncate leading-tight w-full">{order.nomeCliente}</p>
                                     </div>
 
-                                    {/* Data e Itens */}
-                                    <div className="flex items-center gap-4 pl-6 md:pl-0">
-                                        <div className="md:w-24">
+                                    {/* Data (Desktop) e Itens */}
+                                    <div className="flex items-center gap-4 w-full md:w-auto mt-1 md:mt-0">
+                                        <div className="hidden md:block md:w-24">
                                             <p className="text-xs text-gray-400 flex items-center gap-1 leading-none">
                                                 <Calendar className="h-3 w-3" />
                                                 {new Date(order.data).toLocaleDateString('pt-BR')}
                                             </p>
                                         </div>
 
-                                        <div className="md:w-16">
+                                        <div className="w-full md:w-16 flex justify-between md:block">
+                                            <span className="md:hidden text-xs text-gray-500">Itens:</span>
                                             <p className="text-xs text-gray-400 leading-none">
-                                                {order.itens.length} itens
+                                                {order.itens.length} <span className="hidden md:inline">itens</span>
                                             </p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between w-full md:w-auto gap-4 pl-6 md:pl-0 pt-1 md:pt-0">
+                                {/* Rodapé Mobile: Valor + Ações */}
+                                <div className="flex items-center justify-between w-full md:w-auto gap-4 border-t border-white/5 pt-2 md:pt-0 md:border-0 mt-1 md:mt-0">
                                     {/* Valor */}
-                                    <div className="text-left md:text-right md:w-28">
+                                    <div className="text-left md:text-right md:w-28 flex items-center gap-2 md:block">
+                                        <span className="md:hidden text-xs text-gray-500 font-medium">Total:</span>
                                         <p className="text-sm font-bold text-green-400 leading-none">R$ {order.valorTotal.toFixed(2)}</p>
                                     </div>
 
