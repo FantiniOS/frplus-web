@@ -2,10 +2,12 @@
 
 import { ArrowUpRight, DollarSign, Users, ShoppingCart, Activity, TrendingUp, Package } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
 
 export default function DashboardPage() {
+  const { usuario } = useAuth();
   const { getDashboardStats, orders, products } = useData();
   const stats = getDashboardStats();
 
@@ -48,12 +50,19 @@ export default function DashboardPage() {
 
   const recentOrders = [...orders].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).slice(0, 5);
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bom dia';
+    if (hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Bom dia, Fantini</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">{getGreeting()}, {usuario?.nome?.split(' ')[0] || 'Bem-vindo'}</h1>
           <p className="text-gray-400">Aqui está o resumo da sua operação hoje.</p>
         </div>
         <Link href="/dashboard/pedidos/novo">
