@@ -1,7 +1,7 @@
 /* eslint-disable */
 'use client';
 
-import { Search, Plus, MoreHorizontal, MapPin, Filter, Trash2, Edit } from "lucide-react";
+import { Search, Plus, MoreHorizontal, MapPin, Filter, Trash2, Edit, ChevronDown, ChevronUp, User, FileText } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useState } from "react";
 import Link from "next/link";
@@ -12,6 +12,7 @@ export default function ClientesPage() {
   const { clients, removeClient } = useData();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
 
   const handleDelete = () => {
     if (deleteId) {
@@ -81,84 +82,154 @@ export default function ClientesPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase text-gray-400">
             <tr>
+              <th className="w-10 px-4 py-4"></th>
               <th className="px-6 py-4 font-medium">Cliente</th>
-              <th className="px-6 py-4 font-medium">Status</th>
-              <th className="px-6 py-4 font-medium">Localização</th>
-              <th className="px-6 py-4 font-medium">Última Compra</th>
+              <th className="px-6 py-4 font-medium hidden md:table-cell">Status</th>
+              <th className="px-6 py-4 font-medium hidden md:table-cell">Localização</th>
+              <th className="px-6 py-4 font-medium hidden md:table-cell">Última Compra</th>
               <th className="px-6 py-4 font-medium text-right">Ações</th>
             </tr>
           </thead>
-          <motion.tbody
-            className="divide-y divide-white/5"
-            variants={container}
-            initial="hidden"
-            animate="show"
-          >
+          <tbody className="divide-y divide-white/5">
             {filteredClients.map((cliente) => (
-              <motion.tr
-                key={cliente.id}
-                className="group hover:bg-white/5 transition-colors"
-                variants={item}
-              >
+              <>
+                <motion.tr
+                  key={cliente.id}
+                  className="group hover:bg-white/5 transition-colors cursor-pointer"
+                  onClick={() => setExpandedClientId(expandedClientId === cliente.id ? null : cliente.id)}
+                  variants={item}
+                >
+                  <td className="px-4 py-4">
+                    <div className="p-1 rounded bg-blue-500/10 w-fit">
+                      {expandedClientId === cliente.id ? (
+                        <ChevronUp className="h-4 w-4 text-blue-400" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-blue-400" />
+                      )}
+                    </div>
+                  </td>
 
-                {/* Coluna Nome/CNPJ */}
-                <td className="px-6 py-4">
-                  <div className="font-medium text-white">{cliente.nomeFantasia || cliente.razaoSocial}</div>
-                  <div className="text-xs text-gray-500">{cliente.cnpj}</div>
-                </td>
+                  {/* Coluna Nome/CNPJ */}
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-white">{cliente.nomeFantasia || cliente.razaoSocial}</div>
+                    <div className="text-xs text-gray-500">{cliente.cnpj}</div>
+                  </td>
 
-                {/* Coluna Status */}
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${(cliente.status || 'Ativo') === 'Ativo'
-                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                    : cliente.status === 'Inativo'
-                      ? 'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                      : 'bg-red-500/10 text-red-400 border-red-500/20'
-                    }`}>
-                    {cliente.status || 'Ativo'}
-                  </span>
-                </td>
+                  {/* Coluna Status */}
+                  <td className="px-6 py-4 hidden md:table-cell">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${(cliente.status || 'Ativo') === 'Ativo'
+                      ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                      : cliente.status === 'Inativo'
+                        ? 'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                        : 'bg-red-500/10 text-red-400 border-red-500/20'
+                      }`}>
+                      {cliente.status || 'Ativo'}
+                    </span>
+                  </td>
 
-                {/* Coluna Localização */}
-                <td className="px-6 py-4 text-gray-300">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-3 w-3 text-gray-500" />
-                    {cliente.cidade}
-                  </div>
-                </td>
+                  {/* Coluna Localização */}
+                  <td className="px-6 py-4 text-gray-300 hidden md:table-cell">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-3 w-3 text-gray-500" />
+                      {cliente.cidade}
+                    </div>
+                  </td>
 
-                {/* Coluna Última Compra */}
-                <td className="px-6 py-4 text-gray-300">
-                  {cliente.ultima_compra ? new Date(cliente.ultima_compra).toLocaleDateString() : '-'}
-                </td>
+                  {/* Coluna Última Compra */}
+                  <td className="px-6 py-4 text-gray-300 hidden md:table-cell">
+                    {cliente.ultima_compra ? new Date(cliente.ultima_compra).toLocaleDateString() : '-'}
+                  </td>
 
-                {/* Ações */}
-                <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => setDeleteId(cliente.id)}
-                      className="rounded p-2 text-red-500/50 hover:bg-red-500/10 hover:text-red-500 transition-colors"
-                      title="Excluir Cliente"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                    <Link href={`/dashboard/clientes/${cliente.id}`}>
-                      <button className="rounded p-2 hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title="Editar Cliente">
-                        <Edit className="h-4 w-4" />
+                  {/* Ações */}
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setDeleteId(cliente.id)}
+                        className="rounded p-2 text-red-500/50 hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                        title="Excluir Cliente"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </button>
-                    </Link>
-                  </div>
-                </td>
-              </motion.tr>
+                      <Link href={`/dashboard/clientes/${cliente.id}`}>
+                        <button className="rounded p-2 hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title="Editar Cliente">
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </Link>
+                    </div>
+                  </td>
+                </motion.tr>
+
+                {/* Expanded Detail Row */}
+                {expandedClientId === cliente.id && (
+                  <tr className="bg-white/5">
+                    <td colSpan={6} className="p-0">
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm"
+                      >
+                        {/* Contato */}
+                        <div className="space-y-3">
+                          <h4 className="text-gray-500 text-xs uppercase font-medium flex items-center gap-2">
+                            <User className="h-4 w-4" /> Contato
+                          </h4>
+                          <div>
+                            <p className="text-gray-400 text-xs">Email</p>
+                            <p className="text-white">{cliente.email}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-xs">Telefone / Celular</p>
+                            <p className="text-white">
+                              {cliente.telefone} {cliente.celular ? `/ ${cliente.celular}` : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Endereço */}
+                        <div className="space-y-3">
+                          <h4 className="text-gray-500 text-xs uppercase font-medium flex items-center gap-2">
+                            <MapPin className="h-4 w-4" /> Endereço
+                          </h4>
+                          <div>
+                            <p className="text-white">
+                              {cliente.endereco}, {cliente.numero}
+                            </p>
+                            <p className="text-gray-400">
+                              {cliente.bairro} - {cliente.cidade}/{cliente.estado}
+                            </p>
+                            <p className="text-gray-500 text-xs mt-1">CEP: {cliente.cep}</p>
+                          </div>
+                        </div>
+
+                        {/* Fiscal / Extra */}
+                        <div className="space-y-3">
+                          <h4 className="text-gray-500 text-xs uppercase font-medium flex items-center gap-2">
+                            <FileText className="h-4 w-4" /> Dados Fiscais
+                          </h4>
+                          <div>
+                            <p className="text-gray-400 text-xs">Razão Social</p>
+                            <p className="text-white">{cliente.razaoSocial}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-xs">Inscrição Estadual</p>
+                            <p className="text-white">{cliente.inscricaoEstadual || 'Isento'}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </td>
+                  </tr>
+                )}
+              </>
             ))}
             {filteredClients.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                   Nenhum cliente encontrado.
                 </td>
               </tr>
             )}
-          </motion.tbody>
+          </tbody>
         </table>
       </div>
 
