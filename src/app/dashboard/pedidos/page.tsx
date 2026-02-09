@@ -1,7 +1,7 @@
 /* eslint-disable */
 'use client';
 
-import { Search, Plus, Pencil, Trash2, Calendar, DollarSign, FileText, ShoppingCart } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Calendar, DollarSign, FileText, ShoppingCart, ChevronDown, ChevronUp, Package } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import Link from "next/link";
 import { useState } from "react";
@@ -11,6 +11,7 @@ export default function PedidosPage() {
     const { orders, removeOrder } = useData();
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
     const filteredOrders = orders.filter(order =>
         order.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase()) || order.id.includes(searchTerm)
@@ -92,67 +93,114 @@ export default function PedidosPage() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.03 }}
-                            className="form-card flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors group gap-4 md:gap-0"
+                            className="form-card flex flex-col gap-0 p-0 overflow-hidden"
                         >
-                            <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
-                                <div className="flex items-center gap-4">
-                                    {/* Ícone */}
-                                    <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
-                                        <ShoppingCart className="h-4 w-4 text-blue-400" />
+                            {/* Card Header (Clickable) */}
+                            <div
+                                onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                                className="p-5 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors group gap-4 md:gap-0 cursor-pointer"
+                            >
+                                <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
+                                    <div className="flex items-center gap-4">
+                                        {/* Ícone */}
+                                        <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
+                                            {expandedOrderId === order.id ? (
+                                                <ChevronUp className="h-4 w-4 text-blue-400" />
+                                            ) : (
+                                                <ChevronDown className="h-4 w-4 text-blue-400" />
+                                            )}
+                                        </div>
+
+                                        {/* Número do Pedido (Mobile Only Header) */}
+                                        <div className="md:w-20">
+                                            <p className="text-xs text-gray-500">Pedido</p>
+                                            <p className="font-mono text-sm font-bold text-white">#{order.id.slice(-6)}</p>
+                                        </div>
                                     </div>
 
-                                    {/* Número do Pedido (Mobile Only Header) */}
-                                    <div className="md:w-20">
-                                        <p className="text-xs text-gray-500">Pedido</p>
-                                        <p className="font-mono text-sm font-bold text-white">#{order.id.slice(-6)}</p>
+                                    {/* Cliente */}
+                                    <div className="md:w-48">
+                                        <p className="text-xs text-gray-500">Cliente</p>
+                                        <p className="text-sm font-medium text-white truncate">{order.nomeCliente}</p>
+                                    </div>
+
+                                    {/* Data e Itens (Grid on mobile) */}
+                                    <div className="grid grid-cols-2 gap-4 md:flex md:gap-0 w-full md:w-auto">
+                                        <div className="md:w-28">
+                                            <p className="text-xs text-gray-500">Data</p>
+                                            <p className="text-sm text-gray-300 flex items-center gap-1">
+                                                <Calendar className="h-3 w-3" />
+                                                {new Date(order.data).toLocaleDateString('pt-BR')}
+                                            </p>
+                                        </div>
+
+                                        <div className="md:w-16">
+                                            <p className="text-xs text-gray-500">Itens</p>
+                                            <p className="text-sm text-gray-300">{order.itens.length}</p>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Cliente */}
-                                <div className="md:w-48">
-                                    <p className="text-xs text-gray-500">Cliente</p>
-                                    <p className="text-sm font-medium text-white truncate">{order.nomeCliente}</p>
-                                </div>
-
-                                {/* Data e Itens (Grid on mobile) */}
-                                <div className="grid grid-cols-2 gap-4 md:flex md:gap-0 w-full md:w-auto">
-                                    <div className="md:w-28">
-                                        <p className="text-xs text-gray-500">Data</p>
-                                        <p className="text-sm text-gray-300 flex items-center gap-1">
-                                            <Calendar className="h-3 w-3" />
-                                            {new Date(order.data).toLocaleDateString('pt-BR')}
-                                        </p>
+                                <div className="flex items-center justify-between w-full md:w-auto gap-4 border-t border-white/5 pt-3 md:pt-0 md:border-0">
+                                    {/* Valor */}
+                                    <div className="text-left md:text-right md:w-28">
+                                        <p className="text-xs text-gray-500">Valor</p>
+                                        <p className="text-sm font-bold text-green-400">R$ {order.valorTotal.toFixed(2)}</p>
                                     </div>
 
-                                    <div className="md:w-16">
-                                        <p className="text-xs text-gray-500">Itens</p>
-                                        <p className="text-sm text-gray-300">{order.itens.length}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between w-full md:w-auto gap-4 border-t border-white/5 pt-3 md:pt-0 md:border-0">
-                                {/* Valor */}
-                                <div className="text-left md:text-right md:w-28">
-                                    <p className="text-xs text-gray-500">Valor</p>
-                                    <p className="text-sm font-bold text-green-400">R$ {order.valorTotal.toFixed(2)}</p>
-                                </div>
-
-                                {/* Ações */}
-                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Link href={`/dashboard/pedidos/${order.id}`}>
-                                        <button className="p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white">
-                                            <Pencil className="h-4 w-4" />
+                                    {/* Ações */}
+                                    <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Link href={`/dashboard/pedidos/${order.id}`} onClick={(e) => e.stopPropagation()}>
+                                            <button className="p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white">
+                                                <Pencil className="h-4 w-4" />
+                                            </button>
+                                        </Link>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDeleteId(order.id);
+                                            }}
+                                            className="p-2 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-400"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
                                         </button>
-                                    </Link>
-                                    <button
-                                        onClick={() => setDeleteId(order.id)}
-                                        className="p-2 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-400"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
+
+                            {/* Expanded Content */}
+                            {expandedOrderId === order.id && (
+                                <div className="bg-black/20 border-t border-white/5 p-4 animate-in slide-in-from-top-2 duration-200">
+                                    <div className="bg-gray-900/50 rounded-lg p-4 border border-white/5">
+                                        <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                                            <Package className="h-4 w-4 text-blue-400" />
+                                            Itens do Pedido
+                                        </h4>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm text-left">
+                                                <thead>
+                                                    <tr className="border-b border-white/10 text-gray-500 text-xs uppercase">
+                                                        <th className="py-2 px-2">Produto</th>
+                                                        <th className="py-2 px-2 text-center">Qtd</th>
+                                                        <th className="py-2 px-2 text-right">Unitário</th>
+                                                        <th className="py-2 px-2 text-right">Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {order.itens.map((item, idx) => (
+                                                        <tr key={idx} className="text-gray-300">
+                                                            <td className="py-2 px-2">{item.nomeProduto}</td>
+                                                            <td className="py-2 px-2 text-center">{item.quantidade}</td>
+                                                            <td className="py-2 px-2 text-right">R$ {item.precoUnitario.toFixed(2)}</td>
+                                                            <td className="py-2 px-2 text-right font-medium text-green-400">R$ {item.total.toFixed(2)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </motion.div>
                     ))
                 )}
