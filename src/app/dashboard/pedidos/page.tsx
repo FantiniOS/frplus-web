@@ -98,12 +98,12 @@ export default function PedidosPage() {
                             {/* Card Header (Clickable) */}
                             <div
                                 onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
-                                className="p-5 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors group gap-4 md:gap-0 cursor-pointer"
+                                className="p-3 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors group gap-2 md:gap-0 cursor-pointer"
                             >
-                                <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
-                                    <div className="flex items-center gap-4">
+                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 w-full">
+                                    <div className="flex items-center gap-3">
                                         {/* Ícone */}
-                                        <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
+                                        <div className="p-1.5 rounded-lg bg-blue-500/10 shrink-0">
                                             {expandedOrderId === order.id ? (
                                                 <ChevronUp className="h-4 w-4 text-blue-400" />
                                             ) : (
@@ -111,45 +111,47 @@ export default function PedidosPage() {
                                             )}
                                         </div>
 
-                                        {/* Número do Pedido (Mobile Only Header) */}
+                                        {/* Número do Pedido */}
                                         <div className="md:w-20">
-                                            <p className="text-xs text-gray-500">Pedido</p>
-                                            <p className="font-mono text-sm font-bold text-white">#{order.id.slice(-6)}</p>
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-wider">Pedido</p>
+                                            <p className="font-mono text-sm font-bold text-white leading-none">#{order.id.slice(-6)}</p>
                                         </div>
                                     </div>
 
                                     {/* Cliente */}
                                     <div className="md:w-48">
-                                        <p className="text-xs text-gray-500">Cliente</p>
-                                        <p className="text-sm font-medium text-white truncate">{order.nomeCliente}</p>
+                                        <p className="md:hidden text-[10px] text-gray-500 uppercase tracking-wider">Cliente</p>
+                                        <p className="text-sm font-medium text-white truncate leading-tight">{order.nomeCliente}</p>
                                     </div>
 
-                                    {/* Data e Itens (Grid on mobile) */}
-                                    <div className="grid grid-cols-2 gap-4 md:flex md:gap-0 w-full md:w-auto">
-                                        <div className="md:w-28">
-                                            <p className="text-xs text-gray-500">Data</p>
-                                            <p className="text-sm text-gray-300 flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
+                                    {/* Data e Itens */}
+                                    <div className="grid grid-cols-2 gap-4 md:flex md:gap-6 w-full md:w-auto">
+                                        <div className="md:w-24">
+                                            <p className="md:hidden text-[10px] text-gray-500 uppercase tracking-wider">Data</p>
+                                            <p className="text-xs md:text-sm text-gray-300 flex items-center gap-1.5 leading-none mt-0.5 md:mt-0">
+                                                <Calendar className="h-3 w-3 text-gray-500" />
                                                 {new Date(order.data).toLocaleDateString('pt-BR')}
                                             </p>
                                         </div>
 
                                         <div className="md:w-16">
-                                            <p className="text-xs text-gray-500">Itens</p>
-                                            <p className="text-sm text-gray-300">{order.itens.length}</p>
+                                            <p className="md:hidden text-[10px] text-gray-500 uppercase tracking-wider">Itens</p>
+                                            <p className="text-xs md:text-sm text-gray-300 leading-none mt-0.5 md:mt-0">
+                                                {order.itens.length} <span className="md:hidden">produtos</span>
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between w-full md:w-auto gap-4 border-t border-white/5 pt-3 md:pt-0 md:border-0">
+                                <div className="flex items-center justify-between w-full md:w-auto gap-4 border-t border-white/5 pt-2 md:pt-0 md:border-0 mt-2 md:mt-0">
                                     {/* Valor */}
                                     <div className="text-left md:text-right md:w-28">
-                                        <p className="text-xs text-gray-500">Valor</p>
-                                        <p className="text-sm font-bold text-green-400">R$ {order.valorTotal.toFixed(2)}</p>
+                                        <p className="md:hidden text-[10px] text-gray-500 uppercase tracking-wider">Valor Total</p>
+                                        <p className="text-sm font-bold text-green-400 leading-none">R$ {order.valorTotal.toFixed(2)}</p>
                                     </div>
 
                                     {/* Ações */}
-                                    <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center gap-1">
                                         <Link href={`/dashboard/pedidos/${order.id}`} onClick={(e) => e.stopPropagation()}>
                                             <button className="p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white">
                                                 <Pencil className="h-4 w-4" />
