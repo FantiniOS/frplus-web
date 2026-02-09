@@ -114,7 +114,10 @@ export default function PedidosPage() {
                                         {/* Número do Pedido */}
                                         <div className="md:w-20">
                                             <p className="text-[10px] text-gray-500 uppercase tracking-wider">Pedido</p>
-                                            <p className="font-mono text-sm font-bold text-white leading-none">#{order.id.slice(-6)}</p>
+                                            <p className="font-mono text-xs md:text-sm font-bold text-white leading-none">
+                                                {new Date(order.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '')}
+                                                -{new Date(order.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', '')}
+                                            </p>
                                         </div>
                                     </div>
 

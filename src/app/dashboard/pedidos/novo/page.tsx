@@ -300,7 +300,11 @@ export default function NovoPedidoPage() {
 
                 <div className="flex items-center justify-between w-full lg:w-auto gap-4">
                     <div className="text-right">
-                        <p className="text-[10px] lg:text-xs text-gray-400 uppercase">Total do Pedido</p>
+                        <p className="text-[10px] lg:text-xs text-gray-400 uppercase">Previsão Entrega</p>
+                        <p className="text-xs font-bold text-gray-300 leading-none">
+                            {new Date(dataPedido).toLocaleDateString('pt-BR')}
+                        </p>
+                        <p className="text-[10px] lg:text-xs text-gray-400 uppercase mt-1">Total do Pedido</p>
                         <p className="text-lg lg:text-xl font-bold text-green-400 leading-none">
                             {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
