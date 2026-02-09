@@ -39,7 +39,6 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       items: [
         { icon: Users, label: "Clientes", href: "/dashboard/clientes" },
         { icon: ShoppingBag, label: "Produtos", href: "/dashboard/produtos" },
-        { icon: Factory, label: "Fábricas", href: "/dashboard/fabricas" },
       ]
     },
     {
@@ -56,6 +55,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     menuGroups.push({
       title: "Administração",
       items: [
+        { icon: Factory, label: "Fábricas", href: "/dashboard/fabricas" },
         { icon: Shield, label: "Usuários", href: "/dashboard/usuarios" },
       ]
     });
