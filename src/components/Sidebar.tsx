@@ -75,8 +75,15 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       <aside className={`fixed left-0 top-0 z-50 h-screen w-64 border-r border-white/10 bg-black text-white transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="flex h-full flex-col px-3 py-4">
           {/* Logo */}
-          <div className="mb-8 flex items-center px-2">
-            <NextImage src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-auto mr-3" />
+          <div className="mb-8 flex items-center px-4 justify-center">
+            <NextImage
+              src="/logo.png"
+              alt="Logo"
+              width={180}
+              height={80}
+              className="w-auto h-auto max-w-[180px] max-h-24 object-contain"
+              unoptimized
+            />
           </div>
 
           {/* Menu Principal */}
