@@ -1,8 +1,11 @@
-'use client';
-
+import type { Metadata } from "next";
 import "./globals.css";
-import { DataProvider } from "@/contexts/DataContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { Providers } from "@/components/Providers";
+
+export const metadata: Metadata = {
+  title: "FRPlus - Sistema de Inteligência Comercial",
+  description: "Gestão de Pedidos e Clientes",
+};
 
 export default function RootLayout({
   children,
@@ -10,11 +13,9 @@ export default function RootLayout({
   return (
     <html lang="pt-br">
       <body className="antialiased bg-black text-white h-screen w-screen selection:bg-blue-500 selection:text-white">
-        <AuthProvider>
-          <DataProvider>
-            {children}
-          </DataProvider>
-        </AuthProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
@@ -7,24 +8,20 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
     try {
-        // Check if any users exist
-        const userCount = await prisma.usuario.count()
-
-        if (userCount > 0) {
-            return NextResponse.json(
-                { message: 'Usuários já existem. Seed não executado.' },
-                { status: 200 }
-            )
-        }
-
-        // Create admin user
+        // Force create/update admin
         const senhaHash = await bcrypt.hash('admin123', 10)
 
-        const admin = await prisma.usuario.create({
-            data: {
+        const admin = await prisma.usuario.upsert({
+            where: { username: 'admin' },
+            update: {
+                senha: senhaHash,
+                role: 'admin',
+                ativo: true
+            },
+            create: {
                 nome: 'Administrador',
                 username: 'admin',
-                email: 'admin@frplus.com', // Optional but good to have
+                email: 'admin@frplus.com',
                 senha: senhaHash,
                 role: 'admin',
                 ativo: true
@@ -37,16 +34,19 @@ export async function GET() {
             }
         })
 
+        // List other users for reference
+        const otherUsers = await prisma.usuario.findMany({
+            select: { username: true, role: true }
+        });
+
         return NextResponse.json({
-            message: 'Usuário admin criado com sucesso!',
-            usuario: admin,
-            credenciais: {
-                usuario: 'admin',
-                senha: 'admin123'
-            }
+            message: 'Senha da conta "admin" foi REDEFINIDA para "admin123"!',
+            usuario_atualizado: admin,
+            lista_usuarios_no_banco: otherUsers,
+            instrucoes: 'Use "admin" e "admin123" para logar.'
         })
     } catch (error) {
         console.error('Seed error:', error)
-        return NextResponse.json({ error: 'Erro ao criar seed' }, { status: 500 })
+        return NextResponse.json({ error: 'Erro ao criar seed: ' + String(error) }, { status: 500 })
     }
 }

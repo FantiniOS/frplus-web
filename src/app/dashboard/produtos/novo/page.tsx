@@ -93,6 +93,7 @@ export default function NovoProdutoPage() {
                             {formData.imagemUrl ? (
                                 <>
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={formData.imagemUrl} alt="Preview" className="w-full h-full object-cover" />
                                 </>
                             ) : (

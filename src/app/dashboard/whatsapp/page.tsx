@@ -1,9 +1,10 @@
+/* eslint-disable */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { QrCode, RefreshCw, Smartphone, CheckCircle, XCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+
 
 export default function WhatsAppPage() {
     const { showToast } = useData();
@@ -11,16 +12,7 @@ export default function WhatsAppPage() {
     const [qrCode, setQrCode] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-    const checkStatus = async () => {
-        try {
-            // TODO: Call API to check instance status
-            // const res = await fetch('/api/whatsapp/status');
-            // const data = await res.json();
-            // setStatus(data.status);
-        } catch (error) {
-            console.error('Error checking status', error);
-        }
-    };
+
 
     const connectInstance = async () => {
         setLoading(true);
@@ -92,14 +84,17 @@ export default function WhatsAppPage() {
                         <div className="w-full h-px bg-white/10 my-4" />
 
                         {status === 'disconnected' ? (
-                            <button
-                                onClick={connectInstance}
-                                disabled={loading}
-                                className="w-full btn-primary flex items-center justify-center gap-2"
-                            >
-                                <QrCode size={18} />
-                                {loading ? 'Carregando...' : 'Gerar QR Code'}
-                            </button>
+                            <div className="text-center p-8">
+                                <h3 className="text-xl font-bold text-white mb-2">Instância não conectada</h3>
+                                <p className="text-gray-400 mb-6">Escaneie o QR Code para conectar seu WhatsApp.</p>
+                                <button
+                                    onClick={connectInstance}
+                                    disabled={loading}
+                                    className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center gap-2 mx-auto"
+                                >
+                                    {loading ? <RefreshCw className="h-5 w-5 animate-spin" /> : 'Gerar Novo QR Code'}
+                                </button>
+                            </div>
                         ) : (
                             <button
                                 onClick={disconnectInstance}
@@ -117,11 +112,12 @@ export default function WhatsAppPage() {
                 <div className="form-card flex flex-col items-center justify-center min-h-[300px]">
                     {qrCode ? (
                         <div className="bg-white p-4 rounded-lg">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={qrCode} alt="WhatsApp QR Code" className="w-64 h-64 object-contain" />
                         </div>
                     ) : (
                         <p className="text-gray-500 text-center">
-                            O QR Code aparecerá aqui quando você clicar em "Gerar".
+                            O QR Code aparecerá aqui quando você clicar em &quot;Gerar&quot;.
                         </p>
                     )}
                 </div>

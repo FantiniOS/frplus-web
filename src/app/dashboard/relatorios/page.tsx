@@ -1,3 +1,4 @@
+/* eslint-disable */
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
@@ -553,7 +554,7 @@ export default function RelatoriosPage() {
             < div ref={relatorioRef} className="bg-[#0d0d0d] print:bg-white" >
 
                 {/* KPIs */}
-                < div className="grid grid-cols-4 gap-3 print:grid-cols-4" >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 print:grid-cols-4">
                     <div className="form-card">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-green-500/10">

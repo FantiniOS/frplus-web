@@ -5,7 +5,7 @@ import { ArrowLeft, Save, User, Search, Factory } from "lucide-react";
 import { useData, Order, OrderItem } from "@/contexts/DataContext";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 export default function NovoPedidoPage() {
     const { clients, products, addOrder, showToast, fabricas } = useData();

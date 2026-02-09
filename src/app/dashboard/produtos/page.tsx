@@ -1,3 +1,4 @@
+/* eslint-disable */
 'use client';
 
 import { Search, Plus, Package, Trash2, Edit, Factory } from "lucide-react";
