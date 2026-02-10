@@ -159,21 +159,16 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         for (const p of products) {
                             const existing = await tx.produto.findFirst({ where: { codigo: p.code } });
                             if (existing) {
-                                // Update existing product to fix names/prices if they were wrong
-                                await tx.produto.update({
-                                    where: { id: existing.id },
-                                    data: {
-                                        nome: p.name,
-                                        precoAtacado: p.price,
-                                        // Update other prices if zero or force update? 
-                                        // Let's update all base prices to match import
-                                        preco50a199: p.price,
-                                        preco200a699: p.price,
-                                        precoAtacadoAVista: p.price,
-                                        precoRedes: p.price,
-                                        updatedAt: new Date()
-                                    }
-                                });
+                                // DO NOT UPDATE PRICES of existing products.
+                                // Only update name if it seems generic/missing? No, trust manual data.
+                                // We might want to fill gaps if price is 0?
+                                // User complaint: "Não puxou os preços da tabela que CRIEI".
+                                // This means they WANT the system prices to be respected, or they don't want CSV to overwrite.
+                                // Given "Import History", usually we respect CSV prices for the *Order Item*, but for the *Product Definition* we should respect the System.
+
+                                // However, if the csv item has NO price, maybe we should fetch from existing product?
+                                // logic below handles product creation/update.
+                                // Let's JUST updated 'updatedAt' to show it was processed, but NOT touch prices/names.
                                 stats.productsUpdated++;
                             } else {
                                 await tx.produto.create({
@@ -211,17 +206,22 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                     for (const [orderNum, rows] of orders) {
                         const firstRow = rows[0];
                         const cnpj = cleanDocument(firstRow['Cliente']);
+                        const orderNum = row['Numero'];
+                        const existingOrder = await prisma.pedido.findUnique({ where: { id: orderNum } });
+
+                        if (existingOrder) {
+                            stats.ordersSkipped++;
+                            continue;
+                        }
+
+                        /*
                         const protheusId = `Protheus ID: ${orderNum}`;
 
                         // Check existence by observation tag
                         const existingOrder = await prisma.pedido.findFirst({
                             where: { observacoes: { contains: protheusId } }
                         });
-
-                        if (existingOrder) {
-                            stats.ordersSkipped++;
-                            continue;
-                        }
+                        */
 
                         // Find Client
                         const client = await prisma.cliente.findUnique({ where: { cnpj } });
