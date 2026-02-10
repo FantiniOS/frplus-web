@@ -5,44 +5,47 @@ import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
+import { useState } from "react";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
   const { orders, products, clients } = useData();
 
-  // Filter Orders for Current Month
+  // State for Month Filter (Format: YYYY-MM)
   const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  });
 
+  // Derived Date Objects from Selection
+  const [yearStr, monthStr] = selectedMonth.split('-');
+  const filterYear = parseInt(yearStr);
+  const filterMonth = parseInt(monthStr) - 1; // 0-indexed
+
+  // Filter Orders for Selected Month
   const monthlyOrders = orders.filter(o => {
     const orderDate = new Date(o.data);
-    return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+    // Use local time matching logic or strict UTC depending on stored data. 
+    // Assuming ISO strings, new Date(o.data) works ok, but best to check components.
+    // To match "local" perception:
+    // We'll use the getMonth/getFullYear of the Date object created from the string.
+    return orderDate.getMonth() === filterMonth && orderDate.getFullYear() === filterYear;
   });
 
   const stats = {
     totalSales: monthlyOrders.reduce((acc, o) => acc + o.valorTotal, 0),
     totalOrders: monthlyOrders.length,
-    newClients: clients.length, // Keep total client base
+    newClients: clients.length, // Total base (doesn't usually filter by month unless specifically "New Clients this month")
     totalProducts: products.length
   };
 
-  // 1. Calcular Vendas dos Últimos 7 Dias (Mantém igual ou filtra?)
-  // The cards should be monthly.
-
-  // ... (rest of chart logic uses 'orders', maybe we keep chart as 'last 7 days' regardless of month? Yes, usually.)
-  // Actually, let's keep the chart as "Last 7 Days" because it says "Vendas (Últimos 7 dias)".
-
-  // 1. Chart: Sales for the Current Month (Day 1 to End)
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  // 1. Chart: Sales for the Selected Month
+  const daysInMonth = new Date(filterYear, filterMonth + 1, 0).getDate();
   const monthDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   const salesData = monthDays.map(day => {
-    // Construct date YYYY-MM-DD (local logic)
-    // Note: String comparison is simple.
-    // Ideally we match `o.data` locally.
-
-    // Let's filter `monthlyOrders` by day
     const dayTotal = monthlyOrders
       .filter(o => {
         const d = new Date(o.data);
@@ -51,15 +54,15 @@ export default function DashboardPage() {
       .reduce((acc, curr) => acc + curr.valorTotal, 0);
 
     return {
-      date: new Date(currentYear, currentMonth, day).toISOString(), // Approximate for label
+      date: new Date(filterYear, filterMonth, day).toISOString(),
       dayLabel: String(day),
       value: dayTotal
     };
   });
 
-  const maxSale = Math.max(...salesData.map(d => d.value), 100); // Min scale
+  const maxSale = Math.max(...salesData.map(d => d.value), 100);
 
-  // 2. Calcular Top Produtos (Use Monthly Orders)
+  // 2. Turnvoer & Top Products (Filtered by Month)
   const productSalesMap = new Map<string, number>();
   monthlyOrders.forEach(order => {
     order.itens.forEach(item => {
@@ -74,7 +77,7 @@ export default function DashboardPage() {
       return {
         name: product?.nome || 'Produto Desconhecido',
         qtd,
-        total: (product?.preco50a199 || 0) * qtd
+        total: (product?.preco50a199 || 0) * qtd // Approximate value
       };
     })
     .sort((a, b) => b.qtd - a.qtd)
@@ -89,21 +92,38 @@ export default function DashboardPage() {
     return 'Boa noite';
   };
 
-  const monthName = now.toLocaleDateString('pt-BR', { month: 'long' });
+  // Month Name for Display
+  const displayDate = new Date(filterYear, filterMonth, 1);
+  const monthName = displayDate.toLocaleDateString('pt-BR', { month: 'long' });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white">{getGreeting()}, {usuario?.nome?.split(' ')[0] || 'Bem-vindo'}</h1>
-          <p className="text-emerald-400 font-medium capitalize">📅 Visão Mensal: {monthName} / {currentYear}</p>
+          <p className="text-emerald-400 font-medium capitalize flex items-center gap-2">
+            📅 Visão Mensal: {monthName} / {filterYear}
+          </p>
         </div>
-        <Link href="/dashboard/pedidos/novo">
-          <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20">
-            + Novo Pedido
-          </button>
-        </Link>
+
+        <div className="flex items-center gap-3">
+          {/* Seletor de Mês */}
+          <div className="relative group">
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 [color-scheme:dark]"
+            />
+          </div>
+
+          <Link href="/dashboard/pedidos/novo">
+            <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20 whitespace-nowrap">
+              + Novo Pedido
+            </button>
+          </Link>
+        </div>
       </div>
 
       {/* Grid de KPIs (Indicadores) */}
@@ -117,7 +137,7 @@ export default function DashboardPage() {
           </div>
           <div className="text-2xl font-bold text-white">R$ {stats.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
           <p className="text-xs text-green-500 flex items-center mt-1">
-            <ArrowUpRight className="h-3 w-3 mr-1" /> Este mês
+            <ArrowUpRight className="h-3 w-3 mr-1" /> Seleção atual
           </p>
         </div>
 
@@ -129,7 +149,7 @@ export default function DashboardPage() {
           </div>
           <div className="text-2xl font-bold text-white">{stats.totalOrders}</div>
           <p className="text-xs text-blue-500 flex items-center mt-1">
-            <TrendingUp className="h-3 w-3 mr-1" /> Este mês
+            <TrendingUp className="h-3 w-3 mr-1" /> Seleção atual
           </p>
         </div>
 
@@ -165,7 +185,7 @@ export default function DashboardPage() {
         <div className="col-span-4 rounded-xl border border-white/10 bg-white/5 p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-white">Vendas Diárias ({monthName})</h3>
-            <span className="text-xs text-gray-400">Atualizado em tempo real</span>
+            <span className="text-xs text-gray-400">Dados do período selecionado</span>
           </div>
 
           <div className="flex h-64 items-end space-x-1 pt-4 border-b border-white/5 pb-2 overflow-x-auto">
@@ -198,11 +218,11 @@ export default function DashboardPage() {
           <div className="rounded-xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center gap-2 mb-4 text-white">
               <Package className="h-4 w-4 text-purple-400" />
-              <h3 className="text-lg font-semibold">Mais Vendidos</h3>
+              <h3 className="text-lg font-semibold">Mais Vendidos ({monthName})</h3>
             </div>
             <div className="space-y-4">
               {topProducts.length === 0 ? (
-                <p className="text-sm text-gray-500">Sem dados de vendas.</p>
+                <p className="text-sm text-gray-500">Sem dados de vendas neste período.</p>
               ) : (
                 topProducts.map((prod, i) => (
                   <div key={i} className="flex items-center justify-between">
@@ -224,7 +244,7 @@ export default function DashboardPage() {
 
           {/* Vendas Recentes (Compacto) */}
           <div className="rounded-xl border border-white/10 bg-white/5 p-6">
-            <h3 className="mb-4 text-lg font-semibold text-white">Últimos Pedidos</h3>
+            <h3 className="mb-4 text-lg font-semibold text-white">Pedidos Recentes ({monthName})</h3>
             <div className="space-y-3">
               {recentOrders.length === 0 ? (
                 <p className="text-sm text-gray-500">Nenhuma venda recente.</p>
