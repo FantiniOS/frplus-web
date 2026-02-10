@@ -3,14 +3,27 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/clients - List all clients
+// GET /api/clients - List all clients with last purchase date
 export async function GET() {
     try {
         const clients = await prisma.cliente.findMany({
-            orderBy: { nomeFantasia: 'asc' }
+            orderBy: { nomeFantasia: 'asc' },
+            include: {
+                pedidos: {
+                    orderBy: { data: 'desc' },
+                    take: 1,
+                    select: { data: true }
+                }
+            }
         })
 
-        return NextResponse.json(clients)
+        const formattedClients = clients.map(client => ({
+            ...client,
+            ultima_compra: client.pedidos[0]?.data || null,
+            pedidos: undefined // Remove pedidos array to keep payload clean
+        }))
+
+        return NextResponse.json(formattedClients)
     } catch (error) {
         console.error('Error fetching clients:', error)
         return NextResponse.json({ error: 'Failed to fetch clients' }, { status: 500 })
