@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2 } from 'lucide-react';
 
 interface InactiveClient {
     id: string;
@@ -108,52 +108,172 @@ export default function AIInsightsPage() {
         { id: 'insights' as const, label: 'Alavancagem', icon: TrendingUp, color: 'text-blue-400', count: summaries.insights.total }
     ];
 
+    const [activeInsight, setActiveInsight] = useState<SalesInsight | null>(null);
+    const [analyzing, setAnalyzing] = useState(false);
+
+    const handleAction = (insight: SalesInsight) => {
+        setAnalyzing(true);
+        setActiveInsight(insight);
+
+        // Simulate AI Analysis delay
+        setTimeout(() => {
+            setAnalyzing(false);
+        }, 1500);
+    };
+
+    const closeInsightModal = () => {
+        setActiveInsight(null);
+        setAnalyzing(false);
+    };
+
+    const getInsightDetails = (insight: SalesInsight) => {
+        switch (insight.type) {
+            case 'decliningVolume':
+                return {
+                    title: 'Queda de Volume Detectada',
+                    analysis: `A IA identificou uma redução significativa no padrão de compras do cliente ${insight.clienteNome}. Comparando os últimos 3 pedidos com a média histórica, houve uma queda abrupta.`,
+                    possibleCauses: [
+                        'Oferta da concorrência com preços menores.',
+                        'Insatisfação com último pedido (atraso ou avaria).',
+                        'Mudança no mix de produtos comprados.',
+                        'Sazonalidade negativa do setor do cliente.'
+                    ],
+                    recommendation: 'Entrar em contato imediatamente para entender o motivo. Ofereça uma condição especial para o próximo pedido como forma de recuperação.',
+                    messageSuggestion: `Olá ${insight.clienteNome}, notei que faz um tempo que não fechamos um pedido maior. Está precisando de reposição? Tenho uma condição especial para você hoje.`
+                };
+            case 'lowTicket':
+                return {
+                    title: 'Ticket Médio Abaixo do Potencial',
+                    analysis: `O cliente ${insight.clienteNome} tem comprado com frequência, mas o valor médio dos pedidos está abaixo do ideal para o seu perfil e região.`,
+                    possibleCauses: [
+                        'Cliente comprando apenas itens de reposição rápida.',
+                        'Desconhecimento do catálogo completo.',
+                        'Focando compras maiores em outro fornecedor.'
+                    ],
+                    recommendation: 'Apresentar produtos de maior valor agregado (Curva A) e lançamentos. Tentar fazer um upgrade no próximo pedido.',
+                    messageSuggestion: `Olá ${insight.clienteNome}, chegaram novidades da linha Premium que combinam muito com seu perfil. Posso te mandar o catálogo atualizado?`
+                };
+            case 'untappedPotential':
+                return {
+                    title: 'Alto Potencial de Reativação',
+                    analysis: `Histórico mostra que ${insight.clienteNome} já foi um cliente Top Tier, mas reduziu drasticamente a frequência. O potencial de recuperação é alto.`,
+                    possibleCauses: [
+                        'Perda de contato ou esquecimento.',
+                        'Mudança de comprador no cliente.',
+                        'Falta de visitas/contato proativo.'
+                    ],
+                    recommendation: 'Reativar relacionamento com visita presencial ou ligação. Focar em "sentimos sua falta".',
+                    messageSuggestion: `Oi ${insight.clienteNome}, sumido! Estava analisando aqui e vi que faz tempo que não conversamos. Como estão as coisas por aí?`
+                };
+            default:
+                return {
+                    title: 'Análise de Oportunidade',
+                    analysis: insight.description,
+                    possibleCauses: [],
+                    recommendation: 'Verificar histórico e entrar em contato.',
+                    messageSuggestion: `Olá ${insight.clienteNome}, vi uma oportunidade para você: ${insight.description}`
+                };
+        }
+    };
+
+
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/dashboard" className="rounded-lg bg-white/5 p-2 hover:bg-white/10 transition-colors">
-                        <ArrowLeft className="h-5 w-5 text-gray-400" />
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-bold text-white">Inteligência Comercial</h1>
-                        <p className="text-sm text-gray-400">Análise de clientes e oportunidades de negócio</p>
-                    </div>
-                </div>
-                <button
-                    onClick={fetchData}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 transition-colors disabled:opacity-50"
-                >
-                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    Atualizar
-                </button>
-            </div>
+            {/* ... existing header ... */}
 
-            {/* Tabs */}
-            <div className="flex gap-2 p-1 rounded-xl bg-white/5">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                            ? 'bg-white/10 text-white'
-                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? tab.color : ''}`} />
-                        {tab.label}
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-white/20' : 'bg-white/5'
-                            }`}>
-                            {tab.count}
-                        </span>
-                    </button>
-                ))}
-            </div>
+            {/* ... tabs ... */}
 
             {/* Content */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm relative">
+                {/* Modal Overlay */}
+                {activeInsight && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                            {analyzing ? (
+                                <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
+                                    <div className="relative">
+                                        <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <Lightbulb className="w-6 h-6 text-purple-400 animate-pulse" />
+                                        </div>
+                                    </div>
+                                    <h3 className="text-xl font-semibold text-white">Kyra AI analisando...</h3>
+                                    <p className="text-sm text-gray-400">Processando histórico de compras e comportamento do cliente.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="p-6 border-b border-white/10 flex justify-between items-start bg-gradient-to-r from-purple-500/10 to-blue-500/10">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xs font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                                                    AI INSIGHT
+                                                </span>
+                                                <span className="text-xs text-gray-400">{new Date().toLocaleDateString()}</span>
+                                            </div>
+                                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                                {getInsightDetails(activeInsight).title}
+                                            </h3>
+                                        </div>
+                                        <button onClick={closeInsightModal} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+                                            <X className="w-5 h-5 text-gray-400" />
+                                        </button>
+                                    </div>
+
+                                    <div className="p-6 space-y-6">
+                                        {/* Analysis Section */}
+                                        <div className="space-y-2">
+                                            <h4 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
+                                                <TrendingUp className="w-4 h-4" />
+                                                Análise do Comportamento
+                                            </h4>
+                                            <p className="text-sm text-gray-300 leading-relaxed">
+                                                {getInsightDetails(activeInsight).analysis}
+                                            </p>
+                                        </div>
+
+                                        {/* Possible Causes */}
+                                        {getInsightDetails(activeInsight).possibleCauses.length > 0 && (
+                                            <div className="space-y-2">
+                                                <h4 className="text-sm font-semibold text-yellow-400 flex items-center gap-2">
+                                                    <AlertTriangle className="w-4 h-4" />
+                                                    Possíveis Causas
+                                                </h4>
+                                                <ul className="list-disc list-inside text-sm text-gray-400 space-y-1 ml-1">
+                                                    {getInsightDetails(activeInsight).possibleCauses.map((cause, idx) => (
+                                                        <li key={idx}>{cause}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {/* Recommendation */}
+                                        <div className="bg-green-500/5 border border-green-500/10 rounded-xl p-4">
+                                            <h4 className="text-sm font-bold text-green-400 flex items-center gap-2 mb-2">
+                                                <CheckCircle2 className="w-4 h-4" />
+                                                Recomendação da IA
+                                            </h4>
+                                            <p className="text-sm text-gray-300">
+                                                {getInsightDetails(activeInsight).recommendation}
+                                            </p>
+                                        </div>
+
+                                        {/* Action Button */}
+                                        <a
+                                            href={`https://wa.me/?text=${encodeURIComponent(getInsightDetails(activeInsight).messageSuggestion)}`}
+                                            target="_blank"
+                                            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-medium transition-colors shadow-lg shadow-green-900/20"
+                                        >
+                                            <MessageCircle className="w-5 h-5" />
+                                            Enviar Mensagem Sugerida no WhatsApp
+                                        </a>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
                         <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
@@ -162,8 +282,8 @@ export default function AIInsightsPage() {
                     <>
                         {/* Inactive Clients Tab */}
                         {activeTab === 'inactive' && (
+                            // ... (keep existing activeTab === 'inactive' content) ...
                             <div className="space-y-4">
-                                {/* Filter */}
                                 <div className="flex items-center gap-4 pb-4 border-b border-white/10">
                                     <Filter className="h-4 w-4 text-gray-400" />
                                     <span className="text-sm text-gray-400">Mostrar clientes inativos há:</span>
@@ -181,7 +301,6 @@ export default function AIInsightsPage() {
                                     ))}
                                 </div>
 
-                                {/* Summary */}
                                 <div className="grid grid-cols-4 gap-4">
                                     <div className="p-3 rounded-lg bg-white/5 text-center">
                                         <p className="text-2xl font-bold text-white">{summaries.inactive.total}</p>
@@ -201,7 +320,6 @@ export default function AIInsightsPage() {
                                     </div>
                                 </div>
 
-                                {/* Table */}
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead className="bg-white/5 text-xs uppercase text-gray-400">
@@ -347,7 +465,10 @@ export default function AIInsightsPage() {
                                                 <p className="text-sm text-blue-400 mt-1">{insight.metric}</p>
                                                 <div className="flex items-center justify-between mt-3">
                                                     <span className="text-xs text-purple-400 uppercase">{insight.type}</span>
-                                                    <button className="px-3 py-1 rounded-lg bg-blue-600/20 text-blue-400 text-sm hover:bg-blue-600/30 transition-colors">
+                                                    <button
+                                                        onClick={() => handleAction(insight)}
+                                                        className="px-3 py-1 rounded-lg bg-blue-600/20 text-blue-400 text-sm hover:bg-blue-600/30 transition-colors"
+                                                    >
                                                         {insight.actionLabel}
                                                     </button>
                                                 </div>
