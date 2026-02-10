@@ -132,7 +132,8 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                     // EXECUTE BATCHES
                     await prisma.$transaction(async (tx) => {
                         // Clients
-                        for (const c of clientsMap.values()) {
+                        const clients = Array.from(clientsMap.values());
+                        for (const c of clients) {
                             // Try to find
                             const existing = await tx.cliente.findUnique({ where: { cnpj: c.cnpj } });
                             if (existing) {
@@ -170,7 +171,8 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         }
 
                         // Products
-                        for (const p of productsMap.values()) {
+                        const products = Array.from(productsMap.values());
+                        for (const p of products) {
                             const existing = await tx.produto.findFirst({ where: { codigo: p.code } });
                             if (!existing) {
                                 await tx.produto.create({
@@ -204,7 +206,8 @@ export async function importSalesCsv(fileBuffer: Buffer) {
 
                     // Process Orders Transactionally (Chunks if needed, but let's try one go or per-order)
                     // We'll do simple per-order processing to count stats easily
-                    for (const [orderNum, rows] of ordersMap) {
+                    const orders = Array.from(ordersMap.entries());
+                    for (const [orderNum, rows] of orders) {
                         const firstRow = rows[0];
                         const cnpj = cleanDocument(firstRow['Cliente']);
                         const protheusId = `Protheus ID: ${orderNum}`;
