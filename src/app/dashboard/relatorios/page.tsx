@@ -1,7 +1,7 @@
 /* eslint-disable */
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, Fragment } from 'react';
 import { useData } from '@/contexts/DataContext';
 import {
     FileText, Calendar, Download, TrendingUp, Users, Package,
@@ -772,9 +772,8 @@ export default function RelatoriosPage() {
                                     </thead>
                                     <tbody>
                                         {estatisticasClientes.map((c, index) => (
-                                            <>
+                                            <Fragment key={c.id}>
                                                 <tr
-                                                    key={c.id}
                                                     className="border-b border-white/5 print:border-gray-200 cursor-pointer hover:bg-white/5 transition-colors"
                                                     onClick={() => setExpandedClientId(expandedClientId === c.id ? null : c.id)}
                                                 >
@@ -832,7 +831,7 @@ export default function RelatoriosPage() {
                                                         </td>
                                                     </tr>
                                                 )}
-                                            </>
+                                            </Fragment>
                                         ))}
                                     </tbody>
                                     <tfoot className="border-t border-white/20 print:border-gray-400">
