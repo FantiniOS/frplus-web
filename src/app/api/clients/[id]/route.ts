@@ -9,14 +9,25 @@ interface Params {
 export async function GET(request: Request, { params }: Params) {
     try {
         const client = await prisma.cliente.findUnique({
-            where: { id: params.id }
+            where: { id: params.id },
+            include: {
+                pedidos: {
+                    orderBy: { data: 'desc' },
+                    take: 1,
+                    select: { data: true }
+                }
+            }
         })
 
         if (!client) {
             return NextResponse.json({ error: 'Client not found' }, { status: 404 })
         }
 
-        return NextResponse.json(client)
+        return NextResponse.json({
+            ...client,
+            ultima_compra: client.pedidos[0]?.data || null,
+            pedidos: undefined
+        })
     } catch (error) {
         console.error('Error fetching client:', error)
         return NextResponse.json({ error: 'Failed to fetch client' }, { status: 500 })
@@ -43,10 +54,21 @@ export async function PUT(request: Request, { params }: Params) {
                 cidade: body.cidade,
                 estado: body.estado,
                 cep: body.cep
+            },
+            include: {
+                pedidos: {
+                    orderBy: { data: 'desc' },
+                    take: 1,
+                    select: { data: true }
+                }
             }
         })
 
-        return NextResponse.json(client)
+        return NextResponse.json({
+            ...client,
+            ultima_compra: client.pedidos[0]?.data || null,
+            pedidos: undefined
+        })
     } catch (error) {
         console.error('Error updating client:', error)
         return NextResponse.json({ error: 'Failed to update client' }, { status: 500 })
