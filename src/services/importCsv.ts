@@ -157,12 +157,30 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         const products = Array.from(productsMap.values());
                         for (const p of products) {
                             const existing = await tx.produto.findFirst({ where: { codigo: p.code } });
-                            if (!existing) {
+                            if (existing) {
+                                // Update existing product to fix names/prices if they were wrong
+                                await tx.produto.update({
+                                    where: { id: existing.id },
+                                    data: {
+                                        nome: p.name,
+                                        precoAtacado: p.price,
+                                        // Update other prices if zero or force update? 
+                                        // Let's update all base prices to match import
+                                        preco50a199: p.price,
+                                        preco200a699: p.price,
+                                        precoAtacadoAVista: p.price,
+                                        precoRedes: p.price,
+                                        updatedAt: new Date()
+                                    }
+                                });
+                                // We don't have a 'productsUpdated' stat in the initial object, but we can reuse 'productsNew' or just ignore stats for now
+                                // Or better, let's treat them as validly processed.
+                            } else {
                                 await tx.produto.create({
                                     data: {
                                         codigo: p.code,
                                         nome: p.name,
-                                        fabricaId: defaultFactory!.id,
+                                        fabricaId: defaultFactory!.id, // Ensure this ID is valid
                                         precoAtacado: p.price,
                                         preco50a199: p.price,
                                         preco200a699: p.price,
