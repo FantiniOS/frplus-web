@@ -54,8 +54,12 @@ export async function importSalesCsv(fileBuffer: Buffer) {
 
     return new Promise((resolve, reject) => {
         stream
-            .pipe(csv({ separator: ';', skipLines: 1 })) // Skip 'Consulta' line so 'Filial;Numero...' becomes header
-            .on('data', (data) => results.push(data))
+            .pipe(csv({ separator: ';', skipLines: 1 }))
+            .on('headers', (headers) => console.log('CSV Headers:', headers))
+            .on('data', (data) => {
+                if (results.length < 3) console.log('Row Sample:', data);
+                results.push(data);
+            })
             .on('end', async () => {
                 try {
                     const stats = {
