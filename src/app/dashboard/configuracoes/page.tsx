@@ -1,6 +1,6 @@
 'use client';
 
-import { Settings, Save, RefreshCw, LogOut, Trash2 } from "lucide-react";
+import { Settings, Save, RefreshCw, LogOut, Trash2, Upload, CheckCircle, AlertCircle } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -10,6 +10,43 @@ export default function ConfiguracoesPage() {
     const { logout, showToast } = useData();
     const router = useRouter();
     const [companyName, setCompanyName] = useState("Minha Empresa"); // Mock state
+
+    // Import State
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [isImporting, setIsImporting] = useState(false);
+    const [importStats, setImportStats] = useState<any>(null);
+
+    const handleImport = async () => {
+        if (!importFile) return;
+
+        setIsImporting(true);
+        setImportStats(null);
+
+        const formData = new FormData();
+        formData.append('file', importFile);
+
+        try {
+            const res = await fetch('/api/import/csv', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                setImportStats(data.stats);
+                showToast("Importação concluída com sucesso!", "success");
+                setImportFile(null);
+            } else {
+                showToast(data.error || "Erro ao importar", "error");
+            }
+        } catch (error) {
+            console.error(error);
+            showToast("Erro de conexão ao importar.", "error");
+        } finally {
+            setIsImporting(false);
+        }
+    };
 
     const handleReset = () => {
         if (confirm("ATENÇÃO: Isso apagará TODOS os dados (clientes, produtos, pedidos) e deslogará você. Tem certeza?")) {
@@ -72,6 +109,96 @@ export default function ConfiguracoesPage() {
                         <Save className="mr-2 h-4 w-4" />
                         Salvar Perfil
                     </button>
+                </div>
+            </div>
+
+            {/* Importação de Dados */}
+            <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 className="text-xl font-semibold text-white">Importação de Dados</h2>
+
+                        <p className="text-gray-400 text-sm">Importe dados do Protheus via CSV (Clientes, Produtos e Histórico).</p>
+                    </div>
+                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+                        <Upload className="h-5 w-5" />
+                    </div>
+                </div>
+
+                <div className="bg-black/20 rounded-lg p-4 border border-white/5">
+                    <div className="flex items-center gap-4">
+                        <input
+                            type="file"
+                            accept=".csv"
+                            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                            className="block w-full text-sm text-gray-400
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-lg file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-blue-600 file:text-white
+                                hover:file:bg-blue-500
+                                cursor-pointer"
+                        />
+                        <button
+                            onClick={handleImport}
+                            disabled={!importFile || isImporting}
+                            className="shrink-0 flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isImporting ? (
+                                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Upload className="mr-2 h-4 w-4" />
+                            )}
+                            {isImporting ? 'Importando...' : 'Iniciar Importação'}
+                        </button>
+                    </div>
+
+                    {importStats && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-6 border-t border-white/10 pt-4"
+                        >
+                            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                Resultado da Importação
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-white/5 rounded-lg p-3 text-center">
+                                    <p className="text-xs text-gray-400 uppercase">Clientes</p>
+                                    <p className="text-lg font-bold text-white">
+                                        +{importStats.clientsNew} <span className="text-xs text-gray-500 font-normal">({importStats.clientsUpdated} atualizados)</span>
+                                    </p>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-3 text-center">
+                                    <p className="text-xs text-gray-400 uppercase">Produtos</p>
+                                    <p className="text-lg font-bold text-white">+{importStats.productsNew}</p>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-3 text-center">
+                                    <p className="text-xs text-gray-400 uppercase">Pedidos</p>
+                                    <p className="text-lg font-bold text-white">+{importStats.ordersCreated}</p>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-3 text-center">
+                                    <p className="text-xs text-gray-400 uppercase">Ignorados</p>
+                                    <p className="text-lg font-bold text-gray-400">{importStats.ordersSkipped}</p>
+                                </div>
+                            </div>
+                            {importStats.errors.length > 0 && (
+                                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                    <p className="text-red-400 text-xs font-semibold mb-2 flex items-center gap-2">
+                                        <AlertCircle className="h-3 w-3" />
+                                        Erros ({importStats.errors.length})
+                                    </p>
+                                    <div className="max-h-24 overflow-y-auto text-xs text-red-300/80 space-y-1">
+                                        {importStats.errors.slice(0, 5).map((err: string, i: number) => (
+                                            <p key={i}>{err}</p>
+                                        ))}
+                                        {importStats.errors.length > 5 && <p>...e mais {importStats.errors.length - 5} erros</p>}
+                                    </div>
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
                 </div>
             </div>
 
