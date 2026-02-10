@@ -48,11 +48,23 @@ export default function ConfiguracoesPage() {
         }
     };
 
-    const handleReset = () => {
-        if (confirm("ATENÇÃO: Isso apagará TODOS os dados (clientes, produtos, pedidos) e deslogará você. Tem certeza?")) {
-            localStorage.clear();
-            logout();
-            router.push('/');
+    const handleReset = async () => {
+        if (confirm("ATENÇÃO: Isso apagará TODOS os dados do BANCO DE DADOS (clientes, produtos, pedidos). Apenas seus usuários serão mantidos. Tem certeza absoluta?")) {
+            try {
+                const res = await fetch('/api/admin/reset-data', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast("Sistema limpo com sucesso!", "success");
+                    // Reload to reflect empty state
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showToast("Erro ao limpar: " + data.details, "error");
+                }
+            } catch (e) {
+                console.error(e);
+                showToast("Erro de conexão ao resetar.", "error");
+            }
         }
     };
 
@@ -225,8 +237,8 @@ export default function ConfiguracoesPage() {
 
                     <div className="flex items-center justify-between p-4 rounded-lg bg-black/20 border border-red-500/20">
                         <div>
-                            <h3 className="font-medium text-red-400">Resetar Sistema</h3>
-                            <p className="text-sm text-gray-400">Apaga todos os dados locais e reinicia o app como novo.</p>
+                            <h3 className="font-medium text-red-400">Resetar Sistema (Manter Usuários)</h3>
+                            <p className="text-sm text-gray-400">Apaga Clientes, Produtos e Pedidos. Mantém seu login.</p>
                         </div>
                         <button
                             onClick={handleReset}
