@@ -10,24 +10,19 @@ interface CsvRow {
     'DT Emissao': string;
     Cliente: string; // CNPJ
     Loja: string;
-    Nome: string; // Razão Social / Nome Fantasia
+    Nome: string;
     'Tipo Pedido': string;
     'Nota Fiscal': string;
     Serie: string;
     'Vendedor 1': string;
-    // Nome (Duplicated column header in CSV, usually the second 'Nome' is Vendedor Name, but we might rely on index or just the first 'Nome' for Client)
     'Cond. Pagto': string;
-    Descricao: string; // Produto Descricao or Payment Desc? CSV has multiple 'Descricao' columns. 
-    // Based on analysis: 
-    // Col 12: Descricao (Cond Pagto?) -> "28 DD"
-    // Col 17: Produto Code -> "11.01.04.09"
-    // Col 18: Descricao (Produto) -> "VINAGRE..."
+    Descricao: string;
     'Prc Unitario': string;
     Quantidade: string;
     Unidade: string;
     'Vlr.Total': string;
-    Status: string; // "2"
-    Produto: string; // "11.01.04.09"
+    Status: string;
+    Produto: string;
 }
 
 // Helper to clean CNPJ/CPF
@@ -118,17 +113,12 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         // Clients
                         const clients = Array.from(clientsMap.values());
                         for (const c of clients) {
-                            // Try to find
                             const existing = await tx.cliente.findUnique({ where: { cnpj: c.cnpj } });
                             if (existing) {
-                                // Update? Maybe not necessary to overwrite valid data with import data, 
-                                // but request says "Se existir -> UPDATE".
-                                // We prefer not to overwrite manually edited names with truncate CSV names if possible,
-                                // but instructions are explicit.
                                 await tx.cliente.update({
                                     where: { id: existing.id },
                                     data: {
-                                        razaoSocial: c.razaoSocial, // FIX: Overwrite corrupted name
+                                        razaoSocial: c.razaoSocial,
                                         nomeFantasia: c.razaoSocial,
                                         updatedAt: new Date()
                                     }
@@ -159,16 +149,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         for (const p of products) {
                             const existing = await tx.produto.findFirst({ where: { codigo: p.code } });
                             if (existing) {
-                                // DO NOT UPDATE PRICES of existing products.
-                                // Only update name if it seems generic/missing? No, trust manual data.
-                                // We might want to fill gaps if price is 0?
-                                // User complaint: "Não puxou os preços da tabela que CRIEI".
-                                // This means they WANT the system prices to be respected, or they don't want CSV to overwrite.
-                                // Given "Import History", usually we respect CSV prices for the *Order Item*, but for the *Product Definition* we should respect the System.
-
-                                // However, if the csv item has NO price, maybe we should fetch from existing product?
-                                // logic below handles product creation/update.
-                                // Let's JUST updated 'updatedAt' to show it was processed, but NOT touch prices/names.
+                                // PROTECT PRICES: Do NOT update prices of existing products.
                                 await tx.produto.update({
                                     where: { id: existing.id },
                                     data: { updatedAt: new Date() }
@@ -179,7 +160,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                     data: {
                                         codigo: p.code,
                                         nome: p.name,
-                                        fabricaId: defaultFactory!.id, // Ensure this ID is valid
+                                        fabricaId: defaultFactory!.id,
                                         precoAtacado: p.price,
                                         preco50a199: p.price,
                                         preco200a699: p.price,
@@ -193,7 +174,6 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                     });
 
                     // --- 3. Orders (Complex, needs ID mapping) ---
-                    // Group rows by Order Number
                     const ordersMap = new Map<string, any[]>();
                     for (const row of results) {
                         const orderNum = row['Numero'];
@@ -204,13 +184,13 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         ordersMap.get(orderNum)?.push(row);
                     }
 
-                    // Process Orders Transactionally (Chunks if needed, but let's try one go or per-order)
-                    // We'll do simple per-order processing to count stats easily
                     const orders = Array.from(ordersMap.entries());
                     for (const [orderNum, rows] of orders) {
                         const firstRow = rows[0];
                         const cnpj = cleanDocument(firstRow['Cliente']);
-                        const orderNum = row['Numero'];
+
+                        // Check if order exists by ID (Using Protheus Number as ID)
+                        // If it exists, SKIP IT (Idempotency)
                         const existingOrder = await prisma.pedido.findUnique({ where: { id: orderNum } });
 
                         if (existingOrder) {
@@ -218,19 +198,10 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                             continue;
                         }
 
-                        /*
-                        const protheusId = `Protheus ID: ${orderNum}`;
-
-                        // Check existence by observation tag
-                        const existingOrder = await prisma.pedido.findFirst({
-                            where: { observacoes: { contains: protheusId } }
-                        });
-                        */
-
                         // Find Client
                         const client = await prisma.cliente.findUnique({ where: { cnpj } });
                         if (!client) {
-                            stats.errors.push(`Pedido ${orderNum}: Cliente ${cnpj} não encontrado (inesperado).`);
+                            stats.errors.push(`Pedido ${orderNum}: Cliente ${cnpj} não encontrado.`);
                             continue;
                         }
 
@@ -244,13 +215,19 @@ export async function importSalesCsv(fileBuffer: Buffer) {
 
                             if (product) {
                                 const qty = parseFloat(row['Quantidade'].replace(',', '.')) || 0;
-                                const unitPrice = parseBrlFloat(row['Prc Unitario']);
-                                const total = parseBrlFloat(row['Vlr.Total']);
+                                let unitPrice = parseBrlFloat(row['Prc_Unitario']);
+
+                                // FALLBACK: If CSV price is 0, use the Product Table price (From System)
+                                if (unitPrice === 0) {
+                                    unitPrice = Number(product.precoAtacado) || 0;
+                                }
+
+                                const total = parseBrlFloat(row['Vlr.Total']) || (unitPrice * qty);
                                 totalOrder += total;
 
                                 itemsData.push({
                                     produtoId: product.id,
-                                    quantidade: Math.round(qty), // Schema is Int
+                                    quantidade: Math.round(qty),
                                     precoUnitario: unitPrice,
                                     total: total
                                 });
@@ -261,14 +238,15 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                             try {
                                 await prisma.pedido.create({
                                     data: {
+                                        id: orderNum, // EXPLICIT ID FROM PROTHEUS
                                         clienteId: client.id,
-                                        fabricaId: defaultFactory!.id, // Bind to default or extract
+                                        fabricaId: defaultFactory!.id,
                                         status: 'Concluido',
                                         valorTotal: totalOrder,
-                                        tabelaPreco: 'atacado', // Default
+                                        tabelaPreco: 'atacado',
                                         condicaoPagamento: firstRow['Cond. Pagto'] || 'Importado',
-                                        observacoes: protheusId, // KEY FOR IDEMPOTENCY
-                                        data: parseDate(firstRow['DT Emissao']),
+                                        observacoes: `Importado em ${new Date().toLocaleDateString()}`,
+                                        data: parseDate(firstRow['DT_Emissao']),
                                         itens: {
                                             create: itemsData
                                         }
@@ -277,7 +255,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                 stats.ordersCreated++;
                             } catch (e) {
                                 console.error(e);
-                                stats.errors.push(`Erro ao criar Pedido ${orderNum}.`);
+                                stats.errors.push(`Erro ao criar Pedido ${orderNum}: ${e}`);
                             }
                         }
                     }
