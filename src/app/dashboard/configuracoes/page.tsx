@@ -172,7 +172,9 @@ export default function ConfiguracoesPage() {
                                 </div>
                                 <div className="bg-white/5 rounded-lg p-3 text-center">
                                     <p className="text-xs text-gray-400 uppercase">Produtos</p>
-                                    <p className="text-lg font-bold text-white">+{importStats.productsNew}</p>
+                                    <p className="text-lg font-bold text-white">
+                                        +{importStats.productsNew} <span className="text-xs text-gray-500 font-normal">({importStats.productsUpdated || 0} atl)</span>
+                                    </p>
                                 </div>
                                 <div className="bg-white/5 rounded-lg p-3 text-center">
                                     <p className="text-xs text-gray-400 uppercase">Pedidos</p>

@@ -74,6 +74,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         clientsNew: 0,
                         clientsUpdated: 0,
                         productsNew: 0,
+                        productsUpdated: 0,
                         ordersCreated: 0,
                         ordersSkipped: 0,
                         errors: [] as string[]
@@ -127,9 +128,9 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                 await tx.cliente.update({
                                     where: { id: existing.id },
                                     data: {
-                                        updatedAt: new Date() // Just touch for now, or update name?
-                                        // User said: "Clients: ... If exists -> UPDATE"
-                                        // We will NOT overwrite detailed data like address if missing in CSV.
+                                        razaoSocial: c.razaoSocial, // FIX: Overwrite corrupted name
+                                        nomeFantasia: c.razaoSocial,
+                                        updatedAt: new Date()
                                     }
                                 });
                                 stats.clientsUpdated++;
@@ -173,8 +174,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                         updatedAt: new Date()
                                     }
                                 });
-                                // We don't have a 'productsUpdated' stat in the initial object, but we can reuse 'productsNew' or just ignore stats for now
-                                // Or better, let's treat them as validly processed.
+                                stats.productsUpdated++;
                             } else {
                                 await tx.produto.create({
                                     data: {
