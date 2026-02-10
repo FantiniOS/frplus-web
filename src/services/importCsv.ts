@@ -169,6 +169,10 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                 // However, if the csv item has NO price, maybe we should fetch from existing product?
                                 // logic below handles product creation/update.
                                 // Let's JUST updated 'updatedAt' to show it was processed, but NOT touch prices/names.
+                                await tx.produto.update({
+                                    where: { id: existing.id },
+                                    data: { updatedAt: new Date() }
+                                });
                                 stats.productsUpdated++;
                             } else {
                                 await tx.produto.create({
