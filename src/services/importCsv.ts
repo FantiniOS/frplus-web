@@ -54,7 +54,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
 
     return new Promise((resolve, reject) => {
         stream
-            .pipe(csv({ separator: ';' })) // Check separator from file analysis (appears to be ';')
+            .pipe(csv({ separator: ';', skipLines: 1 })) // Skip 'Consulta' line so 'Filial;Numero...' becomes header
             .on('data', (data) => results.push(data))
             .on('end', async () => {
                 try {

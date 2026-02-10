@@ -9,6 +9,7 @@ declare module 'csv-parser' {
         headers?: string[] | boolean;
         maxRowBytes?: number;
         strict?: boolean;
+        skipLines?: number;
     }
 
     function csv(options?: CsvParserOptions): Transform;
