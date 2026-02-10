@@ -38,63 +38,19 @@ export default function RelatoriosPage() {
     const [exportando, setExportando] = useState(false);
     const [tabelaPrecoSelecionada, setTabelaPrecoSelecionada] = useState<'todas' | '50a199' | '200a699' | 'atacado' | 'avista' | 'redes'>('todas');
     const [fabricaSelecionada, setFabricaSelecionada] = useState<string>('todas');
-    const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+    const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
     const relatorioRef = useRef<HTMLDivElement>(null);
 
-    // Filtrar pedidos por período
-    const pedidosFiltrados = useMemo(() => {
-        return orders.filter(o => {
-            const dataOrder = new Date(o.data);
-            // Construct dates using local time to ensure full day coverage
-            const inicio = new Date(periodoInicio + 'T00:00:00');
-            const fim = new Date(periodoFim + 'T23:59:59');
-
-            return dataOrder >= inicio && dataOrder <= fim;
-        });
-    }, [orders, periodoInicio, periodoFim]);
-
-    // Estatísticas de Vendas
-    const estatisticasVendas = useMemo(() => {
-        const totalVendas = pedidosFiltrados.reduce((acc, o) => acc + o.valorTotal, 0);
-        const totalPedidos = pedidosFiltrados.length;
-        const ticketMedio = totalPedidos > 0 ? totalVendas / totalPedidos : 0;
-
-        // Vendas por dia
-        const vendasPorDia = pedidosFiltrados.reduce((acc, o) => {
-            const dia = new Date(o.data).toLocaleDateString('pt-BR');
-            acc[dia] = (acc[dia] || 0) + o.valorTotal;
-            return acc;
-        }, {} as Record<string, number>);
-
-        return { totalVendas, totalPedidos, ticketMedio, vendasPorDia };
-    }, [pedidosFiltrados]);
-
-    // Estatísticas de Produtos
-    const estatisticasProdutos = useMemo(() => {
-        const produtosVendidos = new Map<string, { nome: string; qtd: number; valor: number }>();
-
-        pedidosFiltrados.forEach(order => {
-            order.itens.forEach(item => {
-                const atual = produtosVendidos.get(item.produtoId) || { nome: item.nomeProduto, qtd: 0, valor: 0 };
-                produtosVendidos.set(item.produtoId, {
-                    nome: item.nomeProduto,
-                    qtd: atual.qtd + item.quantidade,
-                    valor: atual.valor + item.total
-                });
-            });
-        });
-
-        return Array.from(produtosVendidos.values())
-            .sort((a, b) => b.valor - a.valor);
-    }, [pedidosFiltrados]);
+    // ... (rest of code)
 
     // Estatísticas de Clientes
     const estatisticasClientes = useMemo(() => {
-        const clientesVendas = new Map<string, { nome: string; pedidos: number; valor: number }>();
+        const clientesVendas = new Map<string, { id: string; nome: string; pedidos: number; valor: number }>();
 
         pedidosFiltrados.forEach(order => {
-            const atual = clientesVendas.get(order.clienteId) || { nome: order.nomeCliente, pedidos: 0, valor: 0 };
+            const atual = clientesVendas.get(order.clienteId) || { id: order.clienteId, nome: order.nomeCliente, pedidos: 0, valor: 0 };
             clientesVendas.set(order.clienteId, {
+                id: order.clienteId,
                 nome: order.nomeCliente,
                 pedidos: atual.pedidos + 1,
                 valor: atual.valor + order.valorTotal
@@ -816,14 +772,67 @@ export default function RelatoriosPage() {
                                     </thead>
                                     <tbody>
                                         {estatisticasClientes.map((c, index) => (
-                                            <tr key={c.nome} className="border-b border-white/5 print:border-gray-200">
-                                                <td className="py-2 text-gray-500">{index + 1}</td>
-                                                <td className="py-2 text-white print:text-black font-medium">{c.nome}</td>
-                                                <td className="py-2 text-center text-gray-400 print:text-gray-600">{c.pedidos}</td>
-                                                <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
-                                                    R$ {c.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                </td>
-                                            </tr>
+                                            <>
+                                                <tr
+                                                    key={c.id}
+                                                    className="border-b border-white/5 print:border-gray-200 cursor-pointer hover:bg-white/5 transition-colors"
+                                                    onClick={() => setExpandedClientId(expandedClientId === c.id ? null : c.id)}
+                                                >
+                                                    <td className="py-2 text-gray-500">
+                                                        <div className="flex items-center gap-2">
+                                                            {expandedClientId === c.id ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+                                                            {index + 1}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-2 text-white print:text-black font-medium">{c.nome}</td>
+                                                    <td className="py-2 text-center text-gray-400 print:text-gray-600">{c.pedidos}</td>
+                                                    <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
+                                                        R$ {c.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                </tr>
+                                                {expandedClientId === c.id && (
+                                                    <tr className="bg-white/5 print:bg-gray-50">
+                                                        <td colSpan={4} className="p-0">
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                className="p-4"
+                                                            >
+                                                                <div className="bg-black/20 print:bg-white rounded-lg p-3 border border-white/10 print:border-gray-200">
+                                                                    <p className="text-sm font-semibold text-white print:text-black mb-2 flex items-center gap-2">
+                                                                        <FileText size={14} className="text-blue-400" />
+                                                                        Histórico de Pedidos (Neste Período)
+                                                                    </p>
+                                                                    <table className="w-full text-xs">
+                                                                        <thead>
+                                                                            <tr className="text-gray-400 print:text-gray-600 border-b border-white/10 print:border-gray-200">
+                                                                                <th className="text-left py-2 font-medium">Data</th>
+                                                                                <th className="text-center py-2 font-medium">Pedido</th>
+                                                                                <th className="text-center py-2 font-medium">Itens</th>
+                                                                                <th className="text-right py-2 font-medium">Total</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            {pedidosFiltrados
+                                                                                .filter(p => p.clienteId === c.id)
+                                                                                .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+                                                                                .map(order => (
+                                                                                    <tr key={order.id} className="border-b border-white/5 print:border-gray-100 last:border-0 hover:bg-white/5">
+                                                                                        <td className="py-2 text-gray-300 print:text-gray-700">{new Date(order.data).toLocaleDateString('pt-BR')}</td>
+                                                                                        <td className="py-2 text-center text-gray-300 print:text-gray-700 font-mono">#{order.id.slice(-6)}</td>
+                                                                                        <td className="py-2 text-center text-gray-300 print:text-gray-700">{order.itens.length}</td>
+                                                                                        <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">R$ {order.valorTotal.toFixed(2)}</td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </motion.div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </>
                                         ))}
                                     </tbody>
                                     <tfoot className="border-t border-white/20 print:border-gray-400">
