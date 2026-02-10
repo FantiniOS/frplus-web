@@ -53,13 +53,21 @@ export async function importSalesCsv(fileBuffer: Buffer) {
     const stream = Readable.from(fileBuffer);
 
     return new Promise((resolve, reject) => {
+        const headers = [
+            'Filial', 'Numero', 'DT_Emissao', 'Cliente', 'Loja', 'Nome_Cliente',
+            'Tipo_Pedido', 'Nota_Fiscal', 'Serie', 'Vendedor_1', 'Nome_Vendedor',
+            'Cond_Pagto', 'Descricao_Pagto', 'Desconto_1', 'DT_Emissao_Fat', 'Status',
+            'Produto', 'Descricao_Produto', 'Unidade', 'Quantidade', 'Prc_Unitario', 'Vlr_Total'
+        ];
+
         stream
-            .pipe(csv({ separator: ';', skipLines: 1 }))
-            .on('headers', (headers) => console.log('CSV Headers:', headers))
-            .on('data', (data) => {
-                if (results.length < 3) console.log('Row Sample:', data);
-                results.push(data);
-            })
+            .pipe(csv({
+                separator: ';',
+                skipLines: 2, // Skip 'Consulta' AND the original Header row
+                headers: headers // Use our manual unique headers
+            }))
+            .on('headers', (h) => console.log('Parsed Headers:', h)) // Debug
+            .on('data', (data) => results.push(data))
             .on('end', async () => {
                 try {
                     const stats = {
@@ -77,15 +85,6 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         defaultFactory = await prisma.fabrica.create({ data: { nome: 'Importação' } });
                     }
 
-                    // Process efficiently (maybe not strictly row-by-row transaction to avoid deadlocks, but logical groups)
-                    // However, request asked for transaction. We wrap logical units.
-                    // Given the potentially large size, a single mega-transaction might timeout. 
-                    // We will process in chunks or logical entities. 
-                    // For safety vs constraints:
-                    // 1. Upsert all Clients
-                    // 2. Upsert all Products
-                    // 3. Create Orders
-
                     // --- 1. Distinct Clients ---
                     const clientsMap = new Map<string, any>();
                     for (const row of results) {
@@ -93,26 +92,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         if (cnpj && !clientsMap.has(cnpj)) {
                             clientsMap.set(cnpj, {
                                 cnpj,
-                                razaoSocial: row['Nome'] || 'Cliente Importado', // CAREFUL: 'Nome' appears twice. csv-parser handles duplicates by suffixing or overwriting? 
-                                // Actually csv-parser might overwrite 'Nome'. The first 'Nome' is Client Name (Col 5). The second maybe Vendedor.
-                                // Let's examine generic 'Nome'. 
-                                // In the provided CSV view: Col 5 is "REAL COMERCIO...", Col 10 is "FANTINI..."
-                                // csv-parser behavior: last one wins usually? Or 'Nome_1'?
-                                // We need to be careful. Let's rely on standard behavior or inspect keys.
-                                // If 'Nome' is overwritten by Vendedor Name, we might have an issue.
-                                // Solution: We can try accessing by index if keys are messy, but csv-parser keys are easier.
-                                // Let's assume 'Nome' might be the *last* column with that header.
-                                // From CSV: ... Vendedor 1;Nome; ...
-                                // So 'Nome' key will likely be the Vendor Name.
-                                // We need the Client Name. 
-                                // Warning: If 'Nome' key gives Vendor, we miss Client Name.
-                                // Optimization: We'll stick to 'Nome' for now, if it creates clients with Vendor names, we fix later.
-                                // Actually, checking the CSV: 
-                                // "Nome" (Col 5) -> Client Name
-                                // "Nome" (Col 10) -> Vendor Name
-                                // csv-parser will probably give us "Nome_1" for the second one if configured, or overwrite.
-                                // Default csv-parser overwrites duplicates? No, usually handles headers.
-                                // Let's proceed assuming we might need to map manual headers if strictly required, but for MVP let's try.
+                                razaoSocial: row['Nome_Cliente'] || 'Cliente Importado',
                             });
                         }
                     }
@@ -120,15 +100,14 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                     // --- 2. Distinct Products ---
                     const productsMap = new Map<string, any>();
                     for (const row of results) {
-                        const code = row['Produto']; // "11.01.04.09"
-                        const desc = row['Descricao_1'] || row['Descricao']; // Likely duplicate "Descricao"
-                        // Col 12 is Descricao (Payment?), Col 18 is Descricao (Product)
-                        // This is tricky with headers.
+                        const code = row['Produto'];
+                        const desc = row['Descricao_Produto'];
+
                         if (code && !productsMap.has(code)) {
                             productsMap.set(code, {
                                 code,
                                 name: desc || `Produto ${code}`,
-                                price: parseBrlFloat(row['Prc Unitario'])
+                                price: parseBrlFloat(row['Prc_Unitario'])
                             });
                         }
                     }
