@@ -29,6 +29,7 @@ export async function GET() {
             type: 'upgrade' | 'crossSell' | 'seasonal' | 'reactivation'
             clienteId: string
             clienteNome: string
+            clienteTelefone?: string // Added
             description: string
             priority: 'alta' | 'media' | 'baixa'
             actionLabel: string
@@ -40,6 +41,8 @@ export async function GET() {
         for (const client of clients) {
             // Skip clients with no orders
             if (client.pedidos.length === 0) continue
+
+            const phone = client.celular || client.telefone || '' // Get phone
 
             const recentOrders = client.pedidos.slice(0, 10)
             const thisMonthOrders = recentOrders.filter(o =>
@@ -54,6 +57,7 @@ export async function GET() {
                     type: 'upgrade',
                     clienteId: client.id,
                     clienteNome: client.nomeFantasia,
+                    clienteTelefone: phone,
                     description: `${thisMonthOrders.length} pedidos este mês na tabela 50-199. Sugerir migração para 200-699.`,
                     priority: 'alta',
                     actionLabel: 'Propor Upgrade'
@@ -81,6 +85,7 @@ export async function GET() {
                     type: 'crossSell',
                     clienteId: client.id,
                     clienteNome: client.nomeFantasia,
+                    clienteTelefone: phone,
                     description: `Nunca comprou "${topProduct.nome}" da ${topProduct.fabrica.nome}. ${crossSellProducts.length} produtos disponíveis.`,
                     priority: 'media',
                     actionLabel: 'Oferecer Produto'
@@ -99,6 +104,7 @@ export async function GET() {
                     type: 'seasonal',
                     clienteId: client.id,
                     clienteNome: client.nomeFantasia,
+                    clienteTelefone: phone,
                     description: `Historicamente compra mais neste mês. Momento ideal para contato.`,
                     priority: 'media',
                     actionLabel: 'Contatar Cliente'

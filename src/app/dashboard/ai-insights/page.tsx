@@ -23,6 +23,7 @@ interface Opportunity {
     type: 'upgrade' | 'crossSell' | 'seasonal' | 'reactivation';
     clienteId: string;
     clienteNome: string;
+    clienteTelefone?: string;
     description: string;
     priority: 'alta' | 'media' | 'baixa';
     actionLabel: string;
@@ -274,28 +275,49 @@ export default function AIInsightsPage() {
                                     <p className="text-center text-gray-500 py-8">Nenhuma oportunidade identificada</p>
                                 ) : (
                                     <div className="grid gap-3">
-                                        {opportunities.map((opp, idx) => (
-                                            <div key={idx} className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-lg">
-                                                            {opp.type === 'upgrade' ? '⬆️' : opp.type === 'crossSell' ? '🛒' : opp.type === 'seasonal' ? '📅' : '🔄'}
+                                        {opportunities.map((opp, idx) => {
+                                            const typeLabels = {
+                                                upgrade: 'Upgrade',
+                                                crossSell: 'Venda Cruzada',
+                                                seasonal: 'Sazonal',
+                                                reactivation: 'Reativação'
+                                            };
+                                            const typeLabel = typeLabels[opp.type] || opp.type;
+
+                                            // Handle Phone Link
+                                            const cleanPhone = opp.clienteTelefone?.replace(/\D/g, '');
+                                            const whatsappLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=Olá ${opp.clienteNome}, vi uma oportunidade para você: ${opp.description}` : '#';
+
+                                            return (
+                                                <div key={idx} className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-lg">
+                                                                {opp.type === 'upgrade' ? '⬆️' : opp.type === 'crossSell' ? '🛒' : opp.type === 'seasonal' ? '📅' : '🔄'}
+                                                            </span>
+                                                            <p className="font-medium text-white">{opp.clienteNome}</p>
+                                                        </div>
+                                                        <span className={`px-2 py-1 rounded-full text-xs border ${priorityColors[opp.priority]}`}>
+                                                            {opp.priority}
                                                         </span>
-                                                        <p className="font-medium text-white">{opp.clienteNome}</p>
                                                     </div>
-                                                    <span className={`px-2 py-1 rounded-full text-xs border ${priorityColors[opp.priority]}`}>
-                                                        {opp.priority}
-                                                    </span>
+                                                    <p className="text-sm text-gray-400 mb-3">{opp.description}</p>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs text-purple-400 uppercase font-semibold">{typeLabel}</span>
+                                                        <a
+                                                            href={whatsappLink}
+                                                            target={cleanPhone ? "_blank" : "_self"}
+                                                            onClick={(e) => !cleanPhone && e.preventDefault()}
+                                                            className={`px-3 py-1 rounded-lg text-sm transition-colors ${cleanPhone
+                                                                ? 'bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 cursor-pointer'
+                                                                : 'bg-gray-600/20 text-gray-400 cursor-not-allowed'}`}
+                                                        >
+                                                            {opp.actionLabel}
+                                                        </a>
+                                                    </div>
                                                 </div>
-                                                <p className="text-sm text-gray-400 mb-3">{opp.description}</p>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-purple-400 uppercase">{opp.type}</span>
-                                                    <button className="px-3 py-1 rounded-lg bg-purple-600/20 text-purple-400 text-sm hover:bg-purple-600/30 transition-colors">
-                                                        {opp.actionLabel}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            )
+                                        })}
                                     </div>
                                 )}
                             </div>
