@@ -19,7 +19,7 @@ export async function GET() {
         const formattedOrders = orders.map(o => ({
             id: o.id,
             clienteId: o.clienteId,
-            nomeCliente: o.cliente.nomeFantasia,
+            nomeCliente: o.cliente?.nomeFantasia || o.cliente?.razaoSocial || 'Cliente Desconhecido',
             data: o.data.toISOString(),
             status: o.status,
             valorTotal: Number(o.valorTotal),

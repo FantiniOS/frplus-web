@@ -230,7 +230,7 @@ export default function RelatoriosPage() {
                     head: [['Pedido', 'Cliente', 'Data', 'Itens', 'Valor']],
                     body: pedidosFiltrados.map(o => [
                         `#${o.id.slice(-6)}`,
-                        o.nomeCliente,
+                        o.nomeCliente || 'Cliente Desconhecido',
                         new Date(o.data).toLocaleDateString('pt-BR'),
                         o.itens.length.toString(),
                         `R$ ${o.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
@@ -667,7 +667,7 @@ export default function RelatoriosPage() {
                                                                     #{order.id.slice(-6)}
                                                                 </div>
                                                             </td>
-                                                            <td className="py-2 text-white print:text-black">{order.nomeCliente}</td>
+                                                            <td className="py-2 text-white print:text-black">{order.nomeCliente || 'Cliente Desconhecido'}</td>
                                                             <td className="py-2 text-gray-400 print:text-gray-600">{new Date(order.data).toLocaleDateString('pt-BR')}</td>
                                                             <td className="py-2 text-center text-gray-400 print:text-gray-600">{order.itens.length}</td>
                                                             <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
