@@ -122,7 +122,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     const valorTotal = itens.reduce((acc, item) => acc + item.total, 0);
     const totalItens = itens.reduce((acc, item) => acc + item.quantidade, 0);
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!clienteId) {
             showToast("Selecione um cliente", "error");
             return;
@@ -141,7 +141,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
             tipo: (isBonificacao ? 'Bonificacao' : 'Venda') as any
         };
 
-        updateOrder(params.id, updatedOrder);
+        await updateOrder(params.id, updatedOrder);
         router.push('/dashboard/pedidos');
     };
 
