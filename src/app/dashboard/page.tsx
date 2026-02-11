@@ -307,21 +307,6 @@ export default function DashboardPage() {
       {/* AI Insights Section */}
       <AIInsightsPanel />
 
-      {/* DEBUG INFO - REMOVE AFTER FIX */}
-      <div className="mt-8 p-4 bg-black/50 text-xs font-mono text-green-400 rounded border border-green-500/30 overflow-x-auto">
-        <h4 className="font-bold mb-2">DEBUG DASHBOARD (Suporte Fantini)</h4>
-        <p>Mês Selecionado: {selectedMonth || 'Todos'} (Ano: {filterYear}, Mês Index: {filterMonth})</p>
-        <p>Total Pedidos (Todos): {orders.length}</p>
-        <p>Pedidos Filtrados: {monthlyOrders.length}</p>
-        <hr className="border-green-500/30 my-2" />
-        <p>Amostra de Pedidos (Primeiros 5):</p>
-        <pre>{JSON.stringify(orders.slice(0, 5).map(o => ({
-          id: o.id,
-          dataOriginal: o.data,
-          dataParsed: new Date(o.data).toLocaleString(),
-          mesIdentificado: new Date(o.data).getMonth()
-        })), null, 2)}</pre>
-      </div>
     </div>
   );
 }
