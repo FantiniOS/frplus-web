@@ -179,9 +179,51 @@ export default function AIInsightsPage() {
 
     return (
         <div className="space-y-6">
-            {/* ... existing header ... */}
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-white mb-1">Inteligência Artificial</h1>
+                    <p className="text-gray-400 text-sm">Insights e oportunidades gerados pelo Kyra AI</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={fetchData}
+                        disabled={loading}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                        title="Atualizar Dados"
+                    >
+                        <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
+            </div>
 
-            {/* ... tabs ... */}
+            {/* Tabs */}
+            <div className="grid grid-cols-3 gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`
+                            flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all
+                            ${activeTab === tab.id
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                            }
+                        `}
+                    >
+                        <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-white' : tab.color}`} />
+                        <span className="hidden md:inline">{tab.label}</span>
+                        {tab.count > 0 && (
+                            <span className={`
+                                text-xs px-2 py-0.5 rounded-full
+                                ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-white/10 text-gray-400'}
+                            `}>
+                                {tab.count}
+                            </span>
+                        )}
+                    </button>
+                ))}
+            </div>
 
             {/* Content */}
             <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm relative">
