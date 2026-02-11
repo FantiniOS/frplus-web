@@ -22,10 +22,10 @@ export default function ClientesPage() {
   };
 
   const filteredClients = clients.filter(client =>
-    (client.nomeFantasia || client.razaoSocial || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (client.razaoSocial || client.nomeFantasia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.cnpj.includes(searchTerm) ||
     client.cidade.toLowerCase().includes(searchTerm.toLowerCase())
-  ).sort((a, b) => (a.nomeFantasia || a.razaoSocial || '').localeCompare(b.nomeFantasia || b.razaoSocial || ''));
+  ).sort((a, b) => (a.razaoSocial || a.nomeFantasia || '').localeCompare(b.razaoSocial || b.nomeFantasia || ''));
 
   const container = {
     hidden: { opacity: 0 },
@@ -111,7 +111,7 @@ export default function ClientesPage() {
 
                   {/* Coluna Nome/CNPJ */}
                   <td className="px-6 py-4">
-                    <div className="font-medium text-white">{cliente.nomeFantasia || cliente.razaoSocial}</div>
+                    <div className="font-medium text-white">{cliente.razaoSocial || cliente.nomeFantasia}</div>
                     <div className="text-xs text-gray-500">{cliente.cnpj}</div>
                   </td>
 
@@ -208,8 +208,8 @@ export default function ClientesPage() {
                             <FileText className="h-4 w-4" /> Dados Fiscais
                           </h4>
                           <div>
-                            <p className="text-gray-400 text-xs">Razão Social</p>
-                            <p className="text-white">{cliente.razaoSocial}</p>
+                            <p className="text-gray-400 text-xs">Nome Fantasia</p>
+                            <p className="text-white">{cliente.nomeFantasia}</p>
                           </div>
                           <div>
                             <p className="text-gray-400 text-xs">Inscrição Estadual</p>
