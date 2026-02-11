@@ -86,12 +86,23 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
                             )}
                         </div>
                         <div className="flex-1">
-                            <label className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 cursor-pointer transition-colors">
-                                <Upload className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm text-gray-300">Escolher imagem</span>
-                                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                            </label>
-                            <p className="text-xs text-gray-500 mt-2">PNG, JPG ou WEBP até 2MB</p>
+                            <div className="flex items-center gap-2 mb-2">
+                                <label className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 cursor-pointer transition-colors">
+                                    <Upload className="h-4 w-4 text-gray-400" />
+                                    <span className="text-sm text-gray-300">Escolher imagem</span>
+                                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                                </label>
+                                {formData.imagemUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, imagemUrl: '', imagem: '' }))}
+                                        className="px-3 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors text-xs font-medium"
+                                    >
+                                        Remover
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-500">PNG, JPG ou WEBP até 2MB</p>
                             <input
                                 type="text"
                                 name="imagemUrl"
