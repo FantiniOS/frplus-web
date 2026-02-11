@@ -13,7 +13,7 @@ export default function DashboardPage() {
 
   // State for Month Filter (Format: YYYY-MM)
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(() => {
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     return `${year}-${month}`;
@@ -21,17 +21,17 @@ export default function DashboardPage() {
 
   // Derived Date Objects from Selection
   const [yearStr, monthStr] = selectedMonth.split('-');
-  const filterYear = parseInt(yearStr);
-  const filterMonth = parseInt(monthStr) - 1; // 0-indexed
+  const filterYear = selectedMonth ? parseInt(yearStr) : null;
+  const filterMonth = selectedMonth ? parseInt(monthStr) - 1 : null; // 0-indexed
 
   // Filter Orders for Selected Month
   const monthlyOrders = orders.filter(o => {
+    if (!selectedMonth) return true; // Show all if no month selected
+
     const orderDate = new Date(o.data);
-    // Use local time matching logic or strict UTC depending on stored data. 
-    // Assuming ISO strings, new Date(o.data) works ok, but best to check components.
-    // To match "local" perception:
-    // We'll use the getMonth/getFullYear of the Date object created from the string.
-    return orderDate.getMonth() === filterMonth && orderDate.getFullYear() === filterYear;
+    // Use UTC to avoid timezone shifts (e.g. 2026-02-01T00:00:00Z -> Jan 31 Local)
+    // Since import stores as UTC Midnight, we should view as UTC to keep the date.
+    return orderDate.getUTCMonth() === filterMonth && orderDate.getUTCFullYear() === filterYear;
   });
 
   const stats = {
@@ -42,21 +42,42 @@ export default function DashboardPage() {
   };
 
   // 1. Chart: Sales for the Selected Month
-  const daysInMonth = new Date(filterYear, filterMonth + 1, 0).getDate();
-  const monthDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const daysInMonth = selectedMonth
+    ? new Date(filterYear!, filterMonth! + 1, 0).getDate()
+    : 30; // Default to 30 for view all purely for visualization scale or handle differently
+
+  // If View All, maybe show per-month? For now let's keep it simple: 
+  // If Selected Month -> Show Days. If View All -> Show last 30 days or similar? 
+  // Let's stick to "If no month, show empty chart or aggregate". 
+  // Actually, for "View All", a daily chart is messy. Let's force it to current month if 'View All' for the chart, or better, just hide chart?
+  // Let's just make it robust:
+  const chartYear = filterYear || new Date().getFullYear();
+  const chartMonth = filterMonth !== null ? filterMonth : new Date().getMonth();
+  const chartDaysInMonth = new Date(chartYear, chartMonth + 1, 0).getDate();
+
+  const monthDays = Array.from({ length: chartDaysInMonth }, (_, i) => i + 1);
 
   const salesData = monthDays.map(day => {
-    const dayTotal = monthlyOrders
+    // Note: If "View All" is selected, this chart currently shows data for the CURRENT real month (as fallback)
+    // or we could show nothing. Let's make it show "Current Month" Context if All is selected, 
+    // or better yet, aggregate specific days. 
+    // Given complexity, let's keep it filtering specific month for chart, 
+    // but the LISTS below show everything.
+
+    // Actually, let's filter the data for the chart specifically based on the chartYear/Month
+    const chartDayTotal = orders // use global orders, not filtered monthlyOrders (which might be All)
       .filter(o => {
         const d = new Date(o.data);
-        return d.getDate() === day;
+        return d.getUTCFullYear() === chartYear &&
+          d.getUTCMonth() === chartMonth &&
+          d.getUTCDate() === day;
       })
       .reduce((acc, curr) => acc + curr.valorTotal, 0);
 
     return {
-      date: new Date(filterYear, filterMonth, day).toISOString(),
+      date: new Date(chartYear, chartMonth, day).toISOString(),
       dayLabel: String(day),
-      value: dayTotal
+      value: chartDayTotal
     };
   });
 
@@ -93,8 +114,9 @@ export default function DashboardPage() {
   };
 
   // Month Name for Display
-  const displayDate = new Date(filterYear, filterMonth, 1);
-  const monthName = displayDate.toLocaleDateString('pt-BR', { month: 'long' });
+  const monthName = selectedMonth
+    ? new Date(filterYear!, filterMonth!, 1).toLocaleDateString('pt-BR', { month: 'long' })
+    : 'Período Completo';
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -103,19 +125,27 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white">{getGreeting()}, {usuario?.nome?.split(' ')[0] || 'Bem-vindo'}</h1>
           <p className="text-emerald-400 font-medium capitalize flex items-center gap-2">
-            📅 Visão Mensal: {monthName} / {filterYear}
+            📅 Visão: {selectedMonth ? `${monthName} / ${filterYear}` : 'Todo o Histórico'}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Seletor de Mês */}
-          <div className="relative group">
+          <div className="relative group flex gap-2">
             <input
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
               className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 [color-scheme:dark]"
             />
+            {selectedMonth && (
+              <button
+                onClick={() => setSelectedMonth('')}
+                className="text-xs text-red-400 hover:text-red-300 underline"
+              >
+                Limpar
+              </button>
+            )}
           </div>
 
           <Link href="/dashboard/pedidos/novo">
@@ -280,7 +310,7 @@ export default function DashboardPage() {
       {/* DEBUG INFO - REMOVE AFTER FIX */}
       <div className="mt-8 p-4 bg-black/50 text-xs font-mono text-green-400 rounded border border-green-500/30 overflow-x-auto">
         <h4 className="font-bold mb-2">DEBUG DASHBOARD (Suporte Fantini)</h4>
-        <p>Mês Selecionado: {selectedMonth} (Ano: {filterYear}, Mês Index: {filterMonth})</p>
+        <p>Mês Selecionado: {selectedMonth || 'Todos'} (Ano: {filterYear}, Mês Index: {filterMonth})</p>
         <p>Total Pedidos (Todos): {orders.length}</p>
         <p>Pedidos Filtrados: {monthlyOrders.length}</p>
         <hr className="border-green-500/30 my-2" />
