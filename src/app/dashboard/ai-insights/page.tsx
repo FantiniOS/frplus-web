@@ -227,93 +227,7 @@ export default function AIInsightsPage() {
 
             {/* Content */}
             <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm relative">
-                {/* Modal Overlay */}
-                {activeInsight && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                        <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                            {analyzing ? (
-                                <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
-                                    <div className="relative">
-                                        <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <Lightbulb className="w-6 h-6 text-purple-400 animate-pulse" />
-                                        </div>
-                                    </div>
-                                    <h3 className="text-xl font-semibold text-white">Kyra AI analisando...</h3>
-                                    <p className="text-sm text-gray-400">Processando histórico de compras e comportamento do cliente.</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="p-6 border-b border-white/10 flex justify-between items-start bg-gradient-to-r from-purple-500/10 to-blue-500/10">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                                                    AI INSIGHT
-                                                </span>
-                                                <span className="text-xs text-gray-400">{new Date().toLocaleDateString()}</span>
-                                            </div>
-                                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                                {getInsightDetails(activeInsight).title}
-                                            </h3>
-                                        </div>
-                                        <button onClick={closeInsightModal} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
-                                            <X className="w-5 h-5 text-gray-400" />
-                                        </button>
-                                    </div>
 
-                                    <div className="p-6 space-y-6">
-                                        {/* Analysis Section */}
-                                        <div className="space-y-2">
-                                            <h4 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
-                                                <TrendingUp className="w-4 h-4" />
-                                                Análise do Comportamento
-                                            </h4>
-                                            <p className="text-sm text-gray-300 leading-relaxed">
-                                                {getInsightDetails(activeInsight).analysis}
-                                            </p>
-                                        </div>
-
-                                        {/* Possible Causes */}
-                                        {getInsightDetails(activeInsight).possibleCauses.length > 0 && (
-                                            <div className="space-y-2">
-                                                <h4 className="text-sm font-semibold text-yellow-400 flex items-center gap-2">
-                                                    <AlertTriangle className="w-4 h-4" />
-                                                    Possíveis Causas
-                                                </h4>
-                                                <ul className="list-disc list-inside text-sm text-gray-400 space-y-1 ml-1">
-                                                    {getInsightDetails(activeInsight).possibleCauses.map((cause, idx) => (
-                                                        <li key={idx}>{cause}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-
-                                        {/* Recommendation */}
-                                        <div className="bg-green-500/5 border border-green-500/10 rounded-xl p-4">
-                                            <h4 className="text-sm font-bold text-green-400 flex items-center gap-2 mb-2">
-                                                <CheckCircle2 className="w-4 h-4" />
-                                                Recomendação da IA
-                                            </h4>
-                                            <p className="text-sm text-gray-300">
-                                                {getInsightDetails(activeInsight).recommendation}
-                                            </p>
-                                        </div>
-
-                                        {/* Action Button */}
-                                        <a
-                                            href={`https://wa.me/?text=${encodeURIComponent(getInsightDetails(activeInsight).messageSuggestion)}`}
-                                            target="_blank"
-                                            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-medium transition-colors shadow-lg shadow-green-900/20"
-                                        >
-                                            <MessageCircle className="w-5 h-5" />
-                                            Enviar Mensagem Sugerida no WhatsApp
-                                        </a>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
 
 
                 {loading ? (
@@ -522,7 +436,96 @@ export default function AIInsightsPage() {
                         )}
                     </>
                 )}
+                {/* ... existing content inside the relative div ... */}
             </div>
+
+            {/* Modal Overlay - Moved outside to prevent positioning issues */}
+            {activeInsight && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+                        {analyzing ? (
+                            <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
+                                <div className="relative">
+                                    <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <Lightbulb className="w-6 h-6 text-purple-400 animate-pulse" />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-semibold text-white">Kyra AI analisando...</h3>
+                                <p className="text-sm text-gray-400">Processando histórico de compras e comportamento do cliente.</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="p-6 border-b border-white/10 flex justify-between items-start bg-gradient-to-r from-purple-500/10 to-blue-500/10 sticky top-0 bg-[#1a1a1a] z-10">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                                                AI INSIGHT
+                                            </span>
+                                            <span className="text-xs text-gray-400">{new Date().toLocaleDateString()}</span>
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                            {getInsightDetails(activeInsight).title}
+                                        </h3>
+                                    </div>
+                                    <button onClick={closeInsightModal} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+                                        <X className="w-5 h-5 text-gray-400" />
+                                    </button>
+                                </div>
+
+                                <div className="p-6 space-y-6">
+                                    {/* Analysis Section */}
+                                    <div className="space-y-2">
+                                        <h4 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
+                                            <TrendingUp className="w-4 h-4" />
+                                            Análise do Comportamento
+                                        </h4>
+                                        <p className="text-sm text-gray-300 leading-relaxed">
+                                            {getInsightDetails(activeInsight).analysis}
+                                        </p>
+                                    </div>
+
+                                    {/* Possible Causes */}
+                                    {getInsightDetails(activeInsight).possibleCauses.length > 0 && (
+                                        <div className="space-y-2">
+                                            <h4 className="text-sm font-semibold text-yellow-400 flex items-center gap-2">
+                                                <AlertTriangle className="w-4 h-4" />
+                                                Possíveis Causas
+                                            </h4>
+                                            <ul className="list-disc list-inside text-sm text-gray-400 space-y-1 ml-1">
+                                                {getInsightDetails(activeInsight).possibleCauses.map((cause, idx) => (
+                                                    <li key={idx}>{cause}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {/* Recommendation */}
+                                    <div className="bg-green-500/5 border border-green-500/10 rounded-xl p-4">
+                                        <h4 className="text-sm font-bold text-green-400 flex items-center gap-2 mb-2">
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            Recomendação da IA
+                                        </h4>
+                                        <p className="text-sm text-gray-300">
+                                            {getInsightDetails(activeInsight).recommendation}
+                                        </p>
+                                    </div>
+
+                                    {/* Action Button */}
+                                    <a
+                                        href={`https://wa.me/?text=${encodeURIComponent(getInsightDetails(activeInsight).messageSuggestion)}`}
+                                        target="_blank"
+                                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-medium transition-colors shadow-lg shadow-green-900/20"
+                                    >
+                                        <MessageCircle className="w-5 h-5" />
+                                        Enviar Mensagem Sugerida no WhatsApp
+                                    </a>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
