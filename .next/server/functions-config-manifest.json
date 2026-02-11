@@ -1,1 +1,1 @@
-{"version":1,"functions":{"/api/auth/seed":{},"/api/clients/[id]/product-history":{},"/api/ai/sales-insights":{},"/api/ai/inactive-clients":{},"/api/clients":{},"/api/orders":{},"/api/ai/opportunities":{},"/api/dashboard":{},"/api/products":{}}}
+{"version":1,"functions":{"/api/auth/seed":{},"/api/ai/opportunities":{},"/api/ai/inactive-clients":{},"/api/ai/sales-insights":{},"/api/clients/[id]/product-history":{},"/api/clients":{},"/api/orders":{},"/api/products":{},"/api/dashboard":{}}}

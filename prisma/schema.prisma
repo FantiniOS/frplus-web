@@ -50,6 +50,7 @@ model Cliente {
   cidade            String
   estado            String
   cep               String
+  status            String           @default("Ativo") // Ativo, Inativo, Bloqueado
   pedidos           Pedido[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
