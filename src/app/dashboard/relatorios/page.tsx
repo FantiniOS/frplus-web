@@ -40,6 +40,7 @@ export default function RelatoriosPage() {
     const [fabricaSelecionada, setFabricaSelecionada] = useState<string>('todas');
     const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
     const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+    const [expandedClientOrderId, setExpandedClientOrderId] = useState<string | null>(null);
     const relatorioRef = useRef<HTMLDivElement>(null);
 
     // Filter orders by date
@@ -62,10 +63,21 @@ export default function RelatoriosPage() {
         const ticketMedio = totalPedidos > 0 ? totalVendas / totalPedidos : 0;
 
         const vendasPorDia: Record<string, number> = {};
+        const clientesPorDia: Record<string, Set<string>> = {};
+
         pedidosFiltrados.forEach((order: Order) => {
             const date = new Date(order.data).toLocaleDateString('pt-BR');
             vendasPorDia[date] = (vendasPorDia[date] || 0) + order.valorTotal;
+
+            if (!clientesPorDia[date]) {
+                clientesPorDia[date] = new Set();
+            }
+            if (order.nomeCliente) {
+                clientesPorDia[date].add(order.nomeCliente.split(' ')[0]); // Store first name/word to save space
+            }
         });
+
+        return { totalVendas, totalPedidos, ticketMedio, vendasPorDia, clientesPorDia };
 
         return { totalVendas, totalPedidos, ticketMedio, vendasPorDia };
     }, [pedidosFiltrados]);
@@ -618,20 +630,30 @@ export default function RelatoriosPage() {
                                         <thead className="border-b border-white/10 print:border-gray-300">
                                             <tr>
                                                 <th className="text-left py-2 text-gray-400 print:text-gray-600">Data</th>
+                                                <th className="text-left py-2 text-gray-400 print:text-gray-600">Clientes</th>
                                                 <th className="text-right py-2 text-gray-400 print:text-gray-600">Valor</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {Object.entries(estatisticasVendas.vendasPorDia)
                                                 .sort((a, b) => new Date(b[0].split('/').reverse().join('-')).getTime() - new Date(a[0].split('/').reverse().join('-')).getTime())
-                                                .map(([dia, valor]) => (
-                                                    <tr key={dia} className="border-b border-white/5 print:border-gray-200">
-                                                        <td className="py-2 text-white print:text-black">{dia}</td>
-                                                        <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
-                                                            R$ {valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                        </td>
-                                                    </tr>
-                                                ))}
+                                                .map(([dia, valor]) => {
+                                                    const clienteSet = estatisticasVendas.clientesPorDia?.[dia];
+                                                    const clientesArray = Array.from(clienteSet || []);
+                                                    const clientesTexto = clientesArray.slice(0, 3).join(', ') + (clientesArray.length > 3 ? ` e mais ${clientesArray.length - 3}...` : '');
+
+                                                    return (
+                                                        <tr key={dia} className="border-b border-white/5 print:border-gray-200">
+                                                            <td className="py-2 text-white print:text-black">{dia}</td>
+                                                            <td className="py-2 text-xs text-gray-400 print:text-gray-600 max-w-[200px] truncate" title={Array.from(clienteSet || []).join(', ')}>
+                                                                {clientesTexto || '-'}
+                                                            </td>
+                                                            <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
+                                                                R$ {valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -862,12 +884,58 @@ export default function RelatoriosPage() {
                                                                                 .filter(p => p.clienteId === c.id)
                                                                                 .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
                                                                                 .map(order => (
-                                                                                    <tr key={order.id} className="border-b border-white/5 print:border-gray-100 last:border-0 hover:bg-white/5">
-                                                                                        <td className="py-2 text-gray-300 print:text-gray-700">{new Date(order.data).toLocaleDateString('pt-BR')}</td>
-                                                                                        <td className="py-2 text-center text-gray-300 print:text-gray-700 font-mono">#{order.id.slice(-6)}</td>
-                                                                                        <td className="py-2 text-center text-gray-300 print:text-gray-700">{order.itens.length}</td>
-                                                                                        <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">R$ {order.valorTotal.toFixed(2)}</td>
-                                                                                    </tr>
+                                                                                    <Fragment key={order.id}>
+                                                                                        <tr
+                                                                                            className="border-b border-white/5 print:border-gray-100 last:border-0 hover:bg-white/5 cursor-pointer transition-colors"
+                                                                                            onClick={() => setExpandedClientOrderId(expandedClientOrderId === order.id ? null : order.id)}
+                                                                                        >
+                                                                                            <td className="py-2 text-gray-300 print:text-gray-700">
+                                                                                                <div className="flex items-center gap-2">
+                                                                                                    {expandedClientOrderId === order.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                                                                                    {new Date(order.data).toLocaleDateString('pt-BR')}
+                                                                                                </div>
+                                                                                            </td>
+                                                                                            <td className="py-2 text-center text-gray-300 print:text-gray-700 font-mono">#{order.id.slice(-6)}</td>
+                                                                                            <td className="py-2 text-center text-gray-300 print:text-gray-700">{order.itens.length}</td>
+                                                                                            <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">R$ {order.valorTotal.toFixed(2)}</td>
+                                                                                        </tr>
+                                                                                        {expandedClientOrderId === order.id && (
+                                                                                            <tr className="bg-black/20 print:bg-gray-50">
+                                                                                                <td colSpan={4} className="p-0">
+                                                                                                    <motion.div
+                                                                                                        initial={{ opacity: 0, height: 0 }}
+                                                                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                                                                        exit={{ opacity: 0, height: 0 }}
+                                                                                                        className="p-3 pl-8"
+                                                                                                    >
+                                                                                                        <div className="bg-white/5 print:bg-white rounded border border-white/10 print:border-gray-200 p-2">
+                                                                                                            <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">
+                                                                                                                <Package size={12} /> Itens Comprados
+                                                                                                            </p>
+                                                                                                            <table className="w-full text-[10px]">
+                                                                                                                <thead>
+                                                                                                                    <tr className="text-gray-500 border-b border-white/10">
+                                                                                                                        <th className="text-left py-1">Produto</th>
+                                                                                                                        <th className="text-center py-1">Qtd</th>
+                                                                                                                        <th className="text-right py-1">Total</th>
+                                                                                                                    </tr>
+                                                                                                                </thead>
+                                                                                                                <tbody>
+                                                                                                                    {order.itens.map(item => (
+                                                                                                                        <tr key={item.id || item.produtoId} className="border-b border-white/5 last:border-0 hover:bg-white/5">
+                                                                                                                            <td className="py-1 text-gray-300 print:text-black">{item.nomeProduto}</td>
+                                                                                                                            <td className="py-1 text-center text-gray-400">{item.quantidade}</td>
+                                                                                                                            <td className="py-1 text-right text-green-400 print:text-green-600">R$ {item.total.toFixed(2)}</td>
+                                                                                                                        </tr>
+                                                                                                                    ))}
+                                                                                                                </tbody>
+                                                                                                            </table>
+                                                                                                        </div>
+                                                                                                    </motion.div>
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                        )}
+                                                                                    </Fragment>
                                                                                 ))}
                                                                         </tbody>
                                                                     </table>
