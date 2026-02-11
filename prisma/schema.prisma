@@ -65,6 +65,7 @@ model Pedido {
   fabrica           Fabrica?     @relation(fields: [fabricaId], references: [id])
   data              DateTime     @default(now())
   status            String       @default("Pendente") // Pendente, Processando, Concluido, Cancelado
+  tipo              String       @default("Venda") // Venda, Bonificacao
   valorTotal        Decimal      @db.Decimal(10, 2)
   tabelaPreco       String // 50a199, 200a699, atacado, avista, redes
   condicaoPagamento String

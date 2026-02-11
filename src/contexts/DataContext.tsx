@@ -70,6 +70,7 @@ export interface Order {
     fabricaId?: string;
     data: string;
     status: string;
+    tipo?: 'Venda' | 'Bonificacao';
     valorTotal: number;
     tabelaPreco: string;
     condicaoPagamento: string;

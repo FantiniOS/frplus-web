@@ -27,6 +27,7 @@ export default function NovoPedidoPage() {
     const [searchProduct, setSearchProduct] = useState('');
     const [searchClient, setSearchClient] = useState('');
     const [selectedCategoria, setSelectedCategoria] = useState('all');
+    const [isBonificacao, setIsBonificacao] = useState(false);
 
     // --- State: Pricing History ---
     const [priceHistory, setPriceHistory] = useState<Record<string, number>>({});
@@ -81,13 +82,15 @@ export default function NovoPedidoPage() {
     };
 
     // --- Handlers: Order Items ---
-    const addItem = (produto: Product) => {
-        const preco = getPrecoCliente(produto);
+    const addItem = (produto: Product, customPrice?: number) => {
+        const preco = customPrice !== undefined ? customPrice : getPrecoCliente(produto);
         setItens(prev => {
             const existing = prev.find(i => i.produtoId === produto.id);
             if (existing) {
+                // If custom price is provided, update it. Otherwise keep existing.
+                const finalPrice = customPrice !== undefined ? customPrice : existing.precoUnitario;
                 return prev.map(i => i.produtoId === produto.id
-                    ? { ...i, quantidade: i.quantidade + 1, total: (i.quantidade + 1) * preco }
+                    ? { ...i, quantidade: i.quantidade + 1, precoUnitario: finalPrice, total: (i.quantidade + 1) * finalPrice }
                     : i
                 );
             }
@@ -126,6 +129,30 @@ export default function NovoPedidoPage() {
             }
             return i;
         }));
+    };
+
+    const updateItemPrice = (produto: Product, novoPreco: number) => {
+        if (novoPreco < 0) return;
+        setItens(prev => {
+            const existing = prev.find(i => i.produtoId === produto.id);
+            if (existing) {
+                return prev.map(i => {
+                    if (i.produtoId === produto.id) {
+                        return { ...i, precoUnitario: novoPreco, total: i.quantidade * novoPreco };
+                    }
+                    return i;
+                });
+            } else {
+                // Item doesn't exist, add it with custom price (qty 1)
+                return [...prev, {
+                    produtoId: produto.id,
+                    nomeProduto: produto.nome,
+                    quantidade: 1,
+                    precoUnitario: novoPreco,
+                    total: novoPreco
+                }];
+            }
+        });
     };
 
     // --- Filtering ---
@@ -175,6 +202,7 @@ export default function NovoPedidoPage() {
                 fabricaId: selectedFabricaId,
                 data: new Date(dataPedido).toISOString(),
                 status: 'Pendente' as any,
+                tipo: (isBonificacao ? 'Bonificacao' : 'Venda') as any,
                 valorTotal,
                 tabelaPreco,
                 condicaoPagamento,
@@ -411,8 +439,18 @@ export default function NovoPedidoPage() {
 
                                                         {/* Price & Controls */}
                                                         <td className="px-4 py-3 text-right">
-                                                            <div className="text-sm font-medium text-gray-300">
-                                                                {preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            <div className="text-sm font-medium text-gray-300" onClick={(e) => e.stopPropagation()}>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={item ? item.precoUnitario : getPrecoCliente(product)}
+                                                                    onChange={(e) => {
+                                                                        const val = parseFloat(e.target.value);
+                                                                        if (!isNaN(val)) updateItemPrice(product, val);
+                                                                    }}
+                                                                    className={`w-[80px] bg-transparent text-right border-b focus:outline-none ${item ? 'border-blue-500 text-white font-bold' : 'border-gray-700 text-gray-500 hover:text-gray-300'
+                                                                        }`}
+                                                                />
                                                             </div>
 
                                                             {/* In-row Controls */}
@@ -454,6 +492,25 @@ export default function NovoPedidoPage() {
                                 {/* Settings Panel */}
                                 <div className="p-4 space-y-4 border-b border-white/5 bg-gray-900/50">
                                     <div className="space-y-3">
+                                        {/* Order Type Selector */}
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] uppercase font-bold text-gray-500">Tipo de Pedido</label>
+                                            <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
+                                                <button
+                                                    onClick={() => setIsBonificacao(false)}
+                                                    className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${!isBonificacao ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-gray-300'}`}
+                                                >
+                                                    Venda
+                                                </button>
+                                                <button
+                                                    onClick={() => setIsBonificacao(true)}
+                                                    className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${isBonificacao ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-gray-300'}`}
+                                                >
+                                                    Bonificação
+                                                </button>
+                                            </div>
+                                        </div>
+
                                         <div className="flex gap-2">
                                             <div className="flex-1 space-y-1">
                                                 <label className="text-[10px] uppercase font-bold text-gray-500">Tabela de Preço</label>

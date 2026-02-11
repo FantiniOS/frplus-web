@@ -58,14 +58,18 @@ export default function RelatoriosPage() {
 
     // Sales Statistics
     const estatisticasVendas = useMemo(() => {
-        const totalVendas = pedidosFiltrados.reduce((acc: number, order: Order) => acc + order.valorTotal, 0);
-        const totalPedidos = pedidosFiltrados.length;
+        const totalVendas = pedidosFiltrados.reduce((acc: number, order: Order) => {
+            if (order.tipo === 'Bonificacao') return acc;
+            return acc + order.valorTotal;
+        }, 0);
+        const totalPedidos = pedidosFiltrados.filter(o => o.tipo !== 'Bonificacao').length;
         const ticketMedio = totalPedidos > 0 ? totalVendas / totalPedidos : 0;
 
         const vendasPorDia: Record<string, number> = {};
         const clientesPorDia: Record<string, Set<string>> = {};
 
         pedidosFiltrados.forEach((order: Order) => {
+            if (order.tipo === 'Bonificacao') return;
             const date = new Date(order.data).toLocaleDateString('pt-BR');
             vendasPorDia[date] = (vendasPorDia[date] || 0) + order.valorTotal;
 
@@ -689,12 +693,23 @@ export default function RelatoriosPage() {
                                                                     #{order.id.slice(-6)}
                                                                 </div>
                                                             </td>
-                                                            <td className="py-2 text-white print:text-black">{order.nomeCliente || 'Cliente Desconhecido'}</td>
+                                                            <td className="py-2 text-white print:text-black">
+                                                                {order.nomeCliente || 'Cliente Desconhecido'}
+                                                                {order.tipo === 'Bonificacao' && (
+                                                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">BONIF</span>
+                                                                )}
+                                                            </td>
                                                             <td className="py-2 text-gray-400 print:text-gray-600">{new Date(order.data).toLocaleDateString('pt-BR')}</td>
                                                             <td className="py-2 text-center text-gray-400 print:text-gray-600">{order.itens.length}</td>
                                                             <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
                                                                 <div className="flex items-center justify-end gap-2">
-                                                                    <span>R$ {order.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                                    {order.tipo === 'Bonificacao' ? (
+                                                                        <span className="text-gray-500 line-through decoration-gray-600">
+                                                                            R$ {order.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span>R$ {order.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                                    )}
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();

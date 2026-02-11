@@ -16,6 +16,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     const [searchProduct, setSearchProduct] = useState('');
     const [itens, setItens] = useState<OrderItem[]>([]);
     const [observacoes, setObservacoes] = useState('');
+    const [isBonificacao, setIsBonificacao] = useState(false);
 
     // Carregar dados do pedido
     useEffect(() => {
@@ -24,6 +25,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
             setClienteId(found.clienteId);
             setItens(found.itens);
             setObservacoes(found.observacoes || '');
+            setIsBonificacao(found.tipo === 'Bonificacao');
         }
     }, [orders, params.id]);
 
@@ -68,13 +70,9 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     // Obter preço baseado na tabela do cliente
     const getPrecoCliente = (product: typeof products[0]) => {
         const tabela = clienteSelecionado?.tabelaPreco || '50a199';
-        switch (tabela) {
-            case '200a699': return product.preco200a699;
-            case 'atacado': return product.precoAtacado;
-            case 'atacadoAVista': return product.precoAtacadoAVista;
-            case 'redes': return product.precoRedes;
-            default: return product.preco50a199;
-        }
+        // @ts-ignore - dynamic access
+        const preco = product[tabela] || product.preco50a199;
+        return Number(preco);
     };
 
     // Adicionar item ao pedido
@@ -109,6 +107,14 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
         }));
     };
 
+    const updatePrecoItem = (index: number, novoPreco: number) => {
+        if (novoPreco < 0) return;
+        setItens(prev => prev.map((item, i) => {
+            if (i !== index) return item;
+            return { ...item, precoUnitario: novoPreco, total: item.quantidade * novoPreco };
+        }));
+    };
+
     const removeItem = (index: number) => {
         setItens(prev => prev.filter((_, i) => i !== index));
     };
@@ -128,10 +134,11 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
 
         const updatedOrder: Partial<Order> = {
             clienteId,
-            nomeCliente: clienteSelecionado?.nome || '',
+            nomeCliente: clienteSelecionado?.nomeFantasia || clienteSelecionado?.razaoSocial || '',
             itens,
             valorTotal,
-            observacoes
+            observacoes,
+            tipo: (isBonificacao ? 'Bonificacao' : 'Venda') as any
         };
 
         updateOrder(params.id, updatedOrder);
@@ -263,14 +270,31 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
 
                 {/* Header do Carrinho */}
                 <div className="p-4 border-b border-white/10 bg-gradient-to-r from-orange-600/20 to-amber-600/20">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-white/10">
-                            <ShoppingCart className="h-5 w-5 text-white" />
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-white/10">
+                                <ShoppingCart className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="font-bold text-white">Editando Pedido</h2>
+                                <p className="text-xs text-gray-400">{totalItens} itens</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="font-bold text-white">Editando Pedido</h2>
-                            <p className="text-xs text-gray-400">{totalItens} itens</p>
-                        </div>
+                    </div>
+                    {/* Order Type Selector */}
+                    <div className="flex bg-gray-900 rounded-lg p-1 border border-white/10">
+                        <button
+                            onClick={() => setIsBonificacao(false)}
+                            className={`flex-1 py-1.5 px-3 rounded-md text-[10px] font-bold uppercase transition-all ${!isBonificacao ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-gray-300'}`}
+                        >
+                            Venda
+                        </button>
+                        <button
+                            onClick={() => setIsBonificacao(true)}
+                            className={`flex-1 py-1.5 px-3 rounded-md text-[10px] font-bold uppercase transition-all ${isBonificacao ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-gray-300'}`}
+                        >
+                            Bonificação
+                        </button>
                     </div>
                 </div>
 
@@ -283,7 +307,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                                 <User className="h-4 w-4 text-green-400" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">{clienteSelecionado.nome}</p>
+                                <p className="text-sm font-medium text-white truncate">{clienteSelecionado.nomeFantasia || clienteSelecionado.razaoSocial}</p>
                                 <p className="text-[10px] text-gray-400">
                                     Tabela: {clienteSelecionado.tabelaPreco || '50a199'}
                                 </p>
@@ -331,37 +355,46 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
-                                className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5"
+                                className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-white/5"
                             >
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-white truncate">{item.nomeProduto}</p>
-                                    <p className="text-xs text-gray-400">R$ {item.precoUnitario.toFixed(2)} un.</p>
-                                </div>
-
-                                <div className="flex items-center gap-1 bg-black/30 rounded-lg p-1">
-                                    <button
-                                        onClick={() => updateQuantidade(index, -1)}
-                                        className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
-                                    >
-                                        -
-                                    </button>
-                                    <span className="w-8 text-center text-sm font-bold text-white">{item.quantidade}</span>
-                                    <button
-                                        onClick={() => updateQuantidade(index, 1)}
-                                        className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
-                                    >
-                                        +
-                                    </button>
-                                </div>
-
-                                <div className="text-right">
-                                    <p className="text-sm font-bold text-green-400">R$ {item.total.toFixed(2)}</p>
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-white truncate">{item.nomeProduto}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <label className="text-[10px] text-gray-500">R$ Unit:</label>
+                                            <input
+                                                type="number"
+                                                value={item.precoUnitario}
+                                                onChange={(e) => updatePrecoItem(index, parseFloat(e.target.value))}
+                                                className="w-20 bg-black/20 border border-white/10 rounded px-1 py-0.5 text-xs text-yellow-400 font-mono focus:border-yellow-500 outline-none"
+                                            />
+                                        </div>
+                                    </div>
                                     <button
                                         onClick={() => removeItem(index)}
-                                        className="text-[10px] text-red-400 hover:text-red-300"
+                                        className="text-[10px] text-red-400 hover:text-red-300 p-1"
                                     >
-                                        remover
+                                        <Trash2 className="h-3 w-3" />
                                     </button>
+                                </div>
+
+                                <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                                    <div className="flex items-center gap-1 bg-black/30 rounded-lg p-1">
+                                        <button
+                                            onClick={() => updateQuantidade(index, -1)}
+                                            className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
+                                        >
+                                            -
+                                        </button>
+                                        <span className="w-8 text-center text-sm font-bold text-white">{item.quantidade}</span>
+                                        <button
+                                            onClick={() => updateQuantidade(index, 1)}
+                                            className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                    <p className="text-sm font-bold text-green-400">R$ {item.total.toFixed(2)}</p>
                                 </div>
                             </motion.div>
                         ))}

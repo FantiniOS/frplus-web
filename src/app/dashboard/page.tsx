@@ -218,26 +218,37 @@ export default function DashboardPage() {
             <span className="text-xs text-gray-400">Dados do período selecionado</span>
           </div>
 
-          <div className="flex h-64 items-end space-x-1 pt-4 border-b border-white/5 pb-2 overflow-x-auto">
-            {salesData.map((data, i) => {
-              const heightPercentage = Math.max((data.value / maxSale) * 100, 4); // Min 4% height
-              return (
-                <div key={i} className="group relative flex-1 min-w-[10px] flex flex-col justify-end items-center gap-2 h-full">
-                  <div
-                    className="w-full rounded-t-sm bg-blue-600 hover:bg-blue-400 transition-all duration-500 ease-out"
-                    style={{ height: `${heightPercentage}%` }}
-                  ></div>
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 rounded bg-white px-2 py-1 text-xs font-bold text-black opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                    Dia {data.dayLabel}: R$ {data.value.toFixed(0)}
+          <div className="overflow-x-auto pb-2">
+            <div className="flex h-auto min-w-full items-stretch space-x-0">
+              {salesData.map((data, i) => {
+                const heightPercentage = Math.max((data.value / maxSale) * 100, 4); // Min 4% height
+                return (
+                  <div key={i} className="group relative flex-1 min-w-[20px] flex flex-col justify-end">
+                    {/* Bar Area */}
+                    <div className="h-64 w-full flex items-end justify-center border-b border-white/10 relative hover:bg-white/5 transition-colors">
+
+                      {/* Tooltip */}
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 rounded bg-white px-2 py-1 text-xs font-bold text-black opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none shadow-lg">
+                        Dia {data.dayLabel}: R$ {data.value.toFixed(0)}
+                      </div>
+
+                      {/* The Bar */}
+                      <div
+                        className="w-4/5 max-w-[40px] rounded-t-sm bg-blue-600 group-hover:bg-blue-400 transition-all duration-300 ease-out"
+                        style={{ height: `${heightPercentage}%` }}
+                      ></div>
+                    </div>
+
+                    {/* Label */}
+                    <div className="mt-2 text-center">
+                      <span className="text-[10px] text-gray-500 font-medium group-hover:text-white transition-colors">
+                        {data.dayLabel}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-2 flex justify-between text-[10px] text-gray-500 uppercase px-1">
-            <span>Dia 1</span>
-            <span>Dia 15</span>
-            <span>Dia {daysInMonth}</span>
+                );
+              })}
+            </div>
           </div>
         </div>
 
