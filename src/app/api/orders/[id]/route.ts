@@ -45,20 +45,51 @@ export async function GET(request: Request, { params }: Params) {
     }
 }
 
-// PUT /api/orders/[id] - Update order status
+// PUT /api/orders/[id] - Update order (Full update: Header + Items replacement)
 export async function PUT(request: Request, { params }: Params) {
     try {
         const body = await request.json()
 
-        const order = await prisma.pedido.update({
+        // Use transaction to ensure consistency: 
+        // 1. Delete all existing items
+        // 2. Update order details and create new items
+        // This is safer than upserting individual items for this use case
+        await prisma.$transaction([
+            prisma.itemPedido.deleteMany({
+                where: { pedidoId: params.id }
+            }),
+            prisma.pedido.update({
+                where: { id: params.id },
+                data: {
+                    tipo: body.tipo, // Essential for Bonificacao
+                    status: body.status,
+                    observacoes: body.observacoes,
+                    valorTotal: body.valorTotal,
+                    tabelaPreco: body.tabelaPreco,
+                    condicaoPagamento: body.condicaoPagamento,
+                    // Re-create items
+                    itens: {
+                        create: body.itens.map((item: any) => ({
+                            produtoId: item.produtoId,
+                            quantidade: item.quantidade,
+                            precoUnitario: item.precoUnitario,
+                            total: item.total
+                        }))
+                    }
+                }
+            })
+        ])
+
+        // Fetch the updated order to return
+        const updatedOrder = await prisma.pedido.findUnique({
             where: { id: params.id },
-            data: {
-                status: body.status,
-                observacoes: body.observacoes
+            include: {
+                cliente: true,
+                itens: { include: { produto: true } }
             }
         })
 
-        return NextResponse.json(order)
+        return NextResponse.json(updatedOrder)
     } catch (error) {
         console.error('Error updating order:', error)
         return NextResponse.json({ error: 'Failed to update order' }, { status: 500 })
