@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect, Fragment } from 'react';
-import { useData } from '@/contexts/DataContext';
+import { useData, Order } from '@/contexts/DataContext';
 import {
     FileText, Calendar, Download, TrendingUp, Users, Package,
     DollarSign, BarChart3, PieChart, Filter, Printer, ChevronDown, Check, ChevronUp, FileDown, MessageCircle
@@ -39,9 +39,54 @@ export default function RelatoriosPage() {
     const [tabelaPrecoSelecionada, setTabelaPrecoSelecionada] = useState<'todas' | '50a199' | '200a699' | 'atacado' | 'avista' | 'redes'>('todas');
     const [fabricaSelecionada, setFabricaSelecionada] = useState<string>('todas');
     const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+    const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
     const relatorioRef = useRef<HTMLDivElement>(null);
 
-    // ... (rest of code)
+    // Filter orders by date
+    const pedidosFiltrados = useMemo(() => {
+        const start = new Date(periodoInicio);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(periodoFim);
+        end.setHours(23, 59, 59, 999);
+
+        return orders.filter(order => {
+            const date = new Date(order.data);
+            return date >= start && date <= end;
+        });
+    }, [orders, periodoInicio, periodoFim]);
+
+    // Sales Statistics
+    const estatisticasVendas = useMemo(() => {
+        const totalVendas = pedidosFiltrados.reduce((acc: number, order: Order) => acc + order.valorTotal, 0);
+        const totalPedidos = pedidosFiltrados.length;
+        const ticketMedio = totalPedidos > 0 ? totalVendas / totalPedidos : 0;
+
+        const vendasPorDia: Record<string, number> = {};
+        pedidosFiltrados.forEach((order: Order) => {
+            const date = new Date(order.data).toLocaleDateString('pt-BR');
+            vendasPorDia[date] = (vendasPorDia[date] || 0) + order.valorTotal;
+        });
+
+        return { totalVendas, totalPedidos, ticketMedio, vendasPorDia };
+    }, [pedidosFiltrados]);
+
+    // Product Statistics
+    const estatisticasProdutos = useMemo(() => {
+        const produtosMap = new Map<string, { nome: string; qtd: number; valor: number }>();
+
+        pedidosFiltrados.forEach((order: Order) => {
+            order.itens.forEach((item: any) => {
+                const atual = produtosMap.get(item.nomeProduto) || { nome: item.nomeProduto, qtd: 0, valor: 0 };
+                produtosMap.set(item.nomeProduto, {
+                    nome: item.nomeProduto,
+                    qtd: atual.qtd + item.quantidade,
+                    valor: atual.valor + item.total
+                });
+            });
+        });
+
+        return Array.from(produtosMap.values()).sort((a, b) => b.valor - a.valor);
+    }, [pedidosFiltrados]);
 
     // Estatísticas de Clientes
     const estatisticasClientes = useMemo(() => {
