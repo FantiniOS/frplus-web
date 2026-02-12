@@ -100,17 +100,17 @@ export default function PedidosPage() {
                                 onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
                                 className="p-3 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors group gap-3 md:gap-0 cursor-pointer"
                             >
-                                <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4 w-full min-w-0">
-                                    {/* Mobile Top Row: Icon + Date */}
+                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 w-full min-w-0">
+                                    {/* Top Row Mobile: Chevron + Date + Status Badge? */}
                                     <div className="flex items-center justify-between md:justify-start gap-2 w-full md:w-auto">
                                         <div className="flex items-center gap-2">
-                                            <div className="p-1 rounded bg-blue-500/10 shrink-0">
-                                                {expandedOrderId === order.id ? (
-                                                    <ChevronUp className="h-3 w-3 text-blue-400" />
-                                                ) : (
-                                                    <ChevronDown className="h-3 w-3 text-blue-400" />
-                                                )}
+                                            <div className={`p-1 rounded shrink-0 ${expandedOrderId === order.id ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-gray-400'}`}>
+                                                {expandedOrderId === order.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                                             </div>
+                                            {/* Mobile Order ID or Type */}
+                                            <span className="md:hidden text-[10px] font-mono text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
+                                                {order.tipo === 'Bonificacao' ? 'BONIFICAÇÃO' : 'VENDA'}
+                                            </span>
                                         </div>
 
                                         {/* Data (Mobile: Top Right) */}
@@ -122,42 +122,54 @@ export default function PedidosPage() {
                                         </div>
                                     </div>
 
-                                    {/* Cliente - Full Width on Mobile */}
-                                    <div className="w-full md:w-48 min-w-0 pl-1 md:pl-0 mt-1 md:mt-0">
-                                        <p className="md:hidden text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Cliente</p>
-                                        <p className="text-sm font-medium text-white break-words leading-tight w-full">{order.nomeCliente}</p>
+                                    {/* Main Row Mobile: Client Name */}
+                                    <div className="w-full md:w-48 min-w-0 pl-0 md:pl-0 mt-0 md:mt-0">
+                                        <p className="text-sm font-medium text-white truncate w-full">
+                                            {order.nomeCliente}
+                                        </p>
+                                        <div className="md:hidden flex items-center gap-2 mt-1">
+                                            <span className="text-[10px] text-gray-500">{order.itens.length} itens</span>
+                                            {order.tipo === 'Bonificacao' && (
+                                                <span className="text-[10px] text-amber-500 flex items-center gap-0.5">
+                                                    <Package className="h-3 w-3" /> Bonificação
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    {/* Data (Desktop) e Itens */}
-                                    <div className="flex items-center gap-4 w-full md:w-auto mt-1 md:mt-0">
-                                        <div className="hidden md:block md:w-24">
-                                            <p className="text-xs text-gray-400 flex items-center gap-1 leading-none">
+                                    {/* Desktop Info Columns */}
+                                    <div className="hidden md:flex items-center gap-4 w-full md:w-auto">
+                                        <div className="w-24">
+                                            <p className="text-xs text-gray-400 flex items-center gap-1">
                                                 <Calendar className="h-3 w-3" />
                                                 {new Date(order.data).toLocaleDateString('pt-BR')}
                                             </p>
                                         </div>
-
-                                        <div className="w-full md:w-16 flex justify-between md:block">
-                                            <span className="md:hidden text-xs text-gray-500">Itens:</span>
-                                            <p className="text-xs text-gray-400 leading-none">
-                                                {order.itens.length} <span className="hidden md:inline">itens</span>
-                                            </p>
+                                        <div className="w-24">
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${order.tipo === 'Bonificacao' ? 'bg-amber-500/10 text-amber-500' : 'bg-green-500/10 text-green-500'}`}>
+                                                {order.tipo || 'Venda'}
+                                            </span>
+                                        </div>
+                                        <div className="w-16 text-right">
+                                            <p className="text-xs text-gray-400">{order.itens.length} itens</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Rodapé Mobile: Valor + Ações */}
-                                <div className="flex items-center justify-between w-full md:w-auto gap-4 border-t border-white/5 pt-2 md:pt-0 md:border-0 mt-1 md:mt-0">
+                                {/* Rodapé Mobile/Desktop: Valor + Ações */}
+                                <div className="flex items-center justify-between w-full md:w-auto gap-4 border-t border-white/5 pt-2 md:pt-0 md:border-0 mt-2 md:mt-0">
                                     {/* Valor */}
-                                    <div className="text-left md:text-right md:w-28 flex items-center gap-2 md:block">
-                                        <span className="md:hidden text-xs text-gray-500 font-medium">Total:</span>
-                                        <p className="text-sm font-bold text-green-400 leading-none">R$ {order.valorTotal.toFixed(2)}</p>
+                                    <div className="text-left md:text-right md:w-28 flex flex-col md:block">
+                                        <span className="md:hidden text-[10px] text-gray-500 uppercase">Total</span>
+                                        <p className="text-sm font-bold text-green-400 leading-none">
+                                            R$ {order.valorTotal.toFixed(2)}
+                                        </p>
                                     </div>
 
                                     {/* Ações */}
                                     <div className="flex items-center gap-1">
                                         <Link href={`/dashboard/pedidos/${order.id}`} onClick={(e) => e.stopPropagation()}>
-                                            <button className="p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white">
+                                            <button className="p-2 rounded-lg text-blue-400 hover:bg-blue-500/10 transition-colors">
                                                 <Pencil className="h-4 w-4" />
                                             </button>
                                         </Link>
@@ -166,7 +178,7 @@ export default function PedidosPage() {
                                                 e.stopPropagation();
                                                 setDeleteId(order.id);
                                             }}
-                                            className="p-2 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-400"
+                                            className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </button>
