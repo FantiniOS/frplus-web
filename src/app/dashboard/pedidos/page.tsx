@@ -13,13 +13,26 @@ export default function PedidosPage() {
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
-    const filteredOrders = orders.filter(order =>
-        order.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase()) || order.id.includes(searchTerm)
-    );
+    // State for Month Filter (Default to current month, like Dashboard)
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+
+    // Filter by Search Term AND Selected Month
+    const filteredOrders = orders.filter(order => {
+        const matchesSearch = order.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase()) || order.id.includes(searchTerm);
+
+        let matchesMonth = true;
+        if (selectedMonth) {
+            const orderDate = new Date(order.data).toISOString().slice(0, 7);
+            matchesMonth = orderDate === selectedMonth;
+        }
+
+        return matchesSearch && matchesMonth;
+    });
 
     const stats = {
-        total: orders.length,
-        valorTotal: orders.reduce((acc, o) => acc + o.valorTotal, 0)
+        total: filteredOrders.length,
+        valorTotal: filteredOrders.reduce((acc, o) => acc + (o.tipo === 'Bonificacao' ? 0 : Number(o.valorTotal)), 0)
     };
 
     const handleDelete = () => {
@@ -29,41 +42,69 @@ export default function PedidosPage() {
         }
     };
 
+    const monthName = selectedMonth ? new Date(selectedMonth + '-02').toLocaleString('pt-BR', { month: 'long', year: 'numeric' }) : 'Todos os pedidos';
+
     return (
-        <div className="space-y-5">
+        <div className="space-y-5 animate-in fade-in duration-500">
 
             {/* Header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-white">Pedidos de Venda</h1>
-                    <p className="text-sm text-gray-400">{orders.length} pedidos no sistema</p>
+                    <p className="text-sm text-gray-400 capitalize">
+                        {selectedMonth ? `Referência: ${monthName}` : 'Todo o Histórico'}
+                    </p>
                 </div>
-                <Link href="/dashboard/pedidos/novo">
-                    <button className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
-                        <Plus className="h-4 w-4" />
-                        Novo Pedido
-                    </button>
-                </Link>
+
+                <div className="flex items-center gap-3">
+                    {/* Month Selector */}
+                    <div className="relative group flex gap-2 items-center bg-gray-900/50 p-1 rounded-lg border border-white/5">
+                        <Calendar className="h-4 w-4 text-gray-400 ml-2" />
+                        <input
+                            type="month"
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="bg-transparent border-none text-white text-sm focus:ring-0 p-1.5 [color-scheme:dark]"
+                        />
+                        {selectedMonth && (
+                            <button
+                                onClick={() => setSelectedMonth('')}
+                                className="text-xs text-red-400 hover:text-red-300 px-2"
+                                title="Limpar Filtro"
+                            >
+                                <Trash2 className="h-3 w-3" />
+                            </button>
+                        )}
+                    </div>
+
+                    <Link href="/dashboard/pedidos/novo">
+                        <button className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
+                            <Plus className="h-4 w-4" />
+                            <span className="hidden md:inline">Novo Pedido</span>
+                            <span className="md:hidden">Novo</span>
+                        </button>
+                    </Link>
+                </div>
             </div>
 
-            {/* KPIs Simples */}
+            {/* KPIs Simples - Now Reactive to Filter */}
             <div className="grid grid-cols-2 gap-3">
-                <div className="form-card flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-500/10">
-                        <FileText className="h-4 w-4 text-blue-400" />
+                <div className="form-card flex items-center gap-3 bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
+                    <div className="p-2 rounded-lg bg-blue-500/20">
+                        <FileText className="h-5 w-5 text-blue-400" />
                     </div>
                     <div>
-                        <p className="text-xs text-gray-400">Total de Pedidos</p>
-                        <p className="text-lg font-bold text-white">{stats.total}</p>
+                        <p className="text-xs text-gray-400">Pedidos ({selectedMonth ? 'Mês' : 'Total'})</p>
+                        <p className="text-xl font-bold text-white">{stats.total}</p>
                     </div>
                 </div>
-                <div className="form-card flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-500/10">
-                        <DollarSign className="h-4 w-4 text-green-400" />
+                <div className="form-card flex items-center gap-3 bg-gradient-to-br from-emerald-500/10 to-transparent border-emerald-500/20">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <DollarSign className="h-5 w-5 text-emerald-400" />
                     </div>
                     <div>
-                        <p className="text-xs text-gray-400">Faturamento Total</p>
-                        <p className="text-lg font-bold text-white">R$ {stats.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        <p className="text-xs text-gray-400">Faturamento ({selectedMonth ? 'Mês' : 'Total'})</p>
+                        <p className="text-xl font-bold text-emerald-400">R$ {stats.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                     </div>
                 </div>
             </div>
