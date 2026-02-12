@@ -149,11 +149,15 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <Link href="/dashboard/pedidos/novo">
-            <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20 whitespace-nowrap">
-              + Novo Pedido
+
+          {selectedMonth && (
+            <button
+              onClick={() => setSelectedMonth('')}
+              className="text-xs text-red-400 hover:text-red-300 underline"
+            >
+              Limpar
             </button>
-          </Link>
+          )}
         </div>
       </div>
 
@@ -161,49 +165,57 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 
         {/* Card 1 - Vendas */}
-        <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-6 backdrop-blur-md shadow-lg shadow-black/20 hover:border-emerald-500/30 transition-all duration-300">
           <div className="flex items-center justify-between space-y-0 pb-2">
             <span className="text-sm font-medium text-gray-400">Vendas ({monthName})</span>
-            <DollarSign className="h-4 w-4 text-green-500" />
+            <div className="p-2 rounded-lg bg-emerald-500/10">
+              <DollarSign className="h-4 w-4 text-emerald-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white">R$ {stats.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-          <p className="text-xs text-green-500 flex items-center mt-1">
+          <div className="text-2xl font-bold text-white mt-2">R$ {stats.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+          <p className="text-xs text-emerald-400 flex items-center mt-1">
             <ArrowUpRight className="h-3 w-3 mr-1" /> Seleção atual
           </p>
         </div>
 
         {/* Card 2 - Pedidos */}
-        <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-6 backdrop-blur-md shadow-lg shadow-black/20 hover:border-blue-500/30 transition-all duration-300">
           <div className="flex items-center justify-between space-y-0 pb-2">
             <span className="text-sm font-medium text-gray-400">Pedidos ({monthName})</span>
-            <ShoppingCart className="h-4 w-4 text-blue-500" />
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <ShoppingCart className="h-4 w-4 text-blue-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white">{stats.totalOrders}</div>
-          <p className="text-xs text-blue-500 flex items-center mt-1">
+          <div className="text-2xl font-bold text-white mt-2">{stats.totalOrders}</div>
+          <p className="text-xs text-blue-400 flex items-center mt-1">
             <TrendingUp className="h-3 w-3 mr-1" /> Seleção atual
           </p>
         </div>
 
         {/* Card 3 - Clientes */}
-        <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-6 backdrop-blur-md shadow-lg shadow-black/20 hover:border-orange-500/30 transition-all duration-300">
           <div className="flex items-center justify-between space-y-0 pb-2">
             <span className="text-sm font-medium text-gray-400">Base de Clientes</span>
-            <Users className="h-4 w-4 text-orange-500" />
+            <div className="p-2 rounded-lg bg-orange-500/10">
+              <Users className="h-4 w-4 text-orange-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white">{stats.newClients}</div>
+          <div className="text-2xl font-bold text-white mt-2">{stats.newClients}</div>
           <p className="text-xs text-gray-400 mt-1">
             Total cadastrado
           </p>
         </div>
 
         {/* Card 4 - Produtos */}
-        <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-6 backdrop-blur-md shadow-lg shadow-black/20 hover:border-pink-500/30 transition-all duration-300">
           <div className="flex items-center justify-between space-y-0 pb-2">
             <span className="text-sm font-medium text-gray-400">Produtos</span>
-            <Package className="h-4 w-4 text-pink-500" />
+            <div className="p-2 rounded-lg bg-pink-500/10">
+              <Package className="h-4 w-4 text-pink-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white">{products.length}</div>
-          <p className="text-xs text-pink-500 flex items-center mt-1">
+          <div className="text-2xl font-bold text-white mt-2">{products.length}</div>
+          <p className="text-xs text-pink-400 flex items-center mt-1">
             Itens cadastrados
           </p>
         </div>
@@ -286,6 +298,6 @@ export default function DashboardPage() {
       {/* AI Insights Section */}
       <AIInsightsPanel />
 
-    </div>
+    </div >
   );
 }
