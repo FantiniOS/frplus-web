@@ -28,6 +28,7 @@ export async function GET(request: Request, { params }: Params) {
             nomeCliente: order.cliente.nomeFantasia,
             data: order.data.toISOString(),
             status: order.status,
+            tipo: order.tipo, // Fixed: Was missing, causing UI to default to 'Venda'
             valorTotal: Number(order.valorTotal),
             tabelaPreco: order.tabelaPreco,
             condicaoPagamento: order.condicaoPagamento,
