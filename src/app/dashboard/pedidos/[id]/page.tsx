@@ -1,20 +1,26 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowLeft, Save, ShoppingCart, User, Plus, Trash2, Package, Search, DollarSign, Sparkles, Factory, Check } from "lucide-react";
+import { ArrowLeft, Save, ShoppingCart, User, Plus, Trash2, Package, Search, DollarSign, Sparkles, Factory, Check, AlertTriangle } from "lucide-react";
 import { useData, Order, OrderItem } from "@/contexts/DataContext";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Extended OrderItem to support UI state for invalid items
+interface ExtendedOrderItem extends OrderItem {
+    invalid?: boolean;
+    originalName?: string;
+}
+
 export default function EditarPedidoPage({ params }: { params: { id: string } }) {
-    const { orders, clients, products, updateOrder, showToast, fabricas } = useData();
+    const { orders, clients, products, updateOrder, showToast, fabricas, loading } = useData();
     const router = useRouter();
 
     const [clienteId, setClienteId] = useState('');
     const [searchClient, setSearchClient] = useState('');
     const [searchProduct, setSearchProduct] = useState('');
-    const [itens, setItens] = useState<OrderItem[]>([]);
+    const [itens, setItens] = useState<ExtendedOrderItem[]>([]);
     const [observacoes, setObservacoes] = useState('');
     const [isBonificacao, setIsBonificacao] = useState(false);
     const [tabelaPreco, setTabelaPreco] = useState('50a199');
@@ -25,21 +31,53 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
 
     // Carregar dados do pedido
     const [dataLoaded, setDataLoaded] = useState(false);
+    const [loadingError, setLoadingError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (dataLoaded) return;
+        if (dataLoaded || loading) return;
 
         const found = orders.find(o => o.id === params.id);
         if (found) {
-            setClienteId(found.clienteId);
-            setItens(found.itens);
+            // Validate Client
+            const clientExists = clients.find(c => c.id === found.clienteId);
+            if (clientExists) {
+                setClienteId(found.clienteId);
+            } else {
+                setClienteId(''); // Client not found, force user to select
+                showToast("Cliente original não encontrado. Por favor, selecione um cliente válido.", "error");
+                setLoadingError("O cliente deste pedido não foi encontrado no cadastro atual. Selecione um novo cliente.");
+            }
+
+            // Validate Items
+            const validatedItems: ExtendedOrderItem[] = found.itens.map(item => {
+                const productExists = products.find(p => p.id === item.produtoId);
+                if (productExists) {
+                    return item as ExtendedOrderItem;
+                } else {
+                    return {
+                        ...item,
+                        invalid: true,
+                        originalName: item.nomeProduto || "Produto Desconhecido"
+                    };
+                }
+            });
+
+            if (validatedItems.some(i => i.invalid)) {
+                showToast("Alguns produtos deste pedido não existem mais. Remova-os para salvar.", "error");
+                if (!loadingError) setLoadingError("Produtos inválidos detectados. Remova-os para continuar.");
+            }
+
+            setItens(validatedItems);
             setObservacoes(found.observacoes || '');
             setIsBonificacao(found.tipo === 'Bonificacao');
             setTabelaPreco(found.tabelaPreco || '50a199');
             setCondicaoPagamento(found.condicaoPagamento || 'A vista');
             setDataLoaded(true);
+        } else {
+            // Order not found in context yet (maybe still loading or invalid ID)
+            // We rely on 'loading' flag from context to know if we should wait
         }
-    }, [orders, params.id, dataLoaded]);
+    }, [orders, params.id, dataLoaded, loading, clients, products, showToast, loadingError]);
 
     // Cliente selecionado
     const clienteSelecionado = clients.find(c => c.id === clienteId);
@@ -82,9 +120,17 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     // Obter preço baseado na tabela do cliente
     const getPrecoCliente = (product: typeof products[0]) => {
         const tabela = clienteSelecionado?.tabelaPreco || '50a199';
-        // @ts-ignore - dynamic access
-        const preco = product[tabela] || product.preco50a199;
-        return Number(preco);
+
+        let preco;
+        switch (tabela) {
+            case '200a699': preco = product.preco200a699; break;
+            case 'atacado': preco = product.precoAtacado; break;
+            case 'atacadoAVista': preco = product.precoAtacadoAVista; break;
+            case 'redes': preco = product.precoRedes; break;
+            case '50a199': default: preco = product.preco50a199; break;
+        }
+
+        return Number(preco || product.preco50a199);
     };
 
     // Adicionar item ao pedido
@@ -95,7 +141,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
         if (existingIndex >= 0) {
             setItens(prev => prev.map((item, i) =>
                 i === existingIndex
-                    ? { ...item, quantidade: item.quantidade + 1, total: (item.quantidade + 1) * item.precoUnitario }
+                    ? { ...item, quantidade: item.quantidade + 1, total: (item.quantidade + 1) * item.precoUnitario, invalid: false }
                     : item
             ));
         } else {
@@ -104,7 +150,8 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                 nomeProduto: product.nome,
                 quantidade: 1,
                 precoUnitario: preco,
-                total: preco
+                total: preco,
+                invalid: false
             }]);
         }
         showToast(`${product.nome} adicionado!`, 'success');
@@ -112,6 +159,9 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
 
     // Atualizar quantidade
     const updateQuantidade = (index: number, delta: number) => {
+        const item = itens[index];
+        if (item.invalid) return; // Cannot edit invalid items
+
         setItens(prev => prev.map((item, i) => {
             if (i !== index) return item;
             const newQtd = Math.max(1, item.quantidade + delta);
@@ -120,6 +170,9 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     };
 
     const updatePrecoItem = (index: number, novoPreco: number) => {
+        const item = itens[index];
+        if (item.invalid) return; // Cannot edit invalid items
+
         if (novoPreco < 0) return;
         setItens(prev => prev.map((item, i) => {
             if (i !== index) return item;
@@ -136,10 +189,18 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
 
     const handleSubmit = async () => {
         setLastError(null);
+
         if (!clienteId) {
-            showToast("Selecione um cliente", "error");
+            showToast("Selecione um cliente válido", "error");
             return;
         }
+
+        const invalidItems = itens.filter(i => i.invalid);
+        if (invalidItems.length > 0) {
+            showToast(`Remova os ${invalidItems.length} itens inválidos antes de salvar`, "error");
+            return;
+        }
+
         if (itens.length === 0) {
             showToast("Adicione pelo menos um produto", "error");
             return;
@@ -231,6 +292,14 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                     </div>
                 </div>
 
+                {/* Loading Error Warning */}
+                {loadingError && (
+                    <div className="mb-4 mx-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center gap-3 text-red-200 animate-pulse">
+                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                        <span className="text-sm font-medium">{loadingError}</span>
+                    </div>
+                )}
+
                 {/* Busca de Produtos */}
                 <div className="relative mb-4">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
@@ -266,7 +335,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                                     {groupProducts.map((product, index) => {
                                         const preco = getPrecoCliente(product);
-                                        const isInCart = itens.some(i => i.produtoId === product.id);
+                                        const isInCart = itens.some(i => i.produtoId === product.id && !i.invalid);
 
                                         return (
                                             <motion.button
@@ -396,9 +465,14 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                                     value={searchClient}
                                     onChange={(e) => setSearchClient(e.target.value)}
                                     placeholder="Buscar cliente..."
-                                    className="input-compact pl-7 w-full text-sm"
+                                    className="input-compact pl-7 w-full text-sm border-orange-500/50"
                                 />
                             </div>
+                            {!clienteId && (
+                                <p className="text-[10px] text-orange-400 text-center animate-pulse">
+                                    Obrigatório selecionar um cliente
+                                </p>
+                            )}
                             <div className="max-h-32 overflow-y-auto space-y-1">
                                 {filteredClients.map(c => (
                                     <button
@@ -419,24 +493,39 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                     <AnimatePresence>
                         {itens.map((item, index) => (
                             <motion.div
-                                key={item.produtoId}
+                                key={item.invalid ? `invalid-${index}` : item.produtoId}
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
-                                className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-white/5"
+                                className={`flex flex-col gap-2 p-3 rounded-xl border ${item.invalid
+                                    ? 'bg-red-500/10 border-red-500/30'
+                                    : 'bg-white/5 border-white/5'
+                                    }`}
                             >
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-white truncate">{item.nomeProduto}</p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <label className="text-[10px] text-gray-500">R$ Unit:</label>
-                                            <input
-                                                type="number"
-                                                value={item.precoUnitario}
-                                                onChange={(e) => updatePrecoItem(index, parseFloat(e.target.value))}
-                                                className="w-20 bg-black/20 border border-white/10 rounded px-1 py-0.5 text-xs text-yellow-400 font-mono focus:border-yellow-500 outline-none"
-                                            />
+                                        <div className="flex items-center gap-2">
+                                            {item.invalid && <AlertTriangle className="h-3 w-3 text-red-500" />}
+                                            <p className={`text-sm font-medium truncate ${item.invalid ? 'text-red-300' : 'text-white'}`}>
+                                                {item.invalid ? `${item.originalName} (Produto não encontrado)` : item.nomeProduto}
+                                            </p>
                                         </div>
+
+                                        {!item.invalid ? (
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <label className="text-[10px] text-gray-500">R$ Unit:</label>
+                                                <input
+                                                    type="number"
+                                                    value={item.precoUnitario}
+                                                    onChange={(e) => updatePrecoItem(index, parseFloat(e.target.value))}
+                                                    className="w-20 bg-black/20 border border-white/10 rounded px-1 py-0.5 text-xs text-yellow-400 font-mono focus:border-yellow-500 outline-none"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <p className="text-[10px] text-red-400 mt-1">
+                                                Este item impede o salvamento. Remova-o.
+                                            </p>
+                                        )}
                                     </div>
                                     <button
                                         onClick={() => removeItem(index)}
@@ -446,24 +535,26 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                                     </button>
                                 </div>
 
-                                <div className="flex items-center justify-between border-t border-white/5 pt-2">
-                                    <div className="flex items-center gap-1 bg-black/30 rounded-lg p-1">
-                                        <button
-                                            onClick={() => updateQuantidade(index, -1)}
-                                            className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
-                                        >
-                                            -
-                                        </button>
-                                        <span className="w-8 text-center text-sm font-bold text-white">{item.quantidade}</span>
-                                        <button
-                                            onClick={() => updateQuantidade(index, 1)}
-                                            className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
-                                        >
-                                            +
-                                        </button>
+                                {!item.invalid && (
+                                    <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                                        <div className="flex items-center gap-1 bg-black/30 rounded-lg p-1">
+                                            <button
+                                                onClick={() => updateQuantidade(index, -1)}
+                                                className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
+                                            >
+                                                -
+                                            </button>
+                                            <span className="w-8 text-center text-sm font-bold text-white">{item.quantidade}</span>
+                                            <button
+                                                onClick={() => updateQuantidade(index, 1)}
+                                                className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                        <p className="text-sm font-bold text-green-400">R$ {item.total.toFixed(2)}</p>
                                     </div>
-                                    <p className="text-sm font-bold text-green-400">R$ {item.total.toFixed(2)}</p>
-                                </div>
+                                )}
                             </motion.div>
                         ))}
                     </AnimatePresence>
@@ -501,11 +592,20 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
 
                     <button
                         onClick={handleSubmit}
-                        disabled={!clienteId || itens.length === 0}
+                        disabled={!clienteId || itens.length === 0 || itens.some(i => i.invalid)}
                         className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold flex items-center justify-center gap-2 hover:from-orange-500 hover:to-amber-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-600/30"
                     >
-                        <Save className="h-4 w-4" />
-                        Salvar Alterações
+                        {itens.some(i => i.invalid) ? (
+                            <>
+                                <AlertTriangle className="h-4 w-4" />
+                                Corrija os erros para salvar
+                            </>
+                        ) : (
+                            <>
+                                <Save className="h-4 w-4" />
+                                Salvar Alterações
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

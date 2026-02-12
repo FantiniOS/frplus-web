@@ -36,7 +36,9 @@ export default function DashboardPage() {
   });
 
   const stats = {
-    totalSales: monthlyOrders.reduce((acc, o) => acc + o.valorTotal, 0),
+    totalSales: monthlyOrders
+      .filter(o => o.tipo !== 'Bonificacao')
+      .reduce((acc, o) => acc + o.valorTotal, 0),
     totalOrders: monthlyOrders.length,
     newClients: clients.length, // Total base (doesn't usually filter by month unless specifically "New Clients this month")
     totalProducts: products.length

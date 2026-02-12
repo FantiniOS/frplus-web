@@ -63,7 +63,11 @@ export async function POST(request: Request) {
                 bairro: body.bairro || '',
                 cidade: body.cidade || '',
                 estado: body.estado || '',
-                cep: body.cep || ''
+                cep: body.cep || '',
+                tabelaPreco: body.tabelaPreco || '50a199',
+                limiteCredito: body.limiteCredito || 0,
+                status: body.status || 'Ativo',
+                observacoes: body.observacoes || ''
             }
         })
 

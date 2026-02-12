@@ -106,7 +106,8 @@ export default function NovoClientePage() {
       cidade: `${formData.cidade || ''}, ${formData.uf || ''}`,
       status: 'Ativo',
       ultima_compra: 'Nunca',
-      ...formData
+      ...formData,
+      tabelaPreco: formData.tabelaPreco || '50a199'
     } as Client;
 
     addClient(newClient);

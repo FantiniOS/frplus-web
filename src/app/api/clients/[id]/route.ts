@@ -54,7 +54,10 @@ export async function PUT(request: Request, { params }: Params) {
                 cidade: body.cidade,
                 estado: body.estado,
                 cep: body.cep,
-                status: body.status
+                status: body.status,
+                tabelaPreco: body.tabelaPreco || '50a199',
+                limiteCredito: body.limiteCredito,
+                observacoes: body.observacoes
             },
             include: {
                 pedidos: {

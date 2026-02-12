@@ -22,7 +22,7 @@ export default function NovoPedidoPage() {
     const [itens, setItens] = useState<OrderItem[]>([]);
     const [observacoes, setObservacoes] = useState('');
     const [dataPedido, setDataPedido] = useState(new Date().toISOString().split('T')[0]);
-    const [tabelaPreco, setTabelaPreco] = useState('preco50a199');
+    const [tabelaPreco, setTabelaPreco] = useState('50a199');
     const [condicaoPagamento, setCondicaoPagamento] = useState('30 dias');
     const [searchProduct, setSearchProduct] = useState('');
     const [searchClient, setSearchClient] = useState('');
@@ -76,9 +76,15 @@ export default function NovoPedidoPage() {
 
     // --- Logic: Pricing ---
     const getPrecoCliente = (produto: Product) => {
-        // @ts-ignore - dynamic access
-        const preco = produto[tabelaPreco] || produto.preco50a199;
-        return Number(preco);
+        let preco;
+        switch (tabelaPreco) {
+            case '200a699': preco = produto.preco200a699; break;
+            case 'atacado': preco = produto.precoAtacado; break;
+            case 'atacadoAVista': preco = produto.precoAtacadoAVista; break;
+            case 'redes': preco = produto.precoRedes; break;
+            case '50a199': default: preco = produto.preco50a199; break;
+        }
+        return Number(preco || produto.preco50a199);
     };
 
     // --- Handlers: Order Items ---
@@ -522,8 +528,8 @@ export default function NovoPedidoPage() {
                                                     onChange={(e) => setTabelaPreco(e.target.value)}
                                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg text-xs px-3 py-2 text-white focus:border-blue-500 outline-none"
                                                 >
-                                                    <option value="preco50a199">Padrão</option>
-                                                    <option value="preco200a699">200 a 699</option>
+                                                    <option value="50a199">Padrão</option>
+                                                    <option value="200a699">200 a 699</option>
                                                     <option value="atacado">Atacado</option>
                                                     <option value="atacadoAVista">Atacado à Vista</option>
                                                     <option value="redes">Redes</option>

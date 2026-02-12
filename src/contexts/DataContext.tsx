@@ -413,7 +413,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     // --- Dashboard Stats ---
     const getDashboardStats = (): DashboardStats => {
         return {
-            totalSales: orders.reduce((acc, o) => acc + o.valorTotal, 0),
+            totalSales: orders
+                .filter(o => o.tipo !== 'Bonificacao')
+                .reduce((acc, o) => acc + o.valorTotal, 0),
             totalOrders: orders.length,
             newClients: clients.length,
             totalProducts: products.length

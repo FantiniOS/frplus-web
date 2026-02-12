@@ -98,7 +98,8 @@ export default function EditarClientePage({ params }: { params: { id: string } }
             // Ensure compatibilty
             const updateData = {
                 ...formData,
-                nome: formData.razaoSocial // Keep name synced for now
+                nome: formData.razaoSocial, // Keep name synced for now
+                tabelaPreco: formData.tabelaPreco || '50a199' // Ensure default table
             };
             updateClient(formData.id, updateData);
             router.push('/dashboard/clientes');

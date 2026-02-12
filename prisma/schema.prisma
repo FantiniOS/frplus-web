@@ -51,6 +51,9 @@ model Cliente {
   estado            String
   cep               String
   status            String           @default("Ativo") // Ativo, Inativo, Bloqueado
+  tabelaPreco       String?          @default("50a199")
+  limiteCredito     Decimal?         @db.Decimal(10, 2)
+  observacoes       String?
   pedidos           Pedido[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
