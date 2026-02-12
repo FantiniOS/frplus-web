@@ -212,39 +212,50 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-7">
 
         {/* Gráfico Real (Esquerda) */}
-        <div className="col-span-4 rounded-xl border border-white/10 bg-white/5 p-6">
+        <div className="col-span-4 rounded-xl border border-white/10 bg-white/5 p-6 h-[400px]">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-white">Vendas Diárias ({monthName})</h3>
             <span className="text-xs text-gray-400">Dados do período selecionado</span>
           </div>
 
-          <div className="overflow-x-auto pb-2">
-            <div className="flex h-auto min-w-full items-stretch space-x-0">
+          <div className="w-full h-[300px]">
+            {/* Note: Ideally we import Recharts components here. 
+                 Since the original file didn't import them, we need to add imports at the top first. 
+                 However, to avoid large diffs, I'll attempt to use a simple HTML bar chart but FIXING the tooltip logic
+                 or switch to Recharts if available. 
+                 Given 'Recharts' wasn't in imports, the user likely used the manual div approach.
+                 I will improve the manual div approach to be more robust for hovering.
+             */}
+
+            <div className="flex h-full items-end space-x-1">
               {salesData.map((data, i) => {
-                const heightPercentage = Math.max((data.value / maxSale) * 100, 4); // Min 4% height
+                const heightPercentage = Math.max((data.value / maxSale) * 100, 4);
                 return (
-                  <div key={i} className="group relative flex-1 min-w-[20px] flex flex-col justify-end">
-                    {/* Bar Area */}
-                    <div className="h-64 w-full flex items-end justify-center border-b border-white/10 relative hover:bg-white/5 transition-colors">
+                  <div key={i} className="group relative flex-1 min-w-[3px] flex flex-col justify-end h-full">
 
-                      {/* Tooltip */}
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 rounded bg-white px-2 py-1 text-xs font-bold text-black opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none shadow-lg">
-                        Dia {data.dayLabel}: R$ {data.value.toFixed(0)}
+                    {/* Tooltip Container - Fixed positioning relative to bar */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                      <div className="bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap shadow-lg border border-gray-700">
+                        <span className="font-bold">Dia {data.dayLabel}</span>
+                        <br />
+                        R$ {data.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </div>
-
-                      {/* The Bar */}
-                      <div
-                        className="w-4/5 max-w-[40px] rounded-t-sm bg-blue-600 group-hover:bg-blue-400 transition-all duration-300 ease-out"
-                        style={{ height: `${heightPercentage}%` }}
-                      ></div>
+                      {/* Triangle */}
+                      <div className="w-2 h-2 bg-gray-800 border-r border-b border-gray-700 transform rotate-45 absolute -bottom-1 left-1/2 -translate-x-1/2"></div>
                     </div>
 
-                    {/* Label */}
-                    <div className="mt-2 text-center">
-                      <span className="text-[10px] text-gray-500 font-medium group-hover:text-white transition-colors">
+                    {/* Bar */}
+                    <div
+                      className="w-full rounded-t-sm bg-blue-600/80 group-hover:bg-blue-400 transition-all duration-200"
+                      style={{ height: `${heightPercentage}%` }}
+                    ></div>
+
+                    {/* Date Label (Only show some to avoid clutter) */}
+                    {i % 3 === 0 && (
+                      <div className="mt-1 text-[9px] text-gray-500 text-center truncate w-full">
                         {data.dayLabel}
-                      </span>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
