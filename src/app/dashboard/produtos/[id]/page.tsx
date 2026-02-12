@@ -76,10 +76,10 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="w-24 h-24 rounded-lg border-2 border-dashed border-white/20 bg-white/5 flex items-center justify-center overflow-hidden">
-                            {formData.imagemUrl ? (
+                            {(formData.imagemUrl || formData.imagem) ? (
                                 <>
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={formData.imagemUrl} alt="Preview" className="w-full h-full object-cover" />
+                                    <img src={formData.imagemUrl || formData.imagem} alt="Preview" className="w-full h-full object-cover" />
                                 </>
                             ) : (
                                 <Package className="h-8 w-8 text-gray-500" />
@@ -92,7 +92,7 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
                                     <span className="text-sm text-gray-300">Escolher imagem</span>
                                     <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                                 </label>
-                                {formData.imagemUrl && (
+                                {(formData.imagemUrl || formData.imagem) && (
                                     <button
                                         type="button"
                                         onClick={() => setFormData(prev => ({ ...prev, imagemUrl: '', imagem: '' }))}
@@ -105,8 +105,8 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
                             <p className="text-xs text-gray-500">PNG, JPG ou WEBP até 2MB</p>
                             <input
                                 type="text"
-                                name="imagemUrl"
-                                value={formData.imagemUrl || ''}
+                                name="imagem"
+                                value={formData.imagem || formData.imagemUrl || ''}
                                 onChange={handleChange}
                                 placeholder="Ou cole a URL da imagem aqui..."
                                 className="input-compact mt-2 text-xs"
