@@ -326,8 +326,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 return true;
             } else {
                 const errorText = await res.text();
-                console.error(`[DataContext] Error Response:`, errorText);
-                showToast('Erro ao atualizar pedido', 'error');
+                // Try to parse JSON error if possible
+                let errorMessage = 'Erro desconhecido no servidor';
+                try {
+                    const errObj = JSON.parse(errorText);
+                    errorMessage = errObj.error || errorText;
+                } catch {
+                    errorMessage = errorText;
+                }
+
+                console.error(`[DataContext] Error Response:`, errorMessage);
+                showToast(`Erro ao atualizar: ${errorMessage.substring(0, 100)}`, 'error');
                 return false;
             }
         } catch (error) {

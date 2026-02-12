@@ -225,7 +225,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
             observacoes,
             tipo: (isBonificacao ? 'Bonificacao' : 'Venda') as any,
             status: 'Pendente', // Default or preserve if we had status state
-            tabelaPreco,
+            tabelaPreco: tabelaPreco || '50a199',
             condicaoPagamento
         };
 
