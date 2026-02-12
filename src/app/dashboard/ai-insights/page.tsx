@@ -29,6 +29,7 @@ interface Opportunity {
     description: string;
     priority: 'alta' | 'media' | 'baixa';
     actionLabel: string;
+    messageSuggestion?: string;
 }
 
 interface SalesInsight {
@@ -358,7 +359,8 @@ export default function AIInsightsPage() {
 
                                             // Handle Phone Link
                                             const cleanPhone = opp.clienteTelefone?.replace(/\D/g, '');
-                                            const whatsappLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=Olá ${opp.clienteNome}, vi uma oportunidade para você: ${opp.description}` : '#';
+                                            const messageText = opp.messageSuggestion || `Olá ${opp.clienteNome}, vi uma oportunidade para você: ${opp.description}`;
+                                            const whatsappLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(messageText)}` : '#';
 
                                             return (
                                                 <div key={idx} className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">

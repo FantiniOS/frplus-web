@@ -33,6 +33,7 @@ export async function GET() {
             description: string
             priority: 'alta' | 'media' | 'baixa'
             actionLabel: string
+            messageSuggestion: string // Persuasive text for WhatsApp
         }> = []
 
         const now = new Date()
@@ -60,7 +61,8 @@ export async function GET() {
                     clienteTelefone: phone,
                     description: `${thisMonthOrders.length} pedidos este mês na tabela 50-199. Sugerir migração para 200-699.`,
                     priority: 'alta',
-                    actionLabel: 'Propor Upgrade'
+                    actionLabel: 'Propor Upgrade',
+                    messageSuggestion: `Olá ${client.nomeFantasia}, tudo bem? Estava analisando seu volume de compras recente e vi que você já está num ritmo excelente! 🚀 Se ajustarmos um pouco o próximo pedido, consigo te encaixar na Tabela de Atacado (200+) para melhorar sua margem. Vamos simular sem compromisso?`
                 })
             }
 
@@ -89,7 +91,8 @@ export async function GET() {
 
                     description: `Não consta no histórico recente de compras de "${topProduct.fabrica.nome}". ${crossSellProducts.length} produtos disponíveis.`,
                     priority: 'media',
-                    actionLabel: 'Oferecer Produto'
+                    actionLabel: 'Oferecer Produto',
+                    messageSuggestion: `Olá ${client.nomeFantasia}! Vi que você trabalha muito bem com algumas linhas nossas, mas notei que ainda não experimentou os produtos da ${topProduct.fabrica.nome}. Essa linha tem tido uma saída incrível em lojas do seu perfil. Chegou uma oportunidade boa para testar, posso te mandar o catálogo?`
                 })
             }
 
@@ -112,7 +115,8 @@ export async function GET() {
                     clienteTelefone: phone,
                     description: `Historicamente compra mais neste mês. Momento ideal para contato.`,
                     priority: 'media',
-                    actionLabel: 'Contatar Cliente'
+                    actionLabel: 'Contatar Cliente',
+                    messageSuggestion: `Olá ${client.nomeFantasia}, tudo bem? O mercado está aquecendo e, pelo seu histórico do ano passado, esse é um mês forte de vendas aí na sua região. 📈 Que tal já garantirmos o estoque para não perder nenhuma venda?`
                 })
             }
         }
