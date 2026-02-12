@@ -10,8 +10,9 @@ export async function GET(request: Request) {
         // Default threshold just for the initial query, but logic will be smarter
         const daysThreshold = parseInt(searchParams.get('days') || '15')
 
-        // Get clients with their last 5 orders to calculate cycle
+        // Get ACTIVE clients only (exclude manually marked Inativo/Bloqueado)
         const clients = await prisma.cliente.findMany({
+            where: { status: 'Ativo' },
             include: {
                 pedidos: {
                     orderBy: { data: 'desc' },
