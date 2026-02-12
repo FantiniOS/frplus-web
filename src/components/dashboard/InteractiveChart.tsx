@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 interface SalesData {
     date: string;
     dayLabel: string;
@@ -16,20 +14,18 @@ interface InteractiveChartProps {
 }
 
 export function InteractiveChart({ data, maxSale, totalSales, monthName }: InteractiveChartProps) {
-    const [hoveredData, setHoveredData] = useState<SalesData | null>(null);
-
-    // Determine display values
-    const displayLabel = hoveredData ? `Dia ${hoveredData.dayLabel}` : "Total no Período";
-    const displayValue = hoveredData ? hoveredData.value : totalSales;
+    // Static Display - No Hover State needed for header values
+    const displayLabel = "Total no Período";
+    const displayValue = totalSales;
 
     return (
         <div className="col-span-4 rounded-xl border border-white/10 bg-white/5 p-6 h-[400px] flex flex-col">
-            {/* Header Interativo */}
+            {/* Header Estático */}
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h3 className="text-lg font-semibold text-white">Vendas Diárias ({monthName})</h3>
                     <p className="text-xs text-gray-400 mt-1">
-                        {data.length > 0 ? 'Passe o mouse nas barras' : 'Sem dados'}
+                        Visão consolidada do mês
                     </p>
                 </div>
 
@@ -44,7 +40,7 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName }: Inter
             </div>
 
             {/* Área do Gráfico */}
-            <div className="flex-1 w-full bg-gradient-to-b from-black/20 to-transparent rounded-lg p-4 flex items-end justify-between gap-1 overflow-hidden relative border border-white/5">
+            <div className="flex-1 w-full bg-black/20 rounded-lg p-4 flex items-end justify-between gap-1 overflow-hidden relative border border-white/5">
 
                 {/* Linhas de Grade Sutis */}
                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 py-4">
@@ -60,46 +56,25 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName }: Inter
                 ) : (
                     data.map((item, i) => {
                         const heightPercentage = Math.max((item.value / maxSale) * 100, 4);
-                        // Lógica de Labels: Primeiro, Último, e a cada 5 dias
-                        const isFirst = i === 0;
-                        const isLast = i === data.length - 1;
-                        const isHigh = item.value === maxSale && maxSale > 0;
-                        const isMod5 = parseInt(item.dayLabel) % 5 === 0;
-
-                        const showLabel = isFirst || isLast || isMod5;
+                        // Show more labels: First, Last, and every 3rd day for better density without crowding
+                        const showLabel = i === 0 || i === data.length - 1 || i % 3 === 0;
 
                         return (
                             <div
                                 key={i}
-                                className="relative flex-1 h-full flex flex-col justify-end items-center group cursor-crosshair z-10"
-                                onMouseEnter={() => setHoveredData(item)}
-                                onMouseLeave={() => setHoveredData(null)}
+                                className="relative flex-1 h-full flex flex-col justify-end items-center group"
+                                title={`Dia ${item.dayLabel}: R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} // Native tooltip fallback
                             >
-                                {/* Barra com Glow Effect no Hover */}
+                                {/* Barra Estática */}
                                 <div
-                                    className={`
-                          w-full max-w-[40px] min-w-[4px] rounded-t-sm transition-all duration-200
-                          ${hoveredData?.dayLabel === item.dayLabel
-                                            ? 'bg-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.5)] scale-y-105'
-                                            : 'bg-blue-600/60 hover:bg-blue-500/80'}
-                        `}
+                                    className="w-full max-w-[40px] min-w-[4px] rounded-t-sm bg-blue-600/60 hover:bg-blue-400 transition-colors"
                                     style={{ height: `${heightPercentage}%` }}
                                 ></div>
 
                                 {/* Data Label */}
-                                <span
-                                    className={`  
-                           text-[9px] mt-2 block h-3 transition-colors text-center w-full
-                           ${hoveredData?.dayLabel === item.dayLabel ? 'text-white font-bold' : 'text-gray-600'}
-                        `}
-                                >
+                                <span className="text-[9px] mt-2 block h-3 text-gray-500 text-center w-full">
                                     {showLabel ? item.dayLabel : ''}
                                 </span>
-
-                                {/* Linha Vertical Indicadora (só no hover) */}
-                                {hoveredData?.dayLabel === item.dayLabel && (
-                                    <div className="absolute bottom-0 top-0 w-[1px] bg-white/10 pointer-events-none -z-10"></div>
-                                )}
                             </div>
                         );
                     })

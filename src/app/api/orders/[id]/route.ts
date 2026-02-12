@@ -52,6 +52,8 @@ export async function PUT(request: Request, { params }: Params) {
     try {
         const body = await request.json()
 
+        console.log(`[API] PUT /api/orders/${params.id} - Received Payload:`, JSON.stringify(body, null, 2));
+
         // Use transaction to ensure consistency: 
         // 1. Delete all existing items
         // 2. Update order details and create new items
