@@ -184,6 +184,11 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
         setItens(prev => prev.filter((_, i) => i !== index));
     };
 
+    const removeAllInvalidItems = () => {
+        setItens(prev => prev.filter(i => !i.invalid));
+        showToast("Todos os itens inválidos foram removidos.", "success");
+    };
+
     const valorTotal = itens.reduce((acc, item) => acc + item.total, 0);
     const totalItens = itens.reduce((acc, item) => acc + item.quantidade, 0);
 
@@ -294,9 +299,19 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
 
                 {/* Loading Error Warning */}
                 {loadingError && (
-                    <div className="mb-4 mx-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center gap-3 text-red-200 animate-pulse">
-                        <AlertTriangle className="h-5 w-5 text-red-500" />
-                        <span className="text-sm font-medium">{loadingError}</span>
+                    <div className="mb-4 mx-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg flex flex-col gap-2 animate-pulse">
+                        <div className="flex items-center gap-3 text-red-200">
+                            <AlertTriangle className="h-5 w-5 text-red-500" />
+                            <span className="text-sm font-medium">{loadingError}</span>
+                        </div>
+                        {itens.some(i => i.invalid) && (
+                            <button
+                                onClick={removeAllInvalidItems}
+                                className="self-end px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-xs rounded transition-colors"
+                            >
+                                Remover Itens Inválidos Agora
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -592,13 +607,14 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
 
                     <button
                         onClick={handleSubmit}
-                        disabled={!clienteId || itens.length === 0 || itens.some(i => i.invalid)}
+                        // Allow click even if invalid (to show toast), unless client/items missing
+                        disabled={!clienteId || itens.length === 0}
                         className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold flex items-center justify-center gap-2 hover:from-orange-500 hover:to-amber-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-600/30"
                     >
                         {itens.some(i => i.invalid) ? (
                             <>
                                 <AlertTriangle className="h-4 w-4" />
-                                Corrija os erros para salvar
+                                Corrigir Erros (Clique p/ Detalhes)
                             </>
                         ) : (
                             <>
