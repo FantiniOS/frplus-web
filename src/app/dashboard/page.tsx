@@ -148,16 +148,6 @@ export default function DashboardPage() {
               </button>
             )}
           </div>
-
-
-          {selectedMonth && (
-            <button
-              onClick={() => setSelectedMonth('')}
-              className="text-xs text-red-400 hover:text-red-300 underline"
-            >
-              Limpar
-            </button>
-          )}
         </div>
       </div>
 

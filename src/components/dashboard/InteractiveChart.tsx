@@ -56,8 +56,9 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName }: Inter
                 ) : (
                     data.map((item, i) => {
                         const heightPercentage = Math.max((item.value / maxSale) * 100, 4);
-                        // Show more labels: First, Last, and every 3rd day for better density without crowding
-                        const showLabel = i === 0 || i === data.length - 1 || i % 3 === 0;
+                        // Show more labels: First, Last, and every ODD day (1, 3, 5...) for better density
+                        // i is 0-indexed (Day 1), so i%2==0 means Day 1, 3, 5...
+                        const showLabel = i === 0 || i === data.length - 1 || i % 2 === 0;
 
                         return (
                             <div
