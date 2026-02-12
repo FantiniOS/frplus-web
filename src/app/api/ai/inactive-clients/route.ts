@@ -109,9 +109,8 @@ export async function GET(request: Request) {
             // Filter: Only show Yellow, Orange, Red
             .filter(c => c.alertLevel !== 'verde')
             .sort((a, b) => {
-                // Sort by severity (Red > Orange > Yellow)
-                const severity = { vermelho: 3, laranja: 2, amarelo: 1, verde: 0 };
-                return severity[b.alertLevel] - severity[a.alertLevel];
+                // Sort by Days Inactive DESC (Most inactive first)
+                return (b.diasInativo || 0) - (a.diasInativo || 0);
             })
 
         // Summary stats
