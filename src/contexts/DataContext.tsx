@@ -104,8 +104,8 @@ interface DataContextType {
     removeProduct: (id: string) => Promise<void>;
 
     // Order CRUD
-    addOrder: (order: Omit<Order, 'id'>) => Promise<void>;
-    updateOrder: (id: string, order: Partial<Order>) => Promise<void>;
+    addOrder: (order: Omit<Order, 'id'>) => Promise<boolean>;
+    updateOrder: (id: string, order: Partial<Order>) => Promise<boolean>;
     removeOrder: (id: string) => Promise<void>;
 
     // Fabrica CRUD
@@ -286,7 +286,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
 
     // --- Order CRUD ---
-    const addOrder = async (order: Omit<Order, 'id'>) => {
+    const addOrder = async (order: Omit<Order, 'id'>): Promise<boolean> => {
         try {
             const res = await fetch('/api/orders', {
                 method: 'POST',
@@ -296,17 +296,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             if (res.ok) {
                 await refreshData();
                 showToast('Pedido cadastrado com sucesso!', 'success');
+                return true;
             } else {
                 showToast('Erro ao cadastrar pedido', 'error');
+                return false;
             }
         } catch (error) {
             console.error('Error adding order:', error);
             showToast('Erro ao cadastrar pedido', 'error');
+            return false;
         }
     };
 
-    const updateOrder = async (id: string, data: Partial<Order>) => {
+    const updateOrder = async (id: string, data: Partial<Order>): Promise<boolean> => {
         try {
+            console.log("Saving Order...", data);
             const res = await fetch(`/api/orders/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -315,10 +319,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             if (res.ok) {
                 await refreshData();
                 showToast('Pedido atualizado com sucesso!', 'success');
+                return true;
+            } else {
+                const errorData = await res.json().catch(() => ({}));
+                console.error("API Error:", res.status, errorData);
+                showToast(`Erro ao salvar: ${res.status}`, 'error');
+                return false;
             }
         } catch (error) {
             console.error('Error updating order:', error);
-            showToast('Erro ao atualizar pedido', 'error');
+            showToast('Erro ao atualizar pedido: Falha na rede', 'error');
+            return false;
         }
     };
 

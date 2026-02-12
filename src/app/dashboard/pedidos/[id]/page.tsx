@@ -146,8 +146,10 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
             tipo: (isBonificacao ? 'Bonificacao' : 'Venda') as any
         };
 
-        await updateOrder(params.id, updatedOrder);
-        router.push('/dashboard/pedidos');
+        const success = await updateOrder(params.id, updatedOrder);
+        if (success) {
+            router.push('/dashboard/pedidos');
+        }
     };
 
     return (

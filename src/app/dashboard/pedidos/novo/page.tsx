@@ -196,7 +196,7 @@ export default function NovoPedidoPage() {
         }
 
         try {
-            await addOrder({
+            const success = await addOrder({
                 clienteId,
                 nomeCliente: clienteSelecionado?.nomeFantasia || 'Cliente',
                 fabricaId: selectedFabricaId,
@@ -215,7 +215,10 @@ export default function NovoPedidoPage() {
                     total: i.total
                 }))
             });
-            router.push('/dashboard/pedidos');
+
+            if (success) {
+                router.push('/dashboard/pedidos');
+            }
         } catch (error) {
             console.error(error);
             showToast("Erro ao salvar pedido", "error");
