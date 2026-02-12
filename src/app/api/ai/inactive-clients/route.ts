@@ -83,14 +83,21 @@ export async function GET(request: Request) {
                     }
                 }
 
+                // Calculate total spent from available orders
+                const totalGasto = orders.reduce((acc, o) => acc + Number(o.valorTotal), 0);
+
                 return {
                     id: client.id,
                     nomeFantasia: client.nomeFantasia,
                     razaoSocial: client.razaoSocial,
-                    cidade: client.cidade, // Restored field
+                    cidade: client.cidade,
                     telefone: client.telefone,
+                    celular: client.celular,
                     email: client.email,
                     diasInativo: daysSinceLastOrder,
+                    ultimaCompra: lastOrderDate ? lastOrderDate.toISOString() : null,
+                    totalGasto,
+                    totalPedidos: client._count.pedidos,
                     cicloMedio: averageCycle,
                     motivo,
                     alertLevel
