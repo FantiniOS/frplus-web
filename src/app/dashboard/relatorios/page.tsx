@@ -91,6 +91,7 @@ export default function RelatoriosPage() {
         const produtosMap = new Map<string, { nome: string; qtd: number; valor: number }>();
 
         pedidosFiltrados.forEach((order: Order) => {
+            if (order.tipo === 'Bonificacao') return;
             order.itens.forEach((item: any) => {
                 const atual = produtosMap.get(item.nomeProduto) || { nome: item.nomeProduto, qtd: 0, valor: 0 };
                 produtosMap.set(item.nomeProduto, {
@@ -109,6 +110,7 @@ export default function RelatoriosPage() {
         const clientesVendas = new Map<string, { id: string; nome: string; pedidos: number; valor: number }>();
 
         pedidosFiltrados.forEach(order => {
+            if (order.tipo === 'Bonificacao') return;
             const atual = clientesVendas.get(order.clienteId) || { id: order.clienteId, nome: order.nomeCliente, pedidos: 0, valor: 0 };
             clientesVendas.set(order.clienteId, {
                 id: order.clienteId,

@@ -5,6 +5,8 @@ interface Params {
     params: { id: string }
 }
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/orders/[id] - Get single order with details
 export async function GET(request: Request, { params }: Params) {
     try {
