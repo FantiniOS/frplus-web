@@ -89,10 +89,10 @@ export async function GET() {
                     clienteNome: client.nomeFantasia,
                     clienteTelefone: phone,
 
-                    description: `Não consta no histórico recente de compras de "${topProduct.fabrica.nome}". ${crossSellProducts.length} produtos disponíveis.`,
+                    description: `Oportunidade de incluir "${topProduct.nome}" no mix.`,
                     priority: 'media',
                     actionLabel: 'Oferecer Produto',
-                    messageSuggestion: `Olá ${client.nomeFantasia}! Vi que você trabalha muito bem com algumas linhas nossas, mas notei que ainda não experimentou os produtos da ${topProduct.fabrica.nome}. Essa linha tem tido uma saída incrível em lojas do seu perfil. Chegou uma oportunidade boa para testar, posso te mandar o catálogo?`
+                    messageSuggestion: `Olá ${client.nomeFantasia}! Vi que você já trabalha muito bem com a linha da ${topProduct.fabrica.nome}, mas notei que o item "${topProduct.nome}" ainda não está no seu mix. Esse produto tem tido uma saída excelente em lojas do seu perfil. Vamos incluir uma caixa no próximo pedido para testar?`
                 })
             }
 
