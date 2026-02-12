@@ -18,16 +18,21 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     const [observacoes, setObservacoes] = useState('');
     const [isBonificacao, setIsBonificacao] = useState(false);
 
-    // Carregar dados do pedido
+    // Carregar dados do pedido (Apenas na inicialização ou se mudar o ID)
+    const [dataLoaded, setDataLoaded] = useState(false);
+
     useEffect(() => {
+        if (dataLoaded) return; // Prevent overwriting if already loaded
+
         const found = orders.find(o => o.id === params.id);
         if (found) {
             setClienteId(found.clienteId);
             setItens(found.itens);
             setObservacoes(found.observacoes || '');
             setIsBonificacao(found.tipo === 'Bonificacao');
+            setDataLoaded(true);
         }
-    }, [orders, params.id]);
+    }, [orders, params.id, dataLoaded]);
 
     // Cliente selecionado
     const clienteSelecionado = clients.find(c => c.id === clienteId);

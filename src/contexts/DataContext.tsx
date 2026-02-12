@@ -138,6 +138,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<string | null>(null);
 
+    // Force version update
+    useEffect(() => {
+        console.log("FRPlus App Version: 2026-02-11-v2");
+    }, []);
+
     // Toast state
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
