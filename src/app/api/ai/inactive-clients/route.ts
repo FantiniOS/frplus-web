@@ -1,80 +1,106 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
-// GET /api/ai/inactive-clients - Get clients sorted by inactivity
+// GET /api/ai/inactive-clients - Get clients sorted by SMART inactivity
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url)
+        // Default threshold just for the initial query, but logic will be smarter
         const daysThreshold = parseInt(searchParams.get('days') || '15')
 
-        const thresholdDate = new Date()
-        thresholdDate.setDate(thresholdDate.getDate() - daysThreshold)
-
-        // Get all clients with their last order date
+        // Get clients with their last 5 orders to calculate cycle
         const clients = await prisma.cliente.findMany({
             include: {
                 pedidos: {
                     orderBy: { data: 'desc' },
-                    take: 1,
+                    take: 5, // Increased from 1 to 5 to calculate average cycle
                     select: { data: true, valorTotal: true }
                 },
                 _count: { select: { pedidos: true } }
             }
         })
 
-        // Calculate total spent per client
-        const clientStats = await prisma.pedido.groupBy({
-            by: ['clienteId'],
-            _sum: { valorTotal: true },
-            _count: true
-        })
-
-        const statsMap = new Map(clientStats.map(s => [s.clienteId, {
-            totalGasto: Number(s._sum.valorTotal) || 0,
-            totalPedidos: s._count
-        }]))
-
-        // Map and filter inactive clients
+        // Map and analyze clients
         const inactiveClients = clients
             .map(client => {
-                const lastOrder = client.pedidos[0]
-                const lastOrderDate = lastOrder?.data || null
+                const orders = client.pedidos;
+                const lastOrder = orders[0];
+                const lastOrderDate = lastOrder?.data ? new Date(lastOrder.data) : null;
+
                 const daysSinceLastOrder = lastOrderDate
-                    ? Math.floor((Date.now() - new Date(lastOrderDate).getTime()) / (1000 * 60 * 60 * 24))
-                    : null
+                    ? Math.floor((Date.now() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
+                    : null;
 
-                const stats = statsMap.get(client.id) || { totalGasto: 0, totalPedidos: 0 }
+                // --- SMART LOGIC: Calculate Average Cycle ---
+                let averageCycle = 30; // Default fallback (monthly)
+                let cycleConfidence = 'baixa'; // 'alta' | 'media' | 'baixa'
 
-                // Determine alert level (15+ amarelo, 30+ laranja, 60+ vermelho)
-                let alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde' = 'verde'
-                if (daysSinceLastOrder === null || daysSinceLastOrder >= 60) alertLevel = 'vermelho'
-                else if (daysSinceLastOrder >= 30) alertLevel = 'laranja'
-                else if (daysSinceLastOrder >= 15) alertLevel = 'amarelo'
+                if (orders.length >= 2) {
+                    let totalDaysDiff = 0;
+                    for (let i = 0; i < orders.length - 1; i++) {
+                        const d1 = new Date(orders[i].data);
+                        const d2 = new Date(orders[i + 1].data);
+                        const diffTime = Math.abs(d1.getTime() - d2.getTime());
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        totalDaysDiff += diffDays;
+                    }
+                    averageCycle = Math.max(7, Math.floor(totalDaysDiff / (orders.length - 1))); // Min 7 days to avoid noise
+                    cycleConfidence = orders.length >= 4 ? 'alta' : 'media';
+                }
+
+                // Determine Alert Level based on deviation from OWN cycle
+                // Green: Within normal cycle + buffer
+                // Yellow: 1.2x Cycle (Late)
+                // Orange: 1.5x Cycle (Risk)
+                // Red: 2.0x Cycle (Churn Risk)
+
+                let alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde' = 'verde';
+                let motivo = '';
+
+                if (daysSinceLastOrder === null) {
+                    // Never bought - depends on creation date? For now, treat as Red if old enough? 
+                    // Let's keep existing logic: null days = Red (Potentially lost lead)
+                    alertLevel = 'vermelho';
+                    motivo = 'Cliente nunca realizou compra.';
+                } else {
+                    const ratio = daysSinceLastOrder / averageCycle;
+
+                    if (ratio >= 2.0) {
+                        alertLevel = 'vermelho';
+                        motivo = `Ciclo médio de ${averageCycle} dias. Atraso crítico (${ratio.toFixed(1)}x normal).`;
+                    } else if (ratio >= 1.5) {
+                        alertLevel = 'laranja';
+                        motivo = `Ciclo médio de ${averageCycle} dias. Atraso considerável.`;
+                    } else if (ratio >= 1.2 || (daysSinceLastOrder > 30 && averageCycle < 30)) {
+                        // Added strict 30d check as fallback for quick buyers
+                        alertLevel = 'amarelo';
+                        motivo = `Ciclo médio de ${averageCycle} dias. Leve atraso.`;
+                    } else {
+                        alertLevel = 'verde';
+                        motivo = `Dentro do ciclo esperado (${averageCycle} dias).`;
+                    }
+                }
 
                 return {
                     id: client.id,
                     nomeFantasia: client.nomeFantasia,
                     razaoSocial: client.razaoSocial,
-                    cidade: client.cidade,
                     telefone: client.telefone,
-                    celular: client.celular,
                     email: client.email,
-                    ultimaCompra: lastOrderDate?.toISOString() || null,
                     diasInativo: daysSinceLastOrder,
-                    totalGasto: stats.totalGasto,
-                    totalPedidos: stats.totalPedidos,
+                    cicloMedio: averageCycle,
+                    motivo,
                     alertLevel
                 }
             })
-            .filter(c => c.diasInativo === null || c.diasInativo >= daysThreshold)
+            // Filter: Only show Yellow, Orange, Red
+            .filter(c => c.alertLevel !== 'verde')
             .sort((a, b) => {
-                // Null (never bought) first, then by days inactive descending
-                if (a.diasInativo === null && b.diasInativo === null) return 0
-                if (a.diasInativo === null) return -1
-                if (b.diasInativo === null) return 1
-                return b.diasInativo - a.diasInativo
+                // Sort by severity (Red > Orange > Yellow)
+                const severity = { vermelho: 3, laranja: 2, amarelo: 1, verde: 0 };
+                return severity[b.alertLevel] - severity[a.alertLevel];
             })
 
         // Summary stats
@@ -87,7 +113,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json({ clients: inactiveClients, summary })
     } catch (error) {
-        console.error('Error fetching inactive clients:', error)
+        console.error('Error fetching smart inactive clients:', error)
         return NextResponse.json({ error: 'Failed to fetch inactive clients' }, { status: 500 })
     }
 }

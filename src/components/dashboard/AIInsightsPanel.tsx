@@ -11,6 +11,8 @@ interface InactiveClient {
     alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde';
     telefone: string;
     email: string;
+    motivo?: string; // Reason for the alert
+    cicloMedio?: number; // Average cycle in days
 }
 
 interface Opportunity {
@@ -150,6 +152,11 @@ export function AIInsightsPanel() {
                                         <p className="text-[10px] text-gray-500">
                                             {client.diasInativo ? `${client.diasInativo} dias sem comprar` : 'Nunca comprou'}
                                         </p>
+                                        {client.motivo && (
+                                            <p className="text-[9px] text-blue-400 mt-0.5 italic">
+                                                🧠 {client.motivo}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <span className={`w-2 h-2 rounded-full ${alertColors[client.alertLevel].split(' ')[0]}`}></span>
