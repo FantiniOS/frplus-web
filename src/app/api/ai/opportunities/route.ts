@@ -25,6 +25,23 @@ export async function GET() {
             include: { fabrica: true }
         })
 
+        // 3. Calculate Global Product Popularity (Best Sellers)
+        // Group by product and sum quantities to find what sells most
+        const productStats = await prisma.itemPedido.groupBy({
+            by: ['produtoId'],
+            _sum: {
+                quantidade: true
+            }
+        })
+
+        // Create a Map: ProductID -> Total Sold
+        const popularityMap = new Map<string, number>()
+        productStats.forEach(stat => {
+            if (stat._sum.quantidade) {
+                popularityMap.set(stat.produtoId, stat._sum.quantidade)
+            }
+        })
+
         const opportunities: Array<{
             type: 'upgrade' | 'crossSell' | 'seasonal' | 'reactivation'
             clienteId: string
@@ -79,9 +96,14 @@ export async function GET() {
                 )
             )
 
-            const crossSellProducts = products.filter(p =>
-                boughtFabricaIds.has(p.fabricaId) && !boughtProductIds.has(p.id)
-            )
+            const crossSellProducts = products
+                .filter(p => boughtFabricaIds.has(p.fabricaId) && !boughtProductIds.has(p.id))
+                .sort((a, b) => {
+                    // Sort by Global Popularity (Desc)
+                    const scoreA = popularityMap.get(a.id) || 0
+                    const scoreB = popularityMap.get(b.id) || 0
+                    return scoreB - scoreA
+                })
 
             if (crossSellProducts.length > 0) {
                 const topProduct = crossSellProducts[0]
