@@ -309,7 +309,7 @@ export default function AIInsightsPage() {
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-3 text-right text-white">
-                                                        R$ {client.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        R$ {(client.totalGasto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </td>
                                                     <td className="px-4 py-3 text-center text-gray-300">{client.totalPedidos}</td>
                                                     <td className="px-4 py-3">
@@ -378,7 +378,7 @@ export default function AIInsightsPage() {
                                                             </span>
                                                             <p className="font-medium text-white">{opp.clienteNome}</p>
                                                         </div>
-                                                        <span className={`px-2 py-1 rounded-full text-xs border ${priorityColors[opp.priority]}`}>
+                                                        <span className={`px-2 py-1 rounded-full text-xs border ${(priorityColors[opp.priority] || priorityColors.baixa)}`}>
                                                             {opp.priority}
                                                         </span>
                                                     </div>
@@ -420,7 +420,7 @@ export default function AIInsightsPage() {
                                                         </span>
                                                         <p className="font-medium text-white">{insight.clienteNome}</p>
                                                     </div>
-                                                    <span className={`px-2 py-1 rounded-full text-xs border ${priorityColors[insight.priority]}`}>
+                                                    <span className={`px-2 py-1 rounded-full text-xs border ${(priorityColors[insight.priority] || priorityColors.baixa)}`}>
                                                         {insight.priority}
                                                     </span>
                                                 </div>
