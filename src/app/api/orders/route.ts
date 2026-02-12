@@ -22,6 +22,7 @@ export async function GET() {
             nomeCliente: o.cliente?.nomeFantasia || o.cliente?.razaoSocial || 'Cliente Desconhecido',
             data: o.data.toISOString(),
             status: o.status,
+            tipo: o.tipo, // Added: Ensure order type is returned
             valorTotal: Number(o.valorTotal),
             tabelaPreco: o.tabelaPreco,
             condicaoPagamento: o.condicaoPagamento,
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
             nomeCliente: order.cliente.nomeFantasia,
             data: order.data.toISOString(),
             status: order.status,
+            tipo: order.tipo, // Added: Ensure order type is returned
             valorTotal: Number(order.valorTotal),
             itens: order.itens.map(item => ({
                 id: item.id,
