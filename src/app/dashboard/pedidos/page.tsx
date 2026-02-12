@@ -136,11 +136,10 @@ export default function PedidosPage() {
                         <button
                             key={opt.key}
                             onClick={() => setTipoFilter(opt.key)}
-                            className={`px-3 py-1.5 text-xs font-medium transition-all ${
-                                tipoFilter === opt.key 
-                                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' 
+                            className={`px-3 py-1.5 text-xs font-medium transition-all ${tipoFilter === opt.key
+                                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
                                     : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-                            }`}
+                                }`}
                         >
                             {opt.label}
                         </button>
@@ -176,8 +175,7 @@ export default function PedidosPage() {
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Data</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Tipo</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Cliente</th>
-                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden lg:table-cell">Cond. Pagamento</th>
-                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden lg:table-cell">Status</th>
+
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Valor Total</th>
                                 <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Itens</th>
                                 <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 w-20">Ações</th>
@@ -195,15 +193,15 @@ export default function PedidosPage() {
                                 filteredOrders.map((order, index) => {
                                     const isSelected = selectedOrderId === order.id;
                                     return (
-                                        <tr 
+                                        <tr
                                             key={order.id}
                                             onClick={() => setSelectedOrderId(isSelected ? null : order.id)}
                                             className={`
                                                 border-b border-white/[0.03] cursor-pointer transition-all duration-150
-                                                ${isSelected 
-                                                    ? 'bg-blue-500/10 border-l-2 border-l-blue-500 shadow-[inset_0_0_20px_rgba(59,130,246,0.05)]' 
-                                                    : index % 2 === 0 
-                                                        ? 'bg-transparent hover:bg-white/[0.03]' 
+                                                ${isSelected
+                                                    ? 'bg-blue-500/10 border-l-2 border-l-blue-500 shadow-[inset_0_0_20px_rgba(59,130,246,0.05)]'
+                                                    : index % 2 === 0
+                                                        ? 'bg-transparent hover:bg-white/[0.03]'
                                                         : 'bg-white/[0.015] hover:bg-white/[0.04]'
                                                 }
                                             `}
@@ -217,11 +215,10 @@ export default function PedidosPage() {
 
                                             {/* Tipo */}
                                             <td className="px-3 py-2.5 hidden md:table-cell">
-                                                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${
-                                                    order.tipo === 'Bonificacao' 
-                                                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+                                                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${order.tipo === 'Bonificacao'
+                                                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                                                         : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                                }`}>
+                                                    }`}>
                                                     {order.tipo === 'Bonificacao' ? 'BONIF' : 'VENDA'}
                                                 </span>
                                             </td>
@@ -234,36 +231,20 @@ export default function PedidosPage() {
                                                     </span>
                                                     {/* Mobile: show type + date inline */}
                                                     <div className="flex items-center gap-2 md:hidden mt-0.5">
-                                                        <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${
-                                                            order.tipo === 'Bonificacao' ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
-                                                        }`}>
+                                                        <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${order.tipo === 'Bonificacao' ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
+                                                            }`}>
                                                             {order.tipo === 'Bonificacao' ? 'BONIF' : 'VENDA'}
                                                         </span>
                                                     </div>
                                                 </div>
                                             </td>
 
-                                            {/* Cond. Pagamento */}
-                                            <td className="px-3 py-2.5 hidden lg:table-cell">
-                                                <span className="text-xs text-gray-500">{order.condicaoPagamento || '—'}</span>
-                                            </td>
 
-                                            {/* Status */}
-                                            <td className="px-3 py-2.5 hidden lg:table-cell">
-                                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                                                    order.status === 'Entregue' ? 'bg-green-500/10 text-green-400' :
-                                                    order.status === 'Cancelado' ? 'bg-red-500/10 text-red-400' :
-                                                    'bg-yellow-500/10 text-yellow-400'
-                                                }`}>
-                                                    {order.status}
-                                                </span>
-                                            </td>
 
                                             {/* Valor Total */}
                                             <td className="px-3 py-2.5 text-right">
-                                                <span className={`text-sm font-bold tabular-nums ${
-                                                    order.tipo === 'Bonificacao' ? 'text-amber-400' : 'text-emerald-400'
-                                                }`}>
+                                                <span className={`text-sm font-bold tabular-nums ${order.tipo === 'Bonificacao' ? 'text-amber-400' : 'text-emerald-400'
+                                                    }`}>
                                                     {order.tipo === 'Bonificacao' ? '' : 'R$ '}{Number(order.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </span>
                                             </td>
@@ -281,7 +262,7 @@ export default function PedidosPage() {
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </button>
                                                     </Link>
-                                                    <button 
+                                                    <button
                                                         onClick={(e) => { e.stopPropagation(); setDeleteId(order.id); }}
                                                         className="p-1.5 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
                                                         title="Excluir"
@@ -318,17 +299,14 @@ export default function PedidosPage() {
                                 <span className="text-gray-500">Data:</span>
                                 <span className="text-gray-300">{new Date(selectedOrder.data).toLocaleDateString('pt-BR')}</span>
                             </div>
-                            <div className="hidden md:flex items-center gap-2 text-xs">
-                                <span className="text-gray-500">Pagamento:</span>
-                                <span className="text-gray-300">{selectedOrder.condicaoPagamento || '—'}</span>
-                            </div>
+
                             {selectedOrder.observacoes && (
                                 <div className="hidden lg:flex items-center gap-2 text-xs">
                                     <span className="text-gray-500">Obs:</span>
                                     <span className="text-gray-400 truncate max-w-[150px]">{selectedOrder.observacoes}</span>
                                 </div>
                             )}
-                            <button 
+                            <button
                                 onClick={() => setSelectedOrderId(null)}
                                 className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
                             >
@@ -410,7 +388,7 @@ export default function PedidosPage() {
                                 Editar Pedido
                             </button>
                         </Link>
-                        <button 
+                        <button
                             onClick={() => setDeleteId(selectedOrder.id)}
                             className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 px-3 py-2 text-xs font-medium text-gray-300 hover:text-red-400 transition-all"
                         >
