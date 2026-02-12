@@ -44,6 +44,7 @@ export async function PUT(request: Request, { params }: Params) {
             data: {
                 razaoSocial: body.razaoSocial,
                 nomeFantasia: body.nomeFantasia,
+                comprador: body.comprador,
                 cnpj: body.cnpj,
                 inscricaoEstadual: body.inscricaoEstadual,
                 email: body.email,

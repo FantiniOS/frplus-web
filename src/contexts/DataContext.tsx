@@ -8,6 +8,7 @@ export interface Client {
     id: string;
     razaoSocial: string;
     nomeFantasia: string;
+    comprador?: string;
     cnpj: string;
     inscricaoEstadual?: string;
     email: string;

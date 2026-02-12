@@ -44,6 +44,8 @@ export async function GET() {
             if (client.pedidos.length === 0) continue
 
             const phone = client.celular || client.telefone || '' // Get phone
+            // @ts-ignore
+            const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
 
             const recentOrders = client.pedidos.slice(0, 10)
             const thisMonthOrders = recentOrders.filter(o =>
@@ -62,7 +64,7 @@ export async function GET() {
                     description: `${thisMonthOrders.length} pedidos este mês na tabela 50-199. Sugerir migração para 200-699.`,
                     priority: 'alta',
                     actionLabel: 'Propor Upgrade',
-                    messageSuggestion: `Olá ${client.nomeFantasia}, tudo bem? Estava analisando seu volume de compras recente e vi que você já está num ritmo excelente! 🚀 Se ajustarmos um pouco o próximo pedido, consigo te encaixar na Tabela de Atacado (200+) para melhorar sua margem. Vamos simular sem compromisso?`
+                    messageSuggestion: `Olá ${greetingName}, tudo bem? Estava analisando seu volume de compras recente e vi que você já está num ritmo excelente! 🚀 Se ajustarmos um pouco o próximo pedido, consigo te encaixar na Tabela de Atacado (200+) para melhorar sua margem. Vamos simular sem compromisso?`
                 })
             }
 
@@ -92,7 +94,7 @@ export async function GET() {
                     description: `Oportunidade de incluir "${topProduct.nome}" no mix.`,
                     priority: 'media',
                     actionLabel: 'Oferecer Produto',
-                    messageSuggestion: `Olá ${client.nomeFantasia}! Vi que você já trabalha muito bem com a linha da ${topProduct.fabrica.nome}, mas notei que o item "${topProduct.nome}" ainda não está no seu mix. Esse produto tem tido uma saída excelente em lojas do seu perfil. Vamos incluir uma caixa no próximo pedido para testar?`
+                    messageSuggestion: `Olá ${greetingName}! Vi que você já trabalha muito bem com a linha da ${topProduct.fabrica.nome}, mas notei que o item "${topProduct.nome}" ainda não está no seu mix. Esse produto tem tido uma saída excelente em lojas do seu perfil. Vamos incluir uma caixa no próximo pedido para testar?`
                 })
             }
 
@@ -116,7 +118,7 @@ export async function GET() {
                     description: `Historicamente compra mais neste mês. Momento ideal para contato.`,
                     priority: 'media',
                     actionLabel: 'Contatar Cliente',
-                    messageSuggestion: `Olá ${client.nomeFantasia}, tudo bem? O mercado está aquecendo e, pelo seu histórico do ano passado, esse é um mês forte de vendas aí na sua região. 📈 Que tal já garantirmos o estoque para não perder nenhuma venda?`
+                    messageSuggestion: `Olá ${greetingName}, tudo bem? O mercado está aquecendo e, pelo seu histórico do ano passado, esse é um mês forte de vendas aí na sua região. 📈 Que tal já garantirmos o estoque para não perder nenhuma venda?`
                 })
             }
         }

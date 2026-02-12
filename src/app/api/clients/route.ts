@@ -54,6 +54,7 @@ export async function POST(request: Request) {
             data: {
                 razaoSocial: body.razaoSocial || body.nomeFantasia || 'Não informado',
                 nomeFantasia: body.nomeFantasia || body.razaoSocial || 'Não informado',
+                comprador: body.comprador || null,
                 cnpj: body.cnpj,
                 inscricaoEstadual: body.inscricaoEstadual || '',
                 email: body.email || '',

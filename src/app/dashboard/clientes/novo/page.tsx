@@ -179,7 +179,11 @@ export default function NovoClientePage() {
             <User className="h-4 w-4 text-purple-400" />
             <span className="text-sm font-medium text-white">Contato</span>
           </div>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <label className="label-compact">Nome do Comprador</label>
+              <input name="comprador" value={formData.comprador || ''} onChange={handleChange} placeholder="Nome do responsável" className="input-compact" />
+            </div>
             <div>
               <label className="label-compact">Email</label>
               <input name="email" type="email" value={formData.email || ''} onChange={handleChange} placeholder="contato@empresa.com" className="input-compact" />
