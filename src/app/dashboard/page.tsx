@@ -212,54 +212,50 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-7">
 
         {/* Gráfico Real (Esquerda) */}
-        <div className="col-span-4 rounded-xl border border-white/10 bg-white/5 p-6 h-[400px]">
+        <div className="col-span-4 rounded-xl border border-white/10 bg-white/5 p-6 h-[400px] flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-white">Vendas Diárias ({monthName})</h3>
             <span className="text-xs text-gray-400">Dados do período selecionado</span>
           </div>
 
-          <div className="w-full h-[300px]">
-            {/* Note: Ideally we import Recharts components here. 
-                 Since the original file didn't import them, we need to add imports at the top first. 
-                 However, to avoid large diffs, I'll attempt to use a simple HTML bar chart but FIXING the tooltip logic
-                 or switch to Recharts if available. 
-                 Given 'Recharts' wasn't in imports, the user likely used the manual div approach.
-                 I will improve the manual div approach to be more robust for hovering.
-             */}
+          <div className="flex-1 w-full bg-black/20 rounded-lg p-4 flex items-end justify-between gap-1 overflow-hidden relative">
+            {/* Eixo Y simplificado */}
+            <div className="absolute left-0 top-0 bottom-0 w-full border-b border-white/5 pointer-events-none"></div>
 
-            <div className="flex h-full items-end space-x-1">
-              {salesData.map((data, i) => {
+            {salesData.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
+                Sem dados para exibir
+              </div>
+            ) : (
+              salesData.map((data, i) => {
                 const heightPercentage = Math.max((data.value / maxSale) * 100, 4);
-                return (
-                  <div key={i} className="group relative flex-1 min-w-[3px] flex flex-col justify-end h-full">
+                // Mostrar apenas rótulos que cabem (ex: a cada 5 dias ou extremos)
+                const showLabel = i === 0 || i === salesData.length - 1 || (data.value === maxSale);
 
-                    {/* Tooltip Container - Fixed positioning relative to bar */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
-                      <div className="bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap shadow-lg border border-gray-700">
-                        <span className="font-bold">Dia {data.dayLabel}</span>
-                        <br />
+                return (
+                  <div key={i} className="group relative flex-1 h-full flex flex-col justify-end items-center">
+                    {/* Tooltip Nativo CSS - Mais Simples e Seguro */}
+                    <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+                      <div className="bg-gray-900 border border-gray-700 text-white text-[10px] rounded px-2 py-1 shadow-xl whitespace-nowrap">
+                        <span className="font-bold block text-blue-400">Dia {data.dayLabel}</span>
                         R$ {data.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </div>
-                      {/* Triangle */}
-                      <div className="w-2 h-2 bg-gray-800 border-r border-b border-gray-700 transform rotate-45 absolute -bottom-1 left-1/2 -translate-x-1/2"></div>
                     </div>
 
-                    {/* Bar */}
+                    {/* Barra */}
                     <div
-                      className="w-full rounded-t-sm bg-blue-600/80 group-hover:bg-blue-400 transition-all duration-200"
+                      className="w-full max-w-[30px] min-w-[4px] bg-blue-600/60 hover:bg-blue-500 rounded-t transition-all"
                       style={{ height: `${heightPercentage}%` }}
                     ></div>
 
-                    {/* Date Label (Only show some to avoid clutter) */}
-                    {i % 3 === 0 && (
-                      <div className="mt-1 text-[9px] text-gray-500 text-center truncate w-full">
-                        {data.dayLabel}
-                      </div>
-                    )}
+                    {/* Data (simplificado) */}
+                    <span className="text-[10px] text-gray-600 mt-1 h-4 block overflow-visible">
+                      {showLabel ? data.dayLabel : ''}
+                    </span>
                   </div>
                 );
-              })}
-            </div>
+              })
+            )}
           </div>
         </div>
 

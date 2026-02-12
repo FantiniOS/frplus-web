@@ -140,13 +140,25 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
         const updatedOrder: Partial<Order> = {
             clienteId,
             nomeCliente: clienteSelecionado?.nomeFantasia || clienteSelecionado?.razaoSocial || '',
-            itens,
+            itens: itens.map(i => ({
+                produtoId: i.produtoId,
+                nomeProduto: i.nomeProduto,
+                quantidade: i.quantidade,
+                precoUnitario: i.precoUnitario,
+                total: i.total
+            })),
             valorTotal,
             observacoes,
             tipo: (isBonificacao ? 'Bonificacao' : 'Venda') as any
         };
 
+        console.log('--- DEBUG: Submitting Order Update ---');
+        console.log('Order ID:', params.id);
+        console.log('Payload:', JSON.stringify(updatedOrder, null, 2));
+
         const success = await updateOrder(params.id, updatedOrder);
+        console.log('Update Result:', success);
+
         if (success) {
             router.push('/dashboard/pedidos');
         }

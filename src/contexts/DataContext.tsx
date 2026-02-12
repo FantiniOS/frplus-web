@@ -309,151 +309,123 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updateOrder = async (id: string, data: Partial<Order>): Promise<boolean> => {
-        try {
-            console.log("Saving Order...", data);
-            const res = await fetch(`/api/orders/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if (res.ok) {
-                await refreshData();
-                showToast('Pedido atualizado com sucesso!', 'success');
-                return true;
-            } else {
-                const errorData = await res.json().catch(() => ({}));
-                console.error("API Error:", res.status, errorData);
-                showToast(`Erro ao salvar: ${res.status}`, 'error');
-                return false;
-            }
-        } catch (error) {
-            console.error('Error updating order:', error);
-            showToast('Erro ao atualizar pedido: Falha na rede', 'error');
-            return false;
+        setOrders(prev => prev.filter(o => o.id !== id));
+        showToast('Pedido excluído com sucesso!', 'success');
+    }
+} catch (error) {
+    console.error('Error removing order:', error);
+    showToast('Erro ao excluir pedido', 'error');
+}
+};
+
+// --- Fabrica CRUD ---
+const addFabrica = async (fabrica: Omit<Fabrica, 'id'>) => {
+    try {
+        const res = await fetch('/api/fabricas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fabrica)
+        });
+        if (res.ok) {
+            const newFabrica = await res.json();
+            setFabricas(prev => [...prev, newFabrica]);
+            showToast('Fábrica cadastrada com sucesso!', 'success');
         }
-    };
+    } catch (error) {
+        console.error('Error adding fabrica:', error);
+        showToast('Erro ao cadastrar fábrica', 'error');
+    }
+};
 
-    const removeOrder = async (id: string) => {
-        try {
-            const res = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                setOrders(prev => prev.filter(o => o.id !== id));
-                showToast('Pedido excluído com sucesso!', 'success');
-            }
-        } catch (error) {
-            console.error('Error removing order:', error);
-            showToast('Erro ao excluir pedido', 'error');
+const updateFabrica = async (id: string, data: Partial<Fabrica>) => {
+    try {
+        const res = await fetch(`/api/fabricas/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            await refreshData();
+            showToast('Fábrica atualizada com sucesso!', 'success');
         }
-    };
+    } catch (error) {
+        console.error('Error updating fabrica:', error);
+        showToast('Erro ao atualizar fábrica', 'error');
+    }
+};
 
-    // --- Fabrica CRUD ---
-    const addFabrica = async (fabrica: Omit<Fabrica, 'id'>) => {
-        try {
-            const res = await fetch('/api/fabricas', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(fabrica)
-            });
-            if (res.ok) {
-                const newFabrica = await res.json();
-                setFabricas(prev => [...prev, newFabrica]);
-                showToast('Fábrica cadastrada com sucesso!', 'success');
-            }
-        } catch (error) {
-            console.error('Error adding fabrica:', error);
-            showToast('Erro ao cadastrar fábrica', 'error');
+const removeFabrica = async (id: string) => {
+    try {
+        const res = await fetch(`/api/fabricas/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            setFabricas(prev => prev.filter(f => f.id !== id));
+            showToast('Fábrica excluída com sucesso!', 'success');
         }
-    };
+    } catch (error) {
+        console.error('Error removing fabrica:', error);
+        showToast('Erro ao excluir fábrica', 'error');
+    }
+};
 
-    const updateFabrica = async (id: string, data: Partial<Fabrica>) => {
-        try {
-            const res = await fetch(`/api/fabricas/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if (res.ok) {
-                await refreshData();
-                showToast('Fábrica atualizada com sucesso!', 'success');
-            }
-        } catch (error) {
-            console.error('Error updating fabrica:', error);
-            showToast('Erro ao atualizar fábrica', 'error');
-        }
-    };
+// --- Auth (mock) ---
+const login = (email: string) => {
+    setUser(email);
+    localStorage.setItem('frplus_user', email);
+};
 
-    const removeFabrica = async (id: string) => {
-        try {
-            const res = await fetch(`/api/fabricas/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                setFabricas(prev => prev.filter(f => f.id !== id));
-                showToast('Fábrica excluída com sucesso!', 'success');
-            }
-        } catch (error) {
-            console.error('Error removing fabrica:', error);
-            showToast('Erro ao excluir fábrica', 'error');
-        }
-    };
+const logout = () => {
+    setUser(null);
+    localStorage.removeItem('frplus_user');
+};
 
-    // --- Auth (mock) ---
-    const login = (email: string) => {
-        setUser(email);
-        localStorage.setItem('frplus_user', email);
+// --- Dashboard Stats ---
+const getDashboardStats = (): DashboardStats => {
+    return {
+        totalSales: orders.reduce((acc, o) => acc + o.valorTotal, 0),
+        totalOrders: orders.length,
+        newClients: clients.length,
+        totalProducts: products.length
     };
+};
 
-    const logout = () => {
-        setUser(null);
-        localStorage.removeItem('frplus_user');
-    };
-
-    // --- Dashboard Stats ---
-    const getDashboardStats = (): DashboardStats => {
-        return {
-            totalSales: orders.reduce((acc, o) => acc + o.valorTotal, 0),
-            totalOrders: orders.length,
-            newClients: clients.length,
-            totalProducts: products.length
-        };
-    };
-
-    return (
-        <DataContext.Provider
-            value={{
-                clients,
-                products,
-                orders,
-                fabricas,
-                loading,
-                addClient,
-                updateClient,
-                removeClient,
-                addProduct,
-                updateProduct,
-                removeProduct,
-                addOrder,
-                updateOrder,
-                removeOrder,
-                addFabrica,
-                updateFabrica,
-                removeFabrica,
-                getDashboardStats,
-                showToast,
-                user,
-                login,
-                logout,
-                refreshData
-            }}
-        >
-            {children}
-            {toast && (
-                <Toast
-                    message={toast.message}
-                    type={toast.type}
-                    onClose={closeToast}
-                />
-            )}
-        </DataContext.Provider>
-    );
+return (
+    <DataContext.Provider
+        value={{
+            clients,
+            products,
+            orders,
+            fabricas,
+            loading,
+            addClient,
+            updateClient,
+            removeClient,
+            addProduct,
+            updateProduct,
+            removeProduct,
+            addOrder,
+            updateOrder,
+            removeOrder,
+            addFabrica,
+            updateFabrica,
+            removeFabrica,
+            getDashboardStats,
+            showToast,
+            user,
+            login,
+            logout,
+            refreshData
+        }}
+    >
+        {children}
+        {toast && (
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                onClose={closeToast}
+            />
+        )}
+    </DataContext.Provider>
+);
 }
 
 export function useData() {
