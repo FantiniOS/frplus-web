@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send } from 'lucide-react';
 
 interface InactiveClient {
     id: string;
@@ -45,11 +45,13 @@ interface SalesInsight {
 }
 
 export default function AIInsightsPage() {
-    const { products, fabricas } = useData();
+    const { products, fabricas, clients } = useData();
     const [activeTab, setActiveTab] = useState<'inactive' | 'opportunities' | 'insights' | 'campaigns'>('inactive');
     const [daysFilter, setDaysFilter] = useState(15);
     const [selectedProduct, setSelectedProduct] = useState<string>('');
     const [generatedScripts, setGeneratedScripts] = useState<{ launch: string; reactivation: string; prospecting: string } | null>(null);
+    const [selectedScriptType, setSelectedScriptType] = useState<'launch' | 'reactivation' | 'prospecting'>('launch');
+    const [clientSearch, setClientSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [inactiveClients, setInactiveClients] = useState<InactiveClient[]>([]);
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -141,12 +143,27 @@ export default function AIInsightsPage() {
         const product = products.find(p => p.id === productId);
         if (!product) return;
 
+        const fabrica = product.fabricaNome || fabricas.find(f => f.id === product.fabricaId)?.nome || '';
+
         setGeneratedScripts({
-            launch: `🚀 *LANÇAMENTO: ${product.nome}* 🚀\n\nOlá [Nome]! Acabou de chegar uma novidade incrível aqui na distribuidora: *${product.nome}*. É um item que está com alta demanda e tem tudo a ver com o perfil da sua loja. Separei um lote especial para você. Vamos aproveitar?`,
-            reactivation: `👋 Oi [Nome], tudo bem? Lembrei de você hoje! Chegou o *${product.nome}* e, conhecendo seu negócio, sei que vai girar super bem. Estou com uma condição diferenciada de retorno para fecharmos esse pedido. O que acha de reativarmos nossa parceria com esse item campeão?`,
-            prospecting: `👋 Olá! Gostaria de apresentar o *${product.nome}*, um dos itens de maior liquidez do momento. Ideal para atrair novos clientes e aumentar seu ticket médio. Posso te enviar a tabela?`
+            launch: `🚀 *LANÇAMENTO: ${product.nome}* 🚀\n\nOlá [Nome]! Acabou de chegar uma novidade incrível aqui na nossa representação${fabrica ? ` da ${fabrica}` : ''}: *${product.nome}*. É um item que está com alta demanda e tem tudo a ver com o perfil da sua loja. Separei um lote especial para você. Vamos aproveitar?`,
+            reactivation: `👋 Oi [Nome], tudo bem? Lembrei de você hoje! Chegou o *${product.nome}*${fabrica ? ` da ${fabrica}` : ''} e, conhecendo seu negócio, sei que vai girar super bem. Estou com uma condição diferenciada de retorno para fecharmos esse pedido. O que acha de reativarmos nossa parceria com esse item campeão?`,
+            prospecting: `👋 Olá! Gostaria de apresentar o *${product.nome}*${fabrica ? ` da ${fabrica}` : ''}, um dos itens de maior liquidez do momento. Ideal para atrair novos clientes e aumentar seu ticket médio. Posso te enviar a tabela?`
         });
     };
+
+    const getMessageForClient = (clientName: string) => {
+        if (!generatedScripts) return '';
+        const script = generatedScripts[selectedScriptType];
+        // Replace [Nome] with actual name
+        return script.replace('[Nome]', clientName);
+    };
+
+    const filteredClients = clients.filter(c =>
+        clientSearch === '' ||
+        c.nomeFantasia.toLowerCase().includes(clientSearch.toLowerCase()) ||
+        c.razaoSocial.toLowerCase().includes(clientSearch.toLowerCase())
+    ).slice(0, 50); // Limit to 50 for performance
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -472,11 +489,11 @@ export default function AIInsightsPage() {
                                         onChange={(e) => handleGenerateScripts(e.target.value)}
                                         className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
                                     >
-                                        <option value="">Selecione um produto...</option>
+                                        <option value="" className="text-black">Selecione um produto...</option>
                                         {products.sort((a, b) => a.nome.localeCompare(b.nome)).map(product => {
                                             const fabricaNome = product.fabricaNome || fabricas.find(f => f.id === product.fabricaId)?.nome || 'N/A';
                                             return (
-                                                <option key={product.id} value={product.id}>
+                                                <option key={product.id} value={product.id} className="text-black">
                                                     {product.nome} - {fabricaNome}
                                                 </option>
                                             )
@@ -485,85 +502,126 @@ export default function AIInsightsPage() {
                                 </div>
 
                                 {generatedScripts && (
-                                    <div className="grid gap-4 md:grid-cols-3">
-                                        {/* Launch Script */}
-                                        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden flex flex-col">
-                                            <div className="p-4 bg-gradient-to-r from-blue-600/20 to-blue-900/20 border-b border-white/10">
-                                                <h4 className="font-semibold text-blue-400 flex items-center gap-2">
-                                                    <Zap className="w-4 h-4" />
-                                                    Lançamento (Ativos)
-                                                </h4>
+                                    <>
+                                        <div className="grid gap-4 md:grid-cols-3">
+                                            {/* Launch Script */}
+                                            <div
+                                                onClick={() => setSelectedScriptType('launch')}
+                                                className={`bg-white/5 rounded-xl border overflow-hidden flex flex-col cursor-pointer transition-all ${selectedScriptType === 'launch' ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-500/5' : 'border-white/10 hover:border-white/20'}`}
+                                            >
+                                                <div className="p-4 bg-gradient-to-r from-blue-600/20 to-blue-900/20 border-b border-white/10 flex justify-between items-center">
+                                                    <h4 className="font-semibold text-blue-400 flex items-center gap-2">
+                                                        <Zap className="w-4 h-4" />
+                                                        Lançamento (Ativos)
+                                                    </h4>
+                                                    {selectedScriptType === 'launch' && <CheckCircle2 className="w-5 h-5 text-blue-400" />}
+                                                </div>
+                                                <div className="p-4 flex-1">
+                                                    <textarea
+                                                        readOnly
+                                                        className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
+                                                        value={generatedScripts.launch}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="p-4 flex-1">
-                                                <textarea
-                                                    readOnly
-                                                    className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
-                                                    value={generatedScripts.launch}
-                                                />
+
+                                            {/* Reactivation Script */}
+                                            <div
+                                                onClick={() => setSelectedScriptType('reactivation')}
+                                                className={`bg-white/5 rounded-xl border overflow-hidden flex flex-col cursor-pointer transition-all ${selectedScriptType === 'reactivation' ? 'border-orange-500 ring-1 ring-orange-500 bg-orange-500/5' : 'border-white/10 hover:border-white/20'}`}
+                                            >
+                                                <div className="p-4 bg-gradient-to-r from-orange-600/20 to-orange-900/20 border-b border-white/10 flex justify-between items-center">
+                                                    <h4 className="font-semibold text-orange-400 flex items-center gap-2">
+                                                        <RefreshCw className="w-4 h-4" />
+                                                        Reativação (Inativos)
+                                                    </h4>
+                                                    {selectedScriptType === 'reactivation' && <CheckCircle2 className="w-5 h-5 text-orange-400" />}
+                                                </div>
+                                                <div className="p-4 flex-1">
+                                                    <textarea
+                                                        readOnly
+                                                        className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
+                                                        value={generatedScripts.reactivation}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="p-4 border-t border-white/10 bg-black/20">
-                                                <button
-                                                    onClick={() => copyToClipboard(generatedScripts.launch)}
-                                                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-colors text-sm font-medium"
-                                                >
-                                                    <Copy className="w-4 h-4" />
-                                                    Copiar Texto
-                                                </button>
+
+                                            {/* Prospecting Script */}
+                                            <div
+                                                onClick={() => setSelectedScriptType('prospecting')}
+                                                className={`bg-white/5 rounded-xl border overflow-hidden flex flex-col cursor-pointer transition-all ${selectedScriptType === 'prospecting' ? 'border-green-500 ring-1 ring-green-500 bg-green-500/5' : 'border-white/10 hover:border-white/20'}`}
+                                            >
+                                                <div className="p-4 bg-gradient-to-r from-green-600/20 to-green-900/20 border-b border-white/10 flex justify-between items-center">
+                                                    <h4 className="font-semibold text-green-400 flex items-center gap-2">
+                                                        <Megaphone className="w-4 h-4" />
+                                                        Prospecção (Novos)
+                                                    </h4>
+                                                    {selectedScriptType === 'prospecting' && <CheckCircle2 className="w-5 h-5 text-green-400" />}
+                                                </div>
+                                                <div className="p-4 flex-1">
+                                                    <textarea
+                                                        readOnly
+                                                        className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
+                                                        value={generatedScripts.prospecting}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
 
-                                        {/* Reactivation Script */}
-                                        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden flex flex-col">
-                                            <div className="p-4 bg-gradient-to-r from-orange-600/20 to-orange-900/20 border-b border-white/10">
-                                                <h4 className="font-semibold text-orange-400 flex items-center gap-2">
-                                                    <RefreshCw className="w-4 h-4" />
-                                                    Reativação (Inativos)
-                                                </h4>
-                                            </div>
-                                            <div className="p-4 flex-1">
-                                                <textarea
-                                                    readOnly
-                                                    className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
-                                                    value={generatedScripts.reactivation}
-                                                />
-                                            </div>
-                                            <div className="p-4 border-t border-white/10 bg-black/20">
-                                                <button
-                                                    onClick={() => copyToClipboard(generatedScripts.reactivation)}
-                                                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 transition-colors text-sm font-medium"
-                                                >
-                                                    <Copy className="w-4 h-4" />
-                                                    Copiar Texto
-                                                </button>
-                                            </div>
-                                        </div>
+                                        {/* Client Selector & Send */}
+                                        <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+                                            <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                                                <Send className="w-5 h-5 text-purple-400" />
+                                                Enviar para Clientes
+                                            </h3>
 
-                                        {/* Prospecting Script */}
-                                        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden flex flex-col">
-                                            <div className="p-4 bg-gradient-to-r from-green-600/20 to-green-900/20 border-b border-white/10">
-                                                <h4 className="font-semibold text-green-400 flex items-center gap-2">
-                                                    <Megaphone className="w-4 h-4" />
-                                                    Prospecção (Novos)
-                                                </h4>
-                                            </div>
-                                            <div className="p-4 flex-1">
-                                                <textarea
-                                                    readOnly
-                                                    className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
-                                                    value={generatedScripts.prospecting}
+                                            <div className="relative mb-4">
+                                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar cliente para enviar..."
+                                                    value={clientSearch}
+                                                    onChange={(e) => setClientSearch(e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
                                                 />
                                             </div>
-                                            <div className="p-4 border-t border-white/10 bg-black/20">
-                                                <button
-                                                    onClick={() => copyToClipboard(generatedScripts.prospecting)}
-                                                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors text-sm font-medium"
-                                                >
-                                                    <Copy className="w-4 h-4" />
-                                                    Copiar Texto
-                                                </button>
+
+                                            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                                                <table className="w-full text-sm">
+                                                    <thead className="bg-white/5 sticky top-0">
+                                                        <tr>
+                                                            <th className="px-4 py-2 text-left text-gray-400 font-medium">Cliente</th>
+                                                            <th className="px-4 py-2 text-left text-gray-400 font-medium hidden sm:table-cell">Comprador</th>
+                                                            <th className="px-4 py-2 text-right text-gray-400 font-medium">Ação</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-white/5">
+                                                        {filteredClients.map(client => {
+                                                            const greetingName = client.comprador?.split(' ')[0] || client.nomeFantasia;
+                                                            const message = getMessageForClient(greetingName);
+                                                            const whatsappLink = `https://wa.me/55${(client.celular || client.telefone)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+                                                            return (
+                                                                <tr key={client.id} className="hover:bg-white/5">
+                                                                    <td className="px-4 py-2 text-white">{client.nomeFantasia}</td>
+                                                                    <td className="px-4 py-2 text-gray-400 hidden sm:table-cell">{client.comprador || '-'}</td>
+                                                                    <td className="px-4 py-2 text-right">
+                                                                        <a
+                                                                            href={whatsappLink}
+                                                                            target="_blank"
+                                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors font-medium text-xs"
+                                                                        >
+                                                                            <MessageCircle className="w-3 h-3" />
+                                                                            Enviar {selectedScriptType === 'launch' ? 'Lançamento' : selectedScriptType === 'reactivation' ? 'Reativação' : 'Prospecção'}
+                                                                        </a>
+                                                                    </td>
+                                                                </tr>
+                                                            )
+                                                        })}
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
-                                    </div>
+                                    </>
                                 )}
                             </div>
                         )}
