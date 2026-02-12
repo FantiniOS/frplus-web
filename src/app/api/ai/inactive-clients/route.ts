@@ -61,6 +61,7 @@ export async function GET(request: Request) {
 
                 let alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde' = 'verde';
                 let motivo = '';
+                let messageSuggestion = '';
 
                 if (daysSinceLastOrder === null) {
                     // Never bought - depends on creation date? For now, treat as Red if old enough? 
@@ -73,13 +74,16 @@ export async function GET(request: Request) {
                     if (ratio >= 2.0) {
                         alertLevel = 'vermelho';
                         motivo = `Ciclo médio de ${averageCycle} dias. Atraso crítico (${ratio.toFixed(1)}x normal).`;
+                        messageSuggestion = `Olá ${client.nomeFantasia}, tudo bem? Estava revisando aqui e senti sua falta! 🛑 Quero muito retomar nossa parceria. Consigo uma condição super diferenciada para reativarmos seu cadastro hoje. O que me diz?`;
                     } else if (ratio >= 1.5) {
                         alertLevel = 'laranja';
                         motivo = `Ciclo médio de ${averageCycle} dias. Atraso considerável.`;
+                        messageSuggestion = `Oi ${client.nomeFantasia}, sumido! Faz um tempo que não nos falamos e o estoque deve estar baixando. 📉 Chegou uma condição especial essa semana e lembrei de você. Vamos aproveitar para repor?`;
                     } else if (ratio >= 1.2 || (daysSinceLastOrder > 30 && averageCycle < 30)) {
                         // Added strict 30d check as fallback for quick buyers
                         alertLevel = 'amarelo';
                         motivo = `Ciclo médio de ${averageCycle} dias. Leve atraso.`;
+                        messageSuggestion = `Oi ${client.nomeFantasia}, tudo bem? Pelo seu histórico, está na hora de repor o estoque! 📦 Chegaram novidades que vão girar bem aí. Posso te mandar?`;
                     } else {
                         alertLevel = 'verde';
                         motivo = `Dentro do ciclo esperado (${averageCycle} dias).`;
@@ -103,7 +107,9 @@ export async function GET(request: Request) {
                     totalPedidos: client._count.pedidos,
                     cicloMedio: averageCycle,
                     motivo,
-                    alertLevel
+
+                    alertLevel,
+                    messageSuggestion
                 }
             })
             // Filter: Only show Yellow, Orange, Red

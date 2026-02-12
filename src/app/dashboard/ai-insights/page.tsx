@@ -19,6 +19,7 @@ interface InactiveClient {
     alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde';
     motivo?: string; // Reason for the alert
     cicloMedio?: number; // Average cycle in days
+    messageSuggestion?: string;
 }
 
 interface Opportunity {
@@ -307,7 +308,7 @@ export default function AIInsightsPage() {
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center justify-center gap-2">
                                                             <a
-                                                                href={`https://wa.me/55${(client.celular || client.telefone)?.replace(/\D/g, '')}`}
+                                                                href={`https://wa.me/55${(client.celular || client.telefone)?.replace(/\D/g, '')}?text=${encodeURIComponent(client.messageSuggestion || '')}`}
                                                                 target="_blank"
                                                                 className="p-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors"
                                                                 title="WhatsApp"
