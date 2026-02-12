@@ -137,6 +137,9 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
             return;
         }
 
+        // Find original order to preserve status/condicao if not in form
+        const originalOrder = orders.find(o => o.id === params.id);
+
         const updatedOrder: Partial<Order> = {
             clienteId,
             nomeCliente: clienteSelecionado?.nomeFantasia || clienteSelecionado?.razaoSocial || '',
@@ -149,7 +152,11 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
             })),
             valorTotal,
             observacoes,
-            tipo: (isBonificacao ? 'Bonificacao' : 'Venda') as any
+            tipo: (isBonificacao ? 'Bonificacao' : 'Venda') as any,
+            // Ensure we send these fields to avoid them being undefined in backend
+            status: originalOrder?.status || 'Pendente',
+            tabelaPreco: clienteSelecionado?.tabelaPreco || originalOrder?.tabelaPreco || '50a199',
+            condicaoPagamento: originalOrder?.condicaoPagamento || 'A vista'
         };
 
         console.log('--- DEBUG: Submitting Order Update ---');

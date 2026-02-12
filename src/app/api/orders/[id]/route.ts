@@ -66,6 +66,7 @@ export async function PUT(request: Request, { params }: Params) {
             prisma.pedido.update({
                 where: { id: params.id },
                 data: {
+                    clienteId: body.clienteId, // Allow changing client
                     tipo: body.tipo, // Essential for Bonificacao
                     status: body.status,
                     observacoes: body.observacoes,
