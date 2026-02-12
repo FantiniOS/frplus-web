@@ -87,6 +87,7 @@ export async function GET(request: Request) {
                     id: client.id,
                     nomeFantasia: client.nomeFantasia,
                     razaoSocial: client.razaoSocial,
+                    cidade: client.cidade, // Restored field
                     telefone: client.telefone,
                     email: client.email,
                     diasInativo: daysSinceLastOrder,

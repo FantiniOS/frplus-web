@@ -17,6 +17,8 @@ interface InactiveClient {
     totalGasto: number;
     totalPedidos: number;
     alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde';
+    motivo?: string; // Reason for the alert
+    cicloMedio?: number; // Average cycle in days
 }
 
 interface Opportunity {
@@ -297,9 +299,14 @@ export default function AIInsightsPage() {
                                                     </td>
                                                     <td className="px-4 py-3 text-gray-300">{client.cidade}</td>
                                                     <td className="px-4 py-3 text-center">
-                                                        <span className={`px-2 py-1 rounded-full text-xs ${alertColors[client.alertLevel]}`}>
+                                                        <span className={`px-2 py-1 rounded-full text-xs ${(alertColors[client.alertLevel] || alertColors.verde)}`}>
                                                             {client.diasInativo ? `${client.diasInativo} dias` : 'Nunca comprou'}
                                                         </span>
+                                                        {client.motivo && (
+                                                            <div className="text-[10px] text-gray-500 mt-1 max-w-[150px] mx-auto leading-tight italic">
+                                                                {client.motivo}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="px-4 py-3 text-right text-white">
                                                         R$ {client.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
