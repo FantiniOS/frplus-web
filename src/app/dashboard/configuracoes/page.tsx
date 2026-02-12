@@ -138,7 +138,7 @@ export default function ConfiguracoesPage() {
                 </div>
 
                 <div className="bg-black/20 rounded-lg p-4 border border-white/5">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                         <input
                             type="file"
                             accept=".csv"
@@ -221,7 +221,7 @@ export default function ConfiguracoesPage() {
                 <h2 className="text-xl font-semibold text-red-500 mb-6">Área de Risco</h2>
 
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-black/20 border border-white/5">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-lg bg-black/20 border border-white/5">
                         <div>
                             <h3 className="font-medium text-white">Sair do Sistema</h3>
                             <p className="text-sm text-gray-400">Desconectar sua conta deste dispositivo.</p>
@@ -235,7 +235,7 @@ export default function ConfiguracoesPage() {
                         </button>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-black/20 border border-red-500/20">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-lg bg-black/20 border border-red-500/20">
                         <div>
                             <h3 className="font-medium text-red-400">Resetar Sistema (Manter Usuários)</h3>
                             <p className="text-sm text-gray-400">Apaga Clientes, Produtos e Pedidos. Mantém seu login.</p>

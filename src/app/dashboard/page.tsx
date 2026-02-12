@@ -223,7 +223,7 @@ export default function DashboardPage() {
         />
 
         {/* Right Column */}
-        <div className="col-span-3 space-y-4">
+        <div className="md:col-span-3 space-y-4">
 
           {/* Top Products */}
           <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-5 shadow-xl shadow-black/30">

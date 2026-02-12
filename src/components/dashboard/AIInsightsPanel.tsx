@@ -45,6 +45,25 @@ export function AIInsightsPanel() {
     });
 
     useEffect(() => {
+        const CACHE_KEY = 'frplus_ai_insights_cache';
+        const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+        // Try to load from sessionStorage cache first
+        try {
+            const cached = sessionStorage.getItem(CACHE_KEY);
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < CACHE_TTL) {
+                    setInactiveClients(data.inactiveClients || []);
+                    setOpportunities(data.opportunities || []);
+                    setInsights(data.insights || []);
+                    setSummaries(data.summaries);
+                    setLoading(false);
+                    return;
+                }
+            }
+        } catch { /* ignore cache errors */ }
+
         const fetchData = async () => {
             try {
                 const [inactiveRes, oppRes, insightsRes] = await Promise.all([
@@ -53,23 +72,44 @@ export function AIInsightsPanel() {
                     fetch('/api/ai/sales-insights')
                 ]);
 
+                const cacheData: Record<string, unknown> = {
+                    inactiveClients: [],
+                    opportunities: [],
+                    insights: [],
+                    summaries: { inactive: { total: 0, vermelho: 0, laranja: 0, amarelo: 0 }, opportunities: { total: 0 }, insights: { total: 0 } }
+                };
+
                 if (inactiveRes.ok) {
                     const data = await inactiveRes.json();
-                    setInactiveClients(data.clients?.slice(0, 5) || []);
+                    const clients = data.clients?.slice(0, 5) || [];
+                    setInactiveClients(clients);
                     setSummaries(prev => ({ ...prev, inactive: data.summary }));
+                    cacheData.inactiveClients = clients;
+                    (cacheData.summaries as Record<string, unknown>).inactive = data.summary;
                 }
 
                 if (oppRes.ok) {
                     const data = await oppRes.json();
-                    setOpportunities(data.opportunities?.slice(0, 5) || []);
+                    const opps = data.opportunities?.slice(0, 5) || [];
+                    setOpportunities(opps);
                     setSummaries(prev => ({ ...prev, opportunities: { total: data.summary?.total || 0 } }));
+                    cacheData.opportunities = opps;
+                    (cacheData.summaries as Record<string, unknown>).opportunities = { total: data.summary?.total || 0 };
                 }
 
                 if (insightsRes.ok) {
                     const data = await insightsRes.json();
-                    setInsights(data.insights?.slice(0, 5) || []);
+                    const ins = data.insights?.slice(0, 5) || [];
+                    setInsights(ins);
                     setSummaries(prev => ({ ...prev, insights: { total: data.summary?.total || 0 } }));
+                    cacheData.insights = ins;
+                    (cacheData.summaries as Record<string, unknown>).insights = { total: data.summary?.total || 0 };
                 }
+
+                // Save to cache
+                try {
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: cacheData, timestamp: Date.now() }));
+                } catch { /* ignore storage errors */ }
             } catch (error) {
                 console.error('Error fetching AI insights:', error);
             } finally {

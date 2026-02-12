@@ -19,7 +19,7 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName }: Inter
     const avgDaily = activeDays > 0 ? displayValue / activeDays : 0;
 
     return (
-        <div className="col-span-4 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-6 h-[420px] flex flex-col shadow-2xl shadow-black/40 relative overflow-hidden">
+        <div className="md:col-span-4 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-6 h-[420px] flex flex-col shadow-2xl shadow-black/40 relative overflow-hidden">
             {/* Subtle background glow */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/[0.04] rounded-full blur-3xl pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-500/[0.03] rounded-full blur-3xl pointer-events-none" />
@@ -83,8 +83,8 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName }: Inter
                                 {/* Bar */}
                                 <div
                                     className={`w-full max-w-[32px] min-w-[3px] rounded-t transition-all duration-200 ${hasValue
-                                            ? 'bg-gradient-to-t from-blue-600/70 to-cyan-400/70 group-hover:from-blue-500 group-hover:to-cyan-300 shadow-sm shadow-blue-500/20 group-hover:shadow-blue-400/40'
-                                            : 'bg-white/[0.04]'
+                                        ? 'bg-gradient-to-t from-blue-600/70 to-cyan-400/70 group-hover:from-blue-500 group-hover:to-cyan-300 shadow-sm shadow-blue-500/20 group-hover:shadow-blue-400/40'
+                                        : 'bg-white/[0.04]'
                                         }`}
                                     style={{ height: hasValue ? `${heightPercentage}%` : '2%' }}
                                 />

@@ -128,7 +128,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                         <Building2 className="h-4 w-4 text-blue-400" />
                         <span className="text-sm font-medium text-white">Dados da Empresa</span>
                     </div>
-                    <div className="grid gap-3 grid-cols-2">
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                         <div>
                             <label className="label-compact">CNPJ *</label>
                             <div className="flex gap-1">
@@ -165,7 +165,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                         <User className="h-4 w-4 text-purple-400" />
                         <span className="text-sm font-medium text-white">Contato</span>
                     </div>
-                    <div className="grid gap-3 grid-cols-3">
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                         <div>
                             <label className="label-compact">Email</label>
                             <input name="email" type="email" value={formData.email || ''} onChange={handleChange} placeholder="contato@empresa.com" className="input-compact" />
@@ -187,7 +187,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                         <MapPin className="h-4 w-4 text-orange-400" />
                         <span className="text-sm font-medium text-white">Localização</span>
                     </div>
-                    <div className="grid gap-3 grid-cols-4">
+                    <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
                         <div>
                             <label className="label-compact">CEP</label>
                             <div className="flex gap-1">
@@ -203,7 +203,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                                 </button>
                             </div>
                         </div>
-                        <div className="col-span-3">
+                        <div className="col-span-2 sm:col-span-3">
                             <label className="label-compact">Endereço</label>
                             <input name="endereco" value={formData.endereco || ''} onChange={handleChange} className="input-compact" />
                         </div>
@@ -241,7 +241,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                         <DollarSign className="h-4 w-4 text-green-400" />
                         <span className="text-sm font-medium text-white">Perfil Comercial</span>
                     </div>
-                    <div className="grid gap-3 grid-cols-2">
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                         <div>
                             <label className="label-compact">Tabela de Preço</label>
                             <select name="tabelaPreco" value={formData.tabelaPreco || ''} onChange={handleChange} className="input-compact">

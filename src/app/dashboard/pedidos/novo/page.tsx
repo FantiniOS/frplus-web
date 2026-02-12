@@ -241,8 +241,8 @@ export default function NovoPedidoPage() {
                     <button onClick={handleBack} className="p-2 hover:bg-white/5 rounded-full transition-colors">
                         <ArrowLeft className="w-5 h-5 text-gray-400" />
                     </button>
-                    <div>
-                        <h1 className="text-sm font-bold text-white uppercase tracking-wider">
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-sm font-bold text-white uppercase tracking-wider truncate">
                             {step === 'factory' ? 'Nova Venda / Selecionar Fábrica' :
                                 step === 'client' ? 'Nova Venda / Selecionar Cliente' :
                                     `Pedido: ${fabricaSelecionada?.nome}`}

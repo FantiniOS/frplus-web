@@ -129,14 +129,13 @@ export default function RelatoriosPage() {
         window.print();
     };
 
-    // Função para exportar PDF Profissional
+    // ====== PREMIUM PDF EXPORT ENGINE ======
     const handleExportPDF = async () => {
         setExportando(true);
         try {
             const jsPDF = (await import('jspdf')).default;
             const autoTable = (await import('jspdf-autotable')).default;
 
-            // Tabela de preços em retrato, outros em paisagem
             const isTabela = tipoRelatorio === 'tabela';
             const doc = new jsPDF({
                 orientation: isTabela ? 'portrait' : 'landscape',
@@ -144,261 +143,411 @@ export default function RelatoriosPage() {
                 format: 'a4'
             });
             const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = { left: 14, right: 14 };
+            const contentWidth = pageWidth - margin.left - margin.right;
 
-            // Cores - Header escuro igual ao site
-            const corHeader: [number, number, number] = [13, 13, 13]; // #0d0d0d
-            const corPrimaria: [number, number, number] = [37, 99, 235]; // Azul para tabelas
-            const corTexto: [number, number, number] = [30, 30, 30];
+            // ====== PREMIUM COLOR PALETTE ======
+            const colors = {
+                headerDark: [10, 10, 14] as [number, number, number],
+                headerMid: [18, 18, 26] as [number, number, number],
+                accentBlue: [37, 99, 235] as [number, number, number],
+                accentCyan: [6, 182, 212] as [number, number, number],
+                accentGold: [245, 158, 11] as [number, number, number],
+                textDark: [20, 20, 30] as [number, number, number],
+                textMuted: [120, 120, 140] as [number, number, number],
+                textLight: [200, 200, 220] as [number, number, number],
+                white: [255, 255, 255] as [number, number, number],
+                rowEven: [250, 251, 254] as [number, number, number],
+                rowOdd: [255, 255, 255] as [number, number, number],
+                factoryBg: [235, 238, 248] as [number, number, number],
+                factoryAccent: [30, 64, 175] as [number, number, number],
+                greenAccent: [16, 185, 129] as [number, number, number],
+                purpleAccent: [124, 58, 237] as [number, number, number],
+                tableBorder: [226, 232, 240] as [number, number, number],
+            };
 
-            // Header com fundo escuro
-            doc.setFillColor(corHeader[0], corHeader[1], corHeader[2]);
-            doc.rect(0, 0, pageWidth, 40, 'F');
+            const titulosRelatorio: Record<string, string> = {
+                vendas: 'Relatório de Vendas',
+                produtos: 'Ranking de Produtos',
+                clientes: 'Relatório de Clientes',
+                tabela: 'Tabela de Preços'
+            };
 
-            // Variáveis de posição inicial
-            let logoEndPos = 10;
-
-            // Tentar carregar logo mantendo proporção
-            try {
-                const logoImg = new Image();
-                logoImg.crossOrigin = 'anonymous';
-                await new Promise<void>((resolve) => {
+            // ====== LOGO LOADER (reusable) ======
+            const loadLogo = (): Promise<string | null> => {
+                return new Promise((resolve) => {
+                    const logoImg = new Image();
+                    logoImg.crossOrigin = 'anonymous';
                     logoImg.onload = () => {
                         const canvas = document.createElement('canvas');
                         canvas.width = logoImg.width;
                         canvas.height = logoImg.height;
                         const ctx = canvas.getContext('2d');
                         ctx?.drawImage(logoImg, 0, 0);
-                        const logoData = canvas.toDataURL('image/png');
-
-                        // Manter proporção da logo (Máximo 30mm de largura)
-                        const maxHeight = 25;
-                        const maxWidth = 50;
-                        let logoHeight = maxHeight;
-                        let logoWidth = (logoImg.width / logoImg.height) * logoHeight;
-
-                        if (logoWidth > maxWidth) {
-                            logoWidth = maxWidth;
-                            logoHeight = (logoImg.height / logoImg.width) * logoWidth;
-                        }
-
-                        doc.addImage(logoData, 'PNG', 10, 7.5, logoWidth, logoHeight);
-                        logoEndPos = 10 + logoWidth + 5;
-                        resolve();
+                        resolve(canvas.toDataURL('image/png'));
                     };
-                    logoImg.onerror = () => resolve();
+                    logoImg.onerror = () => resolve(null);
                     logoImg.src = '/logo.png';
                 });
-            } catch {
-                // Continua sem logo se houver erro
-            }
-
-            // Centralizar Títulos
-            doc.setTextColor(255, 255, 255);
-
-            // Nome da empresa
-            doc.setFontSize(22);
-            doc.setFont('helvetica', 'bold');
-            doc.text('FRPlus', pageWidth / 2, 15, { align: 'center' });
-
-            // Subtítulo do sistema
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(180, 180, 180);
-            doc.text('Sistema de Gestão Comercial', pageWidth / 2, 20, { align: 'center' });
-
-            // Título do relatório
-            const titulosRelatorio: Record<string, string> = {
-                vendas: 'Relatório de Vendas',
-                produtos: 'Ranking de Produtos',
-                clientes: 'Ranking de Clientes',
-                tabela: 'Tabela de Preços'
             };
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.text(titulosRelatorio[tipoRelatorio], pageWidth / 2, 30, { align: 'center' });
 
-            // Data e período (Canto Direito)
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(180, 180, 180);
-            doc.text(`${new Date().toLocaleDateString('pt-BR')}`, pageWidth - 10, 12, { align: 'right' });
-            doc.text(`${new Date().toLocaleTimeString('pt-BR')}`, pageWidth - 10, 16, { align: 'right' });
+            const logoData = await loadLogo();
 
-            if (tipoRelatorio !== 'tabela') {
-                doc.text(`Período:`, pageWidth - 10, 24, { align: 'right' });
-                doc.text(`${new Date(periodoInicio).toLocaleDateString('pt-BR')} a ${new Date(periodoFim).toLocaleDateString('pt-BR')}`, pageWidth - 10, 28, { align: 'right' });
-            }
+            // ====== DRAW PREMIUM HEADER (every page) ======
+            const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
+                const headerHeight = 38;
 
-            let startY = 45;
-            doc.setTextColor(corTexto[0], corTexto[1], corTexto[2]);
+                // Dark gradient header background
+                pageDoc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
+                pageDoc.rect(0, 0, pageWidth, headerHeight, 'F');
 
-            // Tabela baseada no tipo de relatório
-            if (tipoRelatorio === 'vendas') {
-                // KPIs
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`Total Vendas: R$ ${estatisticasVendas.totalVendas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 15, startY);
-                doc.text(`Pedidos: ${estatisticasVendas.totalPedidos}`, 100, startY);
-                doc.text(`Ticket Médio: R$ ${estatisticasVendas.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 150, startY);
-                startY += 10;
+                // Subtle gradient band at bottom of header
+                pageDoc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                pageDoc.rect(0, headerHeight, pageWidth, 1.5, 'F');
+                // Cyan accent fade
+                pageDoc.setFillColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
+                pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.5, 'F');
 
-                autoTable(doc, {
-                    startY,
-                    head: [['Pedido', 'Cliente', 'Data', 'Itens', 'Valor']],
-                    body: pedidosFiltrados.map(o => [
-                        `#${o.id.slice(-6)}`,
-                        o.nomeCliente || 'Cliente Desconhecido',
-                        new Date(o.data).toLocaleDateString('pt-BR'),
-                        o.itens.length.toString(),
-                        `R$ ${o.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    ]),
-                    styles: { fontSize: 9, cellPadding: 3, halign: 'center', valign: 'middle' },
-                    headStyles: { fillColor: corPrimaria, textColor: 255, halign: 'center' },
-                    columnStyles: {
-                        0: { halign: 'left' },
-                        1: { halign: 'left' },
-                        4: { halign: 'right' }
-                    },
-                    alternateRowStyles: { fillColor: [245, 247, 250] },
-                    margin: { top: 10, left: 10, right: 10 }
-                });
-            } else if (tipoRelatorio === 'produtos') {
-                autoTable(doc, {
-                    startY,
-                    head: [['#', 'Produto', 'Quantidade Vendida', 'Valor Total']],
-                    body: estatisticasProdutos.map((p, i) => [
-                        (i + 1).toString(),
-                        p.nome,
-                        p.qtd.toString(),
-                        `R$ ${p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    ]),
-                    styles: { fontSize: 9, cellPadding: 3, halign: 'center' },
-                    headStyles: { fillColor: corPrimaria, textColor: 255 },
-                    columnStyles: {
-                        1: { halign: 'left' },
-                        3: { halign: 'right' }
-                    },
-                    alternateRowStyles: { fillColor: [245, 247, 250] },
-                    foot: [['', 'TOTAL', estatisticasProdutos.reduce((a, p) => a + p.qtd, 0).toString(), `R$ ${estatisticasProdutos.reduce((a, p) => a + p.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]],
-                    footStyles: { fillColor: [30, 30, 30], textColor: 255, fontStyle: 'bold', halign: 'right' },
-                    margin: { top: 10, left: 10, right: 10 }
-                });
-            } else if (tipoRelatorio === 'clientes') {
-                autoTable(doc, {
-                    startY,
-                    head: [['#', 'Cliente', 'Pedidos', 'Valor Total']],
-                    body: estatisticasClientes.map((c, i) => [
-                        (i + 1).toString(),
-                        c.nome,
-                        c.pedidos.toString(),
-                        `R$ ${c.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    ]),
-                    styles: { fontSize: 9, cellPadding: 3, halign: 'center' },
-                    headStyles: { fillColor: corPrimaria, textColor: 255 },
-                    columnStyles: {
-                        1: { halign: 'left' },
-                        3: { halign: 'right' }
-                    },
-                    alternateRowStyles: { fillColor: [245, 247, 250] },
-                    foot: [['', 'TOTAL', estatisticasClientes.reduce((a, c) => a + c.pedidos, 0).toString(), `R$ ${estatisticasClientes.reduce((a, c) => a + c.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]],
-                    footStyles: { fillColor: [30, 30, 30], textColor: 255, fontStyle: 'bold', halign: 'right' },
-                    margin: { top: 10, left: 10, right: 10 }
-                });
-            } else if (tipoRelatorio === 'tabela') {
-                // Configurar colunas baseado na tabela selecionada
-                const nomesTabelas: Record<string, string> = {
-                    'todas': 'Todas as Tabelas',
-                    '50a199': '50 a 199 unidades',
-                    '200a699': '200 a 699 unidades',
-                    'atacado': 'Atacado',
-                    'avista': 'Atacado À Vista',
-                    'redes': 'Redes'
-                };
-
-                // Adicionar subtítulo com tabela selecionada
-                if (tabelaPrecoSelecionada !== 'todas') {
-                    doc.setFontSize(11);
-                    doc.setFont('helvetica', 'bold');
-                    doc.text(`Tabela: ${nomesTabelas[tabelaPrecoSelecionada]}`, 15, startY);
-                    startY += 8;
+                // Logo
+                if (logoData) {
+                    try {
+                        pageDoc.addImage(logoData, 'PNG', margin.left, 6, 28, 26);
+                    } catch { /* ignore logo errors */ }
                 }
 
-                // Filtrar produtos pela fábrica selecionada
+                // Company Name
+                const titleX = logoData ? margin.left + 34 : margin.left;
+                pageDoc.setTextColor(255, 255, 255);
+                pageDoc.setFontSize(18);
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.text('FRPlus', titleX, 16);
+
+                // Company subtitle
+                pageDoc.setFontSize(7.5);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+                pageDoc.text('Gestão Comercial Inteligente', titleX, 21.5);
+
+                // Report title - right-aligned, bold
+                pageDoc.setFontSize(13);
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.setTextColor(255, 255, 255);
+                pageDoc.text(titulosRelatorio[tipoRelatorio], pageWidth - margin.right, 14, { align: 'right' });
+
+                // Date & meta info
+                pageDoc.setFontSize(7);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+                const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                pageDoc.text(`Emitido em ${dateStr}`, pageWidth - margin.right, 20, { align: 'right' });
+
+                if (tipoRelatorio !== 'tabela') {
+                    pageDoc.text(
+                        `Período: ${new Date(periodoInicio).toLocaleDateString('pt-BR')} — ${new Date(periodoFim).toLocaleDateString('pt-BR')}`,
+                        pageWidth - margin.right, 25, { align: 'right' }
+                    );
+                }
+
+                if (pageNum > 1) {
+                    pageDoc.setFontSize(7);
+                    pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                    pageDoc.text(`(Continuação)`, pageWidth - margin.right, 30, { align: 'right' });
+                }
+
+                return headerHeight + 5; // Return startY after header
+            };
+
+            // ====== DRAW PREMIUM FOOTER (every page) ======
+            const drawFooter = (pageDoc: typeof doc, pageNum: number, totalPages: number) => {
+                const footerY = pageHeight - 12;
+
+                // Thin separator line
+                pageDoc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
+                pageDoc.setLineWidth(0.3);
+                pageDoc.line(margin.left, footerY - 3, pageWidth - margin.right, footerY - 3);
+
+                pageDoc.setFontSize(7);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                pageDoc.text('FRPlus — Gestão Comercial Inteligente', margin.left, footerY);
+                pageDoc.text('Documento confidencial • Preços sujeitos a alteração sem aviso prévio', pageWidth / 2, footerY, { align: 'center' });
+
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.text(`${pageNum} / ${totalPages}`, pageWidth - margin.right, footerY, { align: 'right' });
+            };
+
+            // ====== HELPER: Draw KPI Card ======
+            const drawKpiCard = (x: number, y: number, w: number, h: number, label: string, value: string, color: [number, number, number]) => {
+                // Card background
+                doc.setFillColor(colors.rowEven[0], colors.rowEven[1], colors.rowEven[2]);
+                doc.roundedRect(x, y, w, h, 2, 2, 'F');
+
+                // Color accent bar on left
+                doc.setFillColor(color[0], color[1], color[2]);
+                doc.rect(x, y, 2.5, h, 'F');
+
+                // Label
+                doc.setFontSize(7);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                doc.text(label.toUpperCase(), x + 6, y + 6);
+
+                // Value
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
+                doc.text(value, x + 6, y + 14);
+            };
+
+            // ====== FIRST PAGE HEADER ======
+            let startY = drawHeader(doc, 1);
+
+            // ====== REPORT-SPECIFIC CONTENT ======
+            if (tipoRelatorio === 'vendas') {
+                // ---- KPI SUMMARY CARDS ----
+                startY += 2;
+                const cardW = (contentWidth - 9) / 4; // 4 cards with gaps
+                const cardH = 18;
+                const gap = 3;
+
+                drawKpiCard(margin.left, startY, cardW, cardH, 'Faturamento Total',
+                    `R$ ${estatisticasVendas.totalVendas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                    colors.greenAccent);
+                drawKpiCard(margin.left + cardW + gap, startY, cardW, cardH, 'Total de Pedidos',
+                    `${estatisticasVendas.totalPedidos}`,
+                    colors.accentBlue);
+                drawKpiCard(margin.left + (cardW + gap) * 2, startY, cardW, cardH, 'Ticket Médio',
+                    `R$ ${estatisticasVendas.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                    colors.purpleAccent);
+                drawKpiCard(margin.left + (cardW + gap) * 3, startY, cardW, cardH, 'Clientes Ativos',
+                    `${new Set(pedidosFiltrados.map(o => o.clienteId)).size}`,
+                    colors.accentGold);
+
+                startY += cardH + 6;
+
+                autoTable(doc, {
+                    startY,
+                    head: [['Pedido', 'Cliente', 'Data', 'Tipo', 'Itens', 'Valor Total']],
+                    body: pedidosFiltrados
+                        .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+                        .map(o => [
+                            `#${o.id.slice(-6)}`,
+                            o.nomeCliente || 'Cliente',
+                            new Date(o.data).toLocaleDateString('pt-BR'),
+                            o.tipo === 'Bonificacao' ? 'Bonificação' : 'Venda',
+                            o.itens.length.toString(),
+                            `R$ ${o.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                        ]),
+                    styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
+                    headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
+                    alternateRowStyles: { fillColor: colors.rowEven },
+                    columnStyles: {
+                        0: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },
+                        1: { halign: 'left' },
+                        3: { cellWidth: 22 },
+                        5: { halign: 'right', fontStyle: 'bold', textColor: colors.greenAccent }
+                    },
+                    foot: [['', '', '', '', 'TOTAL', `R$ ${estatisticasVendas.totalVendas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]],
+                    footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
+                    margin: { top: startY, left: margin.left, right: margin.right },
+                    didDrawPage: (data: { pageNumber: number }) => {
+                        if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
+                    }
+                });
+
+            } else if (tipoRelatorio === 'produtos') {
+                startY += 2;
+                // Summary line
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                doc.text(`${estatisticasProdutos.length} produtos vendidos no período`, margin.left, startY);
+                startY += 6;
+
+                autoTable(doc, {
+                    startY,
+                    head: [['#', 'Produto', 'Qtd. Vendida', 'Valor Total', '% do Total']],
+                    body: estatisticasProdutos.map((p, i) => {
+                        const totalGeral = estatisticasProdutos.reduce((a, x) => a + x.valor, 0);
+                        const pct = totalGeral > 0 ? ((p.valor / totalGeral) * 100).toFixed(1) : '0.0';
+                        return [
+                            (i + 1).toString(),
+                            p.nome,
+                            p.qtd.toString(),
+                            `R$ ${p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                            `${pct}%`
+                        ];
+                    }),
+                    styles: { fontSize: 8, cellPadding: 3, halign: 'center', lineColor: colors.tableBorder, lineWidth: 0.2 },
+                    headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
+                    alternateRowStyles: { fillColor: colors.rowEven },
+                    columnStyles: {
+                        0: { cellWidth: 12, fontStyle: 'bold' },
+                        1: { halign: 'left' },
+                        3: { halign: 'right', fontStyle: 'bold' },
+                        4: { cellWidth: 22, textColor: colors.accentBlue }
+                    },
+                    foot: [['', 'TOTAL GERAL', estatisticasProdutos.reduce((a, p) => a + p.qtd, 0).toString(),
+                        `R$ ${estatisticasProdutos.reduce((a, p) => a + p.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '100%']],
+                    footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
+                    margin: { top: startY, left: margin.left, right: margin.right },
+                    didDrawPage: (data: { pageNumber: number }) => {
+                        if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
+                    }
+                });
+
+            } else if (tipoRelatorio === 'clientes') {
+                startY += 2;
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                doc.text(`${estatisticasClientes.length} clientes com pedidos no período`, margin.left, startY);
+                startY += 6;
+
+                autoTable(doc, {
+                    startY,
+                    head: [['#', 'Cliente', 'Pedidos', 'Valor Total', '% Participação']],
+                    body: estatisticasClientes.map((c, i) => {
+                        const totalGeral = estatisticasClientes.reduce((a, x) => a + x.valor, 0);
+                        const pct = totalGeral > 0 ? ((c.valor / totalGeral) * 100).toFixed(1) : '0.0';
+                        return [
+                            (i + 1).toString(),
+                            c.nome,
+                            c.pedidos.toString(),
+                            `R$ ${c.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                            `${pct}%`
+                        ];
+                    }),
+                    styles: { fontSize: 8, cellPadding: 3, halign: 'center', lineColor: colors.tableBorder, lineWidth: 0.2 },
+                    headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
+                    alternateRowStyles: { fillColor: colors.rowEven },
+                    columnStyles: {
+                        0: { cellWidth: 12, fontStyle: 'bold' },
+                        1: { halign: 'left' },
+                        3: { halign: 'right', fontStyle: 'bold' },
+                        4: { cellWidth: 25, textColor: colors.accentBlue }
+                    },
+                    foot: [['', 'TOTAL GERAL', estatisticasClientes.reduce((a, c) => a + c.pedidos, 0).toString(),
+                        `R$ ${estatisticasClientes.reduce((a, c) => a + c.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '100%']],
+                    footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
+                    margin: { top: startY, left: margin.left, right: margin.right },
+                    didDrawPage: (data: { pageNumber: number }) => {
+                        if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
+                    }
+                });
+
+            } else if (tipoRelatorio === 'tabela') {
+                // ====== PREMIUM PRICE TABLE — DESIGNED FOR CLIENT DISTRIBUTION ======
+                const nomesTabelas: Record<string, string> = {
+                    'todas': 'Todas as Tabelas de Preço',
+                    '50a199': 'Tabela 50 a 199 unidades',
+                    '200a699': 'Tabela 200 a 699 unidades',
+                    'atacado': 'Tabela Atacado',
+                    'avista': 'Tabela Atacado À Vista',
+                    'redes': 'Tabela Redes'
+                };
+
+                // Subtitle badge
+                startY += 1;
+                const subtitleLabel = tabelaPrecoSelecionada !== 'todas' ? nomesTabelas[tabelaPrecoSelecionada] : 'Visão Consolidada — Todas as Tabelas';
+                doc.setFillColor(colors.factoryBg[0], colors.factoryBg[1], colors.factoryBg[2]);
+                doc.roundedRect(margin.left, startY, contentWidth, 9, 1.5, 1.5, 'F');
+                doc.setFontSize(8.5);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(colors.factoryAccent[0], colors.factoryAccent[1], colors.factoryAccent[2]);
+                doc.text(subtitleLabel, margin.left + 5, startY + 6);
+                // Product count
+                const totalProds = products.filter(p => {
+                    if (fabricaSelecionada === 'todas') return true;
+                    if (fabricaSelecionada === 'sem-fabrica') return !p.fabricaId;
+                    return p.fabricaId === fabricaSelecionada;
+                }).length;
+                doc.setFontSize(7);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                doc.text(`${totalProds} produtos`, pageWidth - margin.right - 5, startY + 6, { align: 'right' });
+                startY += 13;
+
+                // Filter products
                 const produtosFiltrados = products.filter(p => {
                     if (fabricaSelecionada === 'todas') return true;
                     if (fabricaSelecionada === 'sem-fabrica') return !p.fabricaId;
                     return p.fabricaId === fabricaSelecionada;
                 });
 
-                // Agrupar produtos por fábrica
+                // Group by factory
                 const productsByFabrica = produtosFiltrados.reduce((acc, product) => {
                     const fabricaId = product.fabricaId || 'sem-fabrica';
-                    if (!acc[fabricaId]) {
-                        acc[fabricaId] = [];
-                    }
+                    if (!acc[fabricaId]) acc[fabricaId] = [];
                     acc[fabricaId].push(product);
                     return acc;
                 }, {} as Record<string, typeof products>);
 
-                // Ordenar fábricas
                 const sortedFabricas = Object.keys(productsByFabrica).sort((a, b) => {
-                    const nomeA = a === 'sem-fabrica' ? 'Outros' : (fabricas.find(f => f.id === a)?.nome || 'Outros');
-                    const nomeB = b === 'sem-fabrica' ? 'Outros' : (fabricas.find(f => f.id === b)?.nome || 'Outros');
                     if (a === 'sem-fabrica') return 1;
                     if (b === 'sem-fabrica') return -1;
+                    const nomeA = fabricas.find(f => f.id === a)?.nome || 'Outros';
+                    const nomeB = fabricas.find(f => f.id === b)?.nome || 'Outros';
                     return nomeA.localeCompare(nomeB);
                 });
 
-                // Gerar tabela para cada fábrica
                 for (const fabricaId of sortedFabricas) {
                     const groupProducts = productsByFabrica[fabricaId];
-                    const fabricaNome = fabricaId === 'sem-fabrica' ? 'OUTROS' : (fabricas.find(f => f.id === fabricaId)?.nome || 'OUTROS').toUpperCase();
+                    const fabricaNome = fabricaId === 'sem-fabrica'
+                        ? 'OUTROS PRODUTOS'
+                        : (fabricas.find(f => f.id === fabricaId)?.nome || 'OUTROS').toUpperCase();
 
-                    // Título da Fábrica
-                    // Verificar se precisa de nova página
-                    if (startY > doc.internal.pageSize.getHeight() - 40) {
+                    // Check if enough space for factory header + at least 3 rows
+                    if (startY > pageHeight - 50) {
                         doc.addPage();
-                        startY = 20;
+                        startY = drawHeader(doc, doc.getNumberOfPages());
                     }
 
-                    doc.setFillColor(240, 240, 240);
-                    doc.rect(14, startY, pageWidth - 28, 8, 'F');
-                    doc.setFontSize(10);
+                    // ---- FACTORY SECTION HEADER ----
+                    // Dark factory banner
+                    doc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
+                    doc.roundedRect(margin.left, startY, contentWidth, 9, 1.5, 1.5, 'F');
+                    // Blue accent on left edge
+                    doc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                    doc.rect(margin.left, startY, 3, 9, 'F');
+                    // Factory name
+                    doc.setFontSize(9);
                     doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(50, 50, 50);
-                    doc.text(fabricaNome, 16, startY + 5.5);
-                    startY += 8;
+                    doc.setTextColor(255, 255, 255);
+                    doc.text(fabricaNome, margin.left + 7, startY + 6.2);
+                    // Product count badge
+                    doc.setFontSize(7);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
+                    doc.text(`${groupProducts.length} itens`, pageWidth - margin.right - 4, startY + 6.2, { align: 'right' });
+                    startY += 10;
 
-                    // Definir colunas baseado na seleção
-                    let headers: string[][] = [];
-                    let bodyData: string[][] = [];
+                    // ---- TABLE DATA ----
+                    let headers: string[][];
+                    let bodyData: string[][];
 
                     if (tabelaPrecoSelecionada === 'todas') {
-                        headers = [['Código', 'Produto', '50-199', '200-699', 'Atacado', 'À Vista', 'Redes']];
+                        headers = [['CÓD.', 'PRODUTO', '50-199', '200-699', 'ATACADO', 'À VISTA', 'REDES']];
                         bodyData = groupProducts.map(p => [
                             p.codigo,
                             p.nome,
-                            `R$ ${p.preco50a199?.toFixed(2) || '0.00'}`,
-                            `R$ ${p.preco200a699?.toFixed(2) || '0.00'}`,
-                            `R$ ${p.precoAtacado?.toFixed(2) || '0.00'}`,
-                            `R$ ${p.precoAtacadoAVista?.toFixed(2) || '0.00'}`,
-                            `R$ ${p.precoRedes?.toFixed(2) || '0.00'}`
+                            `R$ ${(p.preco50a199 || 0).toFixed(2)}`,
+                            `R$ ${(p.preco200a699 || 0).toFixed(2)}`,
+                            `R$ ${(p.precoAtacado || 0).toFixed(2)}`,
+                            `R$ ${(p.precoAtacadoAVista || 0).toFixed(2)}`,
+                            `R$ ${(p.precoRedes || 0).toFixed(2)}`
                         ]);
                     } else {
-                        headers = [['Código', 'Produto', 'Preço']];
+                        headers = [['CÓDIGO', 'PRODUTO', 'PREÇO UNITÁRIO']];
                         bodyData = groupProducts.map(p => {
-                            let preco = '0.00';
-                            if (tabelaPrecoSelecionada === '50a199') preco = p.preco50a199?.toFixed(2) || '0.00';
-                            else if (tabelaPrecoSelecionada === '200a699') preco = p.preco200a699?.toFixed(2) || '0.00';
-                            else if (tabelaPrecoSelecionada === 'atacado') preco = p.precoAtacado?.toFixed(2) || '0.00';
-                            else if (tabelaPrecoSelecionada === 'avista') preco = p.precoAtacadoAVista?.toFixed(2) || '0.00';
-                            else if (tabelaPrecoSelecionada === 'redes') preco = p.precoRedes?.toFixed(2) || '0.00';
-                            return [
-                                p.codigo,
-                                p.nome,
-                                `R$ ${preco}`
-                            ];
+                            let preco = 0;
+                            if (tabelaPrecoSelecionada === '50a199') preco = p.preco50a199 || 0;
+                            else if (tabelaPrecoSelecionada === '200a699') preco = p.preco200a699 || 0;
+                            else if (tabelaPrecoSelecionada === 'atacado') preco = p.precoAtacado || 0;
+                            else if (tabelaPrecoSelecionada === 'avista') preco = p.precoAtacadoAVista || 0;
+                            else if (tabelaPrecoSelecionada === 'redes') preco = p.precoRedes || 0;
+                            return [p.codigo, p.nome, `R$ ${preco.toFixed(2)}`];
                         });
                     }
 
@@ -406,38 +555,59 @@ export default function RelatoriosPage() {
                         startY,
                         head: headers,
                         body: bodyData,
-                        styles: { fontSize: 8, cellPadding: 2, valign: 'middle', halign: 'center' },
-                        headStyles: { fillColor: corPrimaria, textColor: 255, halign: 'center' },
-                        alternateRowStyles: { fillColor: [255, 255, 255] },
-                        margin: { top: 10, left: 14, right: 14 },
+                        styles: {
+                            fontSize: 7.5,
+                            cellPadding: { top: 2.5, bottom: 2.5, left: 3, right: 3 },
+                            valign: 'middle',
+                            halign: 'center',
+                            lineColor: colors.tableBorder,
+                            lineWidth: 0.15,
+                            textColor: colors.textDark
+                        },
+                        headStyles: {
+                            fillColor: colors.accentBlue,
+                            textColor: colors.white,
+                            fontStyle: 'bold',
+                            halign: 'center',
+                            cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
+                            fontSize: 7
+                        },
+                        alternateRowStyles: { fillColor: colors.rowEven },
+                        margin: { top: 10, left: margin.left, right: margin.right },
                         columnStyles: tabelaPrecoSelecionada === 'todas' ? {
-                            0: { cellWidth: 20, halign: 'left' },
-                            1: { cellWidth: 'auto', halign: 'left' }
+                            0: { cellWidth: 18, halign: 'center', fontStyle: 'bold', textColor: colors.textMuted },
+                            1: { halign: 'left' },
+                            2: { cellWidth: 20, halign: 'right', fontStyle: 'bold' },
+                            3: { cellWidth: 20, halign: 'right', fontStyle: 'bold' },
+                            4: { cellWidth: 20, halign: 'right', fontStyle: 'bold' },
+                            5: { cellWidth: 20, halign: 'right', fontStyle: 'bold' },
+                            6: { cellWidth: 20, halign: 'right', fontStyle: 'bold' }
                         } : {
-                            0: { cellWidth: 20, halign: 'left' },
-                            1: { cellWidth: 'auto', halign: 'left' },
-                            2: { cellWidth: 30, halign: 'right' }
+                            0: { cellWidth: 25, halign: 'center', fontStyle: 'bold', textColor: colors.textMuted },
+                            1: { halign: 'left' },
+                            2: { cellWidth: 35, halign: 'right', fontStyle: 'bold', textColor: colors.factoryAccent }
+                        },
+                        tableLineColor: colors.tableBorder,
+                        tableLineWidth: 0.15,
+                        didDrawPage: (data: { pageNumber: number }) => {
+                            if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
                         }
                     });
 
-                    // Atualizar startY para a próxima tabela
                     // @ts-ignore
-                    startY = doc.lastAutoTable.finalY + 10;
+                    startY = doc.lastAutoTable.finalY + 8;
                 }
             }
 
-            // Rodapé
+            // ====== APPLY FOOTERS TO ALL PAGES ======
             const pageCount = doc.getNumberOfPages();
             for (let i = 1; i <= pageCount; i++) {
                 doc.setPage(i);
-                doc.setFontSize(8);
-                doc.setTextColor(150, 150, 150);
-                doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
-                doc.text('FRPlus - Sistema de Gestão Comercial', 15, doc.internal.pageSize.getHeight() - 10);
+                drawFooter(doc, i, pageCount);
             }
 
-            // Salvar
-            const nomeArquivo = `${titulosRelatorio[tipoRelatorio].replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+            // ====== SAVE ======
+            const nomeArquivo = `FRPlus_${titulosRelatorio[tipoRelatorio].replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
             doc.save(nomeArquivo);
 
         } catch (error) {
@@ -481,7 +651,7 @@ export default function RelatoriosPage() {
                     {/* Tipo de Relatório */}
                     <div>
                         <label className="label-compact">Tipo de Relatório</label>
-                        <div className="flex gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
+                        <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
                             {[
                                 { id: 'vendas', label: 'Vendas', icon: TrendingUp },
                                 { id: 'produtos', label: 'Produtos', icon: Package },
@@ -497,7 +667,7 @@ export default function RelatoriosPage() {
                                         }`}
                                 >
                                     <tipo.icon className="h-3 w-3" />
-                                    {tipo.label}
+                                    <span className="hidden sm:inline">{tipo.label}</span>
                                 </button>
                             ))}
                         </div>

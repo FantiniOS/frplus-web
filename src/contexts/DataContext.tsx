@@ -244,7 +244,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify(product)
             });
             if (res.ok) {
-                await refreshData(); // Refresh to get fabricaNome
+                const newProduct = await res.json();
+                setProducts(prev => [...prev, newProduct]);
                 showToast('Produto cadastrado com sucesso!', 'success');
             } else {
                 showToast('Erro ao cadastrar produto', 'error');
@@ -263,7 +264,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify(data)
             });
             if (res.ok) {
-                await refreshData();
+                const updatedProduct = await res.json();
+                setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
                 showToast('Produto atualizado com sucesso!', 'success');
             }
         } catch (error) {
@@ -294,7 +296,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify(order)
             });
             if (res.ok) {
-                await refreshData();
+                const newOrder = await res.json();
+                setOrders(prev => [newOrder, ...prev]);
                 showToast('Pedido cadastrado com sucesso!', 'success');
                 return true;
             } else {
@@ -310,23 +313,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const updateOrder = async (id: string, data: Partial<Order>): Promise<boolean> => {
         try {
-            console.log("Saving Order...", data);
             const res = await fetch(`/api/orders/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            console.log(`[DataContext] Response Status: ${res.status}`);
 
             if (res.ok) {
-                const responseData = await res.json();
-                console.log(`[DataContext] Response Data:`, JSON.stringify(responseData));
-                await refreshData();
+                const updatedOrder = await res.json();
+                setOrders(prev => prev.map(o => o.id === id ? updatedOrder : o));
                 showToast('Pedido atualizado com sucesso!', 'success');
                 return true;
             } else {
                 const errorText = await res.text();
-                // Try to parse JSON error if possible
                 let errorMessage = 'Erro desconhecido no servidor';
                 try {
                     const errObj = JSON.parse(errorText);
@@ -350,7 +349,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
             const res = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
             if (res.ok) {
-                await refreshData();
+                setOrders(prev => prev.filter(o => o.id !== id));
                 showToast('Pedido removido com sucesso!', 'success');
             }
         } catch (error) {
@@ -386,7 +385,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify(data)
             });
             if (res.ok) {
-                await refreshData();
+                const updatedFabrica = await res.json();
+                setFabricas(prev => prev.map(f => f.id === id ? updatedFabrica : f));
                 showToast('Fábrica atualizada com sucesso!', 'success');
             }
         } catch (error) {

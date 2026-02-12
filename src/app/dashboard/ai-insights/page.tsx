@@ -213,8 +213,8 @@ export default function AIInsightsPage() {
                             }
                         `}
                     >
-                        <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-white' : tab.color}`} />
-                        <span className="hidden md:inline">{tab.label}</span>
+                        <tab.icon className={`w-4 h-4 shrink-0 ${activeTab === tab.id ? 'text-white' : tab.color}`} />
+                        <span className="hidden sm:inline truncate">{tab.label}</span>
                         {tab.count > 0 && (
                             <span className={`
                                 text-xs px-2 py-0.5 rounded-full
@@ -259,7 +259,7 @@ export default function AIInsightsPage() {
                                     ))}
                                 </div>
 
-                                <div className="grid grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                     <div className="p-3 rounded-lg bg-white/5 text-center">
                                         <p className="text-2xl font-bold text-white">{summaries.inactive.total}</p>
                                         <p className="text-xs text-gray-400">Total</p>
@@ -283,10 +283,10 @@ export default function AIInsightsPage() {
                                         <thead className="bg-white/5 text-xs uppercase text-gray-400">
                                             <tr>
                                                 <th className="px-4 py-3 text-left">Cliente</th>
-                                                <th className="px-4 py-3 text-left">Cidade</th>
+                                                <th className="px-4 py-3 text-left hidden sm:table-cell">Cidade</th>
                                                 <th className="px-4 py-3 text-center">Dias Inativo</th>
-                                                <th className="px-4 py-3 text-right">Total Gasto</th>
-                                                <th className="px-4 py-3 text-center">Pedidos</th>
+                                                <th className="px-4 py-3 text-right hidden md:table-cell">Total Gasto</th>
+                                                <th className="px-4 py-3 text-center hidden md:table-cell">Pedidos</th>
                                                 <th className="px-4 py-3 text-center">Ações</th>
                                             </tr>
                                         </thead>
@@ -297,7 +297,7 @@ export default function AIInsightsPage() {
                                                         <p className="font-medium text-white">{client.nomeFantasia}</p>
                                                         <p className="text-xs text-gray-500">{client.razaoSocial}</p>
                                                     </td>
-                                                    <td className="px-4 py-3 text-gray-300">{client.cidade}</td>
+                                                    <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
                                                     <td className="px-4 py-3 text-center">
                                                         <span className={`px-2 py-1 rounded-full text-xs ${(alertColors[client.alertLevel] || alertColors.verde)}`}>
                                                             {client.diasInativo ? `${client.diasInativo} dias` : 'Nunca comprou'}
@@ -308,10 +308,10 @@ export default function AIInsightsPage() {
                                                             </div>
                                                         )}
                                                     </td>
-                                                    <td className="px-4 py-3 text-right text-white">
+                                                    <td className="px-4 py-3 text-right text-white hidden md:table-cell">
                                                         R$ {(client.totalGasto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </td>
-                                                    <td className="px-4 py-3 text-center text-gray-300">{client.totalPedidos}</td>
+                                                    <td className="px-4 py-3 text-center text-gray-300 hidden md:table-cell">{client.totalPedidos}</td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center justify-center gap-2">
                                                             <a
