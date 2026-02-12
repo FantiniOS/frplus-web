@@ -16,6 +16,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     const [searchProduct, setSearchProduct] = useState('');
     const [itens, setItens] = useState<OrderItem[]>([]);
     const [observacoes, setObservacoes] = useState('');
+    const [isBonificacao, setIsBonificacao] = useState(false);
     const [tabelaPreco, setTabelaPreco] = useState('50a199');
     const [condicaoPagamento, setCondicaoPagamento] = useState('A vista');
     const [debugMode, setDebugMode] = useState(false);
