@@ -64,7 +64,7 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName }: Inter
                             <div
                                 key={i}
                                 className="relative flex-1 h-full flex flex-col justify-end items-center group"
-                                title={`Dia ${item.dayLabel}: R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} // Native tooltip fallback
+                                title={`Dia ${item.dayLabel}: R$ ${(item.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} // Native tooltip fallback
                             >
                                 {/* Barra Estática */}
                                 <div
