@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2 } from 'lucide-react';
+import { useData } from '@/contexts/DataContext';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target } from 'lucide-react';
 
 interface InactiveClient {
     id: string;
@@ -44,8 +45,11 @@ interface SalesInsight {
 }
 
 export default function AIInsightsPage() {
-    const [activeTab, setActiveTab] = useState<'inactive' | 'opportunities' | 'insights'>('inactive');
+    const { products, fabricas } = useData();
+    const [activeTab, setActiveTab] = useState<'inactive' | 'opportunities' | 'insights' | 'campaigns'>('inactive');
     const [daysFilter, setDaysFilter] = useState(15);
+    const [selectedProduct, setSelectedProduct] = useState<string>('');
+    const [generatedScripts, setGeneratedScripts] = useState<{ launch: string; reactivation: string; prospecting: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [inactiveClients, setInactiveClients] = useState<InactiveClient[]>([]);
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -53,7 +57,8 @@ export default function AIInsightsPage() {
     const [summaries, setSummaries] = useState({
         inactive: { total: 0, vermelho: 0, laranja: 0, amarelo: 0 },
         opportunities: { total: 0, upgrade: 0, crossSell: 0, seasonal: 0 },
-        insights: { total: 0, lowTicket: 0, decliningVolume: 0, untappedPotential: 0 }
+        insights: { total: 0, lowTicket: 0, decliningVolume: 0, untappedPotential: 0 },
+        campaigns: { total: 1 } // Always available
     });
 
     const fetchData = useCallback(async () => {
@@ -109,7 +114,8 @@ export default function AIInsightsPage() {
     const tabs = [
         { id: 'inactive' as const, label: 'Clientes Inativos', icon: AlertTriangle, color: 'text-red-400', count: summaries.inactive.total },
         { id: 'opportunities' as const, label: 'Oportunidades', icon: Lightbulb, color: 'text-yellow-400', count: summaries.opportunities.total },
-        { id: 'insights' as const, label: 'Alavancagem', icon: TrendingUp, color: 'text-blue-400', count: summaries.insights.total }
+        { id: 'insights' as const, label: 'Alavancagem', icon: TrendingUp, color: 'text-blue-400', count: summaries.insights.total },
+        { id: 'campaigns' as const, label: 'Campanhas', icon: Megaphone, color: 'text-purple-400', count: 0 }
     ];
 
     const [activeInsight, setActiveInsight] = useState<SalesInsight | null>(null);
@@ -128,6 +134,23 @@ export default function AIInsightsPage() {
     const closeInsightModal = () => {
         setActiveInsight(null);
         setAnalyzing(false);
+    };
+
+    const handleGenerateScripts = (productId: string) => {
+        setSelectedProduct(productId);
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+
+        setGeneratedScripts({
+            launch: `🚀 *LANÇAMENTO: ${product.nome}* 🚀\n\nOlá [Nome]! Acabou de chegar uma novidade incrível aqui na distribuidora: *${product.nome}*. É um item que está com alta demanda e tem tudo a ver com o perfil da sua loja. Separei um lote especial para você. Vamos aproveitar?`,
+            reactivation: `👋 Oi [Nome], tudo bem? Lembrei de você hoje! Chegou o *${product.nome}* e, conhecendo seu negócio, sei que vai girar super bem. Estou com uma condição diferenciada de retorno para fecharmos esse pedido. O que acha de reativarmos nossa parceria com esse item campeão?`,
+            prospecting: `👋 Olá! Gostaria de apresentar o *${product.nome}*, um dos itens de maior liquidez do momento. Ideal para atrair novos clientes e aumentar seu ticket médio. Posso te enviar a tabela?`
+        });
+    };
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        // Could add toast here
     };
 
     const getInsightDetails = (insight: SalesInsight) => {
@@ -431,6 +454,115 @@ export default function AIInsightsPage() {
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Campaigns Tab */}
+                        {activeTab === 'campaigns' && (
+                            <div className="space-y-6">
+                                <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+                                    <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                                        <Target className="w-5 h-5 text-purple-400" />
+                                        Selecione o Produto Foco
+                                    </h3>
+                                    <select
+                                        value={selectedProduct}
+                                        onChange={(e) => handleGenerateScripts(e.target.value)}
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                                    >
+                                        <option value="">Selecione um produto...</option>
+                                        {products.sort((a, b) => a.nome.localeCompare(b.nome)).map(product => {
+                                            const fabricaNome = product.fabricaNome || fabricas.find(f => f.id === product.fabricaId)?.nome || 'N/A';
+                                            return (
+                                                <option key={product.id} value={product.id}>
+                                                    {product.nome} - {fabricaNome}
+                                                </option>
+                                            )
+                                        })}
+                                    </select>
+                                </div>
+
+                                {generatedScripts && (
+                                    <div className="grid gap-4 md:grid-cols-3">
+                                        {/* Launch Script */}
+                                        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden flex flex-col">
+                                            <div className="p-4 bg-gradient-to-r from-blue-600/20 to-blue-900/20 border-b border-white/10">
+                                                <h4 className="font-semibold text-blue-400 flex items-center gap-2">
+                                                    <Zap className="w-4 h-4" />
+                                                    Lançamento (Ativos)
+                                                </h4>
+                                            </div>
+                                            <div className="p-4 flex-1">
+                                                <textarea
+                                                    readOnly
+                                                    className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
+                                                    value={generatedScripts.launch}
+                                                />
+                                            </div>
+                                            <div className="p-4 border-t border-white/10 bg-black/20">
+                                                <button
+                                                    onClick={() => copyToClipboard(generatedScripts.launch)}
+                                                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-colors text-sm font-medium"
+                                                >
+                                                    <Copy className="w-4 h-4" />
+                                                    Copiar Texto
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Reactivation Script */}
+                                        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden flex flex-col">
+                                            <div className="p-4 bg-gradient-to-r from-orange-600/20 to-orange-900/20 border-b border-white/10">
+                                                <h4 className="font-semibold text-orange-400 flex items-center gap-2">
+                                                    <RefreshCw className="w-4 h-4" />
+                                                    Reativação (Inativos)
+                                                </h4>
+                                            </div>
+                                            <div className="p-4 flex-1">
+                                                <textarea
+                                                    readOnly
+                                                    className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
+                                                    value={generatedScripts.reactivation}
+                                                />
+                                            </div>
+                                            <div className="p-4 border-t border-white/10 bg-black/20">
+                                                <button
+                                                    onClick={() => copyToClipboard(generatedScripts.reactivation)}
+                                                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 transition-colors text-sm font-medium"
+                                                >
+                                                    <Copy className="w-4 h-4" />
+                                                    Copiar Texto
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Prospecting Script */}
+                                        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden flex flex-col">
+                                            <div className="p-4 bg-gradient-to-r from-green-600/20 to-green-900/20 border-b border-white/10">
+                                                <h4 className="font-semibold text-green-400 flex items-center gap-2">
+                                                    <Megaphone className="w-4 h-4" />
+                                                    Prospecção (Novos)
+                                                </h4>
+                                            </div>
+                                            <div className="p-4 flex-1">
+                                                <textarea
+                                                    readOnly
+                                                    className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
+                                                    value={generatedScripts.prospecting}
+                                                />
+                                            </div>
+                                            <div className="p-4 border-t border-white/10 bg-black/20">
+                                                <button
+                                                    onClick={() => copyToClipboard(generatedScripts.prospecting)}
+                                                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors text-sm font-medium"
+                                                >
+                                                    <Copy className="w-4 h-4" />
+                                                    Copiar Texto
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
