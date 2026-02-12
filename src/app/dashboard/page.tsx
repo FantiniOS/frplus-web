@@ -5,6 +5,7 @@ import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
+import { InteractiveChart } from "@/components/dashboard/InteractiveChart";
 import { useState } from "react";
 
 export default function DashboardPage() {
@@ -212,52 +213,12 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-7">
 
         {/* Gráfico Real (Esquerda) */}
-        <div className="col-span-4 rounded-xl border border-white/10 bg-white/5 p-6 h-[400px] flex flex-col">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-white">Vendas Diárias ({monthName})</h3>
-            <span className="text-xs text-gray-400">Dados do período selecionado</span>
-          </div>
-
-          <div className="flex-1 w-full bg-black/20 rounded-lg p-4 flex items-end justify-between gap-1 overflow-hidden relative">
-            {/* Eixo Y simplificado */}
-            <div className="absolute left-0 top-0 bottom-0 w-full border-b border-white/5 pointer-events-none"></div>
-
-            {salesData.length === 0 ? (
-              <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
-                Sem dados para exibir
-              </div>
-            ) : (
-              salesData.map((data, i) => {
-                const heightPercentage = Math.max((data.value / maxSale) * 100, 4);
-                // Mostrar apenas rótulos que cabem (ex: a cada 5 dias ou extremos)
-                const showLabel = i === 0 || i === salesData.length - 1 || (data.value === maxSale);
-
-                return (
-                  <div key={i} className="group relative flex-1 h-full flex flex-col justify-end items-center">
-                    {/* Tooltip Nativo CSS - Mais Simples e Seguro */}
-                    <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-                      <div className="bg-gray-900 border border-gray-700 text-white text-[10px] rounded px-2 py-1 shadow-xl whitespace-nowrap">
-                        <span className="font-bold block text-blue-400">Dia {data.dayLabel}</span>
-                        R$ {data.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
-
-                    {/* Barra */}
-                    <div
-                      className="w-full max-w-[30px] min-w-[4px] bg-blue-600/60 hover:bg-blue-500 rounded-t transition-all"
-                      style={{ height: `${heightPercentage}%` }}
-                    ></div>
-
-                    {/* Data (simplificado) */}
-                    <span className="text-[10px] text-gray-600 mt-1 h-4 block overflow-visible">
-                      {showLabel ? data.dayLabel : ''}
-                    </span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+        <InteractiveChart
+          data={salesData}
+          maxSale={maxSale}
+          totalSales={stats.totalSales}
+          monthName={monthName}
+        />
 
         {/* Coluna Direita (Top Produtos + Vendas Recentes) */}
         <div className="col-span-3 space-y-4">
