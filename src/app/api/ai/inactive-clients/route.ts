@@ -17,7 +17,7 @@ export async function GET(request: Request) {
                 pedidos: {
                     orderBy: { data: 'desc' },
                     take: 5, // Increased from 1 to 5 to calculate average cycle
-                    select: { data: true, valorTotal: true }
+                    select: { data: true, valorTotal: true, tipo: true }
                 },
                 _count: { select: { pedidos: true } }
             }
@@ -27,7 +27,9 @@ export async function GET(request: Request) {
         const inactiveClients = clients
             .map(client => {
                 const orders = client.pedidos;
-                const lastOrder = orders[0];
+                // Filter out 'Bonificacao' to track actual SALES inactivity
+                const salesOrders = orders.filter(o => o.tipo !== 'Bonificacao');
+                const lastOrder = salesOrders[0];
                 const lastOrderDate = lastOrder?.data ? new Date(lastOrder.data) : null;
 
                 const daysSinceLastOrder = lastOrderDate
@@ -38,17 +40,17 @@ export async function GET(request: Request) {
                 let averageCycle = 30; // Default fallback (monthly)
                 let cycleConfidence = 'baixa'; // 'alta' | 'media' | 'baixa'
 
-                if (orders.length >= 2) {
+                if (salesOrders.length >= 2) {
                     let totalDaysDiff = 0;
-                    for (let i = 0; i < orders.length - 1; i++) {
-                        const d1 = new Date(orders[i].data);
-                        const d2 = new Date(orders[i + 1].data);
+                    for (let i = 0; i < salesOrders.length - 1; i++) {
+                        const d1 = new Date(salesOrders[i].data);
+                        const d2 = new Date(salesOrders[i + 1].data);
                         const diffTime = Math.abs(d1.getTime() - d2.getTime());
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                         totalDaysDiff += diffDays;
                     }
-                    averageCycle = Math.max(7, Math.floor(totalDaysDiff / (orders.length - 1))); // Min 7 days to avoid noise
-                    cycleConfidence = orders.length >= 4 ? 'alta' : 'media';
+                    averageCycle = Math.max(7, Math.floor(totalDaysDiff / (salesOrders.length - 1))); // Min 7 days to avoid noise
+                    cycleConfidence = salesOrders.length >= 4 ? 'alta' : 'media';
                 }
 
                 // Determine Alert Level based on deviation from OWN cycle

@@ -245,18 +245,9 @@ export default function AIInsightsPage() {
                                 <div className="flex items-center gap-4 pb-4 border-b border-white/10">
                                     <Filter className="h-4 w-4 text-gray-400" />
                                     <span className="text-sm text-gray-400">Mostrar clientes inativos há:</span>
-                                    {[15, 30, 60].map(days => (
-                                        <button
-                                            key={days}
-                                            onClick={() => setDaysFilter(days)}
-                                            className={`px-3 py-1 rounded-lg text-sm transition-colors ${daysFilter === days
-                                                ? 'bg-purple-600 text-white'
-                                                : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                                                }`}
-                                        >
-                                            {days}+ dias
-                                        </button>
-                                    ))}
+                                    <span className="px-3 py-1 rounded-lg text-sm bg-purple-600 text-white font-medium">
+                                        15+ dias
+                                    </span>
                                 </div>
 
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

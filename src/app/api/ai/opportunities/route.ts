@@ -29,7 +29,7 @@ export async function GET() {
             type: 'upgrade' | 'crossSell' | 'seasonal' | 'reactivation'
             clienteId: string
             clienteNome: string
-            clienteTelefone?: string // Added
+            clienteTelefone?: string
             description: string
             priority: 'alta' | 'media' | 'baixa'
             actionLabel: string
@@ -86,7 +86,8 @@ export async function GET() {
                     clienteId: client.id,
                     clienteNome: client.nomeFantasia,
                     clienteTelefone: phone,
-                    description: `Nunca comprou "${topProduct.nome}" da ${topProduct.fabrica.nome}. ${crossSellProducts.length} produtos disponíveis.`,
+
+                    description: `Não consta no histórico recente de compras de "${topProduct.fabrica.nome}". ${crossSellProducts.length} produtos disponíveis.`,
                     priority: 'media',
                     actionLabel: 'Oferecer Produto'
                 })
@@ -99,7 +100,11 @@ export async function GET() {
             )
             const avgOrdersPerMonth = client.pedidos.length / 12
 
-            if (ordersThisMonth.length > avgOrdersPerMonth * 1.5 && ordersThisMonth.length < avgOrdersPerMonth * 2) {
+            // Seasonal only for clients older than 1 year
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+            if (client.createdAt < oneYearAgo && ordersThisMonth.length > avgOrdersPerMonth * 1.5 && ordersThisMonth.length < avgOrdersPerMonth * 2) {
                 opportunities.push({
                     type: 'seasonal',
                     clienteId: client.id,
