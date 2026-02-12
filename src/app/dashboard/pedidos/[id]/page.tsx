@@ -16,13 +16,17 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     const [searchProduct, setSearchProduct] = useState('');
     const [itens, setItens] = useState<OrderItem[]>([]);
     const [observacoes, setObservacoes] = useState('');
-    const [isBonificacao, setIsBonificacao] = useState(false);
+    const [tabelaPreco, setTabelaPreco] = useState('50a199');
+    const [condicaoPagamento, setCondicaoPagamento] = useState('A vista');
+    const [debugMode, setDebugMode] = useState(false);
+    const [lastPayload, setLastPayload] = useState<any>(null);
+    const [lastError, setLastError] = useState<string | null>(null);
 
-    // Carregar dados do pedido (Apenas na inicialização ou se mudar o ID)
+    // Carregar dados do pedido
     const [dataLoaded, setDataLoaded] = useState(false);
 
     useEffect(() => {
-        if (dataLoaded) return; // Prevent overwriting if already loaded
+        if (dataLoaded) return;
 
         const found = orders.find(o => o.id === params.id);
         if (found) {
@@ -30,6 +34,8 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
             setItens(found.itens);
             setObservacoes(found.observacoes || '');
             setIsBonificacao(found.tipo === 'Bonificacao');
+            setTabelaPreco(found.tabelaPreco || '50a199');
+            setCondicaoPagamento(found.condicaoPagamento || 'A vista');
             setDataLoaded(true);
         }
     }, [orders, params.id, dataLoaded]);
@@ -128,6 +134,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     const totalItens = itens.reduce((acc, item) => acc + item.quantidade, 0);
 
     const handleSubmit = async () => {
+        setLastError(null);
         if (!clienteId) {
             showToast("Selecione um cliente", "error");
             return;
@@ -137,12 +144,9 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
             return;
         }
 
-        // Find original order to preserve status/condicao if not in form
-        const originalOrder = orders.find(o => o.id === params.id);
-
         const updatedOrder: Partial<Order> = {
             clienteId,
-            nomeCliente: clienteSelecionado?.nomeFantasia || clienteSelecionado?.razaoSocial || '',
+            nomeCliente: clienteSelecionado?.nomeFantasia || clienteSelecionado?.razaoSocial || 'Cliente Desconhecido',
             itens: itens.map(i => ({
                 produtoId: i.produtoId,
                 nomeProduto: i.nomeProduto,
@@ -153,26 +157,63 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
             valorTotal,
             observacoes,
             tipo: (isBonificacao ? 'Bonificacao' : 'Venda') as any,
-            // Ensure we send these fields to avoid them being undefined in backend
-            status: originalOrder?.status || 'Pendente',
-            tabelaPreco: clienteSelecionado?.tabelaPreco || originalOrder?.tabelaPreco || '50a199',
-            condicaoPagamento: originalOrder?.condicaoPagamento || 'A vista'
+            status: 'Pendente', // Default or preserve if we had status state
+            tabelaPreco,
+            condicaoPagamento
         };
+
+        setLastPayload(updatedOrder);
 
         console.log('--- DEBUG: Submitting Order Update ---');
         console.log('Order ID:', params.id);
         console.log('Payload:', JSON.stringify(updatedOrder, null, 2));
 
-        const success = await updateOrder(params.id, updatedOrder);
-        console.log('Update Result:', success);
+        try {
+            const success = await updateOrder(params.id, updatedOrder);
+            console.log('Update Result:', success);
 
-        if (success) {
-            router.push('/dashboard/pedidos');
+            if (success) {
+                router.push('/dashboard/pedidos');
+            } else {
+                setLastError("Falha ao atualizar. Verifique o console ou o painel de debug.");
+            }
+        } catch (e: any) {
+            setLastError(e.message || "Erro desconhecido");
         }
     };
 
     return (
-        <div className="h-[calc(100vh-100px)] flex gap-4">
+        <div className="h-[calc(100vh-100px)] flex gap-4 relative">
+            {/* DEBUG PANEL */}
+            {debugMode && (
+                <div className="absolute inset-0 z-50 bg-black/90 p-8 overflow-auto font-mono text-xs text-green-400">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-white">DEBUG MODE</h2>
+                        <button onClick={() => setDebugMode(false)} className="px-4 py-2 bg-red-600 text-white rounded">FECHAR</button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="border border-white/20 p-4 rounded">
+                            <h3 className="text-white font-bold mb-2">Current State</h3>
+                            <pre>{JSON.stringify({ clienteId, isBonificacao, tabelaPreco, condicaoPagamento, itensCount: itens.length }, null, 2)}</pre>
+                        </div>
+                        <div className="border border-white/20 p-4 rounded">
+                            <h3 className="text-white font-bold mb-2">Last Error</h3>
+                            <pre className="text-red-400">{lastError || 'None'}</pre>
+                            <h3 className="text-white font-bold mt-4 mb-2">Last Payload</h3>
+                            <pre>{JSON.stringify(lastPayload, null, 2)}</pre>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <button
+                onClick={() => setDebugMode(!debugMode)}
+                className="fixed bottom-4 left-4 z-40 p-2 bg-gray-800 text-gray-500 rounded-full hover:text-white text-[10px]"
+                title="Toggle Debug"
+            >
+                🐛
+            </button>
 
             {/* Coluna Esquerda - Catálogo de Produtos */}
             <div className="flex-1 flex flex-col">
