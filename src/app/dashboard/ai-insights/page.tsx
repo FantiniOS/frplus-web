@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase } from 'lucide-react';
 
 interface InactiveClient {
     id: string;
@@ -52,6 +52,11 @@ export default function AIInsightsPage() {
     const [generatedScripts, setGeneratedScripts] = useState<{ launch: string; reactivation: string; prospecting: string } | null>(null);
     const [selectedScriptType, setSelectedScriptType] = useState<'launch' | 'reactivation' | 'prospecting'>('launch');
     const [clientSearch, setClientSearch] = useState('');
+    const [campaignMode, setCampaignMode] = useState<'lancamento' | 'empresa' | 'vitrine'>('lancamento');
+    const [selectedShowcaseProducts, setSelectedShowcaseProducts] = useState<string[]>([]);
+    const [activeMessage, setActiveMessage] = useState<string>(''); // Currently active message for sending
+    const [companyMessages, setCompanyMessages] = useState<{ formal: string; casual: string; pitch: string } | null>(null);
+    const [showcaseMessage, setShowcaseMessage] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [inactiveClients, setInactiveClients] = useState<InactiveClient[]>([]);
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -145,30 +150,72 @@ export default function AIInsightsPage() {
 
         const fabrica = product.fabricaNome || fabricas.find(f => f.id === product.fabricaId)?.nome || '';
 
-        setGeneratedScripts({
+        const scripts = {
             launch: `🚀 *LANÇAMENTO: ${product.nome}* 🚀\n\nOlá [Nome]! Acabou de chegar uma novidade incrível aqui na nossa representação${fabrica ? ` da ${fabrica}` : ''}: *${product.nome}*. É um item que está com alta demanda e tem tudo a ver com o perfil da sua loja. Separei um lote especial para você. Vamos aproveitar?`,
             reactivation: `👋 Oi [Nome], tudo bem? Lembrei de você hoje! Chegou o *${product.nome}*${fabrica ? ` da ${fabrica}` : ''} e, conhecendo seu negócio, sei que vai girar super bem. Estou com uma condição diferenciada de retorno para fecharmos esse pedido. O que acha de reativarmos nossa parceria com esse item campeão?`,
             prospecting: `👋 Olá! Gostaria de apresentar o *${product.nome}*${fabrica ? ` da ${fabrica}` : ''}, um dos itens de maior liquidez do momento. Ideal para atrair novos clientes e aumentar seu ticket médio. Posso te enviar a tabela?`
-        });
+        };
+        setGeneratedScripts(scripts);
+        setActiveMessage(scripts[selectedScriptType]);
     };
 
+    // --- Company Presentation ---
+    const generateCompanyMessages = () => {
+        const fabricasList = fabricas.map(f => f.nome).filter(Boolean);
+        const marcasText = fabricasList.length > 0 ? fabricasList.join(', ') : 'diversas marcas líderes';
+
+        const msgs = {
+            formal: `🏢 *FANTINI REPRESENTAÇÕES*\n\n_Excelência em Vendas e Parcerias Comerciais_\n\nOlá [Nome]! Meu nome é Fantini, da *Fantini Representações*. Somos uma empresa com mais de *três décadas de experiência* no mercado de vendas e representação comercial, atuando com compromisso, transparência e foco em resultados.\n\nTrabalhamos com marcas de alta performance: *${marcasText}*.\n\nNosso diferencial é o atendimento personalizado e o profundo conhecimento do mercado mineiro. Oferecemos atuação estratégica, acompanhamento próximo, visitas constantes aos PDVs e análise de oportunidades de crescimento.\n\nPosso agendar uma visita para apresentar nosso portfólio?`,
+            casual: `👋 Oi [Nome], tudo bem? Aqui é o Fantini, da *Fantini Representações*! 😊\n\nSomos representantes comerciais com mais de *30 anos de estrada*, atendendo o varejo mineiro com as melhores marcas do mercado: *${marcasText}*.\n\nA gente trabalha de perto com cada cliente — visita, acompanhamento, reposição — tudo pra garantir que o produto gire bem na sua loja.\n\nQuer conhecer nosso portfólio? Posso te mandar a tabela ou passar aí pra conversar! 🚀`,
+            pitch: `⚡ *Fantini Representações* — +30 anos no mercado mineiro\n\n✅ Marcas: *${marcasText}*\n✅ Atendimento personalizado e visitas ao PDV\n✅ Condições competitivas\n✅ Foco em resultado para o varejista\n\nVamos conversar? 📲`
+        };
+        setCompanyMessages(msgs);
+        setActiveMessage(msgs.formal);
+    };
+
+    // --- Product Showcase ---
+    const toggleShowcaseProduct = (productId: string) => {
+        setSelectedShowcaseProducts(prev =>
+            prev.includes(productId)
+                ? prev.filter(id => id !== productId)
+                : [...prev, productId]
+        );
+    };
+
+    const generateShowcaseMessage = () => {
+        const selected = products.filter(p => selectedShowcaseProducts.includes(p.id));
+        if (selected.length === 0) return;
+
+        const productLines = selected.map(p => {
+            const fabrica = p.fabricaNome || fabricas.find(f => f.id === p.fabricaId)?.nome || '';
+            return `✨ *${p.nome}*${fabrica ? ` (${fabrica})` : ''}`;
+        }).join('\n');
+
+        const msg = `🛍️ *VITRINE FANTINI REPRESENTAÇÕES* 🛍️\n\nOlá [Nome]! Separei alguns destaques do nosso portfólio especialmente para você:\n\n${productLines}\n\nTodos com condições especiais e pronta entrega. Quer que eu envie a tabela completa? 📋`;
+        setShowcaseMessage(msg);
+        setActiveMessage(msg);
+    };
+
+    // --- Unified message for client send ---
     const getMessageForClient = (clientName: string) => {
-        if (!generatedScripts) return '';
-        const script = generatedScripts[selectedScriptType];
-        // Replace [Nome] with actual name
-        return script.replace('[Nome]', clientName);
+        return activeMessage.replace(/\[Nome\]/g, clientName);
     };
 
     const filteredClients = clients.filter(c =>
         clientSearch === '' ||
         c.nomeFantasia.toLowerCase().includes(clientSearch.toLowerCase()) ||
         c.razaoSocial.toLowerCase().includes(clientSearch.toLowerCase())
-    ).slice(0, 50); // Limit to 50 for performance
+    ).slice(0, 50);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        // Could add toast here
     };
+
+    const campaignSubTabs = [
+        { id: 'lancamento' as const, label: 'Lançamento', icon: Zap, color: 'text-blue-400' },
+        { id: 'empresa' as const, label: 'Apresentação', icon: Building2, color: 'text-amber-400' },
+        { id: 'vitrine' as const, label: 'Vitrine', icon: ShoppingBag, color: 'text-pink-400' }
+    ];
 
     const getInsightDetails = (insight: SalesInsight) => {
         switch (insight.type) {
@@ -479,149 +526,292 @@ export default function AIInsightsPage() {
                         {/* Campaigns Tab */}
                         {activeTab === 'campaigns' && (
                             <div className="space-y-6">
-                                <div className="bg-white/5 p-6 rounded-xl border border-white/10">
-                                    <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-                                        <Target className="w-5 h-5 text-purple-400" />
-                                        Selecione o Produto Foco
-                                    </h3>
-                                    <select
-                                        value={selectedProduct}
-                                        onChange={(e) => handleGenerateScripts(e.target.value)}
-                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
-                                    >
-                                        <option value="" className="text-black">Selecione um produto...</option>
-                                        {products.sort((a, b) => a.nome.localeCompare(b.nome)).map(product => {
-                                            const fabricaNome = product.fabricaNome || fabricas.find(f => f.id === product.fabricaId)?.nome || 'N/A';
-                                            return (
-                                                <option key={product.id} value={product.id} className="text-black">
-                                                    {product.nome} - {fabricaNome}
-                                                </option>
-                                            )
-                                        })}
-                                    </select>
+                                {/* Sub-Tab Navigation */}
+                                <div className="flex gap-2 flex-wrap">
+                                    {campaignSubTabs.map(st => (
+                                        <button
+                                            key={st.id}
+                                            onClick={() => setCampaignMode(st.id)}
+                                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${campaignMode === st.id
+                                                ? 'bg-white/10 border border-white/20 text-white shadow-lg'
+                                                : 'bg-white/5 border border-transparent text-gray-400 hover:bg-white/10 hover:text-white'
+                                                }`}
+                                        >
+                                            <st.icon className={`w-4 h-4 ${campaignMode === st.id ? st.color : ''}`} />
+                                            {st.label}
+                                        </button>
+                                    ))}
                                 </div>
 
-                                {generatedScripts && (
+                                {/* ===== SUB-TAB: LANÇAMENTO ===== */}
+                                {campaignMode === 'lancamento' && (
                                     <>
-                                        <div className="grid gap-4 md:grid-cols-3">
-                                            {/* Launch Script */}
-                                            <div
-                                                onClick={() => setSelectedScriptType('launch')}
-                                                className={`bg-white/5 rounded-xl border overflow-hidden flex flex-col cursor-pointer transition-all ${selectedScriptType === 'launch' ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-500/5' : 'border-white/10 hover:border-white/20'}`}
+                                        <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+                                            <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                                                <Target className="w-5 h-5 text-blue-400" />
+                                                Selecione o Produto Foco
+                                            </h3>
+                                            <select
+                                                value={selectedProduct}
+                                                onChange={(e) => handleGenerateScripts(e.target.value)}
+                                                className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
                                             >
-                                                <div className="p-4 bg-gradient-to-r from-blue-600/20 to-blue-900/20 border-b border-white/10 flex justify-between items-center">
-                                                    <h4 className="font-semibold text-blue-400 flex items-center gap-2">
-                                                        <Zap className="w-4 h-4" />
-                                                        Lançamento (Ativos)
-                                                    </h4>
-                                                    {selectedScriptType === 'launch' && <CheckCircle2 className="w-5 h-5 text-blue-400" />}
-                                                </div>
-                                                <div className="p-4 flex-1">
-                                                    <textarea
-                                                        readOnly
-                                                        className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
-                                                        value={generatedScripts.launch}
-                                                    />
-                                                </div>
-                                            </div>
+                                                <option value="" className="text-black">Selecione um produto...</option>
+                                                {products.sort((a, b) => a.nome.localeCompare(b.nome)).map(product => {
+                                                    const fabricaNome = product.fabricaNome || fabricas.find(f => f.id === product.fabricaId)?.nome || 'N/A';
+                                                    return (
+                                                        <option key={product.id} value={product.id} className="text-black">
+                                                            {product.nome} - {fabricaNome}
+                                                        </option>
+                                                    )
+                                                })}
+                                            </select>
+                                        </div>
 
-                                            {/* Reactivation Script */}
-                                            <div
-                                                onClick={() => setSelectedScriptType('reactivation')}
-                                                className={`bg-white/5 rounded-xl border overflow-hidden flex flex-col cursor-pointer transition-all ${selectedScriptType === 'reactivation' ? 'border-orange-500 ring-1 ring-orange-500 bg-orange-500/5' : 'border-white/10 hover:border-white/20'}`}
-                                            >
-                                                <div className="p-4 bg-gradient-to-r from-orange-600/20 to-orange-900/20 border-b border-white/10 flex justify-between items-center">
-                                                    <h4 className="font-semibold text-orange-400 flex items-center gap-2">
-                                                        <RefreshCw className="w-4 h-4" />
-                                                        Reativação (Inativos)
-                                                    </h4>
-                                                    {selectedScriptType === 'reactivation' && <CheckCircle2 className="w-5 h-5 text-orange-400" />}
+                                        {generatedScripts && (
+                                            <>
+                                                <div className="grid gap-4 md:grid-cols-3">
+                                                    {([{
+                                                        key: 'launch' as const, label: 'Lançamento (Ativos)', icon: Zap,
+                                                        activeClass: 'border-blue-500 ring-1 ring-blue-500 bg-blue-500/5',
+                                                        gradient: 'bg-gradient-to-r from-blue-600/20 to-blue-900/20',
+                                                        textColor: 'text-blue-400'
+                                                    }, {
+                                                        key: 'reactivation' as const, label: 'Reativação (Inativos)', icon: RefreshCw,
+                                                        activeClass: 'border-orange-500 ring-1 ring-orange-500 bg-orange-500/5',
+                                                        gradient: 'bg-gradient-to-r from-orange-600/20 to-orange-900/20',
+                                                        textColor: 'text-orange-400'
+                                                    }, {
+                                                        key: 'prospecting' as const, label: 'Prospecção (Novos)', icon: Megaphone,
+                                                        activeClass: 'border-green-500 ring-1 ring-green-500 bg-green-500/5',
+                                                        gradient: 'bg-gradient-to-r from-green-600/20 to-green-900/20',
+                                                        textColor: 'text-green-400'
+                                                    }] as const).map(card => (
+                                                        <div
+                                                            key={card.key}
+                                                            onClick={() => { setSelectedScriptType(card.key); setActiveMessage(generatedScripts[card.key]); }}
+                                                            className={`bg-white/5 rounded-xl border overflow-hidden flex flex-col cursor-pointer transition-all ${selectedScriptType === card.key ? card.activeClass : 'border-white/10 hover:border-white/20'}`}
+                                                        >
+                                                            <div className={`p-4 ${card.gradient} border-b border-white/10 flex justify-between items-center`}>
+                                                                <h4 className={`font-semibold ${card.textColor} flex items-center gap-2`}>
+                                                                    <card.icon className="w-4 h-4" />
+                                                                    {card.label}
+                                                                </h4>
+                                                                {selectedScriptType === card.key && <CheckCircle2 className={`w-5 h-5 ${card.textColor}`} />}
+                                                            </div>
+                                                            <div className="p-4 flex-1">
+                                                                <textarea
+                                                                    readOnly
+                                                                    className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
+                                                                    value={generatedScripts[card.key]}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                                <div className="p-4 flex-1">
-                                                    <textarea
-                                                        readOnly
-                                                        className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
-                                                        value={generatedScripts.reactivation}
-                                                    />
-                                                </div>
-                                            </div>
+                                            </>
+                                        )}
+                                    </>
+                                )}
 
-                                            {/* Prospecting Script */}
-                                            <div
-                                                onClick={() => setSelectedScriptType('prospecting')}
-                                                className={`bg-white/5 rounded-xl border overflow-hidden flex flex-col cursor-pointer transition-all ${selectedScriptType === 'prospecting' ? 'border-green-500 ring-1 ring-green-500 bg-green-500/5' : 'border-white/10 hover:border-white/20'}`}
-                                            >
-                                                <div className="p-4 bg-gradient-to-r from-green-600/20 to-green-900/20 border-b border-white/10 flex justify-between items-center">
-                                                    <h4 className="font-semibold text-green-400 flex items-center gap-2">
-                                                        <Megaphone className="w-4 h-4" />
-                                                        Prospecção (Novos)
-                                                    </h4>
-                                                    {selectedScriptType === 'prospecting' && <CheckCircle2 className="w-5 h-5 text-green-400" />}
-                                                </div>
-                                                <div className="p-4 flex-1">
-                                                    <textarea
-                                                        readOnly
-                                                        className="w-full h-40 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
-                                                        value={generatedScripts.prospecting}
-                                                    />
-                                                </div>
+                                {/* ===== SUB-TAB: APRESENTAÇÃO DA EMPRESA ===== */}
+                                {campaignMode === 'empresa' && (
+                                    <>
+                                        <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                                                    <Building2 className="w-5 h-5 text-amber-400" />
+                                                    Apresentação da Empresa
+                                                </h3>
+                                                <button
+                                                    onClick={generateCompanyMessages}
+                                                    className="px-4 py-2 rounded-lg bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 transition-colors text-sm font-medium flex items-center gap-2"
+                                                >
+                                                    <Briefcase className="w-4 h-4" />
+                                                    Gerar Mensagens
+                                                </button>
+                                            </div>
+                                            <p className="text-gray-400 text-sm">Gere mensagens profissionais para apresentar a Fantini Representações. As marcas representadas são carregadas automaticamente do sistema.</p>
+                                        </div>
+
+                                        {companyMessages && (
+                                            <div className="grid gap-4 md:grid-cols-3">
+                                                {([{
+                                                    key: 'formal' as const, label: 'Formal', desc: 'Ideal para contatos corporativos',
+                                                    activeClass: 'border-amber-500 ring-1 ring-amber-500 bg-amber-500/5',
+                                                    gradient: 'bg-gradient-to-r from-amber-600/20 to-amber-900/20',
+                                                    textColor: 'text-amber-400',
+                                                    btnClass: 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/30'
+                                                }, {
+                                                    key: 'casual' as const, label: 'Casual', desc: 'Tom amigável para WhatsApp',
+                                                    activeClass: 'border-emerald-500 ring-1 ring-emerald-500 bg-emerald-500/5',
+                                                    gradient: 'bg-gradient-to-r from-emerald-600/20 to-emerald-900/20',
+                                                    textColor: 'text-emerald-400',
+                                                    btnClass: 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30'
+                                                }, {
+                                                    key: 'pitch' as const, label: 'Pitch Rápido', desc: 'Curto e direto ao ponto',
+                                                    activeClass: 'border-violet-500 ring-1 ring-violet-500 bg-violet-500/5',
+                                                    gradient: 'bg-gradient-to-r from-violet-600/20 to-violet-900/20',
+                                                    textColor: 'text-violet-400',
+                                                    btnClass: 'bg-violet-600/20 text-violet-400 hover:bg-violet-600/30'
+                                                }] as const).map(card => (
+                                                    <div
+                                                        key={card.key}
+                                                        onClick={() => setActiveMessage(companyMessages[card.key])}
+                                                        className={`bg-white/5 rounded-xl border overflow-hidden flex flex-col cursor-pointer transition-all ${activeMessage === companyMessages[card.key] ? card.activeClass : 'border-white/10 hover:border-white/20'}`}
+                                                    >
+                                                        <div className={`p-4 ${card.gradient} border-b border-white/10 flex justify-between items-center`}>
+                                                            <div>
+                                                                <h4 className={`font-semibold ${card.textColor}`}>{card.label}</h4>
+                                                                <p className="text-xs text-gray-500 mt-0.5">{card.desc}</p>
+                                                            </div>
+                                                            {activeMessage === companyMessages[card.key] && <CheckCircle2 className={`w-5 h-5 ${card.textColor}`} />}
+                                                        </div>
+                                                        <div className="p-4 flex-1">
+                                                            <textarea
+                                                                readOnly
+                                                                className="w-full h-48 bg-black/20 text-gray-300 text-sm p-3 rounded-lg border border-white/5 resize-none focus:outline-none"
+                                                                value={companyMessages[card.key]}
+                                                            />
+                                                        </div>
+                                                        <div className="p-3 border-t border-white/10 bg-black/20">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); copyToClipboard(companyMessages[card.key]); }}
+                                                                className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg ${card.btnClass} transition-colors text-sm font-medium`}
+                                                            >
+                                                                <Copy className="w-4 h-4" />
+                                                                Copiar
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* ===== SUB-TAB: VITRINE DE PRODUTOS ===== */}
+                                {campaignMode === 'vitrine' && (
+                                    <>
+                                        <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                                                    <ShoppingBag className="w-5 h-5 text-pink-400" />
+                                                    Vitrine de Produtos
+                                                </h3>
+                                                <button
+                                                    onClick={generateShowcaseMessage}
+                                                    disabled={selectedShowcaseProducts.length === 0}
+                                                    className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${selectedShowcaseProducts.length > 0 ? 'bg-pink-600/20 text-pink-400 hover:bg-pink-600/30' : 'bg-white/5 text-gray-600 cursor-not-allowed'}`}
+                                                >
+                                                    <Megaphone className="w-4 h-4" />
+                                                    Gerar Mensagem ({selectedShowcaseProducts.length})
+                                                </button>
+                                            </div>
+                                            <p className="text-gray-400 text-sm mb-4">Selecione os produtos que deseja apresentar e gere uma mensagem de vitrine personalizada.</p>
+
+                                            <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2">
+                                                {products.sort((a, b) => a.nome.localeCompare(b.nome)).map(product => {
+                                                    const fabricaNome = product.fabricaNome || fabricas.find(f => f.id === product.fabricaId)?.nome || '';
+                                                    const isSelected = selectedShowcaseProducts.includes(product.id);
+                                                    return (
+                                                        <div
+                                                            key={product.id}
+                                                            onClick={() => toggleShowcaseProduct(product.id)}
+                                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${isSelected
+                                                                ? 'bg-pink-500/10 border border-pink-500/30'
+                                                                : 'bg-white/5 border border-transparent hover:bg-white/10'
+                                                                }`}
+                                                        >
+                                                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-pink-500 border-pink-500' : 'border-gray-600'}`}>
+                                                                {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-white text-sm truncate">{product.nome}</p>
+                                                                {fabricaNome && <p className="text-xs text-gray-500">{fabricaNome}</p>}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                         </div>
 
-                                        {/* Client Selector & Send */}
-                                        <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-                                            <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-                                                <Send className="w-5 h-5 text-purple-400" />
-                                                Enviar para Clientes
-                                            </h3>
-
-                                            <div className="relative mb-4">
-                                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Buscar cliente para enviar..."
-                                                    value={clientSearch}
-                                                    onChange={(e) => setClientSearch(e.target.value)}
-                                                    className="w-full pl-10 pr-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                                        {showcaseMessage && (
+                                            <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="text-lg font-medium text-white">Mensagem Gerada</h3>
+                                                    <button
+                                                        onClick={() => copyToClipboard(showcaseMessage)}
+                                                        className="px-3 py-1.5 rounded-lg bg-pink-600/20 text-pink-400 hover:bg-pink-600/30 transition-colors text-sm font-medium flex items-center gap-2"
+                                                    >
+                                                        <Copy className="w-4 h-4" />
+                                                        Copiar
+                                                    </button>
+                                                </div>
+                                                <textarea
+                                                    readOnly
+                                                    className="w-full h-48 bg-black/20 text-gray-300 text-sm p-4 rounded-lg border border-white/5 resize-none focus:outline-none"
+                                                    value={showcaseMessage}
                                                 />
                                             </div>
-
-                                            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                                                <table className="w-full text-sm">
-                                                    <thead className="bg-white/5 sticky top-0">
-                                                        <tr>
-                                                            <th className="px-4 py-2 text-left text-gray-400 font-medium">Cliente</th>
-                                                            <th className="px-4 py-2 text-left text-gray-400 font-medium hidden sm:table-cell">Comprador</th>
-                                                            <th className="px-4 py-2 text-right text-gray-400 font-medium">Ação</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-white/5">
-                                                        {filteredClients.map(client => {
-                                                            const greetingName = client.comprador?.split(' ')[0] || client.nomeFantasia;
-                                                            const message = getMessageForClient(greetingName);
-                                                            const whatsappLink = `https://wa.me/55${(client.celular || client.telefone)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-                                                            return (
-                                                                <tr key={client.id} className="hover:bg-white/5">
-                                                                    <td className="px-4 py-2 text-white">{client.nomeFantasia}</td>
-                                                                    <td className="px-4 py-2 text-gray-400 hidden sm:table-cell">{client.comprador || '-'}</td>
-                                                                    <td className="px-4 py-2 text-right">
-                                                                        <a
-                                                                            href={whatsappLink}
-                                                                            target="_blank"
-                                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors font-medium text-xs"
-                                                                        >
-                                                                            <MessageCircle className="w-3 h-3" />
-                                                                            Enviar {selectedScriptType === 'launch' ? 'Lançamento' : selectedScriptType === 'reactivation' ? 'Reativação' : 'Prospecção'}
-                                                                        </a>
-                                                                    </td>
-                                                                </tr>
-                                                            )
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
+                                        )}
                                     </>
+                                )}
+
+                                {/* === Shared Client Send Section === */}
+                                {activeMessage && (
+                                    <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+                                        <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                                            <Send className="w-5 h-5 text-green-400" />
+                                            Enviar para Clientes
+                                        </h3>
+
+                                        <div className="relative mb-4">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar cliente para enviar..."
+                                                value={clientSearch}
+                                                onChange={(e) => setClientSearch(e.target.value)}
+                                                className="w-full pl-10 pr-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                                            />
+                                        </div>
+
+                                        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-white/5 sticky top-0">
+                                                    <tr>
+                                                        <th className="px-4 py-2 text-left text-gray-400 font-medium">Cliente</th>
+                                                        <th className="px-4 py-2 text-left text-gray-400 font-medium hidden sm:table-cell">Comprador</th>
+                                                        <th className="px-4 py-2 text-right text-gray-400 font-medium">Ação</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {filteredClients.map(client => {
+                                                        const greetingName = client.comprador?.split(' ')[0] || client.nomeFantasia;
+                                                        const message = getMessageForClient(greetingName);
+                                                        const whatsappLink = `https://wa.me/55${(client.celular || client.telefone)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+                                                        return (
+                                                            <tr key={client.id} className="hover:bg-white/5">
+                                                                <td className="px-4 py-2 text-white">{client.nomeFantasia}</td>
+                                                                <td className="px-4 py-2 text-gray-400 hidden sm:table-cell">{client.comprador || '-'}</td>
+                                                                <td className="px-4 py-2 text-right">
+                                                                    <a
+                                                                        href={whatsappLink}
+                                                                        target="_blank"
+                                                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors font-medium text-xs"
+                                                                    >
+                                                                        <MessageCircle className="w-3 h-3" />
+                                                                        Enviar WhatsApp
+                                                                    </a>
+                                                                </td>
+                                                            </tr>
+                                                        )
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         )}
