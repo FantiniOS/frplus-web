@@ -146,7 +146,7 @@ export default function LoginPage() {
           <div className="mt-6 text-center space-y-3">
 
             <p className="text-xs text-gray-600">
-              Protegido por criptografia de ponta a ponta.
+              Desenvolvido por FID - Fantini Ideias Digitais
             </p>
           </div>
         </div>
