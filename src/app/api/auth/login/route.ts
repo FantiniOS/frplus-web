@@ -17,12 +17,12 @@ export async function POST(request: Request) {
             )
         }
 
-        // Buscar usuário pelo username ou email
+        // Buscar usuário pelo username ou email (case insensitive)
         const usuario = await prisma.usuario.findFirst({
             where: {
                 OR: [
-                    { username: identifier },
-                    { email: identifier }
+                    { username: { equals: identifier, mode: 'insensitive' } },
+                    { email: { equals: identifier, mode: 'insensitive' } }
                 ]
             }
         })
