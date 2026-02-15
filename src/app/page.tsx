@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight, Lock, User, Loader2 } from "lucide-react";
+import NextImage from "next/image";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -75,20 +76,18 @@ export default function LoginPage() {
 
           {/* Header */}
           <div className="mb-8 text-center">
-            <div className="flex flex-col items-center gap-4 mb-4">
-              {/* Logo Icon */}
+            <div className="flex justify-center mb-6">
               <div className="relative">
-                <div className="absolute inset-0 bg-blue-500/30 rounded-2xl blur-xl" />
-                <div className="relative w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25 border border-blue-400/20">
-                  <span className="text-2xl font-black text-white tracking-tight">FR</span>
-                </div>
-              </div>
-              {/* Brand Text */}
-              <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">
-                  FR<span className="text-blue-400">Plus</span>
-                </h1>
-                <p className="text-xs text-gray-500 mt-0.5 tracking-widest uppercase">Fantini Representações</p>
+                <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full" />
+                <NextImage
+                  src="/logo.png"
+                  alt="Logo"
+                  width={300}
+                  height={100}
+                  className="relative h-24 w-auto object-contain drop-shadow-lg"
+                  priority
+                  unoptimized
+                />
               </div>
             </div>
             <p className="text-sm text-gray-400">
