@@ -213,8 +213,8 @@ export default function RelatoriosPage() {
                 // Logo
                 if (logoData) {
                     try {
-                        const logoH = 26; // max height in mm
-                        let logoW = 26; // default square
+                        const logoH = 19.5; // max height in mm (reduced 25%)
+                        let logoW = 19.5; // default square
                         if (logoResult) {
                             const aspect = logoResult.width / logoResult.height;
                             logoW = logoH * aspect;
@@ -224,7 +224,7 @@ export default function RelatoriosPage() {
                 }
 
                 // Company Name
-                const logoRenderedW = (logoData && logoResult) ? (26 * logoResult.width / logoResult.height) : 0;
+                const logoRenderedW = (logoData && logoResult) ? (19.5 * logoResult.width / logoResult.height) : 0;
                 const titleX = logoData ? margin.left + logoRenderedW + 6 : margin.left;
                 pageDoc.setTextColor(255, 255, 255);
                 pageDoc.setFontSize(18);
