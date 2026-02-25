@@ -175,7 +175,7 @@ export default function RelatoriosPage() {
             };
 
             // ====== LOGO LOADER (reusable) ======
-            const loadLogo = (): Promise<string | null> => {
+            const loadLogo = (): Promise<{ data: string; width: number; height: number } | null> => {
                 return new Promise((resolve) => {
                     const logoImg = new Image();
                     logoImg.crossOrigin = 'anonymous';
@@ -185,14 +185,15 @@ export default function RelatoriosPage() {
                         canvas.height = logoImg.height;
                         const ctx = canvas.getContext('2d');
                         ctx?.drawImage(logoImg, 0, 0);
-                        resolve(canvas.toDataURL('image/png'));
+                        resolve({ data: canvas.toDataURL('image/png'), width: logoImg.width, height: logoImg.height });
                     };
                     logoImg.onerror = () => resolve(null);
                     logoImg.src = '/logo.png';
                 });
             };
 
-            const logoData = await loadLogo();
+            const logoResult = await loadLogo();
+            const logoData = logoResult?.data || null;
 
             // ====== DRAW PREMIUM HEADER (every page) ======
             const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
@@ -212,12 +213,19 @@ export default function RelatoriosPage() {
                 // Logo
                 if (logoData) {
                     try {
-                        pageDoc.addImage(logoData, 'PNG', margin.left, 6, 28, 26);
+                        const logoH = 26; // max height in mm
+                        let logoW = 26; // default square
+                        if (logoResult) {
+                            const aspect = logoResult.width / logoResult.height;
+                            logoW = logoH * aspect;
+                        }
+                        pageDoc.addImage(logoData, 'PNG', margin.left, 6, logoW, logoH);
                     } catch { /* ignore logo errors */ }
                 }
 
                 // Company Name
-                const titleX = logoData ? margin.left + 34 : margin.left;
+                const logoRenderedW = (logoData && logoResult) ? (26 * logoResult.width / logoResult.height) : 0;
+                const titleX = logoData ? margin.left + logoRenderedW + 6 : margin.left;
                 pageDoc.setTextColor(255, 255, 255);
                 pageDoc.setFontSize(18);
                 pageDoc.setFont('helvetica', 'bold');
