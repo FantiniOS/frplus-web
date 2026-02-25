@@ -23,8 +23,8 @@ export default function ClientesPage() {
 
   const filteredClients = clients.filter(client =>
     (client.razaoSocial || client.nomeFantasia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.cnpj.includes(searchTerm) ||
-    client.cidade.toLowerCase().includes(searchTerm.toLowerCase())
+    (client.cnpj || '').includes(searchTerm) ||
+    (client.cidade || '').toLowerCase().includes(searchTerm.toLowerCase())
   ).sort((a, b) => (a.razaoSocial || a.nomeFantasia || '').localeCompare(b.razaoSocial || b.nomeFantasia || ''));
 
   const container = {

@@ -20,7 +20,7 @@ export default function PedidosPage() {
     // Filter orders
     const filteredOrders = useMemo(() => {
         return orders.filter(order => {
-            const matchesSearch = order.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase()) || order.id.includes(searchTerm);
+            const matchesSearch = (order.nomeCliente || '').toLowerCase().includes(searchTerm.toLowerCase()) || order.id.includes(searchTerm);
 
             let matchesMonth = true;
             if (selectedMonth) {
@@ -137,8 +137,8 @@ export default function PedidosPage() {
                             key={opt.key}
                             onClick={() => setTipoFilter(opt.key)}
                             className={`px-3 py-1.5 text-xs font-medium transition-all ${tipoFilter === opt.key
-                                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                                ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
                                 }`}
                         >
                             {opt.label}
@@ -216,8 +216,8 @@ export default function PedidosPage() {
                                             {/* Tipo */}
                                             <td className="px-3 py-2.5 hidden md:table-cell">
                                                 <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${order.tipo === 'Bonificacao'
-                                                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                                                     }`}>
                                                     {order.tipo === 'Bonificacao' ? 'BONIF' : 'VENDA'}
                                                 </span>

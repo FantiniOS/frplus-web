@@ -203,8 +203,8 @@ export default function AIInsightsPage() {
 
     const filteredClients = clients.filter(c =>
         clientSearch === '' ||
-        c.nomeFantasia.toLowerCase().includes(clientSearch.toLowerCase()) ||
-        c.razaoSocial.toLowerCase().includes(clientSearch.toLowerCase())
+        (c.nomeFantasia || '').toLowerCase().includes(clientSearch.toLowerCase()) ||
+        (c.razaoSocial || '').toLowerCase().includes(clientSearch.toLowerCase())
     ).slice(0, 50);
 
     const copyToClipboard = (text: string) => {

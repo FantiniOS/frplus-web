@@ -95,8 +95,8 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     const filteredProducts = useMemo(() => {
         if (!searchProduct) return products;
         return products.filter(p =>
-            p.nome.toLowerCase().includes(searchProduct.toLowerCase()) ||
-            p.codigo.toLowerCase().includes(searchProduct.toLowerCase())
+            (p.nome || '').toLowerCase().includes(searchProduct.toLowerCase()) ||
+            (p.codigo || '').toLowerCase().includes(searchProduct.toLowerCase())
         );
     }, [products, searchProduct]);
 

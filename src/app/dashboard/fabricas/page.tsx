@@ -12,7 +12,7 @@ export default function FabricasPage() {
     const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
 
     const filteredFabricas = fabricas.filter(f =>
-        f.nome.toLowerCase().includes(searchTerm.toLowerCase())
+        (f.nome || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const getProductCount = (fabricaId: string) => {

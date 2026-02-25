@@ -166,8 +166,8 @@ export default function NovoPedidoPage() {
         if (!fabricaSelecionada) return [];
         return products.filter(p => {
             const matchFabrica = p.fabricaId === fabricaSelecionada.id;
-            const matchSearch = p.nome.toLowerCase().includes(searchProduct.toLowerCase()) ||
-                p.codigo.toLowerCase().includes(searchProduct.toLowerCase());
+            const matchSearch = (p.nome || '').toLowerCase().includes(searchProduct.toLowerCase()) ||
+                (p.codigo || '').toLowerCase().includes(searchProduct.toLowerCase());
             const matchCategoria = selectedCategoria === 'all' || p.categoria === selectedCategoria;
             return matchFabrica && matchSearch && matchCategoria;
         });
@@ -184,9 +184,9 @@ export default function NovoPedidoPage() {
 
     const clientesFiltrados = useMemo(() => {
         return clients.filter(c =>
-            c.nomeFantasia.toLowerCase().includes(searchClient.toLowerCase()) ||
-            c.razaoSocial.toLowerCase().includes(searchClient.toLowerCase()) ||
-            c.cnpj.includes(searchClient)
+            (c.nomeFantasia || '').toLowerCase().includes(searchClient.toLowerCase()) ||
+            (c.razaoSocial || '').toLowerCase().includes(searchClient.toLowerCase()) ||
+            (c.cnpj || '').includes(searchClient)
         );
     }, [clients, searchClient]);
 

@@ -21,8 +21,8 @@ export default function ProdutosPage() {
     };
 
     const filteredProducts = products.filter(product =>
-        product.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.nome || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.codigo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (product.categoria || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
