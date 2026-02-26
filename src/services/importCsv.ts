@@ -222,7 +222,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                     unitPrice = Number(product.precoAtacado) || 0;
                                 }
 
-                                const total = parseBrlFloat(row['Vlr.Total']) || (unitPrice * qty);
+                                const total = parseBrlFloat(row['Vlr_Total']) || (unitPrice * qty);
                                 totalOrder += total;
 
                                 itemsData.push({
@@ -238,7 +238,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                             try {
                                 // Regra: SEM DEBITO → Bonificação
                                 let tipoPedido = 'Venda';
-                                let condPagto = firstRow['Cond. Pagto'] || 'Importado';
+                                let condPagto = firstRow['Cond_Pagto'] || 'Importado';
                                 if (firstRow['Descricao_Pagto']?.trim() === 'SEM DEBITO') {
                                     tipoPedido = 'Bonificacao';
                                     condPagto = 'BONIFICACAO';

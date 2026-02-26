@@ -26,7 +26,7 @@ export default function LoginPage() {
   useEffect(() => {
     const seedAdmin = async () => {
       try {
-        await fetch('/api/auth/seed', { method: 'POST' });
+        await fetch('/api/auth/seed', { method: 'GET' });
       } catch {
         // Ignore errors
       }
