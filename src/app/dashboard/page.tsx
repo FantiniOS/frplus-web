@@ -127,6 +127,17 @@ export default function DashboardPage() {
   }, [monthlyOrders]);
 
   const [showBonifDetails, setShowBonifDetails] = useState(false);
+
+  const bonificacaoAnual = useMemo(() =>
+    orders
+      .filter(o => {
+        if (!filterYear) return false;
+        const d = new Date(o.data);
+        return o.tipo === 'Bonificacao' && d.getUTCFullYear() === filterYear;
+      })
+      .reduce((acc, o) => acc + o.valorTotal, 0),
+    [orders, filterYear]
+  );
   // ====== END DATA LOGIC ======
 
   const kpis = [
@@ -144,7 +155,7 @@ export default function DashboardPage() {
     {
       label: 'Total Bonificado',
       value: `R$ ${bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      sub: `${bonificacoes} pedidos bonificados`,
+      sub: `${bonificacoes} pedidos · Ano: R$ ${bonificacaoAnual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       icon: Gift,
       gradient: 'from-rose-500/20 to-rose-500/[0.02]',
       iconBg: 'bg-rose-500/15',
