@@ -141,6 +141,18 @@ export default function DashboardPage() {
       glow: 'group-hover:shadow-emerald-500/10'
     },
     {
+      label: 'Total Bonificado',
+      value: `R$ ${bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      sub: `${bonificacoes} pedidos bonificados`,
+      icon: Gift,
+      gradient: 'from-rose-500/20 to-rose-500/[0.02]',
+      iconBg: 'bg-rose-500/15',
+      iconColor: 'text-rose-400',
+      borderHover: 'hover:border-rose-500/30',
+      glow: 'group-hover:shadow-rose-500/10',
+      onClick: () => setShowBonifDetails(true)
+    },
+    {
       label: 'Ticket Médio',
       value: `R$ ${avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       sub: 'Por pedido',
@@ -161,29 +173,6 @@ export default function DashboardPage() {
       iconColor: 'text-violet-400',
       borderHover: 'hover:border-violet-500/30',
       glow: 'group-hover:shadow-violet-500/10'
-    },
-    {
-      label: 'Catálogo',
-      value: String(products.length),
-      sub: `${bonificacoes} bonificações no mês`,
-      icon: Package,
-      gradient: 'from-amber-500/20 to-amber-500/[0.02]',
-      iconBg: 'bg-amber-500/15',
-      iconColor: 'text-amber-400',
-      borderHover: 'hover:border-amber-500/30',
-      glow: 'group-hover:shadow-amber-500/10'
-    },
-    {
-      label: 'Total Bonificado',
-      value: `R$ ${bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      sub: `${bonificacoes} pedidos bonificados`,
-      icon: Gift,
-      gradient: 'from-rose-500/20 to-rose-500/[0.02]',
-      iconBg: 'bg-rose-500/15',
-      iconColor: 'text-rose-400',
-      borderHover: 'hover:border-rose-500/30',
-      glow: 'group-hover:shadow-rose-500/10',
-      onClick: () => setShowBonifDetails(true)
     }
   ];
 
@@ -226,7 +215,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ===== KPI CARDS ===== */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi, i) => (
           <div
             key={i}
