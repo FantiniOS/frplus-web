@@ -63,24 +63,27 @@ export default function DashboardPage() {
 
   const maxSale = Math.max(...salesData.map(d => d.value), 100);
 
-  const productSalesMap = new Map<string, number>();
+  const productSalesMap = new Map<string, { qtd: number; total: number }>();
   monthlyOrders.forEach(order => {
     order.itens.forEach(item => {
-      const current = productSalesMap.get(item.produtoId) || 0;
-      productSalesMap.set(item.produtoId, current + item.quantidade);
+      const current = productSalesMap.get(item.produtoId) || { qtd: 0, total: 0 };
+      productSalesMap.set(item.produtoId, {
+        qtd: current.qtd + item.quantidade,
+        total: current.total + Number(item.total || 0)
+      });
     });
   });
 
   const topProducts = Array.from(productSalesMap.entries())
-    .map(([id, qtd]) => {
+    .map(([id, data]) => {
       const product = products.find(p => p.id === id);
       return {
         name: product?.nome || 'Produto Desconhecido',
-        qtd,
-        total: (product?.preco50a199 || 0) * qtd
+        qtd: data.qtd,
+        total: data.total
       };
     })
-    .sort((a, b) => b.qtd - a.qtd)
+    .sort((a, b) => b.total - a.total)
     .slice(0, 5);
 
   const recentOrders = [...monthlyOrders].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).slice(0, 5);
@@ -240,8 +243,8 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-2.5">
                 {topProducts.map((prod, i) => {
-                  const maxQtd = topProducts[0]?.qtd || 1;
-                  const barWidth = Math.max((prod.qtd / maxQtd) * 100, 8);
+                  const maxTotal = topProducts[0]?.total || 1;
+                  const barWidth = Math.max((prod.total / maxTotal) * 100, 8);
                   const medals = ['🥇', '🥈', '🥉'];
 
                   return (
