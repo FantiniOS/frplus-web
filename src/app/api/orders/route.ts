@@ -9,12 +9,16 @@ export async function GET() {
         const orders = await prisma.pedido.findMany({
             include: {
                 cliente: true,
-                itens: {
-                    include: { produto: true }
-                }
+                itens: true
             },
             orderBy: { data: 'desc' }
         })
+
+        // Fetch all products for name lookup (safe - won't crash if some are missing)
+        const allProducts = await prisma.produto.findMany({
+            select: { id: true, nome: true }
+        })
+        const productMap = new Map(allProducts.map(p => [p.id, p.nome]))
 
         const formattedOrders = orders.map(o => ({
             id: o.id,
@@ -22,7 +26,7 @@ export async function GET() {
             nomeCliente: o.cliente?.nomeFantasia || o.cliente?.razaoSocial || 'Cliente Desconhecido',
             data: o.data.toISOString(),
             status: o.status,
-            tipo: o.tipo, // Added: Ensure order type is returned
+            tipo: o.tipo,
             valorTotal: Number(o.valorTotal),
             tabelaPreco: o.tabelaPreco,
             condicaoPagamento: o.condicaoPagamento,
@@ -30,7 +34,7 @@ export async function GET() {
             itens: o.itens.map(item => ({
                 id: item.id,
                 produtoId: item.produtoId,
-                nomeProduto: item.produto?.nome || 'Produto Removido',
+                nomeProduto: productMap.get(item.produtoId) || 'Produto Removido',
                 quantidade: item.quantidade,
                 precoUnitario: Number(item.precoUnitario),
                 total: Number(item.total)
@@ -43,6 +47,7 @@ export async function GET() {
         return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 })
     }
 }
+
 
 // POST /api/orders - Create a new order (transactional)
 export async function POST(request: Request) {
