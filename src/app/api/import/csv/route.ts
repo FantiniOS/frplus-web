@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { importSalesCsv } from '@/services/importCsv';
 
+// Allow up to 60s for large CSV imports (Vercel default is 10s)
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
@@ -10,14 +13,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
         }
 
+        console.log('[CSV Import] File received:', file.name, 'Size:', file.size, 'bytes');
+
         const buffer = Buffer.from(await file.arrayBuffer());
         const stats = await importSalesCsv(buffer);
 
+        console.log('[CSV Import] Success:', JSON.stringify(stats));
         return NextResponse.json({ success: true, stats });
-    } catch (error) {
-        console.error('CSV Import Error:', error);
+    } catch (error: any) {
+        console.error('[CSV Import] FULL ERROR:', error?.message, error?.stack);
         return NextResponse.json(
-            { error: 'Import failed', details: String(error) },
+            { error: 'Import failed', details: error?.message || String(error), stack: error?.stack },
             { status: 500 }
         );
     }

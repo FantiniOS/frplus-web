@@ -1,4 +1,4 @@
-import fs from 'fs';
+/* fs removed - not used and breaks serverless */
 import csv from 'csv-parser';
 import { prisma } from '@/lib/prisma';
 import { parse } from 'date-fns';

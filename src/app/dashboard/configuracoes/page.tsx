@@ -38,7 +38,7 @@ export default function ConfiguracoesPage() {
                 showToast("Importação concluída com sucesso!", "success");
                 setImportFile(null);
             } else {
-                showToast(data.error || "Erro ao importar", "error");
+                showToast(data.error + (data.details ? ': ' + data.details : ''), "error");
             }
         } catch (error) {
             console.error(error);
