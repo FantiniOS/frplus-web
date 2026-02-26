@@ -155,7 +155,7 @@ export default function DashboardPage() {
     {
       label: 'Total Bonificado',
       value: `R$ ${bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      sub: `${bonificacoes} pedidos · Ano: R$ ${bonificacaoAnual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      sub: `${bonificacoes} pedidos · Ano: R$ ${bonificacaoAnual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (7%: R$ ${(bonificacaoAnual * 0.07).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
       icon: Gift,
       gradient: 'from-rose-500/20 to-rose-500/[0.02]',
       iconBg: 'bg-rose-500/15',
