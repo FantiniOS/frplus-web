@@ -119,8 +119,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                     where: { id: existing.id },
                                     data: {
                                         razaoSocial: c.razaoSocial,
-                                        nomeFantasia: c.razaoSocial,
-                                        updatedAt: new Date()
+                                        nomeFantasia: c.razaoSocial
                                     }
                                 });
                                 stats.clientsUpdated++;
@@ -149,11 +148,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         for (const p of products) {
                             const existing = await tx.produto.findFirst({ where: { codigo: p.code } });
                             if (existing) {
-                                // PROTECT PRICES: Do NOT update prices of existing products.
-                                await tx.produto.update({
-                                    where: { id: existing.id },
-                                    data: { updatedAt: new Date() }
-                                });
+                                // PROTECT PRICES: Just count as updated, no changes needed.
                                 stats.productsUpdated++;
                             } else {
                                 await tx.produto.create({
@@ -171,7 +166,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                 stats.productsNew++;
                             }
                         }
-                    });
+                    }, { timeout: 30000, maxWait: 60000 });
 
                     // --- 3. Orders (Complex, needs ID mapping) ---
                     const ordersMap = new Map<string, any[]>();
