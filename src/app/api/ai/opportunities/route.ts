@@ -72,7 +72,7 @@ export async function GET() {
             // --- UPGRADE OPPORTUNITY ---
             // Client using 50-199 table but ordering frequently
             const using50a199 = recentOrders.some(o => o.tabelaPreco === '50a199')
-            if (using50a199 && thisMonthOrders.length >= 3) {
+            if (using50a199 && thisMonthOrders.length >= 2) {
                 opportunities.push({
                     type: 'upgrade',
                     clienteId: client.id,
@@ -92,7 +92,7 @@ export async function GET() {
             )
             const boughtFabricaIds = new Set(
                 recentOrders.flatMap(o =>
-                    o.itens.map(i => i.produto.fabricaId)
+                    o.itens.filter(i => i.produto && i.produto.fabricaId).map(i => i.produto.fabricaId)
                 )
             )
 
@@ -116,7 +116,7 @@ export async function GET() {
                     description: `Oportunidade de incluir "${topProduct.nome}" no mix.`,
                     priority: 'media',
                     actionLabel: 'Oferecer Produto',
-                    messageSuggestion: `Olá ${greetingName}! Vi que você já trabalha muito bem com a linha da ${topProduct.fabrica.nome}, mas notei que o item "${topProduct.nome}" ainda não está no seu mix. Esse produto tem tido uma saída excelente em lojas do seu perfil. Vamos incluir uma caixa no próximo pedido para testar?`
+                    messageSuggestion: `Olá ${greetingName}! Vi que você já trabalha muito bem com a linha da ${topProduct.fabrica?.nome || 'fábrica'}, mas notei que o item "${topProduct.nome}" ainda não está no seu mix. Esse produto tem tido uma saída excelente em lojas do seu perfil. Vamos incluir uma caixa no próximo pedido para testar?`
                 })
             }
 
@@ -128,10 +128,10 @@ export async function GET() {
             const avgOrdersPerMonth = client.pedidos.length / 12
 
             // Seasonal only for clients older than 1 year
-            const oneYearAgo = new Date();
-            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            const sixMonthsAgo = new Date();
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-            if (client.createdAt < oneYearAgo && ordersThisMonth.length > avgOrdersPerMonth * 1.5 && ordersThisMonth.length < avgOrdersPerMonth * 2) {
+            if (client.createdAt < sixMonthsAgo && ordersThisMonth.length > avgOrdersPerMonth * 1.3 && ordersThisMonth.length < avgOrdersPerMonth * 2.5) {
                 opportunities.push({
                     type: 'seasonal',
                     clienteId: client.id,
