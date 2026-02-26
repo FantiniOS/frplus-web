@@ -393,7 +393,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                                                         </div>
                                                         <p className="text-xs font-medium text-white truncate my-0.5" title={product.nome}>{product.nome}</p>
                                                         <p className="text-sm font-bold text-green-400">
-                                                            R$ {preco.toFixed(2)}
+                                                            R$ {Number(preco).toFixed(2)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -567,7 +567,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                                                 +
                                             </button>
                                         </div>
-                                        <p className="text-sm font-bold text-green-400">R$ {item.total.toFixed(2)}</p>
+                                        <p className="text-sm font-bold text-green-400">R$ {Number(item.total).toFixed(2)}</p>
                                     </div>
                                 )}
                             </motion.div>

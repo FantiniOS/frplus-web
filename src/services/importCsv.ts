@@ -236,15 +236,24 @@ export async function importSalesCsv(fileBuffer: Buffer) {
 
                         if (itemsData.length > 0) {
                             try {
+                                // Regra: SEM DEBITO → Bonificação
+                                let tipoPedido = 'Venda';
+                                let condPagto = firstRow['Cond. Pagto'] || 'Importado';
+                                if (firstRow['Descricao_Pagto']?.trim() === 'SEM DEBITO') {
+                                    tipoPedido = 'Bonificacao';
+                                    condPagto = 'BONIFICACAO';
+                                }
+
                                 await prisma.pedido.create({
                                     data: {
                                         id: orderNum, // EXPLICIT ID FROM PROTHEUS
                                         clienteId: client.id,
                                         fabricaId: defaultFactory!.id,
                                         status: 'Concluido',
+                                        tipo: tipoPedido,
                                         valorTotal: totalOrder,
                                         tabelaPreco: 'atacado',
-                                        condicaoPagamento: firstRow['Cond. Pagto'] || 'Importado',
+                                        condicaoPagamento: condPagto,
                                         observacoes: `Importado em ${new Date().toLocaleDateString()}`,
                                         data: parseDate(firstRow['DT_Emissao']),
                                         itens: {

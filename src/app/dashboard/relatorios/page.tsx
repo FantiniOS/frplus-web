@@ -899,8 +899,8 @@ export default function RelatoriosPage() {
                                                                                 return;
                                                                             }
                                                                             const message = `Olá *${order.nomeCliente}*, segue o resumo do seu pedido *#${order.id.slice(-6)}*:\n\n` +
-                                                                                order.itens.map(i => `- ${i.quantidade}x ${i.nomeProduto} (R$ ${i.total.toFixed(2)})`).join('\n') +
-                                                                                `\n\n*Total: R$ ${order.valorTotal.toFixed(2)}*`;
+                                                                                order.itens.map(i => `- ${i.quantidade}x ${i.nomeProduto} (R$ ${Number(i.total).toFixed(2)})`).join('\n') +
+                                                                                `\n\n*Total: R$ ${Number(order.valorTotal).toFixed(2)}*`;
 
                                                                             // Clean phone number
                                                                             const cleanPhone = phone.replace(/\D/g, '');
@@ -954,8 +954,8 @@ export default function RelatoriosPage() {
                                                                                         <tr key={item.id || item.produtoId} className="border-b border-white/5 print:border-gray-100 last:border-0">
                                                                                             <td className="py-2 text-white print:text-black">{item.nomeProduto}</td>
                                                                                             <td className="py-2 text-center text-gray-300 print:text-gray-700">{item.quantidade}</td>
-                                                                                            <td className="py-2 text-right text-gray-300 print:text-gray-700">R$ {item.precoUnitario.toFixed(2)}</td>
-                                                                                            <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">R$ {item.total.toFixed(2)}</td>
+                                                                                            <td className="py-2 text-right text-gray-300 print:text-gray-700">R$ {Number(item.precoUnitario).toFixed(2)}</td>
+                                                                                            <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">R$ {Number(item.total).toFixed(2)}</td>
                                                                                         </tr>
                                                                                     ))}
                                                                                 </tbody>
@@ -1092,7 +1092,7 @@ export default function RelatoriosPage() {
                                                                                             </td>
                                                                                             <td className="py-2 text-center text-gray-300 print:text-gray-700 font-mono">#{order.id.slice(-6)}</td>
                                                                                             <td className="py-2 text-center text-gray-300 print:text-gray-700">{order.itens.length}</td>
-                                                                                            <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">R$ {order.valorTotal.toFixed(2)}</td>
+                                                                                            <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">R$ {Number(order.valorTotal).toFixed(2)}</td>
                                                                                         </tr>
                                                                                         {expandedClientOrderId === order.id && (
                                                                                             <tr className="bg-black/20 print:bg-gray-50">
@@ -1120,7 +1120,7 @@ export default function RelatoriosPage() {
                                                                                                                         <tr key={item.id || item.produtoId} className="border-b border-white/5 last:border-0 hover:bg-white/5">
                                                                                                                             <td className="py-1 text-gray-300 print:text-black">{item.nomeProduto}</td>
                                                                                                                             <td className="py-1 text-center text-gray-400">{item.quantidade}</td>
-                                                                                                                            <td className="py-1 text-right text-green-400 print:text-green-600">R$ {item.total.toFixed(2)}</td>
+                                                                                                                            <td className="py-1 text-right text-green-400 print:text-green-600">R$ {Number(item.total).toFixed(2)}</td>
                                                                                                                         </tr>
                                                                                                                     ))}
                                                                                                                 </tbody>
@@ -1219,19 +1219,19 @@ export default function RelatoriosPage() {
                                                                 <td className="py-2 font-mono text-gray-400 print:text-gray-600 text-xs">{p.codigo}</td>
                                                                 <td className="py-2 text-white print:text-black font-medium">{p.nome}</td>
                                                                 <td className="py-2 text-right text-green-400 print:text-green-600">
-                                                                    R$ {p.preco50a199?.toFixed(2) || '0.00'}
+                                                                    R$ {Number(p.preco50a199 || 0).toFixed(2)}
                                                                 </td>
                                                                 <td className="py-2 text-right text-green-400 print:text-green-600">
-                                                                    R$ {p.preco200a699?.toFixed(2) || '0.00'}
+                                                                    R$ {Number(p.preco200a699 || 0).toFixed(2)}
                                                                 </td>
                                                                 <td className="py-2 text-right text-green-400 print:text-green-600">
-                                                                    R$ {p.precoAtacado?.toFixed(2) || '0.00'}
+                                                                    R$ {Number(p.precoAtacado || 0).toFixed(2)}
                                                                 </td>
                                                                 <td className="py-2 text-right text-green-400 print:text-green-600">
-                                                                    R$ {p.precoAtacadoAVista?.toFixed(2) || '0.00'}
+                                                                    R$ {Number(p.precoAtacadoAVista || 0).toFixed(2)}
                                                                 </td>
                                                                 <td className="py-2 text-right text-green-400 print:text-green-600">
-                                                                    R$ {p.precoRedes?.toFixed(2) || '0.00'}
+                                                                    R$ {Number(p.precoRedes || 0).toFixed(2)}
                                                                 </td>
                                                             </tr>
                                                         ))}

@@ -583,10 +583,10 @@ export default function NovoPedidoPage() {
                                             <div key={idx} className="flex justify-between items-center p-2 rounded bg-white/5 border border-white/5 text-xs">
                                                 <div className="flex-1 min-w-0 pr-2">
                                                     <p className="font-medium text-gray-300 truncate">{item.nomeProduto}</p>
-                                                    <p className="text-gray-500">{item.quantidade} x R$ {item.precoUnitario.toFixed(2)}</p>
+                                                    <p className="text-gray-500">{item.quantidade} x R$ {Number(item.precoUnitario).toFixed(2)}</p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="font-bold text-white">R$ {item.total.toFixed(2)}</p>
+                                                    <p className="font-bold text-white">R$ {Number(item.total).toFixed(2)}</p>
                                                 </div>
                                             </div>
                                         ))

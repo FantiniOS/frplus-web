@@ -156,27 +156,27 @@ export default function ProdutosPage() {
                                             <div className="mt-2 pt-2 border-t border-white/5 flex justify-between gap-1 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
                                                 <div className="flex flex-col items-center min-w-[50px]">
                                                     <span className="text-[9px] text-gray-500 uppercase leading-none mb-0.5">50-199</span>
-                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {product.preco50a199?.toFixed(2)}</span>
+                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {Number(product.preco50a199 || 0).toFixed(2)}</span>
                                                 </div>
                                                 <div className="w-px bg-white/5 mx-0.5"></div>
                                                 <div className="flex flex-col items-center min-w-[50px]">
                                                     <span className="text-[9px] text-gray-500 uppercase leading-none mb-0.5">200-699</span>
-                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {product.preco200a699?.toFixed(2)}</span>
+                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {Number(product.preco200a699 || 0).toFixed(2)}</span>
                                                 </div>
                                                 <div className="w-px bg-white/5 mx-0.5"></div>
                                                 <div className="flex flex-col items-center min-w-[50px]">
                                                     <span className="text-[9px] text-gray-500 uppercase leading-none mb-0.5">Atacado</span>
-                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {product.precoAtacado?.toFixed(2)}</span>
+                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {Number(product.precoAtacado || 0).toFixed(2)}</span>
                                                 </div>
                                                 <div className="w-px bg-white/5 mx-0.5"></div>
                                                 <div className="flex flex-col items-center min-w-[50px]">
                                                     <span className="text-[9px] text-gray-500 uppercase leading-none mb-0.5">À Vista</span>
-                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {product.precoAtacadoAVista?.toFixed(2)}</span>
+                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {Number(product.precoAtacadoAVista || 0).toFixed(2)}</span>
                                                 </div>
                                                 <div className="w-px bg-white/5 mx-0.5"></div>
                                                 <div className="flex flex-col items-center min-w-[50px]">
                                                     <span className="text-[9px] text-gray-500 uppercase leading-none mb-0.5">Redes</span>
-                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {product.precoRedes?.toFixed(2)}</span>
+                                                    <span className="text-[10px] text-green-400 font-bold leading-none">R$ {Number(product.precoRedes || 0).toFixed(2)}</span>
                                                 </div>
                                             </div>
                                         </div>
