@@ -7,6 +7,7 @@ import Link from "next/link";
 import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
 import { InteractiveChart } from "@/components/dashboard/InteractiveChart";
 import { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
@@ -243,9 +244,9 @@ export default function DashboardPage() {
       </div>
 
       {/* ===== MODAL DETALHAMENTO BONIFICAÇÕES ===== */}
-      {showBonifDetails && (
+      {showBonifDetails && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setShowBonifDetails(false)}
         >
           {/* Backdrop */}
@@ -306,7 +307,8 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ===== CHART + SIDEBAR ===== */}
