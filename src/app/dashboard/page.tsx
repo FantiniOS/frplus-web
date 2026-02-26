@@ -1,12 +1,12 @@
 'use client';
 
-import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, Zap } from "lucide-react";
+import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, Zap, Gift, X } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
 import { InteractiveChart } from "@/components/dashboard/InteractiveChart";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
@@ -104,6 +104,28 @@ export default function DashboardPage() {
 
   // Bonificações
   const bonificacoes = monthlyOrders.filter(o => o.tipo === 'Bonificacao').length;
+
+  const bonificacaoTotal = useMemo(() =>
+    monthlyOrders
+      .filter(o => o.tipo === 'Bonificacao')
+      .reduce((acc, o) => acc + o.valorTotal, 0),
+    [monthlyOrders]
+  );
+
+  const bonificacaoDetalhes = useMemo(() => {
+    const map = new Map<string, number>();
+    monthlyOrders
+      .filter(o => o.tipo === 'Bonificacao')
+      .forEach(o => {
+        const nome = o.nomeCliente || 'Cliente Desconhecido';
+        map.set(nome, (map.get(nome) || 0) + o.valorTotal);
+      });
+    return Array.from(map.entries())
+      .map(([nome, valor]) => ({ nome, valor }))
+      .sort((a, b) => b.valor - a.valor);
+  }, [monthlyOrders]);
+
+  const [showBonifDetails, setShowBonifDetails] = useState(false);
   // ====== END DATA LOGIC ======
 
   const kpis = [
@@ -150,6 +172,18 @@ export default function DashboardPage() {
       iconColor: 'text-amber-400',
       borderHover: 'hover:border-amber-500/30',
       glow: 'group-hover:shadow-amber-500/10'
+    },
+    {
+      label: 'Total Bonificado',
+      value: `R$ ${bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      sub: `${bonificacoes} pedidos bonificados`,
+      icon: Gift,
+      gradient: 'from-rose-500/20 to-rose-500/[0.02]',
+      iconBg: 'bg-rose-500/15',
+      iconColor: 'text-rose-400',
+      borderHover: 'hover:border-rose-500/30',
+      glow: 'group-hover:shadow-rose-500/10',
+      onClick: () => setShowBonifDetails(true)
     }
   ];
 
@@ -192,11 +226,12 @@ export default function DashboardPage() {
       </div>
 
       {/* ===== KPI CARDS ===== */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
         {kpis.map((kpi, i) => (
           <div
             key={i}
-            className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} cursor-default overflow-hidden`}
+            onClick={'onClick' in kpi && kpi.onClick ? kpi.onClick : undefined}
+            className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} ${'onClick' in kpi && kpi.onClick ? 'cursor-pointer' : 'cursor-default'} overflow-hidden`}
           >
             {/* Background shimmer */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
@@ -210,10 +245,80 @@ export default function DashboardPage() {
               </div>
               <p className="text-xl font-bold text-white tracking-tight">{kpi.value}</p>
               <p className="text-[11px] text-gray-500 mt-1">{kpi.sub}</p>
+              {'onClick' in kpi && kpi.onClick && (
+                <p className="text-[10px] text-rose-400/70 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">Ver detalhes →</p>
+              )}
             </div>
           </div>
         ))}
       </div>
+
+      {/* ===== MODAL DETALHAMENTO BONIFICAÇÕES ===== */}
+      {showBonifDetails && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setShowBonifDetails(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+          {/* Modal */}
+          <div
+            className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] shadow-2xl shadow-black/50 animate-in slide-in-from-bottom-4 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-rose-500/15">
+                  <Gift className="h-4 w-4 text-rose-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Bonificações</h3>
+                  <p className="text-[10px] text-gray-500 capitalize">{monthName} / {filterYear}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBonifDetails(false)}
+                className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors text-gray-500 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 max-h-[60vh] overflow-y-auto">
+              {bonificacaoDetalhes.length === 0 ? (
+                <p className="text-xs text-gray-600 text-center py-8">Nenhuma bonificação neste período</p>
+              ) : (
+                <div className="space-y-1">
+                  {bonificacaoDetalhes.map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-white/[0.03] transition-colors border-b border-white/[0.04] last:border-0"
+                    >
+                      <span className="text-xs font-medium text-white/80 truncate mr-4">{item.nome}</span>
+                      <span className="text-xs font-bold text-rose-400 tabular-nums flex-shrink-0">
+                        R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer total */}
+            {bonificacaoDetalhes.length > 0 && (
+              <div className="px-5 py-3.5 border-t border-white/[0.06] flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total</span>
+                <span className="text-sm font-bold text-white">
+                  R$ {bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ===== CHART + SIDEBAR ===== */}
       <div className="grid gap-4 md:grid-cols-7">
