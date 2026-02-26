@@ -30,7 +30,7 @@ export async function GET() {
             itens: o.itens.map(item => ({
                 id: item.id,
                 produtoId: item.produtoId,
-                nomeProduto: item.produto.nome,
+                nomeProduto: item.produto?.nome || 'Produto Removido',
                 quantidade: item.quantidade,
                 precoUnitario: Number(item.precoUnitario),
                 total: Number(item.total)
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
             itens: order.itens.map(item => ({
                 id: item.id,
                 produtoId: item.produtoId,
-                nomeProduto: item.produto.nome,
+                nomeProduto: item.produto?.nome || 'Produto Removido',
                 quantidade: item.quantidade,
                 precoUnitario: Number(item.precoUnitario),
                 total: Number(item.total)
