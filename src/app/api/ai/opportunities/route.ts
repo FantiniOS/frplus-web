@@ -11,9 +11,7 @@ export async function GET() {
             include: {
                 pedidos: {
                     include: {
-                        itens: {
-                            include: { produto: true }
-                        }
+                        itens: true
                     },
                     orderBy: { data: 'desc' }
                 }
@@ -90,9 +88,10 @@ export async function GET() {
             const boughtProductIds = new Set(
                 recentOrders.flatMap(o => o.itens.map(i => i.produtoId))
             )
+            const productFabricaMap = new Map(products.map(p => [p.id, p.fabricaId]))
             const boughtFabricaIds = new Set(
                 recentOrders.flatMap(o =>
-                    o.itens.filter(i => i.produto && i.produto.fabricaId).map(i => i.produto.fabricaId)
+                    o.itens.map(i => productFabricaMap.get(i.produtoId)).filter(Boolean)
                 )
             )
 
