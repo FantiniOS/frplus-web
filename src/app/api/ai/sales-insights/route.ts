@@ -32,10 +32,14 @@ export async function GET() {
             metric: string
             priority: 'alta' | 'media' | 'baixa'
             actionLabel: string
+            contextoParaIA: string
         }> = []
 
         for (const client of clients) {
             if (client.pedidos.length < 2) continue
+
+            // @ts-ignore
+            const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
 
             // Calculate client's average ticket
             const clientAvgTicket = client.pedidos.reduce((acc, o) => acc + Number(o.valorTotal), 0) / client.pedidos.length
@@ -50,7 +54,8 @@ export async function GET() {
                     description: `Ticket médio ${percentBelow}% abaixo da média geral.`,
                     metric: `R$ ${clientAvgTicket.toFixed(2)} vs R$ ${globalAvgTicket.toFixed(2)}`,
                     priority: 'media',
-                    actionLabel: 'Aumentar Volume'
+                    actionLabel: 'Aumentar Volume',
+                    contextoParaIA: `Atue como um parceiro de negócios. Direcione a mensagem para ${greetingName}. Proponha uma estratégia para aumentar a variedade de produtos na loja, pois o ticket médio atual dele (R$ ${clientAvgTicket.toFixed(2)}) está muito abaixo do potencial do mercado.`
                 })
             }
 
@@ -72,7 +77,8 @@ export async function GET() {
                         description: `Volume de compras caiu ${percentDrop}% nos últimos pedidos.`,
                         metric: `R$ ${recent3Total.toFixed(2)} vs R$ ${previous3Total.toFixed(2)}`,
                         priority: 'alta',
-                        actionLabel: 'Investigar Motivo'
+                        actionLabel: 'Investigar Motivo',
+                        contextoParaIA: `Crie uma mensagem empática para ${greetingName}. Mencione que notou uma queda no volume de compras recente e pergunte, de forma natural e sem parecer cobrança, se houve alguma mudança no giro da loja ou se há algo em que possamos ajudar para retomar o ritmo.`
                     })
                 }
             }
@@ -101,7 +107,8 @@ export async function GET() {
                     description: `Cliente historicamente forte com atividade reduzida recente.`,
                     metric: `Potencial: R$ ${(avgMonthly * 3).toFixed(2)}/trimestre`,
                     priority: 'alta',
-                    actionLabel: 'Reativar Cliente'
+                    actionLabel: 'Reativar Cliente',
+                    contextoParaIA: `Aborde ${greetingName} reconhecendo o histórico forte de parceria que já tiveram, mas notando que os últimos meses foram mais fracos. Sugira uma conversa para apresentar condições exclusivas e recuperar esse volume.`
                 })
             }
         }
