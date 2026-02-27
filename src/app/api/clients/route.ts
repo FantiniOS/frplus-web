@@ -61,6 +61,7 @@ export async function POST(request: Request) {
                 telefone: body.telefone || '',
                 celular: body.celular || '',
                 endereco: body.endereco || '',
+                numero: body.numero || null,
                 bairro: body.bairro || '',
                 cidade: body.cidade || '',
                 estado: body.estado || '',

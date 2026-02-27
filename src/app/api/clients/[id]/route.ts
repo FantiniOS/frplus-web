@@ -51,6 +51,7 @@ export async function PUT(request: Request, { params }: Params) {
                 telefone: body.telefone,
                 celular: body.celular,
                 endereco: body.endereco,
+                numero: body.numero,
                 bairro: body.bairro,
                 cidade: body.cidade,
                 estado: body.estado,
