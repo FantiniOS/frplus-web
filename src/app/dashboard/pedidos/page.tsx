@@ -173,6 +173,7 @@ export default function PedidosPage() {
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-[#0c1220] border-b border-white/[0.08]">
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Data</th>
+                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Nota Fiscal</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Tipo</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Cliente</th>
 
@@ -211,6 +212,15 @@ export default function PedidosPage() {
                                                 <span className={`text-xs font-mono ${isSelected ? 'text-blue-300' : 'text-gray-400'}`}>
                                                     {new Date(order.data).toLocaleDateString('pt-BR')}
                                                 </span>
+                                            </td>
+
+                                            {/* Nota Fiscal */}
+                                            <td className="px-3 py-2.5 hidden md:table-cell">
+                                                {order.notaFiscal ? (
+                                                    <span className="text-xs font-mono text-gray-300">{order.notaFiscal}</span>
+                                                ) : (
+                                                    <span className="text-xs text-gray-600">-</span>
+                                                )}
                                             </td>
 
                                             {/* Tipo */}

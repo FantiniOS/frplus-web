@@ -27,7 +27,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
                 data: true,
                 valorTotal: true,
                 condicaoPagamento: true,
-                observacoes: true
+                observacoes: true,
+                notaFiscal: true
             },
             orderBy: { data: 'desc' }
         })
@@ -38,7 +39,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
                 data: new Date(p.data).toISOString(),
                 valorTotal: Number(p.valorTotal),
                 condicaoPagamento: p.condicaoPagamento,
-                observacoes: p.observacoes
+                observacoes: p.observacoes,
+                notaFiscal: p.notaFiscal
             }))
         })
     } catch (error) {

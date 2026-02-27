@@ -76,6 +76,7 @@ export interface Order {
     tabelaPreco: string;
     condicaoPagamento: string;
     observacoes?: string;
+    notaFiscal?: string;
     itens: OrderItem[];
 }
 

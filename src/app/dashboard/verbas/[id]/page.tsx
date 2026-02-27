@@ -13,6 +13,7 @@ interface PedidoVinculado {
     valorTotal: number;
     condicaoPagamento: string;
     observacoes?: string;
+    notaFiscal?: string;
 }
 
 interface VerbaDetail {
@@ -288,10 +289,11 @@ export default function VerbaDetailPage() {
 
             autoTable(doc, {
                 startY,
-                head: [['#', 'Data', 'Nº Pedido', 'Valor Abatido']],
+                head: [['#', 'Data', 'Nota Fiscal', 'Nº Pedido', 'Valor Abatido']],
                 body: verba.pedidos.map((p, i) => [
                     (i + 1).toString(),
                     new Date(p.data).toLocaleDateString('pt-BR'),
+                    p.notaFiscal || '-',
                     `#${p.id.slice(-6)}`,
                     `R$ ${p.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                 ]),
@@ -300,11 +302,12 @@ export default function VerbaDetailPage() {
                 alternateRowStyles: { fillColor: colors.rowEven },
                 columnStyles: {
                     0: { cellWidth: 12, fontStyle: 'bold' },
-                    1: { cellWidth: 30 },
-                    2: { cellWidth: 30, fontStyle: 'bold' },
-                    3: { halign: 'right', fontStyle: 'bold', textColor: colors.greenAccent }
+                    1: { cellWidth: 28 },
+                    2: { cellWidth: 30 },
+                    3: { cellWidth: 28, fontStyle: 'bold' },
+                    4: { halign: 'right', fontStyle: 'bold', textColor: colors.greenAccent }
                 },
-                foot: [['', '', 'TOTAL', `R$ ${verba.consumido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]],
+                foot: [['', '', '', 'TOTAL', `R$ ${verba.consumido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]],
                 footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
                 margin: { left: margin.left, right: margin.right },
                 didDrawPage: (data: { pageNumber: number }) => {
@@ -460,6 +463,7 @@ export default function VerbaDetailPage() {
                             <tr className="bg-[#0c1220] border-b border-white/[0.08]">
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">#</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Data</th>
+                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Nota Fiscal</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Nº Pedido</th>
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Valor Abatido</th>
                             </tr>
@@ -467,7 +471,7 @@ export default function VerbaDetailPage() {
                         <tbody>
                             {verba.pedidos.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="text-center py-12 text-gray-600">
+                                    <td colSpan={5} className="text-center py-12 text-gray-600">
                                         <Package className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                         <p className="text-sm">Nenhum pedido vinculado ainda</p>
                                         {verba.status === 'ATIVA' && (
@@ -488,6 +492,13 @@ export default function VerbaDetailPage() {
                                                 <span className="text-xs font-mono text-gray-400">{new Date(p.data).toLocaleDateString('pt-BR')}</span>
                                             </td>
                                             <td className="px-3 py-2.5">
+                                                {p.notaFiscal ? (
+                                                    <span className="text-xs font-mono text-gray-300">{p.notaFiscal}</span>
+                                                ) : (
+                                                    <span className="text-xs text-gray-600">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2.5">
                                                 <span className="text-sm text-gray-200 font-medium">#{p.id.slice(-6)}</span>
                                             </td>
                                             <td className="px-3 py-2.5 text-right">
@@ -499,7 +510,7 @@ export default function VerbaDetailPage() {
                                     ))}
                                     {/* Total Row */}
                                     <tr className="bg-white/[0.03] border-t border-white/[0.08]">
-                                        <td colSpan={3} className="px-3 py-2.5">
+                                        <td colSpan={4} className="px-3 py-2.5">
                                             <span className="text-xs text-gray-500 uppercase font-semibold">Total Consumido</span>
                                         </td>
                                         <td className="px-3 py-2.5 text-right">
@@ -581,6 +592,9 @@ export default function VerbaDetailPage() {
                                                 <div className="flex-1 flex items-center justify-between">
                                                     <div>
                                                         <span className="text-sm text-gray-200 font-medium">#{p.id.slice(-6)}</span>
+                                                        {p.notaFiscal && (
+                                                            <span className="text-[10px] text-cyan-400/80 ml-2 font-mono">NF {p.notaFiscal}</span>
+                                                        )}
                                                         <span className="text-xs text-gray-500 ml-2">{new Date(p.data).toLocaleDateString('pt-BR')}</span>
                                                     </div>
                                                     <span className="text-sm font-bold text-amber-400 tabular-nums">

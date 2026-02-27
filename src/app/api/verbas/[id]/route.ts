@@ -19,7 +19,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
                         valorTotal: true,
                         tipo: true,
                         condicaoPagamento: true,
-                        observacoes: true
+                        observacoes: true,
+                        notaFiscal: true
                     },
                     orderBy: { data: 'desc' }
                 }
@@ -49,7 +50,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
                 valorTotal: Number(p.valorTotal),
                 tipo: p.tipo,
                 condicaoPagamento: p.condicaoPagamento,
-                observacoes: p.observacoes
+                observacoes: p.observacoes,
+                notaFiscal: p.notaFiscal
             }))
         })
     } catch (error) {
