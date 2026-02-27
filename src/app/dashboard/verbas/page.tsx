@@ -146,7 +146,7 @@ export default function VerbaListPage() {
                         <Wallet className="h-5 w-5 text-purple-400" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-white tracking-tight">Verbas Control</h1>
+                        <h1 className="text-xl font-bold text-white tracking-tight">Controle de Verbas</h1>
                         <p className="text-xs text-gray-500">Gestão de verbas de bonificação</p>
                     </div>
                 </div>

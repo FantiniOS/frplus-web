@@ -46,7 +46,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       title: "Gestão",
       items: [
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
-        { icon: Wallet, label: "Verbas Control", href: "/dashboard/verbas" },
+        { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
         { icon: BarChart3, label: "Relatórios", href: "/dashboard/relatorios" },
       ]
     },
