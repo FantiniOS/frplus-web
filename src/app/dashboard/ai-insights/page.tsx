@@ -365,7 +365,6 @@ export default function AIInsightsPage() {
                                                 <th className="px-4 py-3 text-left">Cliente</th>
                                                 <th className="px-4 py-3 text-left hidden sm:table-cell">Cidade</th>
                                                 <th className="px-4 py-3 text-center">Dias Inativo</th>
-                                                <th className="px-4 py-3 text-right hidden md:table-cell">Total Gasto</th>
                                                 <th className="px-4 py-3 text-center hidden md:table-cell">Pedidos</th>
                                                 <th className="px-4 py-3 text-center">Ações</th>
                                             </tr>
@@ -387,9 +386,6 @@ export default function AIInsightsPage() {
                                                                 {client.motivo}
                                                             </div>
                                                         )}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right text-white hidden md:table-cell">
-                                                        R$ {(client.totalGasto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </td>
                                                     <td className="px-4 py-3 text-center text-gray-300 hidden md:table-cell">{client.totalPedidos}</td>
                                                     <td className="px-4 py-3">

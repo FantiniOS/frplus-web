@@ -37,6 +37,15 @@ const parseBrlFloat = (val: string) => {
 const parseDate = (dateStr: string) => {
     if (!dateStr) return new Date();
     try {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const dia = parseInt(parts[0], 10);
+            const mes = parseInt(parts[1], 10);
+            const ano = parseInt(parts[2], 10);
+            // Instancia a data forçando meio-dia em UTC (12:00:00) 
+            // para evitar o bug de rollback de dia em fusos negativos (ex: Brasil/GMT-3)
+            return new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0));
+        }
         return parse(dateStr, 'dd/MM/yyyy', new Date());
     } catch {
         return new Date();
