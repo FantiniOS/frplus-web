@@ -31,6 +31,7 @@ export async function GET() {
             tabelaPreco: o.tabelaPreco,
             condicaoPagamento: o.condicaoPagamento,
             observacoes: o.observacoes,
+            notaFiscal: o.notaFiscal,
             itens: o.itens.map(item => ({
                 id: item.id,
                 produtoId: item.produtoId,
