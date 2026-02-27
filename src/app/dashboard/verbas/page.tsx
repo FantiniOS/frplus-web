@@ -12,6 +12,7 @@ interface PedidoResumido {
     valorTotal: number;
     condicaoPagamento: string;
     observacoes?: string;
+    notaFiscal?: string;
 }
 
 interface VerbaItem {
@@ -455,6 +456,7 @@ export default function VerbaListPage() {
                                     <tr className="bg-[#0c1220] border-b border-white/[0.08]">
                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">#</th>
                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Data</th>
+                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Nota Fiscal</th>
                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Nº Pedido</th>
                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 hidden md:table-cell">Cond. Pagamento</th>
                                         <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Valor Abatido</th>
@@ -468,6 +470,13 @@ export default function VerbaListPage() {
                                             </td>
                                             <td className="px-3 py-2">
                                                 <span className="text-xs font-mono text-gray-400">{new Date(p.data).toLocaleDateString('pt-BR')}</span>
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {p.notaFiscal ? (
+                                                    <span className="text-xs font-mono text-gray-300">{p.notaFiscal}</span>
+                                                ) : (
+                                                    <span className="text-xs text-gray-600">-</span>
+                                                )}
                                             </td>
                                             <td className="px-3 py-2">
                                                 <span className="text-sm text-gray-200 font-medium">#{p.id.slice(-6)}</span>
@@ -484,7 +493,7 @@ export default function VerbaListPage() {
                                     ))}
                                     {/* Total Row */}
                                     <tr className="bg-white/[0.03] border-t border-white/[0.08]">
-                                        <td colSpan={4} className="px-3 py-2.5">
+                                        <td colSpan={5} className="px-3 py-2.5">
                                             <span className="text-xs text-gray-500 uppercase font-semibold">Total Consumido</span>
                                         </td>
                                         <td className="px-3 py-2.5 text-right">
