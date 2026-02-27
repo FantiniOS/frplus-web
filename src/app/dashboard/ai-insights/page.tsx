@@ -4,11 +4,13 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
 import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase } from 'lucide-react';
+import { MessageModal } from '@/components/dashboard/MessageModal';
 
 interface InactiveClient {
     id: string;
     nomeFantasia: string;
     razaoSocial: string;
+    comprador?: string | null;
     cidade: string;
     telefone: string;
     celular: string;
@@ -67,6 +69,10 @@ export default function AIInsightsPage() {
         insights: { total: 0, lowTicket: 0, decliningVolume: 0, untappedPotential: 0 },
         campaigns: { total: 1 } // Always available
     });
+
+    // Message Modal State
+    const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+    const [selectedClientForMessage, setSelectedClientForMessage] = useState<InactiveClient | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -390,14 +396,16 @@ export default function AIInsightsPage() {
                                                     <td className="px-4 py-3 text-center text-gray-300 hidden md:table-cell">{client.totalPedidos}</td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center justify-center gap-2">
-                                                            <a
-                                                                href={`https://wa.me/55${(client.celular || client.telefone)?.replace(/\D/g, '')}?text=${encodeURIComponent(client.messageSuggestion || '')}`}
-                                                                target="_blank"
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedClientForMessage(client);
+                                                                    setIsMessageModalOpen(true);
+                                                                }}
                                                                 className="p-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors"
-                                                                title="WhatsApp"
+                                                                title="Mensagem"
                                                             >
                                                                 <MessageCircle className="h-4 w-4" />
-                                                            </a>
+                                                            </button>
                                                             <a
                                                                 href={`mailto:${client.email}`}
                                                                 className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
@@ -903,6 +911,16 @@ export default function AIInsightsPage() {
                     </div>
                 </div>
             )}
+
+            {/* Message Modal */}
+            <MessageModal
+                isOpen={isMessageModalOpen}
+                onClose={() => {
+                    setIsMessageModalOpen(false);
+                    setSelectedClientForMessage(null);
+                }}
+                client={selectedClientForMessage as any}
+            />
         </div>
     );
 }

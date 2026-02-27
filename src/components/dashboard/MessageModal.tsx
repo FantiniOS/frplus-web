@@ -8,6 +8,7 @@ interface Client {
     id: string;
     nomeFantasia: string;
     razaoSocial: string;
+    comprador?: string | null;
     email: string;
     telefone: string;
     celular: string;
@@ -55,8 +56,14 @@ export function MessageModal({ isOpen, onClose, client, onSuccess }: MessageModa
     // Process message template with variables
     const processMessage = (template: string) => {
         if (!client) return template;
+
+        let nome = client.nomeFantasia || client.razaoSocial;
+        if (client.comprador) {
+            nome = client.comprador.split(' ')[0];
+        }
+
         return template
-            .replace('{nome}', client.nomeFantasia || client.razaoSocial)
+            .replace('{nome}', nome)
             .replace('{dias}', client.diasInativo?.toString() || '?');
     };
 
@@ -79,6 +86,18 @@ export function MessageModal({ isOpen, onClose, client, onSuccess }: MessageModa
         setResult(null);
 
         try {
+            if (tipo === 'whatsapp') {
+                const phone = (client.celular || client.telefone)?.replace(/\D/g, '');
+                if (phone) {
+                    const whatsappLink = `https://wa.me/55${phone}?text=${encodeURIComponent(mensagem)}`;
+                    window.open(whatsappLink, '_blank');
+                } else {
+                    setResult({ success: false, message: 'Cliente não possui número válido para WhatsApp.' });
+                    setLoading(false);
+                    return;
+                }
+            }
+
             const response = await fetch('/api/messaging/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -148,8 +167,8 @@ export function MessageModal({ isOpen, onClose, client, onSuccess }: MessageModa
                             <button
                                 onClick={() => setTipo('whatsapp')}
                                 className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border transition-all ${tipo === 'whatsapp'
-                                        ? 'bg-green-500/20 border-green-500/50 text-green-400'
-                                        : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                                     }`}
                             >
                                 <MessageCircle className="h-4 w-4" />
@@ -158,8 +177,8 @@ export function MessageModal({ isOpen, onClose, client, onSuccess }: MessageModa
                             <button
                                 onClick={() => setTipo('email')}
                                 className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border transition-all ${tipo === 'email'
-                                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-                                        : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                                     }`}
                             >
                                 <Mail className="h-4 w-4" />
@@ -202,8 +221,8 @@ export function MessageModal({ isOpen, onClose, client, onSuccess }: MessageModa
                                         key={template.id}
                                         onClick={() => handleTemplateChange(template.id)}
                                         className={`px-3 py-1.5 rounded-lg text-xs transition-all ${selectedTemplate === template.id
-                                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
-                                                : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                                            ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
+                                            : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
                                             }`}
                                     >
                                         {template.name}
@@ -227,8 +246,8 @@ export function MessageModal({ isOpen, onClose, client, onSuccess }: MessageModa
                         {/* Result message */}
                         {result && (
                             <div className={`p-3 rounded-lg text-sm ${result.success
-                                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                                    : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
                                 }`}>
                                 {result.message}
                             </div>
@@ -247,8 +266,8 @@ export function MessageModal({ isOpen, onClose, client, onSuccess }: MessageModa
                             onClick={handleSend}
                             disabled={loading || !mensagem.trim()}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'whatsapp'
-                                    ? 'bg-green-600 hover:bg-green-500 text-white'
-                                    : 'bg-blue-600 hover:bg-blue-500 text-white'
+                                ? 'bg-green-600 hover:bg-green-500 text-white'
+                                : 'bg-blue-600 hover:bg-blue-500 text-white'
                                 } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                             {loading ? (

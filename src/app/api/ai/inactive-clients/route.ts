@@ -115,6 +115,7 @@ Objetivo: Estimular reposição de estoque. Crie uma mensagem cordial lembrando 
                     id: client.id,
                     nomeFantasia: client.nomeFantasia,
                     razaoSocial: client.razaoSocial,
+                    comprador: client.comprador,
                     cidade: client.cidade,
                     telefone: client.telefone,
                     celular: client.celular,
