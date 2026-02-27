@@ -44,6 +44,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                 nomeFantasia: data.nome_fantasia || prev.nomeFantasia,
                 cep: data.cep?.replace(/\D/g, '') || prev.cep,
                 endereco: data.logradouro || prev.endereco,
+                numero: data.numero || prev.numero,
                 bairro: data.bairro || prev.bairro,
                 cidade: data.municipio || prev.cidade,
                 estado: data.uf || prev.estado,
