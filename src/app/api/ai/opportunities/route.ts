@@ -48,7 +48,7 @@ export async function GET() {
             description: string
             priority: 'alta' | 'media' | 'baixa'
             actionLabel: string
-            messageSuggestion: string // Persuasive text for WhatsApp
+            contextoParaIA: string // Persuasive text prompt for AI
         }> = []
 
         const now = new Date()
@@ -79,7 +79,7 @@ export async function GET() {
                     description: `${thisMonthOrders.length} pedidos este mês na tabela 50-199. Sugerir migração para 200-699.`,
                     priority: 'alta',
                     actionLabel: 'Propor Upgrade',
-                    messageSuggestion: `Olá ${greetingName}, tudo bem? Estava analisando seu volume de compras recente e vi que você já está num ritmo excelente! 🚀 Se ajustarmos um pouco o próximo pedido, consigo te encaixar na Tabela de Atacado (200+) para melhorar sua margem. Vamos simular sem compromisso?`
+                    contextoParaIA: `Atue como um vendedor experiente proativo. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Proponha a mudança para a tabela de atacado (200+) porque o cliente fez vários pedidos este mês na tabela 50-199.`
                 })
             }
 
@@ -115,7 +115,7 @@ export async function GET() {
                     description: `Oportunidade de incluir "${topProduct.nome}" no mix.`,
                     priority: 'media',
                     actionLabel: 'Oferecer Produto',
-                    messageSuggestion: `Olá ${greetingName}! Vi que você já trabalha muito bem com a linha da ${topProduct.fabrica?.nome || 'fábrica'}, mas notei que o item "${topProduct.nome}" ainda não está no seu mix. Esse produto tem tido uma saída excelente em lojas do seu perfil. Vamos incluir uma caixa no próximo pedido para testar?`
+                    contextoParaIA: `Atue como um vendedor experiente proativo. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Sugira a adição de ${topProduct.nome} (da fábrica ${topProduct.fabrica?.nome || 'fábrica'}) ao seu mix, pois tem uma excelente saída e o cliente já compra dessa fábrica.`
                 })
             }
 
@@ -139,7 +139,7 @@ export async function GET() {
                     description: `Historicamente compra mais neste mês. Momento ideal para contato.`,
                     priority: 'media',
                     actionLabel: 'Contatar Cliente',
-                    messageSuggestion: `Olá ${greetingName}, tudo bem? O mercado está aquecendo e, pelo seu histórico do ano passado, esse é um mês forte de vendas aí na sua região. 📈 Que tal já garantirmos o estoque para não perder nenhuma venda?`
+                    contextoParaIA: `Atue como um vendedor experiente proativo. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Sugira a reposição de stock, pois os dados históricos mostram que este é um mês de fortes vendas na região dele.`
                 })
             }
         }

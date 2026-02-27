@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
                 let alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde' = 'verde';
                 let motivo = '';
-                let messageSuggestion = '';
+                let contextoParaIA = '';
                 // Use buyer name if available (first name), else company name
                 // @ts-ignore - comprador exists in schema but type might not be updated yet
                 const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
@@ -77,16 +77,31 @@ export async function GET(request: Request) {
                     if (ratio >= 2.0) {
                         alertLevel = 'vermelho';
                         motivo = `Ciclo médio de ${averageCycle} dias. Atraso crítico (${ratio.toFixed(1)}x normal).`;
-                        messageSuggestion = `Olá ${greetingName}, tudo bem? Estava revisando aqui e senti sua falta! 🛑 Quero muito retomar nossa parceria. Consigo uma condição super diferenciada para reativarmos seu cadastro hoje. O que me diz?`;
+                        contextoParaIA = `Atue como um vendedor experiente proativo. Use as seguintes informações para gerar uma mensagem persuasiva de WhatsApp para o cliente: 
+- Nome do cliente: ${greetingName}
+- Ciclo médio de compra histórico: ${averageCycle} dias
+- Dias sem comprar: ${daysSinceLastOrder} dias
+- Nível de Alerta: VERMELHO (Risco grave de perder o cliente).
+Objetivo: Retomar a parceria urgentemente. Crie uma mensagem empática, dizendo que sentiu falta dele, e ofereça uma condição super diferenciada para reativar o cadastro e fechar pedido hoje.`;
                     } else if (ratio >= 1.5) {
                         alertLevel = 'laranja';
                         motivo = `Ciclo médio de ${averageCycle} dias. Atraso considerável.`;
-                        messageSuggestion = `Oi ${greetingName}, sumido! Faz um tempo que não nos falamos e o estoque deve estar baixando. 📉 Chegou uma condição especial essa semana e lembrei de você. Vamos aproveitar para repor?`;
+                        contextoParaIA = `Atue como um vendedor experiente proativo. Use as seguintes informações para gerar uma mensagem persuasiva de WhatsApp para o cliente: 
+- Nome do cliente: ${greetingName}
+- Ciclo médio de compra histórico: ${averageCycle} dias
+- Dias sem comprar: ${daysSinceLastOrder} dias
+- Nível de Alerta: LARANJA (Atraso considerável, estoque deve estar baixando).
+Objetivo: Reaproximação. Crie uma mensagem amigável, comentando que faz um tempo que não se falam, alertando sobre a possível falta de estoque e convidando para aproveitar condições especiais que chegaram na distribuidora nesta semana.`;
                     } else if (ratio >= 1.2 || (daysSinceLastOrder > 30 && averageCycle < 30)) {
                         // Added strict 30d check as fallback for quick buyers
                         alertLevel = 'amarelo';
                         motivo = `Ciclo médio de ${averageCycle} dias. Leve atraso.`;
-                        messageSuggestion = `Oi ${greetingName}, tudo bem? Pelo seu histórico, está na hora de repor o estoque! 📦 Chegaram novidades que vão girar bem aí. Posso te mandar?`;
+                        contextoParaIA = `Atue como um vendedor experiente proativo. Use as seguintes informações para gerar uma mensagem persuasiva de WhatsApp para o cliente: 
+- Nome do cliente: ${greetingName}
+- Ciclo médio de compra histórico: ${averageCycle} dias
+- Dias sem comprar: ${daysSinceLastOrder} dias
+- Nível de Alerta: AMARELO (Leve atraso no ciclo normal).
+Objetivo: Estimular reposição de estoque. Crie uma mensagem cordial lembrando que pelo histórico dele já está na hora de repor as mercadorias, focando em apresentar novidades que vão girar bem na loja dele.`;
                     } else {
                         alertLevel = 'verde';
                         motivo = `Dentro do ciclo esperado (${averageCycle} dias).`;
@@ -112,7 +127,7 @@ export async function GET(request: Request) {
                     motivo,
 
                     alertLevel,
-                    messageSuggestion
+                    contextoParaIA
                 }
             })
             // Filter: Only show Yellow, Orange, Red
