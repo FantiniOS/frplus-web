@@ -71,7 +71,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         productsNew: 0,
                         productsUpdated: 0,
                         ordersCreated: 0,
-                        ordersSkipped: 0,
+                        ordersUpdated: 0,
                         errors: [] as string[]
                     };
 
@@ -168,7 +168,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         }
                     }, { timeout: 30000, maxWait: 60000 });
 
-                    // --- 3. Orders (Complex, needs ID mapping) ---
+                    // --- 3. Orders (Complex, needs ID mapping) — UPSERT LOGIC ---
                     const ordersMap = new Map<string, any[]>();
                     for (const row of results) {
                         const orderNum = row['Numero'];
@@ -183,16 +183,41 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                     for (const [orderNum, rows] of orders) {
                         const firstRow = rows[0];
                         const cnpj = cleanDocument(firstRow['Cliente']);
+                        const notaFiscal = firstRow['Nota_Fiscal']?.trim() || null;
 
-                        // Check if order exists by ID (Using Protheus Number as ID)
-                        // If it exists, SKIP IT (Idempotency)
+                        // Regra: SEM DEBITO → Bonificação
+                        let tipoPedido = 'Venda';
+                        let condPagto = firstRow['Cond_Pagto'] || 'Importado';
+                        if (firstRow['Descricao_Pagto']?.trim() === 'SEM DEBITO') {
+                            tipoPedido = 'Bonificacao';
+                            condPagto = 'BONIFICACAO';
+                        }
+
+                        // ====== UPSERT CHECK ======
                         const existingOrder = await prisma.pedido.findUnique({ where: { id: orderNum } });
 
                         if (existingOrder) {
-                            stats.ordersSkipped++;
+                            // UPDATE existing order: notaFiscal + safe fields only
+                            // PRESERVE: verbaId, itens, id — never touch these
+                            try {
+                                await prisma.pedido.update({
+                                    where: { id: orderNum },
+                                    data: {
+                                        notaFiscal: notaFiscal,
+                                        condicaoPagamento: condPagto,
+                                        tipo: tipoPedido,
+                                        data: parseDate(firstRow['DT_Emissao']),
+                                    }
+                                });
+                                stats.ordersUpdated++;
+                            } catch (e) {
+                                console.error(e);
+                                stats.errors.push(`Erro ao atualizar Pedido ${orderNum}: ${e}`);
+                            }
                             continue;
                         }
 
+                        // ====== INSERT new order ======
                         // Find Client
                         const client = await prisma.cliente.findUnique({ where: { cnpj } });
                         if (!client) {
@@ -231,14 +256,6 @@ export async function importSalesCsv(fileBuffer: Buffer) {
 
                         if (itemsData.length > 0) {
                             try {
-                                // Regra: SEM DEBITO → Bonificação
-                                let tipoPedido = 'Venda';
-                                let condPagto = firstRow['Cond_Pagto'] || 'Importado';
-                                if (firstRow['Descricao_Pagto']?.trim() === 'SEM DEBITO') {
-                                    tipoPedido = 'Bonificacao';
-                                    condPagto = 'BONIFICACAO';
-                                }
-
                                 await prisma.pedido.create({
                                     data: {
                                         id: orderNum, // EXPLICIT ID FROM PROTHEUS
@@ -249,6 +266,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                         valorTotal: totalOrder,
                                         tabelaPreco: 'atacado',
                                         condicaoPagamento: condPagto,
+                                        notaFiscal: notaFiscal,
                                         observacoes: `Importado em ${new Date().toLocaleDateString()}`,
                                         data: parseDate(firstRow['DT_Emissao']),
                                         itens: {
