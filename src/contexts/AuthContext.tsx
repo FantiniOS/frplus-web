@@ -8,7 +8,8 @@ interface Usuario {
     nome: string;
     username: string;
     email: string | null;
-    role: 'admin' | 'vendedor';
+    role: 'admin' | 'vendedor' | 'industria';
+    fabricaId: string | null;
 }
 
 interface AuthContextType {
@@ -17,6 +18,7 @@ interface AuthContextType {
     login: (identifier: string, senha: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
     isAdmin: boolean;
+    isIndustria: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -84,7 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 loading,
                 login,
                 logout,
-                isAdmin: usuario?.role === 'admin'
+                isAdmin: usuario?.role === 'admin',
+                isIndustria: usuario?.role === 'industria'
             }}
         >
             {children}

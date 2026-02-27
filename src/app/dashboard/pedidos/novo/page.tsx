@@ -3,13 +3,21 @@
 import Link from "next/link";
 import { ArrowLeft, Save, User, Search, Factory, ShoppingCart, Calendar, FileText, Check, AlertTriangle, X } from "lucide-react";
 import { useData, OrderItem, Product, Client } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function NovoPedidoPage() {
     const { clients, products, addOrder, showToast, fabricas } = useData();
+    const { isIndustria } = useAuth();
     const router = useRouter();
+
+    useEffect(() => {
+        if (isIndustria) {
+            router.push('/dashboard');
+        }
+    }, [isIndustria, router]);
 
     // --- State: Wizard Step ---
     const [step, setStep] = useState<'factory' | 'client' | 'order'>('factory');

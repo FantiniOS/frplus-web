@@ -11,15 +11,18 @@ interface Usuario {
     nome: string;
     username: string;
     email: string | null;
-    role: 'admin' | 'vendedor';
+    role: 'admin' | 'vendedor' | 'industria';
     ativo: boolean;
     createdAt: string;
+    fabricaId?: string | null;
+    fabrica?: { nome: string };
 }
 
 export default function UsuariosPage() {
     const { isAdmin, loading: authLoading } = useAuth();
     const router = useRouter();
     const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+    const [fabricas, setFabricas] = useState<{ id: string; nome: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState<Usuario | null>(null);
@@ -28,7 +31,8 @@ export default function UsuariosPage() {
         username: '',
         email: '',
         senha: '',
-        role: 'vendedor'
+        role: 'vendedor',
+        fabricaId: ''
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -54,9 +58,22 @@ export default function UsuariosPage() {
         }
     };
 
+    const fetchFabricas = async () => {
+        try {
+            const res = await fetch('/api/fabricas');
+            if (res.ok) {
+                const data = await res.json();
+                setFabricas(data);
+            }
+        } catch (error) {
+            console.error('Error fetching factories:', error);
+        }
+    };
+
     useEffect(() => {
         if (isAdmin) {
             fetchUsuarios();
+            fetchFabricas();
         }
     }, [isAdmin]);
 
@@ -68,11 +85,12 @@ export default function UsuariosPage() {
                 username: user.username,
                 email: user.email || '',
                 senha: '',
-                role: user.role
+                role: user.role,
+                fabricaId: user.fabricaId || ''
             });
         } else {
             setEditingUser(null);
-            setFormData({ nome: '', username: '', email: '', senha: '', role: 'vendedor' });
+            setFormData({ nome: '', username: '', email: '', senha: '', role: 'vendedor', fabricaId: '' });
         }
         setError('');
         setShowModal(true);
@@ -93,6 +111,10 @@ export default function UsuariosPage() {
                 email: formData.email || null,
                 role: formData.role
             };
+
+            if (formData.role === 'industria') {
+                body.fabricaId = formData.fabricaId || null;
+            }
 
             if (formData.senha) {
                 body.senha = formData.senha;
@@ -179,8 +201,8 @@ export default function UsuariosPage() {
                             <tr>
                                 <th className="px-4 py-3 text-left">Nome</th>
                                 <th className="px-4 py-3 text-left">Usuário</th>
-                                <th className="px-4 py-3 text-left">Email</th>
-                                <th className="px-4 py-3 text-center">Role</th>
+                                <th className="px-4 py-3 text-left hidden md:table-cell">Email</th>
+                                <th className="px-4 py-3 text-center">Perfil</th>
                                 <th className="px-4 py-3 text-center">Status</th>
                                 <th className="px-4 py-3 text-center">Ações</th>
                             </tr>
@@ -201,14 +223,23 @@ export default function UsuariosPage() {
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-gray-300">{user.username}</td>
-                                    <td className="px-4 py-3 text-gray-300">{user.email}</td>
+                                    <td className="px-4 py-3 text-gray-300 hidden md:table-cell">{user.email}</td>
                                     <td className="px-4 py-3 text-center">
-                                        <span className={`px-2 py-1 rounded-full text-xs ${user.role === 'admin'
-                                            ? 'bg-purple-500/20 text-purple-400'
-                                            : 'bg-blue-500/20 text-blue-400'
-                                            }`}>
-                                            {user.role === 'admin' ? 'Administrador' : 'Vendedor'}
-                                        </span>
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span className={`px-2 py-1 rounded-full text-[10px] font-medium tracking-wide uppercase ${user.role === 'admin'
+                                                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                                    : user.role === 'industria'
+                                                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                                        : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                                }`}>
+                                                {user.role === 'admin' ? 'Administrador' : user.role === 'industria' ? 'Indústria' : 'Vendedor'}
+                                            </span>
+                                            {user.role === 'industria' && user.fabrica && (
+                                                <span className="text-[10px] text-gray-500 truncate max-w-[120px]">
+                                                    {user.fabrica.nome}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         <button
@@ -307,18 +338,40 @@ export default function UsuariosPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Permissão</label>
+                                <label className="block text-sm text-gray-400 mb-1">Perfil de Acesso</label>
                                 <select
                                     value={formData.role}
-                                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
                                     className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:border-blue-500 focus:outline-none"
                                 >
                                     <option value="vendedor">Vendedor</option>
                                     <option value="admin">Administrador</option>
+                                    <option value="industria">Indústria (Visualização)</option>
                                 </select>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4">
+                            {formData.role === 'industria' && (
+                                <div className="animate-in fade-in slide-in-from-top-2">
+                                    <label className="block text-sm text-amber-400/80 mb-1">
+                                        Vincular à Fábrica (Opcional)
+                                    </label>
+                                    <select
+                                        value={formData.fabricaId}
+                                        onChange={(e) => setFormData({ ...formData, fabricaId: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-500/20 text-amber-100 focus:border-amber-500 focus:outline-none"
+                                    >
+                                        <option value="">Acesso Global (Todas as fábricas)</option>
+                                        {fabricas.map(f => (
+                                            <option key={f.id} value={f.id}>{f.nome}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-[10px] text-gray-500 mt-1.5 ml-1">
+                                        Se vazio, o usuário verá vendas de todas as fábricas.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-3 pt-4 border-t border-white/5 mt-4">
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}

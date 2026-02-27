@@ -43,7 +43,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
                 email: true,
                 role: true,
                 ativo: true,
-                createdAt: true
+                createdAt: true,
+                fabricaId: true,
+                fabrica: {
+                    select: { nome: true }
+                }
             }
         })
 
@@ -67,7 +71,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     try {
-        const { nome, username, email, senha, role, ativo } = await request.json()
+        const { nome, username, email, senha, role, ativo, fabricaId } = await request.json()
 
         // Prevent admin from deactivating themselves
         if (params.id === userId && ativo === false) {
@@ -83,6 +87,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         if (email !== undefined) updateData.email = email ? email.toLowerCase() : null
         if (role) updateData.role = role
         if (typeof ativo === 'boolean') updateData.ativo = ativo
+        if (fabricaId !== undefined) updateData.fabricaId = fabricaId ? fabricaId : null
 
         // Handle username update
         if (username) {
@@ -115,7 +120,11 @@ export async function PUT(request: Request, { params }: RouteParams) {
                 email: true,
                 role: true,
                 ativo: true,
-                createdAt: true
+                createdAt: true,
+                fabricaId: true,
+                fabrica: {
+                    select: { nome: true }
+                }
             }
         })
 

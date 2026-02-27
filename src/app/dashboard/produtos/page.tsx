@@ -3,6 +3,7 @@
 
 import { Search, Plus, Package, Trash2, Edit, Factory } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -10,6 +11,7 @@ import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 
 export default function ProdutosPage() {
     const { products, removeProduct, fabricas } = useData();
+    const { isIndustria } = useAuth();
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -50,12 +52,14 @@ export default function ProdutosPage() {
                     <h1 className="text-2xl font-bold text-white">Catálogo de Produtos</h1>
                     <p className="text-sm text-gray-400">{products.length} produtos cadastrados</p>
                 </div>
-                <Link href="/dashboard/produtos/novo">
-                    <button className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
-                        <Plus className="h-4 w-4" />
-                        Novo Produto
-                    </button>
-                </Link>
+                {!isIndustria && (
+                    <Link href="/dashboard/produtos/novo">
+                        <button className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
+                            <Plus className="h-4 w-4" />
+                            Novo Produto
+                        </button>
+                    </Link>
+                )}
             </div>
 
             {/* Busca */}
@@ -112,19 +116,21 @@ export default function ProdutosPage() {
                                                 <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 min-h-[2.5em] flex items-center">
                                                     {product.nome}
                                                 </h3>
-                                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                                    <button
-                                                        onClick={() => setDeleteId(product.id)}
-                                                        className="p-1 rounded text-red-400 hover:bg-red-500/10"
-                                                    >
-                                                        <Trash2 className="h-3 w-3" />
-                                                    </button>
-                                                    <Link href={`/dashboard/produtos/${product.id}`}>
-                                                        <button className="p-1 rounded text-blue-400 hover:bg-blue-500/10">
-                                                            <Edit className="h-3 w-3" />
+                                                {!isIndustria && (
+                                                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                        <button
+                                                            onClick={() => setDeleteId(product.id)}
+                                                            className="p-1 rounded text-red-400 hover:bg-red-500/10"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
                                                         </button>
-                                                    </Link>
-                                                </div>
+                                                        <Link href={`/dashboard/produtos/${product.id}`}>
+                                                            <button className="p-1 rounded text-blue-400 hover:bg-blue-500/10">
+                                                                <Edit className="h-3 w-3" />
+                                                            </button>
+                                                        </Link>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Row 2: Info e Imagem */}

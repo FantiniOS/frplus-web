@@ -3,15 +3,23 @@
 import Link from "next/link";
 import { ArrowLeft, Save, Building2, MapPin, DollarSign, Search, Loader2, User } from "lucide-react";
 import { useData, Client } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function EditarClientePage({ params }: { params: { id: string } }) {
     const { clients, updateClient, showToast } = useData();
+    const { isIndustria } = useAuth();
     const router = useRouter();
     const [formData, setFormData] = useState<Partial<Client>>({});
     const [loadingCnpj, setLoadingCnpj] = useState(false);
     const [loadingCep, setLoadingCep] = useState(false);
+
+    useEffect(() => {
+        if (isIndustria) {
+            router.push('/dashboard/clientes');
+        }
+    }, [isIndustria, router]);
 
     useEffect(() => {
         const client = clients.find(c => c.id === params.id);

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 interface Params {
     params: { id: string }
@@ -10,8 +11,17 @@ export const dynamic = 'force-dynamic';
 // GET /api/orders/[id] - Get single order with details
 export async function GET(request: Request, { params }: Params) {
     try {
+        const user = await getServerUser()
+        if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+        // Se for indústria de uma fábrica específica, só pode ver o pedido se for dessa fábrica
+        const whereClause: any = { id: params.id }
+        if (user.role === 'industria' && user.fabricaId) {
+            whereClause.fabricaId = user.fabricaId
+        }
+
         const order = await prisma.pedido.findUnique({
-            where: { id: params.id },
+            where: whereClause,
             include: {
                 cliente: true,
                 itens: { include: { produto: true } }
@@ -51,6 +61,11 @@ export async function GET(request: Request, { params }: Params) {
 // PUT /api/orders/[id] - Update order (Full update: Header + Items replacement)
 export async function PUT(request: Request, { params }: Params) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         const body = await request.json()
 
         console.log(`[API] PUT /api/orders/${params.id} - Received Payload:`, JSON.stringify(body, null, 2));
@@ -105,6 +120,11 @@ export async function PUT(request: Request, { params }: Params) {
 // DELETE /api/orders/[id] - Delete order (cascades to items)
 export async function DELETE(request: Request, { params }: Params) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         await prisma.pedido.delete({
             where: { id: params.id }
         })

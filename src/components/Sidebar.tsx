@@ -25,7 +25,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
-  const { usuario, logout, isAdmin } = useAuth();
+  const { usuario, logout, isAdmin, isIndustria } = useAuth();
 
   const menuGroups = [
     {

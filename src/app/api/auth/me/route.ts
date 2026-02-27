@@ -21,6 +21,7 @@ export async function GET() {
             email: string
             nome: string
             role: string
+            fabricaId: string | null
         }
 
         // Buscar usuário atualizado
@@ -31,7 +32,8 @@ export async function GET() {
                 nome: true,
                 email: true,
                 role: true,
-                ativo: true
+                ativo: true,
+                fabricaId: true
             }
         })
 

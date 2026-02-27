@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 interface Params {
     params: { id: string }
@@ -8,8 +9,16 @@ interface Params {
 // GET /api/products/[id] - Get single product
 export async function GET(request: Request, { params }: Params) {
     try {
+        const user = await getServerUser()
+        if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+        const whereClause: any = { id: params.id }
+        if (user.role === 'industria' && user.fabricaId) {
+            whereClause.fabricaId = user.fabricaId
+        }
+
         const product = await prisma.produto.findUnique({
-            where: { id: params.id },
+            where: whereClause,
             include: { fabrica: true }
         })
 
@@ -40,6 +49,11 @@ export async function GET(request: Request, { params }: Params) {
 // PUT /api/products/[id] - Update product
 export async function PUT(request: Request, { params }: Params) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         const body = await request.json()
 
         const product = await prisma.produto.update({
@@ -68,6 +82,11 @@ export async function PUT(request: Request, { params }: Params) {
 // DELETE /api/products/[id] - Delete product
 export async function DELETE(request: Request, { params }: Params) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         await prisma.produto.delete({
             where: { id: params.id }
         })

@@ -38,7 +38,11 @@ export async function GET() {
                 email: true,
                 role: true,
                 ativo: true,
-                createdAt: true
+                createdAt: true,
+                fabricaId: true,
+                fabrica: {
+                    select: { nome: true }
+                }
             },
             orderBy: { nome: 'asc' }
         })
@@ -59,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     try {
-        const { nome, username, email, senha, role } = await request.json()
+        const { nome, username, email, senha, role, fabricaId } = await request.json()
 
         if (!nome || !username || !senha) {
             return NextResponse.json(
@@ -86,7 +90,8 @@ export async function POST(request: Request) {
                 username,
                 email: email ? email.toLowerCase() : null,
                 senha: senhaHash,
-                role: role || 'vendedor'
+                role: role || 'vendedor',
+                fabricaId: fabricaId || null
             },
             select: {
                 id: true,
@@ -95,7 +100,11 @@ export async function POST(request: Request) {
                 email: true,
                 role: true,
                 ativo: true,
-                createdAt: true
+                createdAt: true,
+                fabricaId: true,
+                fabrica: {
+                    select: { nome: true }
+                }
             }
         })
 

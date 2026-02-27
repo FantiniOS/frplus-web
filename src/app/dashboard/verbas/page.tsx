@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Wallet, X, Eye, Trash2, Pencil, Package, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -35,6 +36,7 @@ interface ClienteOption {
 }
 
 export default function VerbaListPage() {
+    const { isIndustria } = useAuth();
     const [verbas, setVerbas] = useState<VerbaItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -259,14 +261,16 @@ export default function VerbaListPage() {
                 </div>
 
                 {/* Nova Verba */}
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
-                >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Nova Verba</span>
-                    <span className="sm:hidden">Novo</span>
-                </button>
+                {!isIndustria && (
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Nova Verba</span>
+                        <span className="sm:hidden">Novo</span>
+                    </button>
+                )}
             </div>
 
             {/* ═══════════ MASTER TABLE ═══════════ */}
@@ -377,20 +381,24 @@ export default function VerbaListPage() {
                                                             <Eye className="h-3.5 w-3.5" />
                                                         </button>
                                                     </Link>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); openEdit(verba); }}
-                                                        className="p-1.5 rounded-md text-gray-500 hover:text-amber-400 hover:bg-amber-500/10 transition-all"
-                                                        title="Editar"
-                                                    >
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setDeleteId(verba.id); }}
-                                                        className="p-1.5 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                                                        title="Excluir"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
+                                                    {!isIndustria && (
+                                                        <>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); openEdit(verba); }}
+                                                                className="p-1.5 rounded-md text-gray-500 hover:text-amber-400 hover:bg-amber-500/10 transition-all"
+                                                                title="Editar"
+                                                            >
+                                                                <Pencil className="h-3.5 w-3.5" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setDeleteId(verba.id); }}
+                                                                className="p-1.5 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                                title="Excluir"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -511,13 +519,15 @@ export default function VerbaListPage() {
 
             {/* ═══════════ ACTION BAR ═══════════ */}
             <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="flex items-center gap-1.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 px-3 py-2 text-xs font-semibold text-white transition-all"
-                >
-                    <Plus className="h-3.5 w-3.5" />
-                    Nova Verba
-                </button>
+                {!isIndustria && (
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="flex items-center gap-1.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 px-3 py-2 text-xs font-semibold text-white transition-all"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                        Nova Verba
+                    </button>
+                )}
 
                 {selectedVerba && (
                     <>
@@ -527,20 +537,24 @@ export default function VerbaListPage() {
                                 Abrir Detalhes
                             </button>
                         </Link>
-                        <button
-                            onClick={() => openEdit(selectedVerba)}
-                            className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-gray-300 transition-all"
-                        >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Editar Verba
-                        </button>
-                        <button
-                            onClick={() => setDeleteId(selectedVerba.id)}
-                            className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 px-3 py-2 text-xs font-medium text-gray-300 hover:text-red-400 transition-all"
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Excluir
-                        </button>
+                        {!isIndustria && (
+                            <>
+                                <button
+                                    onClick={() => openEdit(selectedVerba)}
+                                    className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-gray-300 transition-all"
+                                >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                    Editar Verba
+                                </button>
+                                <button
+                                    onClick={() => setDeleteId(selectedVerba.id)}
+                                    className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 px-3 py-2 text-xs font-medium text-gray-300 hover:text-red-400 transition-all"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Excluir
+                                </button>
+                            </>
+                        )}
                     </>
                 )}
 

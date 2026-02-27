@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { importSalesCsv } from '@/services/importCsv';
+import { getServerUser } from '@/lib/getServerUser';
 
 // Allow up to 300s for large CSV imports with upsert
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         const formData = await req.formData();
         const file = formData.get('file') as File;
 

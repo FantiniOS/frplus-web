@@ -1,12 +1,24 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/orders - List all orders
 export async function GET() {
     try {
+        const user = await getServerUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+        }
+
+        // Se for indústria atrelada a uma fábrica, filtra pedidos
+        const whereClause = user.role === 'industria' && user.fabricaId
+            ? { fabricaId: user.fabricaId }
+            : {}
+
         const orders = await prisma.pedido.findMany({
+            where: whereClause,
             include: {
                 cliente: true,
                 itens: true
@@ -53,6 +65,11 @@ export async function GET() {
 // POST /api/orders - Create a new order (transactional)
 export async function POST(request: Request) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         const body = await request.json()
 
         // Calculate total from items

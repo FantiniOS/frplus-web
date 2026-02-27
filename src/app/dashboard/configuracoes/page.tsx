@@ -2,14 +2,22 @@
 
 import { Settings, Save, RefreshCw, LogOut, Trash2, Upload, CheckCircle, AlertCircle } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 export default function ConfiguracoesPage() {
     const { logout, showToast } = useData();
+    const { isIndustria } = useAuth();
     const router = useRouter();
     const [companyName, setCompanyName] = useState("Minha Empresa"); // Mock state
+
+    useEffect(() => {
+        if (isIndustria) {
+            router.push('/dashboard');
+        }
+    }, [isIndustria, router]);
 
     // Import State
     const [importFile, setImportFile] = useState<File | null>(null);

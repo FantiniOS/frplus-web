@@ -58,7 +58,8 @@ export async function POST(request: Request) {
                 id: usuario.id,
                 username: usuario.username,
                 nome: usuario.nome,
-                role: usuario.role
+                role: usuario.role,
+                fabricaId: usuario.fabricaId
             },
             JWT_SECRET,
             { expiresIn: '7d' }
@@ -71,7 +72,8 @@ export async function POST(request: Request) {
                 nome: usuario.nome,
                 username: usuario.username,
                 email: usuario.email,
-                role: usuario.role
+                role: usuario.role,
+                fabricaId: usuario.fabricaId
             },
             token
         })

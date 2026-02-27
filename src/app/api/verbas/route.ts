@@ -1,11 +1,14 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/verbas - List all verbas with client info and consumed totals
 export async function GET() {
     try {
+        const user = await getServerUser()
+        if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
         const verbas = await prisma.verba.findMany({
             include: {
                 cliente: {
@@ -54,6 +57,11 @@ export async function GET() {
 // POST /api/verbas - Create a new verba
 export async function POST(request: Request) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         const body = await request.json()
         const { clienteId, titulo, valorTotal } = body
 

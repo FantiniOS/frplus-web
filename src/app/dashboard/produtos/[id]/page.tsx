@@ -3,13 +3,21 @@
 import Link from "next/link";
 import { ArrowLeft, Save, Package, DollarSign, Factory, Image as ImageIcon, Upload } from "lucide-react";
 import { useData, Product } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function EditarProdutoPage({ params }: { params: { id: string } }) {
     const { products, updateProduct, showToast, fabricas } = useData();
+    const { isIndustria } = useAuth();
     const router = useRouter();
     const [formData, setFormData] = useState<Partial<Product>>({});
+
+    useEffect(() => {
+        if (isIndustria) {
+            router.push('/dashboard/produtos');
+        }
+    }, [isIndustria, router]);
 
     useEffect(() => {
         const found = products.find(p => p.id === params.id);

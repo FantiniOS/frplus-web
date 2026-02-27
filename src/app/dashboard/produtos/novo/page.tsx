@@ -3,12 +3,20 @@
 import Link from "next/link";
 import { ArrowLeft, Save, Package, DollarSign, Factory, Image as ImageIcon, Upload } from "lucide-react";
 import { useData, Product } from "@/contexts/DataContext";
-import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function NovoProdutoPage() {
     const { addProduct, showToast, fabricas } = useData();
+    const { isIndustria } = useAuth();
     const router = useRouter();
+
+    useEffect(() => {
+        if (isIndustria) {
+            router.push('/dashboard/produtos');
+        }
+    }, [isIndustria, router]);
 
     const [formData, setFormData] = useState<Partial<Product>>({
         unidade: 'CX',

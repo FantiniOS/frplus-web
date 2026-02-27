@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, Save, ShoppingCart, User, Plus, Trash2, Package, Search, DollarSign, Sparkles, Factory, Check, AlertTriangle } from "lucide-react";
 import { useData, Order, OrderItem } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,7 +16,14 @@ interface ExtendedOrderItem extends OrderItem {
 
 export default function EditarPedidoPage({ params }: { params: { id: string } }) {
     const { orders, clients, products, updateOrder, showToast, fabricas, loading } = useData();
+    const { isIndustria } = useAuth();
     const router = useRouter();
+
+    useEffect(() => {
+        if (isIndustria) {
+            router.push('/dashboard');
+        }
+    }, [isIndustria, router]);
 
     const [clienteId, setClienteId] = useState('');
     const [searchClient, setSearchClient] = useState('');

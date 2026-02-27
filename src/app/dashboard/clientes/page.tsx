@@ -3,6 +3,7 @@
 
 import { Search, Plus, MoreHorizontal, MapPin, Filter, Trash2, Edit, ChevronDown, ChevronUp, User, FileText } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -10,6 +11,7 @@ import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 
 export default function ClientesPage() {
   const { clients, removeClient } = useData();
+  const { isIndustria } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
@@ -51,12 +53,14 @@ export default function ClientesPage() {
           <h1 className="text-2xl font-bold text-white">Minha Carteira</h1>
           <p className="text-sm text-gray-400">Gerencie seus {clients.length} clientes.</p>
         </div>
-        <Link href="/dashboard/clientes/novo">
-          <button className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-500 transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)]">
-            <Plus className="h-4 w-4" />
-            Novo Cliente
-          </button>
-        </Link>
+        {!isIndustria && (
+          <Link href="/dashboard/clientes/novo">
+            <button className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-500 transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)]">
+              <Plus className="h-4 w-4" />
+              Novo Cliente
+            </button>
+          </Link>
+        )}
       </div>
 
       {/* Barra de Filtros e Busca */}
@@ -87,7 +91,7 @@ export default function ClientesPage() {
               <th className="px-6 py-4 font-medium hidden md:table-cell">Status</th>
               <th className="px-6 py-4 font-medium hidden md:table-cell">Localização</th>
               <th className="px-6 py-4 font-medium hidden md:table-cell">Última Compra</th>
-              <th className="px-6 py-4 font-medium text-right">Ações</th>
+              {!isIndustria && <th className="px-6 py-4 font-medium text-right">Ações</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -141,22 +145,24 @@ export default function ClientesPage() {
                   </td>
 
                   {/* Ações */}
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => setDeleteId(cliente.id)}
-                        className="rounded p-2 text-red-500/50 hover:bg-red-500/10 hover:text-red-500 transition-colors"
-                        title="Excluir Cliente"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                      <Link href={`/dashboard/clientes/${cliente.id}`}>
-                        <button className="rounded p-2 hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title="Editar Cliente">
-                          <Edit className="h-4 w-4" />
+                  {!isIndustria && (
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => setDeleteId(cliente.id)}
+                          className="rounded p-2 text-red-500/50 hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                          title="Excluir Cliente"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </button>
-                      </Link>
-                    </div>
-                  </td>
+                        <Link href={`/dashboard/clientes/${cliente.id}`}>
+                          <button className="rounded p-2 hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title="Editar Cliente">
+                            <Edit className="h-4 w-4" />
+                          </button>
+                        </Link>
+                      </div>
+                    </td>
+                  )}
                 </motion.tr>
 
                 {/* Expanded Detail Row */}

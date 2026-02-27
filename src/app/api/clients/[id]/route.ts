@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 interface Params {
     params: { id: string }
@@ -37,6 +38,11 @@ export async function GET(request: Request, { params }: Params) {
 // PUT /api/clients/[id] - Update client
 export async function PUT(request: Request, { params }: Params) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         const body = await request.json()
 
         const client = await prisma.cliente.update({
@@ -84,6 +90,11 @@ export async function PUT(request: Request, { params }: Params) {
 // DELETE /api/clients/[id] - Delete client
 export async function DELETE(request: Request, { params }: Params) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         await prisma.cliente.delete({
             where: { id: params.id }
         })

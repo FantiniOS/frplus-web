@@ -1,11 +1,15 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/verbas/[id]/vincular - Fetch eligible pedidos for linking
 export async function GET(request: Request, { params }: { params: { id: string } }) {
     try {
+        const user = await getServerUser()
+        if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
         const verba = await prisma.verba.findUnique({
             where: { id: params.id },
             select: { clienteId: true }
@@ -16,12 +20,17 @@ export async function GET(request: Request, { params }: { params: { id: string }
         }
 
         // Only pedidos: same client, type Bonificacao, verbaId is null
+        const whereClause: any = {
+            clienteId: verba.clienteId,
+            tipo: 'Bonificacao',
+            verbaId: null
+        }
+        if (user.role === 'industria' && user.fabricaId) {
+            whereClause.fabricaId = user.fabricaId
+        }
+
         const pedidosDisponiveis = await prisma.pedido.findMany({
-            where: {
-                clienteId: verba.clienteId,
-                tipo: 'Bonificacao',
-                verbaId: null
-            },
+            where: whereClause,
             select: {
                 id: true,
                 data: true,
@@ -52,6 +61,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
 // POST /api/verbas/[id]/vincular - Link pedidos to verba (the isolated server action)
 export async function POST(request: Request, { params }: { params: { id: string } }) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         const body = await request.json()
         const { pedidoIds } = body
 

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +34,11 @@ export async function GET() {
 // POST /api/clients - Create a new client
 export async function POST(request: Request) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         const body = await request.json()
 
         // Validate required fields

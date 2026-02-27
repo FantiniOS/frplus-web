@@ -3,11 +3,13 @@
 
 import { Search, Plus, Pencil, Trash2, Calendar, DollarSign, FileText, Package, Eye, Printer, Download, Filter, X, ChevronRight } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 
 export default function PedidosPage() {
     const { orders, clients, removeOrder } = useData();
+    const { isIndustria } = useAuth();
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -147,13 +149,15 @@ export default function PedidosPage() {
                 </div>
 
                 {/* Novo Pedido */}
-                <Link href="/dashboard/pedidos/novo">
-                    <button className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
-                        <Plus className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Novo Pedido</span>
-                        <span className="sm:hidden">Novo</span>
-                    </button>
-                </Link>
+                {!isIndustria && (
+                    <Link href="/dashboard/pedidos/novo">
+                        <button className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
+                            <Plus className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Novo Pedido</span>
+                            <span className="sm:hidden">Novo</span>
+                        </button>
+                    </Link>
+                )}
             </div>
 
             {/* ═══════════ MASTER TABLE — Pedidos de Venda ═══════════ */}
@@ -179,7 +183,7 @@ export default function PedidosPage() {
 
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Valor Total</th>
                                 <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Itens</th>
-                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 w-20">Ações</th>
+                                {!isIndustria && <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 w-20">Ações</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -265,22 +269,24 @@ export default function PedidosPage() {
                                             </td>
 
                                             {/* Ações */}
-                                            <td className="px-3 py-2.5">
-                                                <div className="flex items-center justify-center gap-0.5">
-                                                    <Link href={`/dashboard/pedidos/${order.id}`} onClick={(e) => e.stopPropagation()}>
-                                                        <button className="p-1.5 rounded-md text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all" title="Editar">
-                                                            <Pencil className="h-3.5 w-3.5" />
+                                            {!isIndustria && (
+                                                <td className="px-3 py-2.5">
+                                                    <div className="flex items-center justify-center gap-0.5">
+                                                        <Link href={`/dashboard/pedidos/${order.id}`} onClick={(e) => e.stopPropagation()}>
+                                                            <button className="p-1.5 rounded-md text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all" title="Editar">
+                                                                <Pencil className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </Link>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setDeleteId(order.id); }}
+                                                            className="p-1.5 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                            title="Excluir"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
                                                         </button>
-                                                    </Link>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setDeleteId(order.id); }}
-                                                        className="p-1.5 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                                                        title="Excluir"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            </td>
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })
@@ -377,12 +383,14 @@ export default function PedidosPage() {
 
             {/* ═══════════ ACTION BAR ═══════════ */}
             <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
-                <Link href="/dashboard/pedidos/novo">
-                    <button className="flex items-center gap-1.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 px-3 py-2 text-xs font-semibold text-white transition-all">
-                        <Plus className="h-3.5 w-3.5" />
-                        Incluir Pedido
-                    </button>
-                </Link>
+                {!isIndustria && (
+                    <Link href="/dashboard/pedidos/novo">
+                        <button className="flex items-center gap-1.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 px-3 py-2 text-xs font-semibold text-white transition-all">
+                            <Plus className="h-3.5 w-3.5" />
+                            Incluir Pedido
+                        </button>
+                    </Link>
+                )}
 
                 {selectedOrder && (
                     <>
@@ -392,19 +400,23 @@ export default function PedidosPage() {
                                 Visualizar Pedido
                             </button>
                         </Link>
-                        <Link href={`/dashboard/pedidos/${selectedOrder.id}`}>
-                            <button className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-gray-300 transition-all">
-                                <Pencil className="h-3.5 w-3.5" />
-                                Editar Pedido
-                            </button>
-                        </Link>
-                        <button
-                            onClick={() => setDeleteId(selectedOrder.id)}
-                            className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 px-3 py-2 text-xs font-medium text-gray-300 hover:text-red-400 transition-all"
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Excluir
-                        </button>
+                        {!isIndustria && (
+                            <>
+                                <Link href={`/dashboard/pedidos/${selectedOrder.id}`}>
+                                    <button className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-gray-300 transition-all">
+                                        <Pencil className="h-3.5 w-3.5" />
+                                        Editar Pedido
+                                    </button>
+                                </Link>
+                                <button
+                                    onClick={() => setDeleteId(selectedOrder.id)}
+                                    className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 px-3 py-2 text-xs font-medium text-gray-300 hover:text-red-400 transition-all"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Excluir
+                                </button>
+                            </>
+                        )}
                     </>
                 )}
 

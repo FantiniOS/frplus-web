@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Wallet, ArrowLeft, DollarSign, Link2, FileDown, Trash2, X, Check, Package } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -30,6 +31,7 @@ interface VerbaDetail {
 }
 
 export default function VerbaDetailPage() {
+    const { isIndustria } = useAuth();
     const params = useParams();
     const router = useRouter();
     const verbaId = params.id as string;
@@ -372,7 +374,7 @@ export default function VerbaDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                    {verba.status === 'ATIVA' && (
+                    {!isIndustria && verba.status === 'ATIVA' && (
                         <button
                             onClick={openVincular}
                             className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
@@ -389,7 +391,7 @@ export default function VerbaDetailPage() {
                         <FileDown className="h-3.5 w-3.5" />
                         {exportando ? 'Gerando...' : 'Exportar Relatório'}
                     </button>
-                    {verba.status === 'ATIVA' && (
+                    {!isIndustria && verba.status === 'ATIVA' && (
                         <>
                             <button
                                 onClick={() => handleStatusChange('ESGOTADA')}
@@ -474,7 +476,7 @@ export default function VerbaDetailPage() {
                                     <td colSpan={5} className="text-center py-12 text-gray-600">
                                         <Package className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                         <p className="text-sm">Nenhum pedido vinculado ainda</p>
-                                        {verba.status === 'ATIVA' && (
+                                        {!isIndustria && verba.status === 'ATIVA' && (
                                             <button onClick={openVincular} className="text-blue-400 text-xs mt-2 hover:underline">
                                                 Vincular pedidos de bonificação →
                                             </button>

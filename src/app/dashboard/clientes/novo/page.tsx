@@ -3,14 +3,22 @@
 import Link from "next/link";
 import { ArrowLeft, Save, Building2, MapPin, DollarSign, Search, Loader2, User } from "lucide-react";
 import { useData, Client } from "@/contexts/DataContext";
-import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function NovoClientePage() {
   const { addClient, showToast } = useData();
+  const { isIndustria } = useAuth();
   const router = useRouter();
   const [loadingCnpj, setLoadingCnpj] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
+
+  useEffect(() => {
+    if (isIndustria) {
+      router.push('/dashboard/clientes');
+    }
+  }, [isIndustria, router]);
 
   const [formData, setFormData] = useState<Partial<Client>>({
     status: 'Ativo',

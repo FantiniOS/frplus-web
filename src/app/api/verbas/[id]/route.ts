@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,6 +64,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
 // PATCH /api/verbas/[id] - Update verba (titulo, valorTotal, status)
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         const body = await request.json()
         const { status, titulo, valorTotal } = body
 
@@ -97,6 +103,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 // DELETE /api/verbas/[id] - Delete verba (unlink pedidos first)
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
     try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
         // Unlink all pedidos first
         await prisma.pedido.updateMany({
             where: { verbaId: params.id },
