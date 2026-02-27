@@ -2,9 +2,17 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Wallet, DollarSign, X, Eye, Trash2, Filter } from 'lucide-react';
+import { Search, Plus, Wallet, DollarSign, X, Eye, Trash2, Pencil, Package, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+
+interface PedidoResumido {
+    id: string;
+    data: string;
+    valorTotal: number;
+    condicaoPagamento: string;
+    observacoes?: string;
+}
 
 interface VerbaItem {
     id: string;
@@ -34,7 +42,19 @@ export default function VerbaListPage() {
     const [clientes, setClientes] = useState<ClienteOption[]>([]);
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    // Form state
+    // Expand / detail inline
+    const [selectedVerbaId, setSelectedVerbaId] = useState<string | null>(null);
+    const [detailPedidos, setDetailPedidos] = useState<PedidoResumido[]>([]);
+    const [loadingDetail, setLoadingDetail] = useState(false);
+
+    // Edit modal
+    const [editVerba, setEditVerba] = useState<VerbaItem | null>(null);
+    const [editTitulo, setEditTitulo] = useState('');
+    const [editValor, setEditValor] = useState('');
+    const [editStatus, setEditStatus] = useState('');
+    const [savingEdit, setSavingEdit] = useState(false);
+
+    // Create form state
     const [formClienteId, setFormClienteId] = useState('');
     const [formTitulo, setFormTitulo] = useState('');
     const [formValor, setFormValor] = useState('');
@@ -67,6 +87,26 @@ export default function VerbaListPage() {
         fetchClientes();
     }, []);
 
+    // Fetch detail when selecting a verba
+    const handleSelectVerba = async (verbaId: string) => {
+        if (selectedVerbaId === verbaId) {
+            setSelectedVerbaId(null);
+            return;
+        }
+        setSelectedVerbaId(verbaId);
+        setLoadingDetail(true);
+        try {
+            const res = await fetch(`/api/verbas/${verbaId}`);
+            const data = await res.json();
+            setDetailPedidos(data.pedidos || []);
+        } catch (e) {
+            console.error('Error fetching verba detail:', e);
+            setDetailPedidos([]);
+        } finally {
+            setLoadingDetail(false);
+        }
+    };
+
     const filteredVerbas = useMemo(() => {
         return verbas.filter(v => {
             const matchesSearch = v.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -78,6 +118,10 @@ export default function VerbaListPage() {
             return matchesSearch && matchesStatus;
         });
     }, [verbas, searchTerm, statusFilter]);
+
+    const selectedVerba = useMemo(() => {
+        return filteredVerbas.find(v => v.id === selectedVerbaId) || null;
+    }, [filteredVerbas, selectedVerbaId]);
 
     const stats = useMemo(() => ({
         total: verbas.length,
@@ -116,10 +160,41 @@ export default function VerbaListPage() {
         if (!deleteId) return;
         try {
             await fetch(`/api/verbas/${deleteId}`, { method: 'DELETE' });
+            if (selectedVerbaId === deleteId) setSelectedVerbaId(null);
             setDeleteId(null);
             fetchVerbas();
         } catch (e) {
             console.error('Error deleting verba:', e);
+        }
+    };
+
+    const openEdit = (verba: VerbaItem) => {
+        setEditVerba(verba);
+        setEditTitulo(verba.titulo);
+        setEditValor(String(verba.valorTotal));
+        setEditStatus(verba.status);
+    };
+
+    const handleEdit = async () => {
+        if (!editVerba) return;
+        setSavingEdit(true);
+        try {
+            // Update titulo and valorTotal via a general PATCH
+            await fetch(`/api/verbas/${editVerba.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    titulo: editTitulo,
+                    valorTotal: parseFloat(editValor),
+                    status: editStatus
+                })
+            });
+            setEditVerba(null);
+            fetchVerbas();
+        } catch (e) {
+            console.error('Error editing verba:', e);
+        } finally {
+            setSavingEdit(false);
         }
     };
 
@@ -217,7 +292,7 @@ export default function VerbaListPage() {
                 </button>
             </div>
 
-            {/* ═══════════ TABLE ═══════════ */}
+            {/* ═══════════ MASTER TABLE ═══════════ */}
             <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm overflow-hidden flex-1 flex flex-col">
                 {/* Table Header Label */}
                 <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-purple-500/10 to-transparent border-b border-white/[0.06]">
@@ -229,7 +304,7 @@ export default function VerbaListPage() {
                 </div>
 
                 {/* Scrollable Table */}
-                <div className="overflow-auto flex-1" style={{ maxHeight: '500px' }}>
+                <div className="overflow-auto flex-1" style={{ maxHeight: selectedVerba ? '280px' : '500px' }}>
                     <table className="w-full text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-[#0c1220] border-b border-white/[0.08]">
@@ -239,7 +314,7 @@ export default function VerbaListPage() {
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Consumido</th>
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Saldo</th>
                                 <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Status</th>
-                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 w-20">Ações</th>
+                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 w-24">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -260,74 +335,243 @@ export default function VerbaListPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredVerbas.map((verba, index) => (
-                                    <tr
-                                        key={verba.id}
-                                        className={`border-b border-white/[0.03] cursor-pointer transition-all duration-150 ${index % 2 === 0 ? 'bg-transparent hover:bg-white/[0.03]' : 'bg-white/[0.015] hover:bg-white/[0.04]'}`}
-                                    >
-                                        {/* Cliente */}
-                                        <td className="px-3 py-2.5">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-medium text-gray-200 truncate max-w-[200px]">{verba.clienteNome}</span>
-                                                <span className="text-[10px] text-gray-600 md:hidden">{verba.titulo}</span>
-                                            </div>
-                                        </td>
+                                filteredVerbas.map((verba, index) => {
+                                    const isSelected = selectedVerbaId === verba.id;
+                                    return (
+                                        <tr
+                                            key={verba.id}
+                                            onClick={() => handleSelectVerba(verba.id)}
+                                            className={`
+                                                border-b border-white/[0.03] cursor-pointer transition-all duration-150
+                                                ${isSelected
+                                                    ? 'bg-blue-500/10 border-l-2 border-l-blue-500 shadow-[inset_0_0_20px_rgba(59,130,246,0.05)]'
+                                                    : index % 2 === 0
+                                                        ? 'bg-transparent hover:bg-white/[0.03]'
+                                                        : 'bg-white/[0.015] hover:bg-white/[0.04]'
+                                                }
+                                            `}
+                                        >
+                                            {/* Cliente */}
+                                            <td className="px-3 py-2.5">
+                                                <div className="flex flex-col">
+                                                    <span className={`text-sm font-medium truncate max-w-[200px] ${isSelected ? 'text-white' : 'text-gray-200'}`}>{verba.clienteNome}</span>
+                                                    <span className="text-[10px] text-gray-600 md:hidden">{verba.titulo}</span>
+                                                </div>
+                                            </td>
 
-                                        {/* Título */}
-                                        <td className="px-3 py-2.5 hidden md:table-cell">
-                                            <span className="text-sm text-gray-300">{verba.titulo}</span>
-                                        </td>
+                                            {/* Título */}
+                                            <td className="px-3 py-2.5 hidden md:table-cell">
+                                                <span className="text-sm text-gray-300">{verba.titulo}</span>
+                                            </td>
 
-                                        {/* Valor Total */}
-                                        <td className="px-3 py-2.5 text-right">
-                                            <span className="text-sm font-bold tabular-nums text-white">
-                                                R$ {verba.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                            </span>
-                                        </td>
+                                            {/* Valor Total */}
+                                            <td className="px-3 py-2.5 text-right">
+                                                <span className="text-sm font-bold tabular-nums text-white">
+                                                    R$ {verba.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </td>
 
-                                        {/* Consumido */}
-                                        <td className="px-3 py-2.5 text-right hidden md:table-cell">
-                                            <span className="text-sm font-bold tabular-nums text-amber-400">
-                                                R$ {verba.consumido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                            </span>
-                                        </td>
+                                            {/* Consumido */}
+                                            <td className="px-3 py-2.5 text-right hidden md:table-cell">
+                                                <span className="text-sm font-bold tabular-nums text-amber-400">
+                                                    R$ {verba.consumido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </td>
 
-                                        {/* Saldo */}
-                                        <td className="px-3 py-2.5 text-right">
-                                            <span className={`text-sm font-bold tabular-nums ${verba.saldo > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                R$ {verba.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                            </span>
-                                        </td>
+                                            {/* Saldo */}
+                                            <td className="px-3 py-2.5 text-right">
+                                                <span className={`text-sm font-bold tabular-nums ${verba.saldo > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                    R$ {verba.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </td>
 
-                                        {/* Status */}
-                                        <td className="px-3 py-2.5 text-center hidden md:table-cell">
-                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md border ${getStatusBadge(verba.status)}`}>
-                                                {verba.status}
-                                            </span>
-                                        </td>
+                                            {/* Status */}
+                                            <td className="px-3 py-2.5 text-center hidden md:table-cell">
+                                                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md border ${getStatusBadge(verba.status)}`}>
+                                                    {verba.status}
+                                                </span>
+                                            </td>
 
-                                        {/* Ações */}
-                                        <td className="px-3 py-2.5">
-                                            <div className="flex items-center justify-center gap-0.5">
-                                                <Link href={`/dashboard/verbas/${verba.id}`}>
-                                                    <button className="p-1.5 rounded-md text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all" title="Ver Detalhes">
-                                                        <Eye className="h-3.5 w-3.5" />
+                                            {/* Ações */}
+                                            <td className="px-3 py-2.5">
+                                                <div className="flex items-center justify-center gap-0.5">
+                                                    <Link href={`/dashboard/verbas/${verba.id}`} onClick={(e) => e.stopPropagation()}>
+                                                        <button className="p-1.5 rounded-md text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all" title="Ver Detalhes">
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </Link>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); openEdit(verba); }}
+                                                        className="p-1.5 rounded-md text-gray-500 hover:text-amber-400 hover:bg-amber-500/10 transition-all"
+                                                        title="Editar"
+                                                    >
+                                                        <Pencil className="h-3.5 w-3.5" />
                                                     </button>
-                                                </Link>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setDeleteId(verba.id); }}
-                                                    className="p-1.5 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                                                    title="Excluir"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setDeleteId(verba.id); }}
+                                                        className="p-1.5 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            {/* ═══════════ DETAIL PANEL — Pedidos Vinculados (inline) ═══════════ */}
+            {selectedVerba && (
+                <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
+                    {/* Detail Header */}
+                    <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-cyan-500/10 to-transparent border-b border-white/[0.06]">
+                        <div className="flex items-center gap-2">
+                            <div className="w-1 h-4 rounded-full bg-cyan-500"></div>
+                            <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Pedidos Vinculados</span>
+                            <span className="text-[10px] text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">
+                                {loadingDetail ? '...' : `${detailPedidos.length} pedidos`}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 text-xs">
+                                <span className="text-gray-500">Verba:</span>
+                                <span className="text-white font-medium">{selectedVerba.titulo}</span>
+                            </div>
+                            <div className="hidden md:flex items-center gap-2 text-xs">
+                                <span className="text-gray-500">Cliente:</span>
+                                <span className="text-gray-300">{selectedVerba.clienteNome}</span>
+                            </div>
+                            <div className="hidden md:flex items-center gap-2 text-xs">
+                                <span className="text-gray-500">Saldo:</span>
+                                <span className={`font-bold ${selectedVerba.saldo > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    R$ {selectedVerba.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setSelectedVerbaId(null)}
+                                className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Detail Table */}
+                    <div className="overflow-auto" style={{ maxHeight: '220px' }}>
+                        {loadingDetail ? (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="h-4 w-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                                <span className="text-xs text-gray-500 ml-2">Carregando...</span>
+                            </div>
+                        ) : detailPedidos.length === 0 ? (
+                            <div className="text-center py-8 text-gray-600">
+                                <Package className="h-6 w-6 mx-auto mb-1 opacity-30" />
+                                <p className="text-xs">Nenhum pedido vinculado a esta verba</p>
+                            </div>
+                        ) : (
+                            <table className="w-full text-sm">
+                                <thead className="sticky top-0 z-10">
+                                    <tr className="bg-[#0c1220] border-b border-white/[0.08]">
+                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">#</th>
+                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Data</th>
+                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Nº Pedido</th>
+                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 hidden md:table-cell">Cond. Pagamento</th>
+                                        <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Valor Abatido</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {detailPedidos.map((p, idx) => (
+                                        <tr key={p.id} className={`border-b border-white/[0.03] ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'}`}>
+                                            <td className="px-3 py-2">
+                                                <span className="text-[10px] text-gray-600 font-mono">{String(idx + 1).padStart(2, '0')}</span>
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <span className="text-xs font-mono text-gray-400">{new Date(p.data).toLocaleDateString('pt-BR')}</span>
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <span className="text-sm text-gray-200 font-medium">#{p.id.slice(-6)}</span>
+                                            </td>
+                                            <td className="px-3 py-2 hidden md:table-cell">
+                                                <span className="text-xs text-gray-500">{p.condicaoPagamento}</span>
+                                            </td>
+                                            <td className="px-3 py-2 text-right">
+                                                <span className="text-sm text-emerald-400 font-bold font-mono">
+                                                    R$ {p.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {/* Total Row */}
+                                    <tr className="bg-white/[0.03] border-t border-white/[0.08]">
+                                        <td colSpan={4} className="px-3 py-2.5">
+                                            <span className="text-xs text-gray-500 uppercase font-semibold">Total Consumido</span>
+                                        </td>
+                                        <td className="px-3 py-2.5 text-right">
+                                            <span className="text-base text-amber-400 font-bold">
+                                                R$ {detailPedidos.reduce((acc, p) => acc + p.valorTotal, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════ ACTION BAR ═══════════ */}
+            <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
+                <button
+                    onClick={() => setShowModal(true)}
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 px-3 py-2 text-xs font-semibold text-white transition-all"
+                >
+                    <Plus className="h-3.5 w-3.5" />
+                    Nova Verba
+                </button>
+
+                {selectedVerba && (
+                    <>
+                        <Link href={`/dashboard/verbas/${selectedVerba.id}`}>
+                            <button className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-gray-300 transition-all">
+                                <Eye className="h-3.5 w-3.5" />
+                                Abrir Detalhes
+                            </button>
+                        </Link>
+                        <button
+                            onClick={() => openEdit(selectedVerba)}
+                            className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-gray-300 transition-all"
+                        >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Editar Verba
+                        </button>
+                        <button
+                            onClick={() => setDeleteId(selectedVerba.id)}
+                            className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 px-3 py-2 text-xs font-medium text-gray-300 hover:text-red-400 transition-all"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Excluir
+                        </button>
+                    </>
+                )}
+
+                {/* Spacer */}
+                <div className="flex-1" />
+
+                {/* Info */}
+                <div className="text-[10px] text-gray-600 hidden md:block">
+                    {selectedVerba ? (
+                        <span className="flex items-center gap-1">
+                            <ChevronRight className="h-3 w-3" />
+                            Verba selecionada: <span className="text-blue-400 font-medium">{selectedVerba.titulo}</span>
+                        </span>
+                    ) : (
+                        <span>Clique em uma verba para ver os pedidos vinculados</span>
+                    )}
                 </div>
             </div>
 
@@ -405,6 +649,93 @@ export default function VerbaListPage() {
                                     className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20 disabled:opacity-50"
                                 >
                                     {saving ? 'Salvando...' : 'Criar Verba'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* ═══════════ MODAL — Editar Verba ═══════════ */}
+            <AnimatePresence>
+                {editVerba && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setEditVerba(null)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-md overflow-hidden rounded-xl border border-white/10 bg-[#111] p-6 shadow-2xl"
+                        >
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="rounded-full bg-amber-500/10 p-3 text-amber-500">
+                                    <Pencil className="h-6 w-6" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white">Editar Verba</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Cliente</label>
+                                    <input
+                                        type="text"
+                                        value={editVerba.clienteNome}
+                                        disabled
+                                        className="w-full bg-black/20 border border-white/5 rounded-lg px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Título da Verba</label>
+                                    <input
+                                        type="text"
+                                        value={editTitulo}
+                                        onChange={(e) => setEditTitulo(e.target.value)}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Valor Total (R$)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={editValor}
+                                        onChange={(e) => setEditValor(e.target.value)}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Status</label>
+                                    <select
+                                        value={editStatus}
+                                        onChange={(e) => setEditStatus(e.target.value)}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    >
+                                        <option value="ATIVA">Ativa</option>
+                                        <option value="ESGOTADA">Esgotada</option>
+                                        <option value="CANCELADA">Cancelada</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 mt-6">
+                                <button
+                                    onClick={() => setEditVerba(null)}
+                                    className="rounded-lg px-4 py-2 text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleEdit}
+                                    disabled={savingEdit || !editTitulo || !editValor}
+                                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20 disabled:opacity-50"
+                                >
+                                    {savingEdit ? 'Salvando...' : 'Salvar Alterações'}
                                 </button>
                             </div>
                         </motion.div>

@@ -58,19 +58,31 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
 }
 
-// PATCH /api/verbas/[id] - Update verba status
+// PATCH /api/verbas/[id] - Update verba (titulo, valorTotal, status)
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
     try {
         const body = await request.json()
-        const { status } = body
+        const { status, titulo, valorTotal } = body
 
-        if (!['ATIVA', 'ESGOTADA', 'CANCELADA'].includes(status)) {
-            return NextResponse.json({ error: 'Status inválido' }, { status: 400 })
+        const updateData: Record<string, unknown> = {}
+
+        if (status) {
+            if (!['ATIVA', 'ESGOTADA', 'CANCELADA'].includes(status)) {
+                return NextResponse.json({ error: 'Status inválido' }, { status: 400 })
+            }
+            updateData.status = status
+        }
+
+        if (titulo) updateData.titulo = titulo
+        if (valorTotal !== undefined && valorTotal !== null) updateData.valorTotal = Number(valorTotal)
+
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 })
         }
 
         const verba = await prisma.verba.update({
             where: { id: params.id },
-            data: { status }
+            data: updateData
         })
 
         return NextResponse.json(verba)
