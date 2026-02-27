@@ -33,7 +33,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
 
         setLoadingCnpj(true);
         try {
-            const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+            const response = await fetch(`/api/cnpj/${cnpj}`);
             if (!response.ok) throw new Error('CNPJ não encontrado');
 
             const data = await response.json();
