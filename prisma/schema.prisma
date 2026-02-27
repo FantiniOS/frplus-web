@@ -56,6 +56,7 @@ model Cliente {
   limiteCredito     Decimal?         @db.Decimal(10, 2)
   observacoes       String?
   pedidos           Pedido[]
+  verbas            Verba[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   contatoClientes   ContatoCliente[]
@@ -74,6 +75,8 @@ model Pedido {
   tabelaPreco       String // 50a199, 200a699, atacado, avista, redes
   condicaoPagamento String
   observacoes       String?
+  verbaId           String?
+  verba             Verba?       @relation(fields: [verbaId], references: [id])
   itens             ItemPedido[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -110,4 +113,16 @@ model Usuario {
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Verba {
+  id         String   @id @default(cuid())
+  clienteId  String
+  cliente    Cliente  @relation(fields: [clienteId], references: [id])
+  titulo     String
+  valorTotal Decimal  @db.Decimal(10, 2)
+  status     String   @default("ATIVA") // ATIVA, ESGOTADA, CANCELADA
+  pedidos    Pedido[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
