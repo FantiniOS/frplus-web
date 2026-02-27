@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { importSalesCsv } from '@/services/importCsv';
 
-// Allow up to 60s for large CSV imports (Vercel default is 10s)
-export const maxDuration = 60;
+// Allow up to 300s for large CSV imports with upsert
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
     try {
