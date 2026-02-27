@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Wallet, DollarSign, X, Eye, Trash2, Pencil, Package, ChevronRight } from 'lucide-react';
+import { Search, Plus, Wallet, X, Eye, Trash2, Pencil, Package, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -123,11 +123,6 @@ export default function VerbaListPage() {
         return filteredVerbas.find(v => v.id === selectedVerbaId) || null;
     }, [filteredVerbas, selectedVerbaId]);
 
-    const stats = useMemo(() => ({
-        total: verbas.length,
-        valorLiberado: verbas.reduce((acc, v) => acc + v.valorTotal, 0),
-        valorConsumido: verbas.reduce((acc, v) => acc + v.consumido, 0)
-    }), [verbas]);
 
     const handleCreate = async () => {
         if (!formClienteId || !formTitulo || !formValor) return;
@@ -223,25 +218,6 @@ export default function VerbaListPage() {
                     <div>
                         <h1 className="text-xl font-bold text-white tracking-tight">Controle de Verbas</h1>
                         <p className="text-xs text-gray-500">Gestão de verbas de bonificação</p>
-                    </div>
-                </div>
-
-                {/* KPIs Inline */}
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5">
-                        <Wallet className="h-3.5 w-3.5 text-purple-400" />
-                        <span className="text-xs text-gray-400">Verbas</span>
-                        <span className="text-sm font-bold text-white">{stats.total}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5">
-                        <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
-                        <span className="text-xs text-gray-400">Liberado</span>
-                        <span className="text-sm font-bold text-emerald-400">R$ {stats.valorLiberado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5">
-                        <DollarSign className="h-3.5 w-3.5 text-amber-400" />
-                        <span className="text-xs text-gray-400">Consumido</span>
-                        <span className="text-sm font-bold text-amber-400">R$ {stats.valorConsumido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
             </div>
