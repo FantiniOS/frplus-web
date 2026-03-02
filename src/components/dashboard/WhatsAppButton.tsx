@@ -42,16 +42,18 @@ export function WhatsAppButton({ clienteId, telefone, className = '', size = 'sm
             }
 
             // 2. Pegar o telefone (da resposta da API ou das props)
-            const phoneNumber = data.cliente?.telefone || telefone
-            if (!phoneNumber) {
-                setError('Cliente sem telefone cadastrado.')
+            const rawPhone = (data.cliente?.telefone || telefone || '').trim()
+
+            // 3. Limpar o telefone: remover parênteses, traços, espaços
+            const cleanPhone = rawPhone.replace(/\D/g, '')
+
+            // Validar: precisa ter ao menos 10 dígitos (DDD + número)
+            if (!cleanPhone || cleanPhone.length < 10) {
+                setError('Cliente sem telefone/celular cadastrado. Cadastre o número primeiro.')
                 setTimeout(() => setError(null), 5000)
                 setLoading(false)
                 return
             }
-
-            // 3. Limpar o telefone: remover parênteses, traços, espaços
-            const cleanPhone = phoneNumber.replace(/\D/g, '')
 
             // 4. Garantir DDI do Brasil (55)
             const phoneWithDDI = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`
