@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AlertTriangle, TrendingUp, Lightbulb, Users, ChevronRight, Phone, Mail, MessageCircle } from 'lucide-react';
+import { AlertTriangle, TrendingUp, Lightbulb, Users, ChevronRight, Phone, Mail } from 'lucide-react';
+import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
 import Link from 'next/link';
 
 interface InactiveClient {
@@ -200,9 +201,11 @@ export function AIInsightsPanel() {
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <span className={`w-2 h-2 rounded-full ${(alertColors[client.alertLevel] || alertColors.verde).split(' ')[0]}`}></span>
-                                        <a href={`https://wa.me/55${client.telefone?.replace(/\D/g, '')}`} target="_blank" className="p-1 hover:bg-green-500/20 rounded">
-                                            <MessageCircle className="h-3 w-3 text-green-400" />
-                                        </a>
+                                        <WhatsAppButton
+                                            clienteId={client.id}
+                                            telefone={client.telefone}
+                                            size="sm"
+                                        />
                                     </div>
                                 </div>
                             ))}

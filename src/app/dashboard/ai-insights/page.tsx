@@ -560,16 +560,12 @@ export default function AIInsightsPage() {
                                                                 )}
                                                                 IA
                                                             </button>
-                                                            <a
-                                                                href={whatsappLink}
-                                                                target={cleanPhone ? "_blank" : "_self"}
-                                                                onClick={(e) => !cleanPhone && e.preventDefault()}
-                                                                className={`px-3 py-1 rounded-lg text-sm transition-colors ${cleanPhone
-                                                                    ? 'bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 cursor-pointer'
-                                                                    : 'bg-gray-600/20 text-gray-400 cursor-not-allowed'}`}
-                                                            >
-                                                                {opp.actionLabel}
-                                                            </a>
+                                                            <WhatsAppButton
+                                                                clienteId={opp.clienteId}
+                                                                telefone={opp.clienteTelefone}
+                                                                label={opp.actionLabel}
+                                                                size="md"
+                                                            />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -906,14 +902,12 @@ export default function AIInsightsPage() {
                                                                 <td className="px-4 py-2 text-white">{client.nomeFantasia}</td>
                                                                 <td className="px-4 py-2 text-gray-400 hidden sm:table-cell">{client.comprador || '-'}</td>
                                                                 <td className="px-4 py-2 text-right">
-                                                                    <a
-                                                                        href={whatsappLink}
-                                                                        target="_blank"
-                                                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors font-medium text-xs"
-                                                                    >
-                                                                        <MessageCircle className="w-3 h-3" />
-                                                                        Enviar WhatsApp
-                                                                    </a>
+                                                                    <WhatsAppButton
+                                                                        clienteId={client.id}
+                                                                        telefone={client.celular || client.telefone}
+                                                                        label="Enviar WhatsApp"
+                                                                        size="md"
+                                                                    />
                                                                 </td>
                                                             </tr>
                                                         )
