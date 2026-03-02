@@ -446,15 +446,31 @@ REGRA 5: NÃO use markdown, asteriscos, negritos ou formatação especial. Escre
 
 REGRA 6: Escreva APENAS a mensagem. Sem explicações, sem alternativas, sem notas.`
 
-    const result = await model.generateContent(systemPrompt)
-    const response = result.response
-    const text = response.text()
+    try {
+        const result = await model.generateContent(systemPrompt)
+        const response = result.response
+        const text = response.text()
 
-    if (!text || text.trim() === '') {
-        throw new Error('LLM retornou uma mensagem vazia')
+        if (!text || text.trim() === '') {
+            throw new Error('LLM retornou uma mensagem vazia')
+        }
+
+        return text.trim()
+    } catch (llmError: unknown) {
+        // Detectar erro de Rate Limit / Quota Exceeded do Gemini
+        const errMsg = llmError instanceof Error ? llmError.message : String(llmError)
+        if (
+            errMsg.includes('429') ||
+            errMsg.toLowerCase().includes('quota') ||
+            errMsg.toLowerCase().includes('rate') ||
+            errMsg.toLowerCase().includes('resource has been exhausted') ||
+            errMsg.toLowerCase().includes('too many requests')
+        ) {
+            const rateLimitError = new Error('RATE_LIMIT')
+            throw rateLimitError
+        }
+        throw llmError
     }
-
-    return text.trim()
 }
 
 // ============================================================
@@ -506,6 +522,14 @@ export async function POST(request: Request) {
         console.error('Erro ao gerar mensagem IA:', error)
 
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+
+        // Retornar 429 limpo para rate limit / cota excedida
+        if (errorMessage === 'RATE_LIMIT' || errorMessage.includes('429') || errorMessage.toLowerCase().includes('quota')) {
+            return NextResponse.json(
+                { error: 'O limite de gerações simultâneas foi atingido. Por favor, aguarde cerca de 1 minuto e tente novamente.' },
+                { status: 429 }
+            )
+        }
 
         // Retornar erro específico para API key não configurada
         if (errorMessage.includes('GEMINI_API_KEY')) {

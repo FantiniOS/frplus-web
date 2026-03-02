@@ -80,6 +80,7 @@ export default function AIInsightsPage() {
     const [aiMessageError, setAiMessageError] = useState<string | null>(null);
     const [aiMessageClientInfo, setAiMessageClientInfo] = useState<{ nome: string; telefone: string } | null>(null);
     const [aiMessageFatos, setAiMessageFatos] = useState<{ motivo: string; produtoFoco: string; justificativa: string; sugestaoAdicional?: string; fatorSazonal?: string } | null>(null);
+    const [rateLimitToast, setRateLimitToast] = useState<string | null>(null);
 
     // AI Message Generation Handler
     const handleGenerateAIMessage = async (clienteId: string) => {
@@ -88,6 +89,7 @@ export default function AIInsightsPage() {
         setAiMessageError(null);
         setAiMessageClientInfo(null);
         setAiMessageFatos(null);
+        setRateLimitToast(null);
 
         try {
             const res = await fetch('/api/ai/generate-message', {
@@ -97,6 +99,14 @@ export default function AIInsightsPage() {
             });
 
             const data = await res.json();
+
+            // Tratamento específico para rate limit (429)
+            if (res.status === 429) {
+                setGeneratingMessageFor(null);
+                setRateLimitToast(data.error || 'Limite atingido. Aguarde 1 minuto e tente novamente.');
+                setTimeout(() => setRateLimitToast(null), 6000);
+                return;
+            }
 
             if (!res.ok) {
                 throw new Error(data.error || 'Erro ao gerar mensagem');
@@ -320,6 +330,21 @@ export default function AIInsightsPage() {
 
     return (
         <div className="space-y-6">
+            {/* Rate Limit Toast */}
+            {rateLimitToast && (
+                <div className="fixed top-4 right-4 z-[200] max-w-md animate-in slide-in-from-top-2 fade-in duration-300">
+                    <div className="bg-orange-500/10 border border-orange-500/30 backdrop-blur-xl rounded-xl p-4 shadow-2xl flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="text-sm font-medium text-orange-300">Limite Temporário</p>
+                            <p className="text-xs text-orange-400/80 mt-1">{rateLimitToast}</p>
+                        </div>
+                        <button onClick={() => setRateLimitToast(null)} className="p-1 rounded hover:bg-white/10 transition-colors">
+                            <X className="w-4 h-4 text-orange-400" />
+                        </button>
+                    </div>
+                </div>
+            )}
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
