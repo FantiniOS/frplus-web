@@ -480,7 +480,7 @@ export default function AIInsightsPage() {
                                                             </button>
                                                             <WhatsAppButton
                                                                 clienteId={client.id}
-                                                                telefone={client.telefone}
+                                                                telefone={client.celular || client.telefone}
                                                             />
                                                             <a
                                                                 href={`mailto:${client.email}`}
