@@ -150,81 +150,107 @@ async function analisarReposicao(clienteId: string): Promise<{
 }
 
 /**
- * Oportunidade de Cross-Sell (Afinidade por Região):
- * - Identifica produtos populares entre clientes da mesma cidade
- * - Filtra apenas os que ESTE cliente nunca comprou
- * - Retorna o top produto como sugestão
- *
- * Nota: Usa "cidade" como proxy de segmento/região pois o schema
- * não possui campo "segmento". Expandir quando houver segmentação.
+ * Oportunidade de Cross-Sell (Market Basket / Collaborative Filtering):
+ * - Identifica a fábrica "Core" do cliente (mais comprada)
+ * - Busca o que OUTROS clientes que compram da mesma fábrica também compram
+ * - Filtra produtos que este cliente NÃO comprou nos últimos 6 meses
+ * - Retorna o top produto como sugestão real de afinidade
  */
 async function analisarCrossSell(clienteId: string): Promise<{
     produtoSugerido: string
     justificativa: string
 } | null> {
-    // Buscar cidade do cliente
-    const cliente = await prisma.cliente.findUnique({
-        where: { id: clienteId },
-        select: { cidade: true }
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+
+    // Buscar pedidos do cliente com produtos (incluindo fábrica)
+    const meusPedidos = await prisma.pedido.findMany({
+        where: { clienteId, tipo: 'Venda' },
+        include: {
+            itens: { include: { produto: { include: { fabrica: true } } } }
+        }
     })
 
-    if (!cliente) return null
+    if (meusPedidos.length === 0) return null
 
-    // Produtos que este cliente já comprou
-    const produtosComprados = await prisma.itemPedido.findMany({
-        where: { pedido: { clienteId } },
-        select: { produtoId: true },
-        distinct: ['produtoId']
-    })
+    // STEP 1: Identificar a fábrica Core (mais comprada por quantidade)
+    const fabricaQtdMap = new Map<string, { nome: string; qtd: number }>()
+    const meusProdutoIds = new Set<string>()
+    const meusRecentes = new Set<string>()
 
-    const idsComprados = new Set(produtosComprados.map(p => p.produtoId))
-
-    // Produtos populares na mesma cidade (excluindo os já comprados por este cliente)
-    // Buscar clientes da mesma cidade
-    const clientesMesmaRegiao = await prisma.cliente.findMany({
-        where: {
-            cidade: cliente.cidade,
-            id: { not: clienteId }
-        },
-        select: { id: true }
-    })
-
-    if (clientesMesmaRegiao.length === 0) return null
-
-    const idsClientesRegiao = clientesMesmaRegiao.map(c => c.id)
-
-    // Itens vendidos para clientes da mesma região, agrupados por produto
-    const itensRegiao = await prisma.itemPedido.groupBy({
-        by: ['produtoId'],
-        where: {
-            pedido: {
-                clienteId: { in: idsClientesRegiao }
+    for (const pedido of meusPedidos) {
+        for (const item of pedido.itens) {
+            meusProdutoIds.add(item.produtoId)
+            if (new Date(pedido.data) >= sixMonthsAgo) {
+                meusRecentes.add(item.produtoId)
             }
-        },
-        _sum: { quantidade: true },
-        orderBy: { _sum: { quantidade: 'desc' } },
-        take: 20
-    })
 
-    // Filtrar produtos que este cliente nunca comprou
-    const oportunidades = itensRegiao.filter(item => !idsComprados.has(item.produtoId))
-
-    if (oportunidades.length === 0) return null
-
-    // Buscar nome do produto top
-    const topProduto = await prisma.produto.findUnique({
-        where: { id: oportunidades[0].produtoId },
-        select: { nome: true }
-    })
-
-    if (!topProduto) return null
-
-    const qtdVendida = oportunidades[0]._sum.quantidade || 0
-
-    return {
-        produtoSugerido: topProduto.nome,
-        justificativa: `"${topProduto.nome}" tem alta saída na região de ${cliente.cidade} (${qtdVendida} unidades vendidas para outros clientes da mesma cidade), mas este cliente nunca comprou.`
+            const fabId = item.produto.fabricaId
+            const existing = fabricaQtdMap.get(fabId)
+            if (existing) {
+                existing.qtd += item.quantidade
+            } else {
+                fabricaQtdMap.set(fabId, {
+                    nome: item.produto.fabrica?.nome || 'Fábrica',
+                    qtd: item.quantidade
+                })
+            }
+        }
     }
+
+    // Ordenar fábricas por quantidade desc
+    const fabricasOrdenadas = Array.from(fabricaQtdMap.entries())
+        .sort((a, b) => b[1].qtd - a[1].qtd)
+
+    // STEP 2: Para cada fábrica core, buscar o que outros compradores compram
+    for (const [coreFactoryId, coreFactoryInfo] of fabricasOrdenadas) {
+        // Buscar outros clientes que compram desta fábrica
+        const outrosCompradores = await prisma.itemPedido.findMany({
+            where: {
+                produto: { fabricaId: coreFactoryId },
+                pedido: { clienteId: { not: clienteId } }
+            },
+            select: { pedido: { select: { clienteId: true } } },
+            distinct: ['pedidoId']
+        })
+
+        const outrosClienteIds = Array.from(new Set(outrosCompradores.map(o => o.pedido.clienteId)))
+        if (outrosClienteIds.length === 0) continue
+
+        // O que esses clientes similares compram (agregado por produto)
+        const itensSimilares = await prisma.itemPedido.groupBy({
+            by: ['produtoId'],
+            where: {
+                pedido: { clienteId: { in: outrosClienteIds } }
+            },
+            _sum: { quantidade: true },
+            orderBy: { _sum: { quantidade: 'desc' } },
+            take: 20
+        })
+
+        // STEP 3: Gap Filter — produto que eu NÃO comprei nos últimos 6 meses
+        for (const item of itensSimilares) {
+            if (meusRecentes.has(item.produtoId)) continue // comprou recentemente
+
+            const prod = await prisma.produto.findUnique({
+                where: { id: item.produtoId },
+                select: { nome: true, fabrica: { select: { nome: true } } }
+            })
+            if (!prod) continue
+
+            const nuncaComprou = !meusProdutoIds.has(item.produtoId)
+            const qtdSimilares = item._sum.quantidade || 0
+
+            return {
+                produtoSugerido: prod.nome,
+                justificativa: nuncaComprou
+                    ? `Clientes que compram "${coreFactoryInfo.nome}" também compram "${prod.nome}" (${qtdSimilares} unidades entre clientes similares). Este cliente nunca comprou.`
+                    : `"${prod.nome}" é frequente entre clientes similares (${qtdSimilares} un.), mas este cliente não compra há mais de 6 meses.`
+            }
+        }
+    }
+
+    return null
 }
 
 /**
