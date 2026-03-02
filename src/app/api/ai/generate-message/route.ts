@@ -431,15 +431,6 @@ async function consolidarFatos(clienteId: string): Promise<FatosEstrategicos> {
 // ============================================================
 
 async function gerarMensagemComLLM(fatos: FatosEstrategicos): Promise<string> {
-    const apiKey = process.env.GEMINI_API_KEY
-
-    if (!apiKey) {
-        throw new Error('GEMINI_API_KEY não configurada. Adicione a variável de ambiente GEMINI_API_KEY no seu .env.local')
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-
     // Montar contexto dos fatos estratégicos
     let contextoDeFatos = `
 FATOS MATEMÁTICOS EXTRAÍDOS DO SISTEMA:
@@ -472,7 +463,54 @@ REGRA 5: NÃO use markdown, asteriscos, negritos ou formatação especial. Escre
 
 REGRA 6: Escreva APENAS a mensagem. Sem explicações, sem alternativas, sem notas.`
 
+    // ---- TENTATIVA 1: Groq (primário, mais rápido) ----
+    const groqKey = process.env.GROQ_API_KEY
+    if (groqKey) {
+        try {
+            const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${groqKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: `Gere a mensagem de WhatsApp para ${fatos.comprador} com base nos fatos acima.` }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 500
+                })
+            })
+
+            if (groqRes.ok) {
+                const groqData = await groqRes.json()
+                const text = groqData.choices?.[0]?.message?.content?.trim()
+                if (text && text.length > 10) {
+                    return text
+                }
+            }
+
+            // Se for 429, verificar antes de cair no fallback
+            if (groqRes.status === 429) {
+                console.warn('Groq rate limited, tentando fallback Gemini...')
+            }
+        } catch (groqErr) {
+            console.warn('Erro no Groq, tentando fallback Gemini:', groqErr)
+        }
+    }
+
+    // ---- TENTATIVA 2: Gemini (fallback) ----
+    const geminiKey = process.env.GEMINI_API_KEY
+    if (!geminiKey) {
+        throw new Error('Nenhuma API key de IA configurada (GROQ_API_KEY ou GEMINI_API_KEY).')
+    }
+
     try {
+        const genAI = new GoogleGenerativeAI(geminiKey)
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+
         const result = await model.generateContent(systemPrompt)
         const response = result.response
         const text = response.text()
@@ -483,7 +521,6 @@ REGRA 6: Escreva APENAS a mensagem. Sem explicações, sem alternativas, sem not
 
         return text.trim()
     } catch (llmError: unknown) {
-        // Detectar erro de Rate Limit / Quota Exceeded do Gemini
         const errMsg = llmError instanceof Error ? llmError.message : String(llmError)
         if (
             errMsg.includes('429') ||
@@ -492,8 +529,7 @@ REGRA 6: Escreva APENAS a mensagem. Sem explicações, sem alternativas, sem not
             errMsg.toLowerCase().includes('resource has been exhausted') ||
             errMsg.toLowerCase().includes('too many requests')
         ) {
-            const rateLimitError = new Error('RATE_LIMIT')
-            throw rateLimitError
+            throw new Error('RATE_LIMIT')
         }
         throw llmError
     }
