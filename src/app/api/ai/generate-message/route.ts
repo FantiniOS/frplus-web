@@ -16,6 +16,7 @@ interface FatosEstrategicos {
     justificativa: string
     sugestaoAdicional?: string
     fatorSazonal?: string
+    recebeBonificacao: boolean
 }
 
 interface GenerateMessageRequest {
@@ -150,11 +151,12 @@ async function analisarReposicao(clienteId: string): Promise<{
 }
 
 /**
- * Oportunidade de Cross-Sell (Market Basket / Collaborative Filtering):
- * - Identifica a fábrica "Core" do cliente (mais comprada)
- * - Busca o que OUTROS clientes que compram da mesma fábrica também compram
- * - Filtra produtos que este cliente NÃO comprou nos últimos 6 meses
- * - Retorna o top produto como sugestão real de afinidade
+ * Oportunidade de Cross-Sell (Perfil do Cliente / Segmentação):
+ * - Identifica o segmento/porte do cliente via tabelaPreco
+ * - Busca OUTROS clientes com o mesmo perfil/segmento
+ * - Descobre quais são os produtos Curva A (mais vendidos) nesse grupo
+ * - Filtra produtos que este cliente NUNCA comprou (lacuna absoluta)
+ * - Retorna o top produto como sugestão real baseada no perfil de negócio
  */
 async function analisarCrossSell(clienteId: string): Promise<{
     produtoSugerido: string
@@ -163,18 +165,35 @@ async function analisarCrossSell(clienteId: string): Promise<{
     const sixMonthsAgo = new Date()
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
-    // Buscar pedidos do cliente com produtos (incluindo fábrica)
+    // Get client info including tabelaPreco (segment proxy)
+    const cliente = await prisma.cliente.findUnique({
+        where: { id: clienteId },
+        select: { tabelaPreco: true }
+    })
+
+    if (!cliente) return null
+
+    const clientSegment = cliente.tabelaPreco || '50a199'
+
+    const segmentLabels: Record<string, string> = {
+        '50a199': 'pequeno porte (50-199)',
+        '200a699': 'médio porte (200-699)',
+        'atacado': 'atacado',
+        'avista': 'atacado à vista',
+        'redes': 'redes'
+    }
+    const segmentLabel = segmentLabels[clientSegment] || clientSegment
+
+    // Get all products this client has ever bought
     const meusPedidos = await prisma.pedido.findMany({
         where: { clienteId, tipo: 'Venda' },
         include: {
-            itens: { include: { produto: { include: { fabrica: true } } } }
+            itens: { select: { produtoId: true } }
         }
     })
 
     if (meusPedidos.length === 0) return null
 
-    // STEP 1: Identificar a fábrica Core (mais comprada por quantidade)
-    const fabricaQtdMap = new Map<string, { nome: string; qtd: number }>()
     const meusProdutoIds = new Set<string>()
     const meusRecentes = new Set<string>()
 
@@ -184,69 +203,68 @@ async function analisarCrossSell(clienteId: string): Promise<{
             if (new Date(pedido.data) >= sixMonthsAgo) {
                 meusRecentes.add(item.produtoId)
             }
-
-            const fabId = item.produto.fabricaId
-            const existing = fabricaQtdMap.get(fabId)
-            if (existing) {
-                existing.qtd += item.quantidade
-            } else {
-                fabricaQtdMap.set(fabId, {
-                    nome: item.produto.fabrica?.nome || 'Fábrica',
-                    qtd: item.quantidade
-                })
-            }
         }
     }
 
-    // Ordenar fábricas por quantidade desc
-    const fabricasOrdenadas = Array.from(fabricaQtdMap.entries())
-        .sort((a, b) => b[1].qtd - a[1].qtd)
+    // STEP 1: Find OTHER clients in the same segment (same tabelaPreco)
+    const outrosClientes = await prisma.cliente.findMany({
+        where: {
+            tabelaPreco: clientSegment,
+            id: { not: clienteId }
+        },
+        select: { id: true }
+    })
 
-    // STEP 2: Para cada fábrica core, buscar o que outros compradores compram
-    for (const [coreFactoryId, coreFactoryInfo] of fabricasOrdenadas) {
-        // Buscar outros clientes que compram desta fábrica
-        const outrosCompradores = await prisma.itemPedido.findMany({
-            where: {
-                produto: { fabricaId: coreFactoryId },
-                pedido: { clienteId: { not: clienteId } }
-            },
-            select: { pedido: { select: { clienteId: true } } },
-            distinct: ['pedidoId']
-        })
+    const outrosClienteIds = outrosClientes.map(c => c.id)
+    if (outrosClienteIds.length === 0) return null
 
-        const outrosClienteIds = Array.from(new Set(outrosCompradores.map(o => o.pedido.clienteId)))
-        if (outrosClienteIds.length === 0) continue
-
-        // O que esses clientes similares compram (agregado por produto)
-        const itensSimilares = await prisma.itemPedido.groupBy({
-            by: ['produtoId'],
-            where: {
-                pedido: { clienteId: { in: outrosClienteIds } }
-            },
-            _sum: { quantidade: true },
-            orderBy: { _sum: { quantidade: 'desc' } },
-            take: 20
-        })
-
-        // STEP 3: Gap Filter — produto que eu NÃO comprei nos últimos 6 meses
-        for (const item of itensSimilares) {
-            if (meusRecentes.has(item.produtoId)) continue // comprou recentemente
-
-            const prod = await prisma.produto.findUnique({
-                where: { id: item.produtoId },
-                select: { nome: true, fabrica: { select: { nome: true } } }
-            })
-            if (!prod) continue
-
-            const nuncaComprou = !meusProdutoIds.has(item.produtoId)
-            const qtdSimilares = item._sum.quantidade || 0
-
-            return {
-                produtoSugerido: prod.nome,
-                justificativa: nuncaComprou
-                    ? `Clientes que compram "${coreFactoryInfo.nome}" também compram "${prod.nome}" (${qtdSimilares} unidades entre clientes similares). Este cliente nunca comprou.`
-                    : `"${prod.nome}" é frequente entre clientes similares (${qtdSimilares} un.), mas este cliente não compra há mais de 6 meses.`
+    // STEP 2: Aggregate products bought by similar-profile clients (Curva A)
+    const itensSimilares = await prisma.itemPedido.groupBy({
+        by: ['produtoId'],
+        where: {
+            pedido: {
+                clienteId: { in: outrosClienteIds },
+                tipo: 'Venda'
             }
+        },
+        _sum: { quantidade: true },
+        orderBy: { _sum: { quantidade: 'desc' } },
+        take: 30
+    })
+
+    // STEP 3: Gap Filter — product this client has NEVER bought (absolute gap priority)
+    for (const item of itensSimilares) {
+        if (meusProdutoIds.has(item.produtoId)) continue // already bought at some point
+
+        const prod = await prisma.produto.findUnique({
+            where: { id: item.produtoId },
+            select: { nome: true }
+        })
+        if (!prod) continue
+
+        const qtdSimilares = item._sum.quantidade || 0
+
+        return {
+            produtoSugerido: prod.nome,
+            justificativa: `Produto com alta aderência para o perfil deste cliente. "${prod.nome}" é muito adquirido por empresas de ${segmentLabel} (${qtdSimilares} unidades entre clientes similares). Este cliente ainda não experimentou.`
+        }
+    }
+
+    // STEP 3b (FALLBACK): product not bought in 6+ months
+    for (const item of itensSimilares) {
+        if (meusRecentes.has(item.produtoId)) continue // bought recently
+
+        const prod = await prisma.produto.findUnique({
+            where: { id: item.produtoId },
+            select: { nome: true }
+        })
+        if (!prod) continue
+
+        const qtdSimilares = item._sum.quantidade || 0
+
+        return {
+            produtoSugerido: prod.nome,
+            justificativa: `Oportunidade de expansão de mix baseada no perfil de compras de clientes similares (${segmentLabel}). "${prod.nome}" é frequente entre empresas do mesmo porte (${qtdSimilares} un.) mas este cliente não compra há mais de 6 meses.`
         }
     }
 
@@ -361,12 +379,18 @@ async function analisarSazonalidade(clienteId: string): Promise<{
 
 async function consolidarFatos(clienteId: string): Promise<FatosEstrategicos> {
     // Executar todas as análises em paralelo
-    const [comprador, reposicao, crossSell, sazonalidade] = await Promise.all([
+    const [comprador, reposicao, crossSell, sazonalidade, bonificacao] = await Promise.all([
         buscarNomeComprador(clienteId),
         analisarReposicao(clienteId),
         analisarCrossSell(clienteId),
-        analisarSazonalidade(clienteId)
+        analisarSazonalidade(clienteId),
+        prisma.pedido.findFirst({
+            where: { clienteId, tipo: 'Bonificacao' },
+            select: { id: true }
+        })
     ])
+
+    const recebeBonificacao = !!bonificacao
 
     // Prioridade de motivo: Reposição > Sazonal > Cross-Sell > Geral
     let motivo: FatosEstrategicos['motivo'] = 'Contato Geral'
@@ -422,7 +446,8 @@ async function consolidarFatos(clienteId: string): Promise<FatosEstrategicos> {
         produtoFoco,
         justificativa,
         sugestaoAdicional,
-        fatorSazonal
+        fatorSazonal,
+        recebeBonificacao
     }
 }
 
@@ -446,6 +471,8 @@ FATOS MATEMÁTICOS EXTRAÍDOS DO SISTEMA:
         contextoDeFatos += `\n- Fator sazonal: ${fatos.fatorSazonal}`
     }
 
+    const isCrossSell = fatos.motivo === 'Cross-Sell'
+
     const systemPrompt = `Você é um representante comercial B2B sênior e de alta performance.
 
 Escreva uma mensagem de WhatsApp curta (máximo 3 parágrafos curtos) para o seu cliente.
@@ -454,10 +481,27 @@ REGRA 1: Inicie a mensagem SEMPRE com um cumprimento informal usando apenas o pr
 
 REGRA 2: Você é PROIBIDO de inventar ofertas, produtos ou motivos genéricos. Construa seu argumento EXCLUSIVAMENTE baseando-se nestes fatos matemáticos extraídos do sistema:
 ${contextoDeFatos}
+${isCrossSell ? `
+REGRA ESPECIAL — CROSS-SELL (ESTRATÉGIAS BIFURCADAS):
+O contexto real: você quer introduzir o produto "${fatos.produtoFoco}" mas sabe que o comprador resiste a cadastrar itens novos (sem espaço na gôndola, aversão a risco).
 
-REGRA 3: O tom deve ser de parceria e consultoria. Nunca use jargões robóticos como "Prezado", "Venho por meio desta" ou "Gostaria de oferecer". Fale como quem quer ajudar o cliente a não ficar sem estoque ou a ganhar mais dinheiro.
+${fatos.recebeBonificacao ? `TÁTICA ESTRITA que você DEVE seguir: ESTE CLIENTE TEM DIREITO A VERBA (Risco Financiado)
+- A ÚNICA moeda de troca que a fábrica libera para bonificação é o "Vinagre de Álcool 750ml".
+- Diga que você conseguiu liberar uma verba em caixas de Vinagre de Álcool 750ml bonificadas (giro garantido, 100% de lucro pro cliente).
+- Proponha que o cliente use o lucro garantido do Vinagre 750ml bonificado para "bancar" a entrada de um lote minúsculo (teste) do "${fatos.produtoFoco}".
+- Argumente que dessa forma o cliente faz um teste de gôndola com risco financeiro ZERO — a própria fábrica já pagou a conta com a bonificação do Vinagre.
+- Seja direto, comercial e fale de rentabilidade. NÃO mencione "pontos extras" ou "verbas flexíveis" — eles NÃO existem.
+- Exemplo de tom: "${fatos.comprador}, pra você não tirar um real do bolso no teste desse item novo, vou te mandar X caixas do 750ml bonificadas. O lucro do 750ml cobre o teste e a gente tenta rentabilizar melhor esse espaço na gôndola."` : `TÁTICA ESTRITA que você DEVE seguir: ESTE CLIENTE NÃO TEM VERBA (Otimização de Centímetro Quadrado/Substituição)
+- O cliente NÃO tem verba/bonificação livre e não tem espaço físico na prateleira.
+- A sua ÚNICA saída é pedir para ele substituir o espaço de um produto da concorrência que gira mal.
+- Não peça cadastro novo. Peça para ele reduzir 1 frente do concorrente de baixo giro na gôndola e colocar o seu "${fatos.produtoFoco}" no lugar.
+- Proponha isso como um teste de margem/rentabilidade de 30 dias.
+- Seja incisivo: diga que você quer ajudar a rentabilizar aquele espaço morto na prateleira.
+- Exemplo de tom: "${fatos.comprador}, sei que a gôndola está apertada, mas você tem produto de concorrente aí parado que não te dá margem. Tira uma frente dele por 30 dias e coloca o ${fatos.produtoFoco} no lugar pra gente testar a rentabilidade desse espaço. Se não girar, a gente tira."`}
+` : ''}
+REGRA 3: O tom deve ser de parceria e consultoria. Nunca use jargões robóticos como "Prezado", "Venho por meio desta" ou "Gostaria de oferecer". Fale como quem quer ajudar o cliente a ganhar mais dinheiro.
 
-REGRA 4: Termine a mensagem com uma pergunta leve para incentivar a resposta. Exemplos: "Como está o estoque dessa linha por aí?", "Posso te mandar a tabela atualizada?", "Quer que eu separe uma condição especial?".
+REGRA 4: Termine a mensagem com uma pergunta leve para incentivar a resposta. Exemplos: "Posso separar esse kit pra você?", "Quer que eu monte a proposta certinha?", "Faz sentido pra você?".
 
 REGRA 5: NÃO use markdown, asteriscos, negritos ou formatação especial. Escreva texto puro como uma mensagem de WhatsApp normal.
 

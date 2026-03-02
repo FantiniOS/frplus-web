@@ -519,7 +519,7 @@ export default function AIInsightsPage() {
                                         {opportunities.map((opp, idx) => {
                                             const typeLabels = {
                                                 upgrade: 'Upgrade',
-                                                crossSell: 'Venda Cruzada',
+                                                crossSell: 'Aumento de Margem',
                                                 seasonal: 'Sazonal',
                                                 reactivation: 'Reativação'
                                             };
