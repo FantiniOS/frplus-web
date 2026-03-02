@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
 import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles } from 'lucide-react';
 import { MessageModal } from '@/components/dashboard/MessageModal';
+import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
 
 interface InactiveClient {
     id: string;
@@ -477,16 +478,10 @@ export default function AIInsightsPage() {
                                                                     <Bot className="h-4 w-4" />
                                                                 )}
                                                             </button>
-                                                            <button
-                                                                onClick={() => {
-                                                                    setSelectedClientForMessage(client);
-                                                                    setIsMessageModalOpen(true);
-                                                                }}
-                                                                className="p-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors"
-                                                                title="Mensagem"
-                                                            >
-                                                                <MessageCircle className="h-4 w-4" />
-                                                            </button>
+                                                            <WhatsAppButton
+                                                                clienteId={client.id}
+                                                                telefone={client.telefone}
+                                                            />
                                                             <a
                                                                 href={`mailto:${client.email}`}
                                                                 className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
