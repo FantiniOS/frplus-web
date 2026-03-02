@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles } from 'lucide-react';
 import { MessageModal } from '@/components/dashboard/MessageModal';
 
 interface InactiveClient {
@@ -73,6 +73,50 @@ export default function AIInsightsPage() {
     // Message Modal State
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
     const [selectedClientForMessage, setSelectedClientForMessage] = useState<InactiveClient | null>(null);
+
+    // AI Message Generation State
+    const [generatingMessageFor, setGeneratingMessageFor] = useState<string | null>(null);
+    const [aiGeneratedMessage, setAiGeneratedMessage] = useState<string | null>(null);
+    const [aiMessageError, setAiMessageError] = useState<string | null>(null);
+    const [aiMessageClientInfo, setAiMessageClientInfo] = useState<{ nome: string; telefone: string } | null>(null);
+    const [aiMessageFatos, setAiMessageFatos] = useState<{ motivo: string; produtoFoco: string; justificativa: string; sugestaoAdicional?: string; fatorSazonal?: string } | null>(null);
+
+    // AI Message Generation Handler
+    const handleGenerateAIMessage = async (clienteId: string) => {
+        setGeneratingMessageFor(clienteId);
+        setAiGeneratedMessage(null);
+        setAiMessageError(null);
+        setAiMessageClientInfo(null);
+        setAiMessageFatos(null);
+
+        try {
+            const res = await fetch('/api/ai/generate-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clienteId })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Erro ao gerar mensagem');
+            }
+
+            setAiGeneratedMessage(data.mensagem);
+            setAiMessageClientInfo(data.cliente);
+            setAiMessageFatos(data.fatosEstrategicos);
+        } catch (err) {
+            setAiMessageError(err instanceof Error ? err.message : 'Erro desconhecido');
+        }
+    };
+
+    const closeAIMessageModal = () => {
+        setGeneratingMessageFor(null);
+        setAiGeneratedMessage(null);
+        setAiMessageError(null);
+        setAiMessageClientInfo(null);
+        setAiMessageFatos(null);
+    };
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -397,6 +441,18 @@ export default function AIInsightsPage() {
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center justify-center gap-2">
                                                             <button
+                                                                onClick={() => handleGenerateAIMessage(client.id)}
+                                                                disabled={generatingMessageFor === client.id}
+                                                                className="p-2 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
+                                                                title="Gerar Mensagem IA"
+                                                            >
+                                                                {generatingMessageFor === client.id ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <Bot className="h-4 w-4" />
+                                                                )}
+                                                            </button>
+                                                            <button
                                                                 onClick={() => {
                                                                     setSelectedClientForMessage(client);
                                                                     setIsMessageModalOpen(true);
@@ -470,16 +526,31 @@ export default function AIInsightsPage() {
                                                     <p className="text-sm text-gray-400 mb-3">{opp.description}</p>
                                                     <div className="flex items-center justify-between">
                                                         <span className="text-xs text-purple-400 uppercase font-semibold">{typeLabel}</span>
-                                                        <a
-                                                            href={whatsappLink}
-                                                            target={cleanPhone ? "_blank" : "_self"}
-                                                            onClick={(e) => !cleanPhone && e.preventDefault()}
-                                                            className={`px-3 py-1 rounded-lg text-sm transition-colors ${cleanPhone
-                                                                ? 'bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 cursor-pointer'
-                                                                : 'bg-gray-600/20 text-gray-400 cursor-not-allowed'}`}
-                                                        >
-                                                            {opp.actionLabel}
-                                                        </a>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => handleGenerateAIMessage(opp.clienteId)}
+                                                                disabled={generatingMessageFor === opp.clienteId}
+                                                                className="px-3 py-1 rounded-lg text-sm bg-violet-600/20 text-violet-400 hover:bg-violet-600/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                                                title="Gerar Mensagem IA"
+                                                            >
+                                                                {generatingMessageFor === opp.clienteId ? (
+                                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                                ) : (
+                                                                    <Bot className="w-3 h-3" />
+                                                                )}
+                                                                IA
+                                                            </button>
+                                                            <a
+                                                                href={whatsappLink}
+                                                                target={cleanPhone ? "_blank" : "_self"}
+                                                                onClick={(e) => !cleanPhone && e.preventDefault()}
+                                                                className={`px-3 py-1 rounded-lg text-sm transition-colors ${cleanPhone
+                                                                    ? 'bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 cursor-pointer'
+                                                                    : 'bg-gray-600/20 text-gray-400 cursor-not-allowed'}`}
+                                                            >
+                                                                {opp.actionLabel}
+                                                            </a>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )
@@ -513,12 +584,27 @@ export default function AIInsightsPage() {
                                                 <p className="text-sm text-blue-400 mt-1">{insight.metric}</p>
                                                 <div className="flex items-center justify-between mt-3">
                                                     <span className="text-xs text-purple-400 uppercase">{insight.type}</span>
-                                                    <button
-                                                        onClick={() => handleAction(insight)}
-                                                        className="px-3 py-1 rounded-lg bg-blue-600/20 text-blue-400 text-sm hover:bg-blue-600/30 transition-colors"
-                                                    >
-                                                        {insight.actionLabel}
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => handleGenerateAIMessage(insight.clienteId)}
+                                                            disabled={generatingMessageFor === insight.clienteId}
+                                                            className="px-3 py-1 rounded-lg bg-violet-600/20 text-violet-400 text-sm hover:bg-violet-600/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                                            title="Gerar Mensagem IA"
+                                                        >
+                                                            {generatingMessageFor === insight.clienteId ? (
+                                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                            ) : (
+                                                                <Bot className="w-3 h-3" />
+                                                            )}
+                                                            IA
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleAction(insight)}
+                                                            className="px-3 py-1 rounded-lg bg-blue-600/20 text-blue-400 text-sm hover:bg-blue-600/30 transition-colors"
+                                                        >
+                                                            {insight.actionLabel}
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
@@ -823,6 +909,122 @@ export default function AIInsightsPage() {
                 )}
                 {/* ... existing content inside the relative div ... */}
             </div>
+
+            {/* AI Generated Message Modal */}
+            {generatingMessageFor && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+                        {!aiGeneratedMessage && !aiMessageError ? (
+                            <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
+                                <div className="relative">
+                                    <div className="w-16 h-16 border-4 border-violet-500/30 border-t-violet-500 rounded-full animate-spin"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <Sparkles className="w-6 h-6 text-violet-400 animate-pulse" />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-semibold text-white">Gerando mensagem inteligente...</h3>
+                                <p className="text-sm text-gray-400">Analisando histórico de compras, ciclo de reposição e oportunidades de cross-sell.</p>
+                            </div>
+                        ) : aiMessageError ? (
+                            <>
+                                <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                                    <h3 className="text-lg font-bold text-red-400 flex items-center gap-2">
+                                        <AlertTriangle className="w-5 h-5" />
+                                        Erro ao Gerar Mensagem
+                                    </h3>
+                                    <button onClick={closeAIMessageModal} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+                                        <X className="w-5 h-5 text-gray-400" />
+                                    </button>
+                                </div>
+                                <div className="p-6">
+                                    <p className="text-sm text-gray-300">{aiMessageError}</p>
+                                    <button
+                                        onClick={closeAIMessageModal}
+                                        className="mt-4 w-full py-2.5 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors text-sm font-medium"
+                                    >
+                                        Fechar
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="p-6 border-b border-white/10 flex justify-between items-start bg-gradient-to-r from-violet-500/10 to-purple-500/10 sticky top-0 bg-[#1a1a1a] z-10">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs font-mono text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">
+                                                🤖 MENSAGEM DATA-DRIVEN
+                                            </span>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white">
+                                            {aiMessageClientInfo?.nome || 'Cliente'}
+                                        </h3>
+                                    </div>
+                                    <button onClick={closeAIMessageModal} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+                                        <X className="w-5 h-5 text-gray-400" />
+                                    </button>
+                                </div>
+
+                                <div className="p-6 space-y-4">
+                                    {/* Data Facts Summary */}
+                                    {aiMessageFatos && (
+                                        <div className="bg-violet-500/5 border border-violet-500/10 rounded-xl p-4 space-y-2">
+                                            <h4 className="text-xs font-semibold text-violet-400 uppercase flex items-center gap-1.5">
+                                                <Sparkles className="w-3 h-3" />
+                                                Fatos Estratégicos Utilizados
+                                            </h4>
+                                            <div className="space-y-1 text-xs text-gray-400">
+                                                <p><span className="text-gray-300 font-medium">Motivo:</span> {aiMessageFatos.motivo}</p>
+                                                <p><span className="text-gray-300 font-medium">Produto Foco:</span> {aiMessageFatos.produtoFoco}</p>
+                                                <p><span className="text-gray-300 font-medium">Justificativa:</span> {aiMessageFatos.justificativa}</p>
+                                                {aiMessageFatos.sugestaoAdicional && (
+                                                    <p><span className="text-gray-300 font-medium">Cross-sell:</span> {aiMessageFatos.sugestaoAdicional}</p>
+                                                )}
+                                                {aiMessageFatos.fatorSazonal && (
+                                                    <p><span className="text-gray-300 font-medium">Sazonal:</span> {aiMessageFatos.fatorSazonal}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Generated Message */}
+                                    <div className="space-y-2">
+                                        <h4 className="text-sm font-semibold text-green-400 flex items-center gap-2">
+                                            <MessageCircle className="w-4 h-4" />
+                                            Mensagem Gerada
+                                        </h4>
+                                        <div className="bg-black/30 rounded-xl p-4 border border-white/5">
+                                            <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
+                                                {aiGeneratedMessage}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => { if (aiGeneratedMessage) copyToClipboard(aiGeneratedMessage); }}
+                                            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors text-sm"
+                                        >
+                                            <Copy className="w-4 h-4" />
+                                            Copiar
+                                        </button>
+                                        {aiMessageClientInfo?.telefone && (
+                                            <a
+                                                href={`https://wa.me/55${aiMessageClientInfo.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(aiGeneratedMessage || '')}`}
+                                                target="_blank"
+                                                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-medium transition-colors shadow-lg shadow-green-900/20 text-sm"
+                                            >
+                                                <MessageCircle className="w-4 h-4" />
+                                                Enviar WhatsApp
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Modal Overlay - Moved outside to prevent positioning issues */}
             {activeInsight && (

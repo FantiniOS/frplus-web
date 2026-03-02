@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "autoprefixer": "^10.0.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.0",
