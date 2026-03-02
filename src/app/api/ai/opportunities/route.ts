@@ -10,13 +10,13 @@ export async function GET() {
         // DATA LOADING
         // ============================================================
 
-        // 1. Get all clients with their order history (including item details)
+        // 1. Get all clients with their order history
         const clients = await prisma.cliente.findMany({
             include: {
                 pedidos: {
                     include: {
                         itens: {
-                            include: { produto: true }
+                            select: { produtoId: true, quantidade: true }
                         }
                     },
                     orderBy: { data: 'desc' }
@@ -24,18 +24,23 @@ export async function GET() {
             }
         })
 
-        // 2. Get all products with factory info
+        // 2. Get all products with factory info (single query, used as lookup)
         const products = await prisma.produto.findMany({
             include: { fabrica: true }
         })
 
-        // Product lookup maps
+        // Product lookup map
         const productMap = new Map(products.map(p => [p.id, p]))
 
-        // 3. Build a global "Factory Affinity" index:
-        //    For each fabricaId, which OTHER products are most bought by
-        //    clients who buy from that factory?
-        //    Structure: fabricaId -> Map<produtoId, totalQtd> (sorted by qty desc)
+        // 3. Pre-compute global product popularity (for fallback)
+        const globalStats = await prisma.itemPedido.groupBy({
+            by: ['produtoId'],
+            _sum: { quantidade: true },
+            orderBy: { _sum: { quantidade: 'desc' } },
+            take: 50
+        })
+
+        // 4. Build factory-buyer and client-product indexes
         const factoryBuyerMap = new Map<string, Set<string>>() // fabricaId -> Set<clienteId>
         const clientProductMap = new Map<string, Map<string, number>>() // clienteId -> Map<produtoId, totalQtd>
 
@@ -45,7 +50,6 @@ export async function GET() {
                 for (const item of pedido.itens) {
                     prodQtdMap.set(item.produtoId, (prodQtdMap.get(item.produtoId) || 0) + item.quantidade)
 
-                    // Track which clients buy from which factory
                     const prod = productMap.get(item.produtoId)
                     if (prod) {
                         if (!factoryBuyerMap.has(prod.fabricaId)) {
@@ -80,12 +84,10 @@ export async function GET() {
         const sixMonthsAgo = new Date()
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
-        // Track which products have already been suggested as cross-sell
-        // to diversify fallback suggestions across clients
+        // Track suggested products to diversify cross-sell across clients
         const globalSuggestedProducts = new Set<string>()
 
         for (const client of clients) {
-            // Skip clients with no orders
             if (client.pedidos.length === 0) continue
 
             const phone = client.celular || client.telefone || ''
@@ -127,7 +129,6 @@ export async function GET() {
                     }
                 })
 
-                // Sort factories by quantity desc → get core factory
                 const sortedFactories = Array.from(factoryQtdMap.entries())
                     .sort((a, b) => b[1] - a[1])
 
@@ -141,32 +142,26 @@ export async function GET() {
                     }
                 }
 
-                // All products ever bought
                 const allBoughtProductIds = new Set(Array.from(myProducts.keys()))
-
                 let crossSellFound = false
 
-                // Try each core factory (primary, then secondary) for affinity match
-                for (const [coreFactoryId] of sortedFactories) {
-                    if (crossSellFound) break
+                // Try each core factory for affinity match
+                for (let fIdx = 0; fIdx < sortedFactories.length && !crossSellFound; fIdx++) {
+                    const coreFactoryId = sortedFactories[fIdx][0]
 
                     // STEP 2: Find OTHER clients who also buy from this core factory
                     const coreFactoryBuyers = factoryBuyerMap.get(coreFactoryId)
                     if (!coreFactoryBuyers || coreFactoryBuyers.size <= 1) continue
 
                     // Aggregate what those other clients buy (collaborative filtering)
-                    const affinityScores = new Map<string, number>() // produtoId -> aggregate qty from similar clients
+                    const affinityScores = new Map<string, number>()
 
                     coreFactoryBuyers.forEach(buyerId => {
-                        if (buyerId === client.id) return // exclude self
+                        if (buyerId === client.id) return
                         const buyerProducts = clientProductMap.get(buyerId)
                         if (!buyerProducts) return
 
                         buyerProducts.forEach((qtd, prodId) => {
-                            // Only count products from OTHER factories (true cross-sell)
-                            // or same factory but different product
-                            const prod = productMap.get(prodId)
-                            if (!prod) return
                             affinityScores.set(prodId, (affinityScores.get(prodId) || 0) + qtd)
                         })
                     })
@@ -175,19 +170,20 @@ export async function GET() {
                     const rankedAffinity = Array.from(affinityScores.entries())
                         .sort((a, b) => b[1] - a[1])
 
-                    // STEP 3: Gap Filter — find the top affinity product this client
-                    // has NOT bought in the last 6 months
-                    for (const [prodId, score] of rankedAffinity) {
-                        if (recentProductIds.has(prodId)) continue // bought recently, skip
-                        if (globalSuggestedProducts.has(prodId) && score < 50) continue // diversify
+                    // STEP 3: Gap Filter — find top affinity product NOT bought in 6 months
+                    for (let aIdx = 0; aIdx < rankedAffinity.length && !crossSellFound; aIdx++) {
+                        const prodId = rankedAffinity[aIdx][0]
+                        const score = rankedAffinity[aIdx][1]
+
+                        if (recentProductIds.has(prodId)) continue
+                        if (globalSuggestedProducts.has(prodId) && score < 50) continue
 
                         const prod = productMap.get(prodId)
                         if (!prod) continue
 
-                        const coreFactory = productMap.get(
-                            Array.from(myProducts.keys()).find(pid => productMap.get(pid)?.fabricaId === coreFactoryId) || ''
-                        )
-                        const coreFactoryName = coreFactory?.fabrica?.nome || 'a fábrica principal'
+                        // Get core factory name from productMap
+                        const coreFactoryProd = products.find(p => p.fabricaId === coreFactoryId)
+                        const coreFactoryName = coreFactoryProd?.fabrica?.nome || 'a fábrica principal'
                         const neverBought = !allBoughtProductIds.has(prodId)
 
                         opportunities.push({
@@ -205,25 +201,14 @@ export async function GET() {
 
                         globalSuggestedProducts.add(prodId)
                         crossSellFound = true
-                        break
                     }
                 }
 
-                // STEP 4 (FALLBACK): If no affinity match found,
-                // suggest a diversified high-volume product the client never bought
+                // STEP 4 (FALLBACK): Diversified high-volume product (pre-computed)
                 if (!crossSellFound) {
-                    // Get global top products NOT bought by this client
-                    // and NOT already over-suggested
-                    const globalStats = await prisma.itemPedido.groupBy({
-                        by: ['produtoId'],
-                        _sum: { quantidade: true },
-                        orderBy: { _sum: { quantidade: 'desc' } },
-                        take: 30
-                    })
-
                     for (const stat of globalStats) {
                         if (recentProductIds.has(stat.produtoId)) continue
-                        if (globalSuggestedProducts.has(stat.produtoId)) continue // DIVERSIFY: skip already suggested
+                        if (globalSuggestedProducts.has(stat.produtoId)) continue
 
                         const prod = productMap.get(stat.produtoId)
                         if (!prod) continue
@@ -251,10 +236,7 @@ export async function GET() {
             )
             const avgOrdersPerMonth = client.pedidos.length / 12
 
-            const sixMonthsAgoSeasonal = new Date()
-            sixMonthsAgoSeasonal.setMonth(sixMonthsAgoSeasonal.getMonth() - 6)
-
-            if (client.createdAt < sixMonthsAgoSeasonal && ordersThisMonth.length > avgOrdersPerMonth * 1.3 && ordersThisMonth.length < avgOrdersPerMonth * 2.5) {
+            if (client.createdAt < sixMonthsAgo && ordersThisMonth.length > avgOrdersPerMonth * 1.3 && ordersThisMonth.length < avgOrdersPerMonth * 2.5) {
                 opportunities.push({
                     type: 'seasonal',
                     clienteId: client.id,
