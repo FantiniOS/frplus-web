@@ -9,6 +9,33 @@ interface MonthSelectorProps {
     placeholder?: string;
 }
 
+/**
+ * Generates an array of the last N months starting from TODAY, in descending order.
+ * Index 0 = current month, Index 1 = last month, etc.
+ * Uses Intl.DateTimeFormat for locale-safe month names.
+ */
+function generateMonths(count: number = 24): { value: string; label: string }[] {
+    const formatter = new Intl.DateTimeFormat('pt-BR', { month: 'long' });
+    const result: { value: string; label: string }[] = [];
+
+    for (let i = 0; i < count; i++) {
+        const d = new Date();
+        d.setDate(1);                    // Pin to 1st to avoid 31→28 overflow
+        d.setMonth(d.getMonth() - i);    // Subtract i months from today
+
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1;  // 1-12
+        const valueStr = `${year}-${String(month).padStart(2, '0')}`;
+
+        const monthName = formatter.format(d);
+        const label = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} / ${year}`;
+
+        result.push({ value: valueStr, label });
+    }
+
+    return result;
+}
+
 export function MonthSelector({ value, onChange, placeholder = 'Todo o Histórico' }: MonthSelectorProps) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -29,49 +56,22 @@ export function MonthSelector({ value, onChange, placeholder = 'Todo o Históric
         };
     }, [isOpen]);
 
-    // Generate last 24 months
-    const monthOptions = useMemo(() => {
-        const options: { value: string; label: string; group: string }[] = [];
-        const today = new Date();
-        const startYear = today.getFullYear();
-        const startMonth = today.getMonth();
+    // Memoize the month list (descending: current month first)
+    const monthOptions = useMemo(() => generateMonths(24), []);
 
-        for (let i = 0; i < 24; i++) {
-            let m = startMonth - i;
-            let y = startYear;
-
-            while (m < 0) {
-                m += 12;
-                y -= 1;
-            }
-
-            const valueStr = `${y}-${String(m + 1).padStart(2, '0')}`;
-            // Constructing a date in the middle of the month avoids any timezone/daylight saving shifts
-            const safeDate = new Date(y, m, 15);
-            const labelStr = safeDate.toLocaleString('pt-BR', { month: 'long' });
-            const labelCap = labelStr.charAt(0).toUpperCase() + labelStr.slice(1);
-
-            options.push({
-                value: valueStr,
-                label: labelCap,
-                group: String(y)
-            });
-        }
-        return options;
-    }, []);
-
-    // Display string for trigger
+    // Display string for trigger button
     const displayValue = useMemo(() => {
         if (!value) return placeholder;
         const opt = monthOptions.find(o => o.value === value);
-        if (opt) return `${opt.label} / ${opt.group}`;
+        if (opt) return opt.label;
 
-        // Fallback for custom dates outside 24 mo range
+        // Fallback for dates outside the 24-month window
         const [y, m] = value.split('-');
         if (y && m) {
             const d = new Date(parseInt(y), parseInt(m) - 1, 15);
-            const l = d.toLocaleString('pt-BR', { month: 'long' });
-            return `${l.charAt(0).toUpperCase() + l.slice(1)} / ${y}`;
+            const formatter = new Intl.DateTimeFormat('pt-BR', { month: 'long' });
+            const name = formatter.format(d);
+            return `${name.charAt(0).toUpperCase() + name.slice(1)} / ${y}`;
         }
         return value;
     }, [value, monthOptions, placeholder]);
@@ -87,13 +87,13 @@ export function MonthSelector({ value, onChange, placeholder = 'Todo o Históric
                     aria-expanded={isOpen}
                 >
                     <Calendar className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm font-medium text-white select-none whitespace-nowrap min-w-[110px] text-left">
+                    <span className="text-sm font-medium text-white select-none whitespace-nowrap min-w-[130px] text-left">
                         {displayValue}
                     </span>
                     <ChevronDown className={`h-3.5 w-3.5 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 </button>
 
-                {/* Clear Button (only shown if a month is selected) */}
+                {/* Clear Button */}
                 {value && (
                     <button
                         onClick={(e) => {
@@ -111,53 +111,35 @@ export function MonthSelector({ value, onChange, placeholder = 'Todo o Históric
 
             {/* Dropdown Menu */}
             {isOpen && (
-                <div className="absolute right-0 top-full mt-2 w-64 max-h-[320px] overflow-y-auto rounded-xl border border-white/[0.08] bg-slate-900 shadow-2xl shadow-black/80 z-[100] flex flex-col py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 top-full mt-2 w-64 max-h-[320px] overflow-y-auto rounded-xl border border-white/[0.08] bg-slate-900 shadow-2xl shadow-black/80 z-[100] flex flex-col py-1 animate-in fade-in slide-in-from-top-2 duration-200">
 
-                    {/* Placeholder / "All time" Option */}
+                    {/* "All History" option */}
                     <button
-                        onClick={() => {
-                            onChange('');
-                            setIsOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between p-3 select-none transition-colors border-b border-white/[0.04]
+                        onClick={() => { onChange(''); setIsOpen(false); }}
+                        className={`w-full flex items-center justify-between p-3 select-none cursor-pointer transition-colors border-b border-white/[0.06]
                             ${!value ? 'bg-blue-500/10 text-blue-400' : 'text-gray-300 hover:bg-white/5'}`}
                     >
                         <span className="font-semibold text-sm">{placeholder}</span>
                         {!value && <Check className="h-4 w-4" />}
                     </button>
 
-                    {/* Group by Year */}
-                    {Object.entries(
-                        monthOptions.reduce((acc, opt) => {
-                            if (!acc[opt.group]) acc[opt.group] = [];
-                            acc[opt.group].push(opt);
-                            return acc;
-                        }, {} as Record<string, typeof monthOptions>)
-                    ).map(([year, months]) => (
-                        <div key={year} className="mt-2 first:mt-0">
-                            <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider bg-white/[0.02]">
-                                {year}
-                            </div>
-                            {months.map(opt => (
-                                <button
-                                    key={opt.value}
-                                    onClick={() => {
-                                        onChange(opt.value);
-                                        setIsOpen(false);
-                                    }}
-                                    className={`w-full flex items-center justify-between p-3 select-none transition-colors
-                                        ${value === opt.value
-                                            ? 'bg-blue-500/20 text-white font-medium border-l-2 border-l-blue-500'
-                                            : 'text-gray-300 hover:bg-white/5 hover:text-white'}`}
-                                >
-                                    <span className="text-sm capitalize">{opt.label}</span>
-                                    {value === opt.value && <Check className="h-4 w-4 text-blue-400" />}
-                                </button>
-                            ))}
-                        </div>
+                    {/* Flat descending list: current month → 23 months ago */}
+                    {monthOptions.map((opt) => (
+                        <button
+                            key={opt.value}
+                            onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                            className={`w-full flex items-center justify-between p-3 select-none cursor-pointer transition-colors
+                                ${value === opt.value
+                                    ? 'bg-blue-500/20 text-white font-medium border-l-2 border-l-blue-500'
+                                    : 'text-gray-300 hover:bg-white/5 hover:text-white'}`}
+                        >
+                            <span className="text-sm">{opt.label}</span>
+                            {value === opt.value && <Check className="h-4 w-4 text-blue-400" />}
+                        </button>
                     ))}
                 </div>
             )}
         </div>
     );
 }
+
