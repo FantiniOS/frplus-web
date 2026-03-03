@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { getServerUser } from '@/lib/getServerUser'
 
 // POST /api/ai/generate-message - Generate a data-driven WhatsApp message for a client
 export const dynamic = 'force-dynamic'
@@ -455,7 +456,7 @@ async function consolidarFatos(clienteId: string): Promise<FatosEstrategicos> {
 // ETAPA 3: INJEÇÃO DE CONTEXTO NO LLM (Strict System Prompt)
 // ============================================================
 
-async function gerarMensagemComLLM(fatos: FatosEstrategicos): Promise<string> {
+async function gerarMensagemComLLM(fatos: FatosEstrategicos, nomeUsuario: string, nomeCliente: string): Promise<string> {
     // Montar contexto dos fatos estratégicos
     let contextoDeFatos = `
 FATOS MATEMÁTICOS EXTRAÍDOS DO SISTEMA:
@@ -473,11 +474,14 @@ FATOS MATEMÁTICOS EXTRAÍDOS DO SISTEMA:
 
     const isCrossSell = fatos.motivo === 'Cross-Sell'
 
-    const systemPrompt = `Você é um representante comercial B2B sênior e de alta performance.
+    const systemPrompt = `Você é o representante comercial '${nomeUsuario}'. Assine a mensagem e conduza a apresentação usando este nome exato.
+O cliente que vai receber a mensagem se chama '${nomeCliente}'. Inicie a saudação chamando-o pelo nome.
 
 Escreva uma mensagem de WhatsApp curta (máximo 3 parágrafos curtos) para o seu cliente.
 
-REGRA 1: Inicie a mensagem SEMPRE com um cumprimento informal usando apenas o primeiro nome do comprador: ${fatos.comprador}. Exemplo: "Fala ${fatos.comprador}, tudo bem?"
+REGRA ABSOLUTA: NÃO gere textos com campos ou colchetes para preencher como [Nome], [Sua Empresa] ou [Empresa]. Escreva o texto final e completo, pronto para ser enviado no WhatsApp, assinando com o seu nome ${nomeUsuario}.
+
+REGRA 1: Inicie a mensagem SEMPRE com um cumprimento informal usando o nome do cliente: ${nomeCliente}. Exemplo: "Fala ${nomeCliente}, tudo bem?"
 
 REGRA 2: Você é PROIBIDO de inventar ofertas, produtos ou motivos genéricos. Construa seu argumento EXCLUSIVAMENTE baseando-se nestes fatos matemáticos extraídos do sistema:
 ${contextoDeFatos}
@@ -608,11 +612,17 @@ export async function POST(request: Request) {
             )
         }
 
+        // Capturar sessão ativa para pegar o nome
+        const user = await getServerUser()
+        const nomeUsuario = user?.nome || 'Representante Comercial'
+
         // ETAPA 1 + 2: Mineração de Dados + Consolidação
         const fatosEstrategicos = await consolidarFatos(body.clienteId)
 
+        const nomeCliente = fatosEstrategicos.comprador || clienteExiste.nomeFantasia.split(' ')[0]
+
         // ETAPA 3: Gerar mensagem com LLM
-        const mensagem = await gerarMensagemComLLM(fatosEstrategicos)
+        const mensagem = await gerarMensagemComLLM(fatosEstrategicos, nomeUsuario, nomeCliente)
 
         return NextResponse.json({
             mensagem,

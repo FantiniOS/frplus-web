@@ -112,6 +112,7 @@ model Usuario {
   username  String   @unique
   email     String? // Opcional
   senha     String // Hash bcrypt
+  empresa   String?  @default("Minha Empresa")
   role      String   @default("vendedor") // admin, vendedor, industria
   fabricaId String?
   fabrica   Fabrica? @relation(fields: [fabricaId], references: [id])

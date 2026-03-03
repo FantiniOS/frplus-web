@@ -9,15 +9,23 @@ import { motion } from "framer-motion";
 
 export default function ConfiguracoesPage() {
     const { logout, showToast } = useData();
-    const { isIndustria } = useAuth();
+    const { isIndustria, usuario } = useAuth();
     const router = useRouter();
-    const [companyName, setCompanyName] = useState("Minha Empresa"); // Mock state
+    const [companyName, setCompanyName] = useState("Minha Empresa");
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (isIndustria) {
             router.push('/dashboard');
         }
     }, [isIndustria, router]);
+
+    // Sync company name when user data loads
+    useEffect(() => {
+        if (usuario?.empresa) {
+            setCompanyName(usuario.empresa);
+        }
+    }, [usuario]);
 
     // Import State
     const [importFile, setImportFile] = useState<File | null>(null);
@@ -81,8 +89,35 @@ export default function ConfiguracoesPage() {
         router.push('/');
     }
 
-    const handleSave = () => {
-        showToast("Configurações salvas!", "success");
+    const handleSave = async () => {
+        if (!companyName.trim()) {
+            showToast("O nome da empresa não pode estar vazio.", "error");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const res = await fetch('/api/auth/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nomeEmpresa: companyName.trim() })
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                showToast("Configurações salvas!", "success");
+                // Reload to sync context and all views with the new Company Name
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast(data.error || "Erro ao salvar o perfil.", "error");
+            }
+        } catch (error) {
+            console.error('Error saving profile:', error);
+            showToast("Erro de conexão ao salvar.", "error");
+        } finally {
+            setIsSaving(false);
+        }
     }
 
     return (
@@ -115,7 +150,7 @@ export default function ConfiguracoesPage() {
                         <label className="text-sm font-medium text-gray-300">Email de Acesso</label>
                         <input
                             disabled
-                            value="admin@frplus.com"
+                            value={usuario?.email || "N/D"}
                             className="w-full rounded-lg bg-black/40 border border-white/10 p-2.5 text-gray-500 cursor-not-allowed"
                         />
                     </div>
@@ -124,10 +159,11 @@ export default function ConfiguracoesPage() {
                 <div className="mt-6 flex justify-end">
                     <button
                         onClick={handleSave}
-                        className="flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
+                        disabled={isSaving}
+                        className="flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <Save className="mr-2 h-4 w-4" />
-                        Salvar Perfil
+                        {isSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {isSaving ? 'Salvando...' : 'Salvar Perfil'}
                     </button>
                 </div>
             </div>

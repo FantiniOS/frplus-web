@@ -8,6 +8,7 @@ interface Usuario {
     nome: string;
     username: string;
     email: string | null;
+    empresa: string | null;
     role: 'admin' | 'vendedor' | 'industria';
     fabricaId: string | null;
 }
