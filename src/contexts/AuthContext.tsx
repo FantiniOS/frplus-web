@@ -9,7 +9,6 @@ interface Usuario {
     username: string;
     email: string | null;
     empresa: string | null;
-    taxaComissao: number;
     role: 'admin' | 'vendedor' | 'industria';
     fabricaId: string | null;
 }
