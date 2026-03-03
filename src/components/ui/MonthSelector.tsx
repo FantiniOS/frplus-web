@@ -32,26 +32,30 @@ export function MonthSelector({ value, onChange, placeholder = 'Todo o Históric
     // Generate last 24 months
     const monthOptions = useMemo(() => {
         const options: { value: string; label: string; group: string }[] = [];
-        const date = new Date();
-        date.setDate(1); // Set to 1st to avoid end-of-month skipping issues
+        const today = new Date();
+        const startYear = today.getFullYear();
+        const startMonth = today.getMonth();
 
         for (let i = 0; i < 24; i++) {
-            const currentYear = date.getFullYear();
-            const currentMonth = date.getMonth() + 1; // 1-12
+            let m = startMonth - i;
+            let y = startYear;
 
-            const valueStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-            const labelStr = date.toLocaleString('pt-BR', { month: 'long' });
-            // capitalize first letter
+            while (m < 0) {
+                m += 12;
+                y -= 1;
+            }
+
+            const valueStr = `${y}-${String(m + 1).padStart(2, '0')}`;
+            // Constructing a date in the middle of the month avoids any timezone/daylight saving shifts
+            const safeDate = new Date(y, m, 15);
+            const labelStr = safeDate.toLocaleString('pt-BR', { month: 'long' });
             const labelCap = labelStr.charAt(0).toUpperCase() + labelStr.slice(1);
 
             options.push({
                 value: valueStr,
                 label: labelCap,
-                group: String(currentYear)
+                group: String(y)
             });
-
-            // Subtract 1 month
-            date.setMonth(date.getMonth() - 1);
         }
         return options;
     }, []);
@@ -65,7 +69,7 @@ export function MonthSelector({ value, onChange, placeholder = 'Todo o Históric
         // Fallback for custom dates outside 24 mo range
         const [y, m] = value.split('-');
         if (y && m) {
-            const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+            const d = new Date(parseInt(y), parseInt(m) - 1, 15);
             const l = d.toLocaleString('pt-BR', { month: 'long' });
             return `${l.charAt(0).toUpperCase() + l.slice(1)} / ${y}`;
         }
@@ -73,7 +77,7 @@ export function MonthSelector({ value, onChange, placeholder = 'Todo o Históric
     }, [value, monthOptions, placeholder]);
 
     return (
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative z-50" ref={dropdownRef}>
             {/* Trigger Button */}
             <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] rounded-xl px-1 transition-all">
                 <button
@@ -107,7 +111,7 @@ export function MonthSelector({ value, onChange, placeholder = 'Todo o Históric
 
             {/* Dropdown Menu */}
             {isOpen && (
-                <div className="absolute right-0 top-full mt-2 w-64 max-h-[320px] overflow-y-auto rounded-xl border border-white/[0.08] bg-[#0f1729] shadow-2xl shadow-black/60 z-50 flex flex-col py-2 animate-in fade-in slide-in-from-top-2 duration-200 backdrop-blur-md">
+                <div className="absolute right-0 top-full mt-2 w-64 max-h-[320px] overflow-y-auto rounded-xl border border-white/[0.08] bg-slate-900 shadow-2xl shadow-black/80 z-[100] flex flex-col py-2 animate-in fade-in slide-in-from-top-2 duration-200">
 
                     {/* Placeholder / "All time" Option */}
                     <button
