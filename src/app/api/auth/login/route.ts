@@ -72,6 +72,7 @@ export async function POST(request: Request) {
                 nome: usuario.nome,
                 username: usuario.username,
                 email: usuario.email,
+                empresa: usuario.empresa,
                 role: usuario.role,
                 fabricaId: usuario.fabricaId
             },
