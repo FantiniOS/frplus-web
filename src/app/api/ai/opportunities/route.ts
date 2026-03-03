@@ -1,11 +1,16 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 // GET /api/ai/opportunities - Get sales opportunities
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
     try {
+        const user = await getServerUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+        }
         // ============================================================
         // DATA LOADING
         // ============================================================

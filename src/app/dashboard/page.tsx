@@ -6,8 +6,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
 import { InteractiveChart } from "@/components/dashboard/InteractiveChart";
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { createPortal } from "react-dom";
+import { Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
@@ -423,7 +424,13 @@ export default function DashboardPage() {
       </div>
 
       {/* ===== AI Insights ===== */}
-      <AIInsightsPanel />
+      <Suspense fallback={
+        <div className="flex justify-center p-8">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        </div>
+      }>
+        <AIInsightsPanel />
+      </Suspense>
     </div>
   );
 }

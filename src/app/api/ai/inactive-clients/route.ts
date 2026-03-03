@@ -1,11 +1,16 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 // GET /api/ai/inactive-clients - Get clients sorted by SMART inactivity
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
     try {
+        const user = await getServerUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+        }
         const { searchParams } = new URL(request.url)
         // Default threshold just for the initial query, but logic will be smarter
         const daysThreshold = parseInt(searchParams.get('days') || '15')

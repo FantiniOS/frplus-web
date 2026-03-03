@@ -133,9 +133,9 @@ export default function AIInsightsPage() {
         setLoading(true);
         try {
             const [inactiveRes, oppRes, insightsRes] = await Promise.all([
-                fetch(`/api/ai/inactive-clients?days=${daysFilter}`),
-                fetch('/api/ai/opportunities'),
-                fetch('/api/ai/sales-insights')
+                fetch(`/api/ai/inactive-clients?days=${daysFilter}`, { cache: 'no-store' }),
+                fetch('/api/ai/opportunities', { cache: 'no-store' }),
+                fetch('/api/ai/sales-insights', { cache: 'no-store' })
             ]);
 
             if (inactiveRes.ok) {

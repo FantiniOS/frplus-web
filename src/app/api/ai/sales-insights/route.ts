@@ -1,11 +1,16 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getServerUser } from '@/lib/getServerUser'
 
 // GET /api/ai/sales-insights - Get sales leverage insights
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
     try {
+        const user = await getServerUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+        }
         // Get all clients with order statistics
         const clients = await prisma.cliente.findMany({
             include: {
