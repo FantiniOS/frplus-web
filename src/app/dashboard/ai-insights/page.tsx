@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users } from 'lucide-react';
 import { MessageModal } from '@/components/dashboard/MessageModal';
 import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
@@ -49,6 +50,9 @@ interface SalesInsight {
 
 export default function AIInsightsPage() {
     const { products, fabricas, clients } = useData();
+    const { usuario } = useAuth();
+    const nomeRepresentante = usuario?.nome || 'Representante';
+    const nomeEmpresa = usuario?.empresa || 'Fantini Representações';
     const [activeTab, setActiveTab] = useState<'inactive' | 'opportunities' | 'insights' | 'campaigns'>('inactive');
     const [daysFilter, setDaysFilter] = useState(15);
     const [selectedProduct, setSelectedProduct] = useState<string>('');
@@ -259,9 +263,9 @@ export default function AIInsightsPage() {
         const marcasText = fabricasList.length > 0 ? fabricasList.join(', ') : 'diversas marcas líderes';
 
         const msgs = {
-            formal: `🏢 *FANTINI REPRESENTAÇÕES*\n\n_Excelência em Vendas e Parcerias Comerciais_\n\nOlá [Nome]! Meu nome é Fantini, da *Fantini Representações*. Somos uma empresa com mais de *três décadas de experiência* no mercado de vendas e representação comercial, atuando com compromisso, transparência e foco em resultados.\n\nTrabalhamos com marcas de alta performance: *${marcasText}*.\n\nNosso diferencial é o atendimento personalizado e o profundo conhecimento do mercado mineiro. Oferecemos atuação estratégica, acompanhamento próximo, visitas constantes aos PDVs e análise de oportunidades de crescimento.\n\nPosso agendar uma visita para apresentar nosso portfólio?`,
-            casual: `👋 Oi [Nome], tudo bem? Aqui é o Fantini, da *Fantini Representações*! 😊\n\nSomos representantes comerciais com mais de *30 anos de estrada*, atendendo o varejo mineiro com as melhores marcas do mercado: *${marcasText}*.\n\nA gente trabalha de perto com cada cliente — visita, acompanhamento, reposição — tudo pra garantir que o produto gire bem na sua loja.\n\nQuer conhecer nosso portfólio? Posso te mandar a tabela ou passar aí pra conversar! 🚀`,
-            pitch: `⚡ *Fantini Representações* — +30 anos no mercado mineiro\n\n✅ Marcas: *${marcasText}*\n✅ Atendimento personalizado e visitas ao PDV\n✅ Condições competitivas\n✅ Foco em resultado para o varejista\n\nVamos conversar? 📲`
+            formal: `🏢 *${nomeEmpresa.toUpperCase()}*\n\n_Excelência em Vendas e Parcerias Comerciais_\n\nOlá [Nome]! Meu nome é ${nomeRepresentante}, da *${nomeEmpresa}*. Somos uma empresa com mais de *três décadas de experiência* no mercado de vendas e representação comercial, atuando com compromisso, transparência e foco em resultados.\n\nTrabalhamos com marcas de alta performance: *${marcasText}*.\n\nNosso diferencial é o atendimento personalizado e o profundo conhecimento do mercado mineiro. Oferecemos atuação estratégica, acompanhamento próximo, visitas constantes aos PDVs e análise de oportunidades de crescimento.\n\nPosso agendar uma visita para apresentar nosso portfólio?`,
+            casual: `👋 Oi [Nome], tudo bem? Aqui é o ${nomeRepresentante}, da *${nomeEmpresa}*! 😊\n\nSomos representantes comerciais com mais de *30 anos de estrada*, atendendo o varejo mineiro com as melhores marcas do mercado: *${marcasText}*.\n\nA gente trabalha de perto com cada cliente — visita, acompanhamento, reposição — tudo pra garantir que o produto gire bem na sua loja.\n\nQuer conhecer nosso portfólio? Posso te mandar a tabela ou passar aí pra conversar! 🚀`,
+            pitch: `⚡ *${nomeEmpresa}* — +30 anos no mercado mineiro\n\n✅ Marcas: *${marcasText}*\n✅ Atendimento personalizado e visitas ao PDV\n✅ Condições competitivas\n✅ Foco em resultado para o varejista\n\nVamos conversar? 📲`
         };
         setCompanyMessages(msgs);
         setActiveMessage(msgs.formal);
@@ -285,7 +289,7 @@ export default function AIInsightsPage() {
             return `✨ *${p.nome}*${fabrica ? ` (${fabrica})` : ''}`;
         }).join('\n');
 
-        const msg = `🛍️ *VITRINE FANTINI REPRESENTAÇÕES* 🛍️\n\nOlá [Nome]! Separei alguns destaques do nosso portfólio especialmente para você:\n\n${productLines}\n\nTodos com condições especiais e pronta entrega. Quer que eu envie a tabela completa? 📋`;
+        const msg = `🛍️ *VITRINE ${nomeEmpresa.toUpperCase()}* 🛍️\n\nOlá [Nome]! Separei alguns destaques do nosso portfólio especialmente para você:\n\n${productLines}\n\nTodos com condições especiais e pronta entrega. Quer que eu envie a tabela completa? 📋`;
         setShowcaseMessage(msg);
         setActiveMessage(msg);
     };
