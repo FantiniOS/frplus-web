@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
 import { InteractiveChart } from "@/components/dashboard/InteractiveChart";
+import { MonthSelector } from "@/components/ui/MonthSelector";
 import { useState, useMemo, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { Loader2 } from "lucide-react";
@@ -205,25 +206,9 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Month Selector (UNCHANGED LOGIC) */}
+        {/* Month Selector */}
         <div className="flex items-center gap-3">
-          <div className="relative flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5">
-            <Calendar className="h-4 w-4 text-gray-500" />
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-transparent text-white text-sm focus:outline-none [color-scheme:dark] cursor-pointer"
-            />
-            {selectedMonth && (
-              <button
-                onClick={() => setSelectedMonth('')}
-                className="text-[10px] text-gray-500 hover:text-red-400 transition-colors ml-1 font-medium"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+          <MonthSelector value={selectedMonth} onChange={setSelectedMonth} />
         </div>
       </div>
 

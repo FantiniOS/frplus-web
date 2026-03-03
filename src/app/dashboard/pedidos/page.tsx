@@ -6,6 +6,7 @@ import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useState, useMemo } from "react";
+import { MonthSelector } from "@/components/ui/MonthSelector";
 
 export default function PedidosPage() {
     const { orders, clients, removeOrder } = useData();
@@ -113,20 +114,7 @@ export default function PedidosPage() {
                 </div>
 
                 {/* Month */}
-                <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-2 py-1">
-                    <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                    <input
-                        type="month"
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="bg-transparent border-none text-white text-xs focus:ring-0 focus:outline-none py-0.5 [color-scheme:dark] w-[120px]"
-                    />
-                    {selectedMonth && (
-                        <button onClick={() => setSelectedMonth('')} className="text-gray-500 hover:text-red-400 transition-colors">
-                            <X className="h-3 w-3" />
-                        </button>
-                    )}
-                </div>
+                <MonthSelector value={selectedMonth} onChange={setSelectedMonth} />
 
                 {/* Type Filter */}
                 <div className="flex items-center bg-white/5 border border-white/10 rounded-lg overflow-hidden">
