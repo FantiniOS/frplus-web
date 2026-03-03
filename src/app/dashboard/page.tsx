@@ -194,7 +194,7 @@ export default function DashboardPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
 
       {/* ===== HEADER ===== */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="relative z-50 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <p className="text-sm text-gray-500 mb-1">Dashboard</p>
           <h1 className="text-2xl font-bold tracking-tight text-white">
@@ -213,7 +213,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ===== KPI CARDS ===== */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      <div className="relative z-10 grid gap-3 grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi, i) => (
           <div
             key={i}

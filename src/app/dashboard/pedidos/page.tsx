@@ -100,7 +100,7 @@ export default function PedidosPage() {
             </div>
 
             {/* ═══════════ FILTER BAR ═══════════ */}
-            <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06] backdrop-blur-sm">
+            <div className="relative z-50 flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06] backdrop-blur-sm">
                 {/* Search */}
                 <div className="relative flex-1 min-w-[180px]">
                     <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
@@ -149,7 +149,7 @@ export default function PedidosPage() {
             </div>
 
             {/* ═══════════ MASTER TABLE — Pedidos de Venda ═══════════ */}
-            <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm overflow-hidden flex-1 flex flex-col">
+            <div className="relative z-10 rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm overflow-hidden flex-1 flex flex-col">
                 {/* Table Header Label */}
                 <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-blue-500/10 to-transparent border-b border-white/[0.06]">
                     <div className="flex items-center gap-2">
