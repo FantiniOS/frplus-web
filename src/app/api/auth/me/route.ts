@@ -33,6 +33,7 @@ export async function GET() {
                 username: true,
                 email: true,
                 empresa: true,
+                taxaComissao: true,
                 role: true,
                 ativo: true,
                 fabricaId: true

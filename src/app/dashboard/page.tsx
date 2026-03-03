@@ -105,8 +105,8 @@ export default function DashboardPage() {
   // Ticket médio
   const avgTicket = stats.totalOrders > 0 ? stats.totalSales / stats.totalOrders : 0;
 
-  // Comissão faturada (5% fixo temporariamente)
-  const taxaComissao = 0.05;
+  // Comissão faturada (dinâmica do perfil)
+  const taxaComissao = (usuario?.taxaComissao || 0) / 100;
   const comissaoFaturada = stats.totalSales * taxaComissao;
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -185,7 +185,7 @@ export default function DashboardPage() {
     {
       label: 'Comissão Faturada',
       value: formatCurrency(comissaoFaturada),
-      sub: `5% sobre ${formatCurrency(stats.totalSales)}`,
+      sub: `${usuario?.taxaComissao || 0}% sobre ${formatCurrency(stats.totalSales)}`,
       icon: Wallet,
       gradient: 'from-amber-500/20 to-amber-500/[0.02]',
       iconBg: 'bg-amber-500/15',
