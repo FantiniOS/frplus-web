@@ -1,6 +1,6 @@
 'use client';
 
-import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, Zap, Gift, X } from "lucide-react";
+import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, Zap, Gift, X, Wallet } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -105,6 +105,11 @@ export default function DashboardPage() {
   // Ticket médio
   const avgTicket = stats.totalOrders > 0 ? stats.totalSales / stats.totalOrders : 0;
 
+  // Comissão faturada (5%)
+  const taxaComissao = 0.05;
+  const comissaoFaturada = stats.totalSales * taxaComissao;
+  const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
   // Bonificações
   const bonificacoes = monthlyOrders.filter(o => o.tipo === 'Bonificacao').length;
 
@@ -178,15 +183,15 @@ export default function DashboardPage() {
       glow: 'group-hover:shadow-blue-500/10'
     },
     {
-      label: 'Clientes Ativos',
-      value: String(stats.newClients),
-      sub: 'Base cadastrada',
-      icon: Users,
-      gradient: 'from-violet-500/20 to-violet-500/[0.02]',
-      iconBg: 'bg-violet-500/15',
-      iconColor: 'text-violet-400',
-      borderHover: 'hover:border-violet-500/30',
-      glow: 'group-hover:shadow-violet-500/10'
+      label: 'Comissão Faturada',
+      value: formatCurrency(comissaoFaturada),
+      sub: `5% sobre R$ ${stats.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: Wallet,
+      gradient: 'from-amber-500/20 to-amber-500/[0.02]',
+      iconBg: 'bg-amber-500/15',
+      iconColor: 'text-amber-400',
+      borderHover: 'hover:border-amber-500/30',
+      glow: 'group-hover:shadow-amber-500/10'
     }
   ];
 
