@@ -12,6 +12,7 @@ export default function ConfiguracoesPage() {
     const { isIndustria, usuario, refreshSession } = useAuth() as any; // Adding refreshSession check
     const router = useRouter();
     const [companyName, setCompanyName] = useState("Minha Empresa");
+    const [comissao, setComissao] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -24,6 +25,9 @@ export default function ConfiguracoesPage() {
     useEffect(() => {
         if (usuario?.empresa) {
             setCompanyName(usuario.empresa);
+        }
+        if (usuario?.taxaComissao !== undefined) {
+            setComissao(String(usuario.taxaComissao));
         }
     }, [usuario]);
 
@@ -102,7 +106,10 @@ export default function ConfiguracoesPage() {
             const res = await fetch('/api/auth/profile', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nomeEmpresa: companyName.trim() })
+                body: JSON.stringify({
+                    nomeEmpresa: companyName.trim(),
+                    taxaComissao: comissao
+                })
             });
 
             const data = await res.json();
@@ -159,6 +166,20 @@ export default function ConfiguracoesPage() {
                             value={usuario?.email || "N/D"}
                             className="w-full rounded-lg bg-black/40 border border-white/10 p-2.5 text-gray-500 cursor-not-allowed"
                         />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-300">Percentual de Comissão (%)</label>
+                        <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            placeholder="5.0"
+                            value={comissao}
+                            onChange={(e) => setComissao(e.target.value)}
+                            className="w-full rounded-lg bg-black/20 border border-white/10 p-2.5 text-white focus:border-blue-500 focus:outline-none"
+                        />
+                        <p className="text-xs text-gray-500">Ex: 5 para 5%, 7.5 para 7,5%. Usado no card de Comissão do Dashboard.</p>
                     </div>
                 </div>
 

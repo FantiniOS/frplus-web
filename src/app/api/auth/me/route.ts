@@ -30,7 +30,10 @@ export async function GET() {
             select: {
                 id: true,
                 nome: true,
+                username: true,
                 email: true,
+                empresa: true,
+                taxaComissao: true,
                 role: true,
                 ativo: true,
                 fabricaId: true
