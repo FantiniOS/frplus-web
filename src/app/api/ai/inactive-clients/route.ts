@@ -20,6 +20,7 @@ export async function GET(request: Request) {
             where: { status: 'Ativo' },
             include: {
                 pedidos: {
+                    where: { tipo: 'Venda' }, // Filtra as bonificações direto no banco para os ultimos pedidos
                     orderBy: { data: 'desc' },
                     take: 5, // Increased from 1 to 5 to calculate average cycle
                     select: { data: true, valorTotal: true, tipo: true }
@@ -31,9 +32,7 @@ export async function GET(request: Request) {
         // Map and analyze clients
         const inactiveClients = clients
             .map(client => {
-                const orders = client.pedidos;
-                // Filter out 'Bonificacao' to track actual SALES inactivity
-                const salesOrders = orders.filter(o => o.tipo !== 'Bonificacao');
+                const salesOrders = client.pedidos;
                 const lastOrder = salesOrders[0];
                 const lastOrderDate = lastOrder?.data ? new Date(lastOrder.data) : null;
 
@@ -42,7 +41,7 @@ export async function GET(request: Request) {
                     : null;
 
                 // --- SMART LOGIC: Calculate Average Cycle ---
-                let averageCycle = 30; // Default fallback (monthly)
+                let averageCycle = 45; // Default fallback (1.5 meses para baixa frequência)
                 let cycleConfidence = 'baixa'; // 'alta' | 'media' | 'baixa'
 
                 if (salesOrders.length >= 2) {
@@ -75,38 +74,29 @@ export async function GET(request: Request) {
                     // Never bought - depends on creation date? For now, treat as Red if old enough? 
                     // Let's keep existing logic: null days = Red (Potentially lost lead)
                     alertLevel = 'vermelho';
-                    motivo = 'Cliente nunca realizou compra.';
+                    motivo = 'Cliente ATIVO, mas que nunca efetuou uma compra (ou 100% inativo). Atraso máximo.';
+                    contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} tem cadastro ativo mas nunca foi faturado. Envie uma mensagem quebrando o gelo, ofereça as novidades e mostre que a distribuidora tem ótimos preços para primeira compra.`;
                 } else {
                     const ratio = daysSinceLastOrder / averageCycle;
 
-                    if (ratio >= 2.0) {
+                    // Hardcap Semestral: Independente do ratio, se tiver mais de 180 dias sem compras é risco crítico.
+                    if (daysSinceLastOrder >= 180) {
                         alertLevel = 'vermelho';
-                        motivo = `Ciclo médio de ${averageCycle} dias. Atraso crítico (${ratio.toFixed(1)}x normal).`;
-                        contextoParaIA = `Atue como um vendedor experiente proativo. Use as seguintes informações para gerar uma mensagem persuasiva de WhatsApp para o cliente: 
-- Nome do cliente: ${greetingName}
-- Ciclo médio de compra histórico: ${averageCycle} dias
-- Dias sem comprar: ${daysSinceLastOrder} dias
-- Nível de Alerta: VERMELHO (Risco grave de perder o cliente).
-Objetivo: Retomar a parceria urgentemente. Crie uma mensagem empática, dizendo que sentiu falta dele, e ofereça uma condição super diferenciada para reativar o cadastro e fechar pedido hoje.`;
+                        motivo = `Sem comprar há mais de 6 meses (${daysSinceLastOrder} dias). Cliente perdido para a concorrência?`;
+                        contextoParaIA = `Atue como um vendedor agressivo de resgate. O cliente ${greetingName} está sem comprar há mais de 6 meses. O risco de churn foi ativado. Mande uma mensagem forte de rentabilização, mostre que você sentiu falta dele, e ofereça uma excelente oportunidade comercial apenas para quebrar esse gelo.`;
+                    } else if (ratio >= 2.0 || (salesOrders.length <= 1 && daysSinceLastOrder >= 45)) {
+                        alertLevel = 'vermelho';
+                        motivo = `Ciclo médio de ${averageCycle} dias. Atraso crítico (${ratio >= 2.0 ? ratio.toFixed(1) + 'x normal' : 'superior a 45 dias'}).`;
+                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está num atraso CRÍTICO severo (sem compras há ${daysSinceLastOrder} dias). Objetivo: Retomar a parceria urgentemente oferecendo alguma novidade forte.`;
                     } else if (ratio >= 1.5) {
                         alertLevel = 'laranja';
                         motivo = `Ciclo médio de ${averageCycle} dias. Atraso considerável.`;
-                        contextoParaIA = `Atue como um vendedor experiente proativo. Use as seguintes informações para gerar uma mensagem persuasiva de WhatsApp para o cliente: 
-- Nome do cliente: ${greetingName}
-- Ciclo médio de compra histórico: ${averageCycle} dias
-- Dias sem comprar: ${daysSinceLastOrder} dias
-- Nível de Alerta: LARANJA (Atraso considerável, estoque deve estar baixando).
-Objetivo: Reaproximação. Crie uma mensagem amigável, comentando que faz um tempo que não se falam, alertando sobre a possível falta de estoque e convidando para aproveitar condições especiais que chegaram na distribuidora nesta semana.`;
+                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está com atraso considerável. Lembre-o de repor estoque e mande dicas fáceis.`;
                     } else if (ratio >= 1.2 || (daysSinceLastOrder > 30 && averageCycle < 30)) {
                         // Added strict 30d check as fallback for quick buyers
                         alertLevel = 'amarelo';
                         motivo = `Ciclo médio de ${averageCycle} dias. Leve atraso.`;
-                        contextoParaIA = `Atue como um vendedor experiente proativo. Use as seguintes informações para gerar uma mensagem persuasiva de WhatsApp para o cliente: 
-- Nome do cliente: ${greetingName}
-- Ciclo médio de compra histórico: ${averageCycle} dias
-- Dias sem comprar: ${daysSinceLastOrder} dias
-- Nível de Alerta: AMARELO (Leve atraso no ciclo normal).
-Objetivo: Estimular reposição de estoque. Crie uma mensagem cordial lembrando que pelo histórico dele já está na hora de repor as mercadorias, focando em apresentar novidades que vão girar bem na loja dele.`;
+                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está num atraso LEVE. Faça uma abordagem leve de reposição.`;
                     } else {
                         alertLevel = 'verde';
                         motivo = `Dentro do ciclo esperado (${averageCycle} dias).`;
@@ -114,7 +104,7 @@ Objetivo: Estimular reposição de estoque. Crie uma mensagem cordial lembrando 
                 }
 
                 // Calculate total spent from available orders
-                const totalGasto = orders.reduce((acc, o) => acc + Number(o.valorTotal), 0);
+                const totalGasto = client.pedidos.reduce((acc, o) => acc + Number(o.valorTotal), 0);
 
                 return {
                     id: client.id,
@@ -139,8 +129,10 @@ Objetivo: Estimular reposição de estoque. Crie uma mensagem cordial lembrando 
             // Filter: Only show Yellow, Orange, Red
             .filter(c => c.alertLevel !== 'verde')
             .sort((a, b) => {
-                // Sort by Days Inactive DESC (Most inactive first)
-                return (b.diasInativo || 0) - (a.diasInativo || 0);
+                // Se null (nunca comprou), colocar pontuação gigante para aparecer em 1º
+                const scoreA = a.diasInativo === null ? 999999 : a.diasInativo;
+                const scoreB = b.diasInativo === null ? 999999 : b.diasInativo;
+                return scoreB - scoreA;
             })
 
         // Summary stats

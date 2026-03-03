@@ -18,6 +18,7 @@ interface AuthContextType {
     loading: boolean;
     login: (identifier: string, senha: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
+    refreshSession: () => Promise<void>;
     isAdmin: boolean;
     isIndustria: boolean;
 }
@@ -29,22 +30,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
+    const checkAuth = async () => {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (res.ok) {
+                const data = await res.json();
+                setUsuario(data.usuario);
+            }
+        } catch (error) {
+            console.error('Auth check failed:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Check authentication on mount
     useEffect(() => {
-        const checkAuth = async () => {
-            try {
-                const res = await fetch('/api/auth/me');
-                if (res.ok) {
-                    const data = await res.json();
-                    setUsuario(data.usuario);
-                }
-            } catch (error) {
-                console.error('Auth check failed:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         checkAuth();
     }, []);
 
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 loading,
                 login,
                 logout,
+                refreshSession: checkAuth,
                 isAdmin: usuario?.role === 'admin',
                 isIndustria: usuario?.role === 'industria'
             }}

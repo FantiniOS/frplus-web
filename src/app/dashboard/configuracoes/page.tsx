@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 
 export default function ConfiguracoesPage() {
     const { logout, showToast } = useData();
-    const { isIndustria, usuario } = useAuth();
+    const { isIndustria, usuario, refreshSession } = useAuth() as any; // Adding refreshSession check
     const router = useRouter();
     const [companyName, setCompanyName] = useState("Minha Empresa");
     const [isSaving, setIsSaving] = useState(false);
@@ -89,7 +89,9 @@ export default function ConfiguracoesPage() {
         router.push('/');
     }
 
-    const handleSave = async () => {
+    const handleSave = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+
         if (!companyName.trim()) {
             showToast("O nome da empresa não pode estar vazio.", "error");
             return;
@@ -106,9 +108,13 @@ export default function ConfiguracoesPage() {
             const data = await res.json();
 
             if (res.ok && data.success) {
+                // Se a AuthContext tiver função de atualizar a sessão em background, chame-a
+                if (refreshSession) {
+                    await refreshSession();
+                }
                 showToast("Configurações salvas!", "success");
-                // Reload to sync context and all views with the new Company Name
-                setTimeout(() => window.location.reload(), 1000);
+                // Atualização Silenciosa do componente de servidor (Header, Layout, etc)
+                router.refresh();
             } else {
                 showToast(data.error || "Erro ao salvar o perfil.", "error");
             }
