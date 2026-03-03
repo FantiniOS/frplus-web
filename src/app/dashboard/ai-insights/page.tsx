@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users } from 'lucide-react';
 import { MessageModal } from '@/components/dashboard/MessageModal';
 import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
 
@@ -82,6 +82,39 @@ export default function AIInsightsPage() {
     const [aiMessageClientInfo, setAiMessageClientInfo] = useState<{ nome: string; telefone: string } | null>(null);
     const [aiMessageFatos, setAiMessageFatos] = useState<{ motivo: string; produtoFoco: string; justificativa: string; sugestaoAdicional?: string; fatorSazonal?: string } | null>(null);
     const [rateLimitToast, setRateLimitToast] = useState<string | null>(null);
+
+    // WhatsApp Dispatch Modal State
+    const [waModalOpen, setWaModalOpen] = useState(false);
+    const [waModalMessage, setWaModalMessage] = useState('');
+    const [waModalTab, setWaModalTab] = useState<'base' | 'novo'>('base');
+    const [waClientSearch, setWaClientSearch] = useState('');
+    const [waNewName, setWaNewName] = useState('');
+    const [waNewPhone, setWaNewPhone] = useState('');
+
+    const openWaModal = (message: string) => {
+        setWaModalMessage(message);
+        setWaModalTab('base');
+        setWaClientSearch('');
+        setWaNewName('');
+        setWaNewPhone('');
+        setWaModalOpen(true);
+    };
+
+    const dispatchWhatsApp = (name: string, phone: string) => {
+        const cleanPhone = phone.replace(/\D/g, '');
+        const fullPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+        const finalMessage = waModalMessage.replace(/\[Nome\]/g, name);
+        const url = `https://wa.me/${fullPhone}?text=${encodeURIComponent(finalMessage)}`;
+        window.open(url, '_blank');
+        setWaModalOpen(false);
+    };
+
+    const waFilteredClients = clients.filter(c =>
+        waClientSearch === '' ||
+        (c.nomeFantasia || '').toLowerCase().includes(waClientSearch.toLowerCase()) ||
+        (c.razaoSocial || '').toLowerCase().includes(waClientSearch.toLowerCase()) ||
+        (c.comprador || '').toLowerCase().includes(waClientSearch.toLowerCase())
+    ).slice(0, 30);
 
     // AI Message Generation Handler
     const handleGenerateAIMessage = async (clienteId: string) => {
@@ -780,13 +813,20 @@ export default function AIInsightsPage() {
                                                                 value={companyMessages[card.key]}
                                                             />
                                                         </div>
-                                                        <div className="p-3 border-t border-white/10 bg-black/20">
+                                                        <div className="p-3 border-t border-white/10 bg-black/20 flex items-center gap-2">
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); copyToClipboard(companyMessages[card.key]); }}
-                                                                className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg ${card.btnClass} transition-colors text-sm font-medium`}
+                                                                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg ${card.btnClass} transition-colors text-xs font-medium`}
                                                             >
-                                                                <Copy className="w-4 h-4" />
+                                                                <Copy className="w-3.5 h-3.5" />
                                                                 Copiar
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); openWaModal(companyMessages[card.key]); }}
+                                                                className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg ${card.btnClass} transition-colors text-sm font-medium`}
+                                                            >
+                                                                <Send className="w-4 h-4" />
+                                                                Enviar via WhatsApp
                                                             </button>
                                                         </div>
                                                     </div>
@@ -1124,6 +1164,133 @@ export default function AIInsightsPage() {
                                 </div>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* ===== WHATSAPP DISPATCH MODAL ===== */}
+            {waModalOpen && (
+                <div
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setWaModalOpen(false)}
+                >
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                    <div
+                        className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-slate-900 shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-5 border-b border-slate-800">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-1.5 rounded-lg bg-green-500/15">
+                                    <Send className="h-4 w-4 text-green-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-white">Enviar via WhatsApp</h3>
+                                    <p className="text-[10px] text-gray-500">Selecione o destinatário</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setWaModalOpen(false)}
+                                className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors text-gray-500 hover:text-white"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="flex border-b border-slate-800">
+                            <button
+                                onClick={() => setWaModalTab('base')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${waModalTab === 'base' ? 'text-green-400 border-b-2 border-green-400 bg-green-500/5' : 'text-gray-500 hover:text-gray-300'}`}
+                            >
+                                <Users className="w-4 h-4" />
+                                Cliente da Base
+                            </button>
+                            <button
+                                onClick={() => setWaModalTab('novo')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${waModalTab === 'novo' ? 'text-green-400 border-b-2 border-green-400 bg-green-500/5' : 'text-gray-500 hover:text-gray-300'}`}
+                            >
+                                <Phone className="w-4 h-4" />
+                                Novo Número
+                            </button>
+                        </div>
+
+                        {/* Tab Content */}
+                        <div className="p-5">
+                            {waModalTab === 'base' ? (
+                                <div className="space-y-3">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar cliente..."
+                                            value={waClientSearch}
+                                            onChange={(e) => setWaClientSearch(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 transition-all"
+                                        />
+                                    </div>
+                                    <div className="max-h-[250px] overflow-y-auto space-y-1 pr-1">
+                                        {waFilteredClients.length === 0 ? (
+                                            <p className="text-center text-gray-600 text-sm py-6">Nenhum cliente encontrado</p>
+                                        ) : (
+                                            waFilteredClients.map(client => {
+                                                const phone = client.celular || client.telefone || '';
+                                                const greetingName = client.comprador?.split(' ')[0] || client.nomeFantasia || 'Cliente';
+                                                return (
+                                                    <button
+                                                        key={client.id}
+                                                        onClick={() => dispatchWhatsApp(greetingName, phone)}
+                                                        disabled={!phone}
+                                                        className="w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed group"
+                                                    >
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-sm text-white font-medium truncate">{client.nomeFantasia}</p>
+                                                            <p className="text-[11px] text-gray-500 truncate">
+                                                                {client.comprador || client.razaoSocial}
+                                                                {phone && <span className="ml-2 text-gray-600">· {phone}</span>}
+                                                            </p>
+                                                        </div>
+                                                        <Send className="w-4 h-4 text-gray-600 group-hover:text-green-400 transition-colors shrink-0 ml-2" />
+                                                    </button>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Nome</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Nome do contato"
+                                            value={waNewName}
+                                            onChange={(e) => setWaNewName(e.target.value)}
+                                            className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">WhatsApp</label>
+                                        <input
+                                            type="tel"
+                                            placeholder="(31) 99999-9999"
+                                            value={waNewPhone}
+                                            onChange={(e) => setWaNewPhone(e.target.value)}
+                                            className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 transition-all"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={() => dispatchWhatsApp(waNewName || 'Cliente', waNewPhone)}
+                                        disabled={!waNewPhone.replace(/\D/g, '')}
+                                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-600 hover:bg-green-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium transition-colors shadow-lg shadow-green-900/20 disabled:shadow-none"
+                                    >
+                                        <Send className="w-4 h-4" />
+                                        Enviar Mensagem
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
