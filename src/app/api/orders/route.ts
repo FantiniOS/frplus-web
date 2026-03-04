@@ -84,6 +84,7 @@ export async function POST(request: Request) {
             data: {
                 clienteId: body.clienteId,
                 fabricaId: body.fabricaId,
+                data: body.data ? new Date(body.data) : undefined,
                 status: 'Pendente',
                 valorTotal: valorTotal,
                 tabelaPreco: body.tabelaPreco,
