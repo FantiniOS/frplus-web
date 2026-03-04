@@ -198,17 +198,6 @@ export default function DashboardPage() {
       onClick: () => setShowBonifDetails(true)
     },
     {
-      label: 'Ticket Médio',
-      value: `R$ ${avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      sub: 'Por pedido',
-      icon: TrendingUp,
-      gradient: 'from-blue-500/20 to-blue-500/[0.02]',
-      iconBg: 'bg-blue-500/15',
-      iconColor: 'text-blue-400',
-      borderHover: 'hover:border-blue-500/30',
-      glow: 'group-hover:shadow-blue-500/10'
-    },
-    {
       label: 'Comissão Estimada',
       value: formatCurrency(comissaoFaturada),
       sub: `Comissão ponderada por representada`,
@@ -218,6 +207,17 @@ export default function DashboardPage() {
       iconColor: 'text-amber-400',
       borderHover: 'hover:border-amber-500/30',
       glow: 'group-hover:shadow-amber-500/10'
+    },
+    {
+      label: 'Ticket Médio',
+      value: `R$ ${avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      sub: 'Por pedido',
+      icon: TrendingUp,
+      gradient: 'from-blue-500/20 to-blue-500/[0.02]',
+      iconBg: 'bg-blue-500/15',
+      iconColor: 'text-blue-400',
+      borderHover: 'hover:border-blue-500/30',
+      glow: 'group-hover:shadow-blue-500/10'
     }
   ];
 
