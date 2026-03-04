@@ -36,6 +36,7 @@ export async function GET() {
             id: o.id,
             clienteId: o.clienteId,
             nomeCliente: o.cliente?.nomeFantasia || o.cliente?.razaoSocial || 'Cliente Desconhecido',
+            fabricaId: o.fabricaId,
             data: o.data.toISOString(),
             status: o.status,
             tipo: o.tipo,
