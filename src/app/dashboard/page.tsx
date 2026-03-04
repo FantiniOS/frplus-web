@@ -209,7 +209,7 @@ export default function DashboardPage() {
       glow: 'group-hover:shadow-blue-500/10'
     },
     {
-      label: 'Comissão Faturada',
+      label: 'Comissão Estimada',
       value: formatCurrency(comissaoFaturada),
       sub: `Comissão ponderada por representada`,
       icon: Wallet,
