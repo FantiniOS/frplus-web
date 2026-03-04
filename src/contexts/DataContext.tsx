@@ -160,10 +160,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setLoading(true);
         try {
             const [clientsRes, productsRes, ordersRes, fabricasRes] = await Promise.all([
-                fetch('/api/clients'),
-                fetch('/api/products'),
-                fetch('/api/orders'),
-                fetch('/api/fabricas')
+                fetch('/api/clients', { cache: 'no-store' }),
+                fetch('/api/products', { cache: 'no-store' }),
+                fetch('/api/orders', { cache: 'no-store' }),
+                fetch('/api/fabricas', { cache: 'no-store' })
             ]);
 
             if (clientsRes.ok) setClients(await clientsRes.json());
