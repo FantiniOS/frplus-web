@@ -33,6 +33,7 @@ export interface Client {
 export interface Fabrica {
     id: string;
     nome: string;
+    taxaComissao: number;
     produtosCount?: number;
 }
 

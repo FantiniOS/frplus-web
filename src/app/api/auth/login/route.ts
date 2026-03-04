@@ -73,7 +73,6 @@ export async function POST(request: Request) {
                 username: usuario.username,
                 email: usuario.email,
                 empresa: usuario.empresa,
-                taxaComissao: usuario.taxaComissao,
                 role: usuario.role,
                 fabricaId: usuario.fabricaId
             },

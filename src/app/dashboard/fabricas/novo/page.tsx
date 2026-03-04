@@ -22,7 +22,8 @@ export default function NovaFabricaPage() {
 
         const newFabrica: Fabrica = {
             id: Date.now().toString(),
-            nome: nome.trim()
+            nome: nome.trim(),
+            taxaComissao: 0
         };
 
         console.log('Salvando fábrica:', newFabrica);

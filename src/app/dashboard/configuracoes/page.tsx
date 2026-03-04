@@ -1,6 +1,6 @@
 'use client';
 
-import { Settings, Save, RefreshCw, LogOut, Trash2, Upload, CheckCircle, AlertCircle } from "lucide-react";
+import { Settings, Save, RefreshCw, LogOut, Trash2, Upload, CheckCircle, AlertCircle, Factory } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -8,12 +8,15 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 export default function ConfiguracoesPage() {
-    const { logout, showToast } = useData();
-    const { isIndustria, usuario, refreshSession } = useAuth() as any; // Adding refreshSession check
+    const { logout, showToast, fabricas, refreshData } = useData();
+    const { isIndustria, usuario, refreshSession } = useAuth() as any;
     const router = useRouter();
     const [companyName, setCompanyName] = useState("Minha Empresa");
-    const [comissao, setComissao] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+    // Per-representada commission rates
+    const [comissoes, setComissoes] = useState<Record<string, string>>({});
+    const [isSavingComissoes, setIsSavingComissoes] = useState(false);
 
     useEffect(() => {
         if (isIndustria) {
@@ -26,10 +29,16 @@ export default function ConfiguracoesPage() {
         if (usuario?.empresa) {
             setCompanyName(usuario.empresa);
         }
-        if (usuario?.taxaComissao !== undefined) {
-            setComissao(String(usuario.taxaComissao));
-        }
     }, [usuario]);
+
+    // Sync commission rates when fabricas load
+    useEffect(() => {
+        const rates: Record<string, string> = {};
+        fabricas.forEach(f => {
+            rates[f.id] = String(f.taxaComissao ?? 0);
+        });
+        setComissoes(rates);
+    }, [fabricas]);
 
     // Import State
     const [importFile, setImportFile] = useState<File | null>(null);
@@ -76,7 +85,6 @@ export default function ConfiguracoesPage() {
 
                 if (data.success) {
                     showToast("Sistema limpo com sucesso!", "success");
-                    // Reload to reflect empty state
                     setTimeout(() => window.location.reload(), 1500);
                 } else {
                     showToast("Erro ao limpar: " + data.details, "error");
@@ -107,20 +115,17 @@ export default function ConfiguracoesPage() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    nomeEmpresa: companyName.trim(),
-                    taxaComissao: comissao
+                    nomeEmpresa: companyName.trim()
                 })
             });
 
             const data = await res.json();
 
             if (res.ok && data.success) {
-                // Se a AuthContext tiver função de atualizar a sessão em background, chame-a
                 if (refreshSession) {
                     await refreshSession();
                 }
                 showToast("Configurações salvas!", "success");
-                // Atualização Silenciosa do componente de servidor (Header, Layout, etc)
                 router.refresh();
             } else {
                 showToast(data.error || "Erro ao salvar o perfil.", "error");
@@ -132,6 +137,44 @@ export default function ConfiguracoesPage() {
             setIsSaving(false);
         }
     }
+
+    const handleSaveComissoes = async () => {
+        setIsSavingComissoes(true);
+        let hasError = false;
+
+        try {
+            const promises = fabricas.map(async (fab) => {
+                const novaRate = comissoes[fab.id];
+                if (novaRate === undefined || parseFloat(novaRate) === fab.taxaComissao) return;
+
+                const res = await fetch(`/api/fabricas/${fab.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taxaComissao: novaRate })
+                });
+
+                if (!res.ok) {
+                    hasError = true;
+                    const err = await res.json();
+                    console.error(`Erro ao salvar ${fab.nome}:`, err);
+                }
+            });
+
+            await Promise.all(promises);
+
+            if (hasError) {
+                showToast("Algumas taxas não puderam ser salvas.", "error");
+            } else {
+                showToast("Taxas de comissão salvas!", "success");
+                await refreshData();
+            }
+        } catch (error) {
+            console.error('Error saving comissoes:', error);
+            showToast("Erro de conexão ao salvar taxas.", "error");
+        } finally {
+            setIsSavingComissoes(false);
+        }
+    };
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -167,20 +210,6 @@ export default function ConfiguracoesPage() {
                             className="w-full rounded-lg bg-black/40 border border-white/10 p-2.5 text-gray-500 cursor-not-allowed"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-300">Percentual de Comissão (%)</label>
-                        <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="100"
-                            placeholder="5.0"
-                            value={comissao}
-                            onChange={(e) => setComissao(e.target.value)}
-                            className="w-full rounded-lg bg-black/20 border border-white/10 p-2.5 text-white focus:border-blue-500 focus:outline-none"
-                        />
-                        <p className="text-xs text-gray-500">Ex: 5 para 5%, 7.5 para 7,5%. Usado no card de Comissão do Dashboard.</p>
-                    </div>
                 </div>
 
                 <div className="mt-6 flex justify-end">
@@ -193,6 +222,63 @@ export default function ConfiguracoesPage() {
                         {isSaving ? 'Salvando...' : 'Salvar Perfil'}
                     </button>
                 </div>
+            </div>
+
+            {/* Comissão por Representada */}
+            <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 className="text-xl font-semibold text-white">Comissão por Representada</h2>
+                        <p className="text-gray-400 text-sm">Defina o percentual de comissão para cada fábrica/representada.</p>
+                    </div>
+                    <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+                        <Factory className="h-5 w-5" />
+                    </div>
+                </div>
+
+                {fabricas.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-8">Nenhuma representada cadastrada.</p>
+                ) : (
+                    <div className="space-y-3">
+                        {fabricas.map(fab => (
+                            <div
+                                key={fab.id}
+                                className="flex items-center gap-4 p-3 rounded-lg bg-black/20 border border-white/5"
+                            >
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-white truncate">{fab.nome}</p>
+                                    <p className="text-xs text-gray-500">{fab.produtosCount ?? 0} produtos</p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="100"
+                                        placeholder="0"
+                                        value={comissoes[fab.id] ?? '0'}
+                                        onChange={(e) => setComissoes(prev => ({ ...prev, [fab.id]: e.target.value }))}
+                                        className="w-20 rounded-lg bg-black/30 border border-white/10 p-2 text-white text-sm text-center focus:border-amber-500 focus:outline-none tabular-nums"
+                                    />
+                                    <span className="text-xs text-gray-400 font-medium">%</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {fabricas.length > 0 && (
+                    <div className="mt-6 flex justify-end">
+                        <button
+                            onClick={handleSaveComissoes}
+                            disabled={isSavingComissoes}
+                            className="flex items-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isSavingComissoes ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            {isSavingComissoes ? 'Salvando...' : 'Salvar Taxas'}
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Importação de Dados */}

@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
-  const { orders, products, clients } = useData();
+  const { orders, products, clients, fabricas } = useData();
 
   // ====== MONTH FILTER (UNCHANGED) ======
   const now = new Date();
@@ -105,9 +105,23 @@ export default function DashboardPage() {
   // Ticket médio
   const avgTicket = stats.totalOrders > 0 ? stats.totalSales / stats.totalOrders : 0;
 
-  // Comissão faturada (dinâmica do perfil)
-  const taxaComissao = (usuario?.taxaComissao || 0) / 100;
-  const comissaoFaturada = stats.totalSales * taxaComissao;
+  // Comissão faturada (ponderada por representada)
+  const taxaMap = useMemo(() => {
+    const m = new Map<string, number>();
+    fabricas.forEach(f => m.set(f.id, f.taxaComissao ?? 0));
+    return m;
+  }, [fabricas]);
+
+  const comissaoFaturada = useMemo(() =>
+    monthlyOrders
+      .filter(o => o.tipo !== 'Bonificacao')
+      .reduce((acc, pedido) => {
+        const taxa = (taxaMap.get(pedido.fabricaId || '') || 0) / 100;
+        return acc + pedido.valorTotal * taxa;
+      }, 0),
+    [monthlyOrders, taxaMap]
+  );
+
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
   // Bonificações
@@ -185,7 +199,7 @@ export default function DashboardPage() {
     {
       label: 'Comissão Faturada',
       value: formatCurrency(comissaoFaturada),
-      sub: `${usuario?.taxaComissao || 0}% sobre ${formatCurrency(stats.totalSales)}`,
+      sub: `Comissão ponderada por representada`,
       icon: Wallet,
       gradient: 'from-amber-500/20 to-amber-500/[0.02]',
       iconBg: 'bg-amber-500/15',

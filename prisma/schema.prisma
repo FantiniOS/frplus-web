@@ -10,13 +10,14 @@ datasource db {
 }
 
 model Fabrica {
-  id        String    @id @default(cuid())
-  nome      String
-  produtos  Produto[]
-  pedidos   Pedido[]
-  usuarios  Usuario[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  nome         String
+  taxaComissao Float     @default(0)
+  produtos     Produto[]
+  pedidos      Pedido[]
+  usuarios     Usuario[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model Produto {
@@ -107,19 +108,18 @@ model ContatoCliente {
 }
 
 model Usuario {
-  id           String   @id @default(cuid())
-  nome         String
-  username     String   @unique
-  email        String? // Opcional
-  senha        String // Hash bcrypt
-  empresa      String?  @default("Minha Empresa")
-  taxaComissao Float    @default(0)
-  role         String   @default("vendedor") // admin, vendedor, industria
-  fabricaId    String?
-  fabrica      Fabrica? @relation(fields: [fabricaId], references: [id])
-  ativo        Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id        String   @id @default(cuid())
+  nome      String
+  username  String   @unique
+  email     String? // Opcional
+  senha     String // Hash bcrypt
+  empresa   String?  @default("Minha Empresa")
+  role      String   @default("vendedor") // admin, vendedor, industria
+  fabricaId String?
+  fabrica   Fabrica? @relation(fields: [fabricaId], references: [id])
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Verba {

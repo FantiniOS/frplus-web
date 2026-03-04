@@ -10,7 +10,7 @@ export async function PUT(request: Request) {
         }
 
         const body = await request.json()
-        const { nomeEmpresa, taxaComissao } = body
+        const { nomeEmpresa } = body
 
         const data: Record<string, any> = {}
 
@@ -19,14 +19,6 @@ export async function PUT(request: Request) {
                 return NextResponse.json({ error: 'Nome da empresa inválido' }, { status: 400 })
             }
             data.empresa = nomeEmpresa.trim()
-        }
-
-        if (taxaComissao !== undefined) {
-            const parsed = parseFloat(taxaComissao)
-            if (isNaN(parsed) || parsed < 0 || parsed > 100) {
-                return NextResponse.json({ error: 'Taxa de comissão inválida (0-100)' }, { status: 400 })
-            }
-            data.taxaComissao = parsed
         }
 
         if (Object.keys(data).length === 0) {
@@ -40,8 +32,7 @@ export async function PUT(request: Request) {
 
         return NextResponse.json({
             success: true,
-            empresa: updatedUser.empresa,
-            taxaComissao: updatedUser.taxaComissao
+            empresa: updatedUser.empresa
         })
     } catch (error) {
         console.error('Error updating profile:', error)

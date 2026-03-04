@@ -29,9 +29,19 @@ export async function PUT(request: Request, { params }: Params) {
     try {
         const body = await request.json()
 
+        const data: Record<string, any> = {}
+        if (body.nome !== undefined) data.nome = body.nome
+        if (body.taxaComissao !== undefined) {
+            const parsed = parseFloat(body.taxaComissao)
+            if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+                return NextResponse.json({ error: 'Taxa de comissão inválida (0-100)' }, { status: 400 })
+            }
+            data.taxaComissao = parsed
+        }
+
         const fabrica = await prisma.fabrica.update({
             where: { id: params.id },
-            data: { nome: body.nome }
+            data
         })
 
         return NextResponse.json(fabrica)

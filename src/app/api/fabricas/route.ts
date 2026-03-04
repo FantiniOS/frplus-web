@@ -16,6 +16,7 @@ export async function GET() {
         const formattedFabricas = fabricas.map(f => ({
             id: f.id,
             nome: f.nome,
+            taxaComissao: f.taxaComissao,
             produtosCount: f._count.produtos
         }))
 
