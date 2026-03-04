@@ -112,14 +112,26 @@ export default function DashboardPage() {
     return m;
   }, [fabricas]);
 
+  // Mapa produto → fabricaId (fallback quando pedido.fabricaId é null)
+  const produtoFabricaMap = useMemo(() => {
+    const m = new Map<string, string>();
+    products.forEach(p => { if (p.fabricaId) m.set(p.id, p.fabricaId); });
+    return m;
+  }, [products]);
+
   const comissaoFaturada = useMemo(() =>
     monthlyOrders
       .filter(o => o.tipo !== 'Bonificacao')
       .reduce((acc, pedido) => {
-        const taxa = (taxaMap.get(pedido.fabricaId || '') || 0) / 100;
+        // Tenta fabricaId do pedido; se null, busca pela fabricaId do primeiro item
+        let fabId = pedido.fabricaId;
+        if (!fabId && pedido.itens?.length > 0) {
+          fabId = produtoFabricaMap.get(pedido.itens[0].produtoId) || undefined;
+        }
+        const taxa = (taxaMap.get(fabId || '') || 0) / 100;
         return acc + pedido.valorTotal * taxa;
       }, 0),
-    [monthlyOrders, taxaMap]
+    [monthlyOrders, taxaMap, produtoFabricaMap]
   );
 
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
