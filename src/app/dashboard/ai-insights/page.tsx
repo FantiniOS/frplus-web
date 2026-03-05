@@ -19,11 +19,14 @@ interface InactiveClient {
     email: string;
     ultimaCompra: string | null;
     diasInativo: number | null;
+    dataEsperada: string | null;
+    diasDeAtraso: number;
+    cicloMedioDias: number;
+    confiancaCiclo: 'alta' | 'media' | 'baixa';
     totalGasto: number;
     totalPedidos: number;
     alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde';
-    motivo?: string; // Reason for the alert
-    cicloMedio?: number; // Average cycle in days
+    motivo?: string;
     messageSuggestion?: string;
 }
 
@@ -446,28 +449,25 @@ export default function AIInsightsPage() {
                             <div className="space-y-4">
                                 <div className="flex items-center gap-4 pb-4 border-b border-white/10">
                                     <Filter className="h-4 w-4 text-gray-400" />
-                                    <span className="text-sm text-gray-400">Mostrar clientes inativos há:</span>
-                                    <span className="px-3 py-1 rounded-lg text-sm bg-purple-600 text-white font-medium">
-                                        15+ dias
-                                    </span>
+                                    <span className="text-sm text-gray-400">Clientes que estouraram seu ciclo individual de compras</span>
                                 </div>
 
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                     <div className="p-3 rounded-lg bg-white/5 text-center">
                                         <p className="text-2xl font-bold text-white">{summaries.inactive.total}</p>
-                                        <p className="text-xs text-gray-400">Total</p>
+                                        <p className="text-xs text-gray-400">Total Atrasados</p>
                                     </div>
                                     <div className="p-3 rounded-lg bg-red-500/10 text-center">
                                         <p className="text-2xl font-bold text-red-400">{summaries.inactive.vermelho}</p>
-                                        <p className="text-xs text-gray-400">60+ dias</p>
+                                        <p className="text-xs text-gray-400">🔴 Crítico</p>
                                     </div>
                                     <div className="p-3 rounded-lg bg-orange-500/10 text-center">
                                         <p className="text-2xl font-bold text-orange-400">{summaries.inactive.laranja}</p>
-                                        <p className="text-xs text-gray-400">30-59 dias</p>
+                                        <p className="text-xs text-gray-400">🟠 Risco</p>
                                     </div>
                                     <div className="p-3 rounded-lg bg-yellow-500/10 text-center">
                                         <p className="text-2xl font-bold text-yellow-400">{summaries.inactive.amarelo}</p>
-                                        <p className="text-xs text-gray-400">15-29 dias</p>
+                                        <p className="text-xs text-gray-400">🟡 Atenção</p>
                                     </div>
                                 </div>
 
@@ -477,66 +477,92 @@ export default function AIInsightsPage() {
                                             <tr>
                                                 <th className="px-4 py-3 text-left">Cliente</th>
                                                 <th className="px-4 py-3 text-left hidden sm:table-cell">Cidade</th>
-                                                <th className="px-4 py-3 text-center">Dias Inativo</th>
+                                                <th className="px-4 py-3 text-left">Ciclo de Vendas</th>
+                                                <th className="px-4 py-3 text-center">Atraso</th>
                                                 <th className="px-4 py-3 text-center hidden md:table-cell">Pedidos</th>
                                                 <th className="px-4 py-3 text-center">Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
-                                            {inactiveClients.map(client => (
-                                                <tr key={client.id} className="hover:bg-white/5">
-                                                    <td className="px-4 py-3">
-                                                        <p className="font-medium text-white">{client.nomeFantasia}</p>
-                                                        <p className="text-xs text-gray-500">{client.razaoSocial}</p>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
-                                                    <td className="px-4 py-3 text-center">
-                                                        <span className={`px-2 py-1 rounded-full text-xs ${(alertColors[client.alertLevel] || alertColors.verde)}`}>
-                                                            {client.diasInativo ? `${client.diasInativo} dias` : 'Nunca comprou'}
-                                                        </span>
-                                                        {client.motivo && (
-                                                            <div className="text-[10px] text-gray-500 mt-1 max-w-[150px] mx-auto leading-tight italic">
-                                                                {client.motivo}
+                                            {inactiveClients.map(client => {
+                                                const atrasoColor = client.alertLevel === 'vermelho'
+                                                    ? 'bg-red-500/20 text-red-400 border-red-500/40'
+                                                    : client.alertLevel === 'laranja'
+                                                        ? 'bg-orange-500/20 text-orange-400 border-orange-500/40'
+                                                        : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40';
+                                                return (
+                                                    <tr key={client.id} className="hover:bg-white/5">
+                                                        <td className="px-4 py-3">
+                                                            <p className="font-medium text-white">{client.nomeFantasia}</p>
+                                                            <p className="text-xs text-gray-500">{client.razaoSocial}</p>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="space-y-1">
+                                                                <p className="text-xs text-gray-400">
+                                                                    <span className="text-gray-500">Última Compra:</span>{' '}
+                                                                    <span className="text-gray-200">
+                                                                        {client.ultimaCompra
+                                                                            ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR')
+                                                                            : 'Nunca'}
+                                                                    </span>
+                                                                </p>
+                                                                <p className="text-xs text-gray-400">
+                                                                    <span className="text-gray-500">Ciclo:</span>{' '}
+                                                                    <span className="text-blue-400 font-medium">a cada {client.cicloMedioDias} dias</span>
+                                                                </p>
                                                             </div>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-center text-gray-300 hidden md:table-cell">{client.totalPedidos}</td>
-                                                    <td className="px-4 py-3">
-                                                        <div className="flex items-center justify-center gap-2">
-                                                            <button
-                                                                onClick={() => handleGenerateAIMessage(client.id)}
-                                                                disabled={generatingMessageFor === client.id}
-                                                                className="p-2 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
-                                                                title="Gerar Mensagem IA"
-                                                            >
-                                                                {generatingMessageFor === client.id ? (
-                                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                                ) : (
-                                                                    <Bot className="h-4 w-4" />
-                                                                )}
-                                                            </button>
-                                                            <WhatsAppButton
-                                                                clienteId={client.id}
-                                                                telefone={client.celular || client.telefone}
-                                                            />
-                                                            <a
-                                                                href={`mailto:${client.email}`}
-                                                                className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
-                                                                title="Email"
-                                                            >
-                                                                <Mail className="h-4 w-4" />
-                                                            </a>
-                                                            <a
-                                                                href={`tel:${client.telefone}`}
-                                                                className="p-2 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-colors"
-                                                                title="Ligar"
-                                                            >
-                                                                <Phone className="h-4 w-4" />
-                                                            </a>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${atrasoColor}`}>
+                                                                {client.diasDeAtraso >= 9999
+                                                                    ? '∞'
+                                                                    : `${client.diasDeAtraso} dias`}
+                                                            </span>
+                                                            {client.motivo && (
+                                                                <div className="text-[10px] text-gray-500 mt-1 max-w-[180px] mx-auto leading-tight italic">
+                                                                    {client.motivo}
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center text-gray-300 hidden md:table-cell">{client.totalPedidos}</td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <button
+                                                                    onClick={() => handleGenerateAIMessage(client.id)}
+                                                                    disabled={generatingMessageFor === client.id}
+                                                                    className="p-2 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
+                                                                    title="Gerar Mensagem IA"
+                                                                >
+                                                                    {generatingMessageFor === client.id ? (
+                                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Bot className="h-4 w-4" />
+                                                                    )}
+                                                                </button>
+                                                                <WhatsAppButton
+                                                                    clienteId={client.id}
+                                                                    telefone={client.celular || client.telefone}
+                                                                />
+                                                                <a
+                                                                    href={`mailto:${client.email}`}
+                                                                    className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
+                                                                    title="Email"
+                                                                >
+                                                                    <Mail className="h-4 w-4" />
+                                                                </a>
+                                                                <a
+                                                                    href={`tel:${client.telefone}`}
+                                                                    className="p-2 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-colors"
+                                                                    title="Ligar"
+                                                                >
+                                                                    <Phone className="h-4 w-4" />
+                                                                </a>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                     {inactiveClients.length === 0 && (

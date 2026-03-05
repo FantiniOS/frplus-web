@@ -2,8 +2,33 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/getServerUser'
 
-// GET /api/ai/inactive-clients - Get clients sorted by SMART inactivity
+// GET /api/ai/inactive-clients - Get clients sorted by SMART cycle-based delay
 export const dynamic = 'force-dynamic'
+
+/**
+ * Calcula o ciclo médio de compra de um cliente baseado nas datas dos pedidos.
+ * Retorna o ciclo em dias.
+ * Fallback: 30 dias se o cliente tiver apenas 1 pedido.
+ */
+function calcularCicloMedio(pedidosDatas: Date[]): { cicloMedioDias: number; confianca: 'alta' | 'media' | 'baixa' } {
+    if (pedidosDatas.length < 2) {
+        return { cicloMedioDias: 30, confianca: 'baixa' };
+    }
+
+    let totalDaysDiff = 0;
+    for (let i = 0; i < pedidosDatas.length - 1; i++) {
+        const d1 = pedidosDatas[i];
+        const d2 = pedidosDatas[i + 1];
+        const diffTime = Math.abs(d1.getTime() - d2.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        totalDaysDiff += diffDays;
+    }
+
+    const cicloMedioDias = Math.max(7, Math.floor(totalDaysDiff / (pedidosDatas.length - 1)));
+    const confianca = pedidosDatas.length >= 4 ? 'alta' : 'media';
+
+    return { cicloMedioDias, confianca };
+}
 
 export async function GET(request: Request) {
     try {
@@ -11,99 +36,93 @@ export async function GET(request: Request) {
         if (!user) {
             return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
         }
-        const { searchParams } = new URL(request.url)
-        // Default threshold just for the initial query, but logic will be smarter
-        const daysThreshold = parseInt(searchParams.get('days') || '15')
 
         // Get ACTIVE clients only (exclude manually marked Inativo/Bloqueado)
         const clients = await prisma.cliente.findMany({
             where: { status: 'Ativo' },
             include: {
                 pedidos: {
-                    where: { tipo: 'Venda' }, // Filtra as bonificações direto no banco para os ultimos pedidos
+                    where: { tipo: 'Venda' },
                     orderBy: { data: 'desc' },
-                    take: 5, // Increased from 1 to 5 to calculate average cycle
+                    take: 10, // 10 pedidos para calcular ciclo médio com precisão
                     select: { data: true, valorTotal: true, tipo: true }
                 },
                 _count: { select: { pedidos: true } }
             }
         })
 
-        // Map and analyze clients
-        const inactiveClients = clients
+        const hoje = new Date();
+
+        // Map and analyze clients with cycle-based delay
+        const analyzedClients = clients
             .map(client => {
                 const salesOrders = client.pedidos;
                 const lastOrder = salesOrders[0];
                 const lastOrderDate = lastOrder?.data ? new Date(lastOrder.data) : null;
 
                 const daysSinceLastOrder = lastOrderDate
-                    ? Math.floor((Date.now() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
+                    ? Math.floor((hoje.getTime() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
                     : null;
 
-                // --- SMART LOGIC: Calculate Average Cycle ---
-                let averageCycle = 45; // Default fallback (1.5 meses para baixa frequência)
-                let cycleConfidence = 'baixa'; // 'alta' | 'media' | 'baixa'
+                // ---- Calcular Ciclo Médio Individual ----
+                const pedidosDatas = salesOrders.map(o => new Date(o.data));
+                const { cicloMedioDias, confianca } = calcularCicloMedio(pedidosDatas);
 
-                if (salesOrders.length >= 2) {
-                    let totalDaysDiff = 0;
-                    for (let i = 0; i < salesOrders.length - 1; i++) {
-                        const d1 = new Date(salesOrders[i].data);
-                        const d2 = new Date(salesOrders[i + 1].data);
-                        const diffTime = Math.abs(d1.getTime() - d2.getTime());
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        totalDaysDiff += diffDays;
-                    }
-                    averageCycle = Math.max(7, Math.floor(totalDaysDiff / (salesOrders.length - 1))); // Min 7 days to avoid noise
-                    cycleConfidence = salesOrders.length >= 4 ? 'alta' : 'media';
+                // ---- Calcular Data Esperada e Dias de Atraso ----
+                let dataEsperada: Date | null = null;
+                let diasDeAtraso = 0;
+
+                if (lastOrderDate) {
+                    dataEsperada = new Date(lastOrderDate.getTime() + cicloMedioDias * 24 * 60 * 60 * 1000);
+                    diasDeAtraso = Math.max(0, Math.floor((hoje.getTime() - dataEsperada.getTime()) / (1000 * 60 * 60 * 24)));
+                } else {
+                    // Nunca comprou — atraso máximo para aparecer no topo
+                    diasDeAtraso = 9999;
                 }
 
-                // Determine Alert Level based on deviation from OWN cycle
-                // Green: Within normal cycle + buffer
-                // Yellow: 1.2x Cycle (Late)
-                // Orange: 1.5x Cycle (Risk)
-                // Red: 2.0x Cycle (Churn Risk)
+                // ---- Alert Level baseado na relação com o ciclo ----
+                // @ts-ignore - comprador exists in schema
+                const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
 
                 let alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde' = 'verde';
                 let motivo = '';
                 let contextoParaIA = '';
-                // Use buyer name if available (first name), else company name
-                // @ts-ignore - comprador exists in schema but type might not be updated yet
-                const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
 
                 if (daysSinceLastOrder === null) {
-                    // Never bought - depends on creation date? For now, treat as Red if old enough? 
-                    // Let's keep existing logic: null days = Red (Potentially lost lead)
                     alertLevel = 'vermelho';
-                    motivo = 'Cliente ATIVO, mas que nunca efetuou uma compra (ou 100% inativo). Atraso máximo.';
+                    motivo = 'Cliente ATIVO, mas nunca efetuou uma compra. Atraso máximo.';
                     contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} tem cadastro ativo mas nunca foi faturado. Envie uma mensagem quebrando o gelo, ofereça as novidades e mostre que a distribuidora tem ótimos preços para primeira compra.`;
+                } else if (diasDeAtraso <= 0) {
+                    // Dentro do ciclo esperado - sem atraso
+                    alertLevel = 'verde';
+                    motivo = `Dentro do ciclo esperado (a cada ${cicloMedioDias} dias).`;
                 } else {
-                    const ratio = daysSinceLastOrder / averageCycle;
+                    const ratio = daysSinceLastOrder / cicloMedioDias;
 
-                    // Hardcap Semestral: Independente do ratio, se tiver mais de 180 dias sem compras é risco crítico.
+                    // Hardcap Semestral
                     if (daysSinceLastOrder >= 180) {
                         alertLevel = 'vermelho';
-                        motivo = `Sem comprar há mais de 6 meses (${daysSinceLastOrder} dias). Cliente perdido para a concorrência?`;
+                        motivo = `Sem comprar há mais de 6 meses (${daysSinceLastOrder} dias). Atraso de ${diasDeAtraso} dias além do ciclo.`;
                         contextoParaIA = `Atue como um vendedor agressivo de resgate. O cliente ${greetingName} está sem comprar há mais de 6 meses. O risco de churn foi ativado. Mande uma mensagem forte de rentabilização, mostre que você sentiu falta dele, e ofereça uma excelente oportunidade comercial apenas para quebrar esse gelo.`;
                     } else if (ratio >= 2.0 || (salesOrders.length <= 1 && daysSinceLastOrder >= 45)) {
                         alertLevel = 'vermelho';
-                        motivo = `Ciclo médio de ${averageCycle} dias. Atraso crítico (${ratio >= 2.0 ? ratio.toFixed(1) + 'x normal' : 'superior a 45 dias'}).`;
-                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está num atraso CRÍTICO severo (sem compras há ${daysSinceLastOrder} dias). Objetivo: Retomar a parceria urgentemente oferecendo alguma novidade forte.`;
+                        motivo = `Ciclo: a cada ${cicloMedioDias} dias | Atraso: ${diasDeAtraso} dias — Crítico (${ratio >= 2.0 ? ratio.toFixed(1) + 'x o ciclo' : '> 45 dias'}).`;
+                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está num atraso CRÍTICO severo (sem compras há ${daysSinceLastOrder} dias, atraso de ${diasDeAtraso} dias). Objetivo: Retomar a parceria urgentemente oferecendo alguma novidade forte.`;
                     } else if (ratio >= 1.5) {
                         alertLevel = 'laranja';
-                        motivo = `Ciclo médio de ${averageCycle} dias. Atraso considerável.`;
-                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está com atraso considerável. Lembre-o de repor estoque e mande dicas fáceis.`;
-                    } else if (ratio >= 1.2 || (daysSinceLastOrder > 30 && averageCycle < 30)) {
-                        // Added strict 30d check as fallback for quick buyers
+                        motivo = `Ciclo: a cada ${cicloMedioDias} dias | Atraso: ${diasDeAtraso} dias — Risco.`;
+                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está com atraso considerável de ${diasDeAtraso} dias. Lembre-o de repor estoque e mande dicas fáceis.`;
+                    } else if (ratio >= 1.2 || (daysSinceLastOrder > 30 && cicloMedioDias < 30)) {
                         alertLevel = 'amarelo';
-                        motivo = `Ciclo médio de ${averageCycle} dias. Leve atraso.`;
-                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está num atraso LEVE. Faça uma abordagem leve de reposição.`;
+                        motivo = `Ciclo: a cada ${cicloMedioDias} dias | Atraso: ${diasDeAtraso} dias — Atenção.`;
+                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está num atraso LEVE de ${diasDeAtraso} dias. Faça uma abordagem leve de reposição.`;
                     } else {
                         alertLevel = 'verde';
-                        motivo = `Dentro do ciclo esperado (${averageCycle} dias).`;
+                        motivo = `Dentro do ciclo esperado (a cada ${cicloMedioDias} dias).`;
                     }
                 }
 
-                // Calculate total spent from available orders
+                // Total gasto nos pedidos disponíveis
                 const totalGasto = client.pedidos.reduce((acc, o) => acc + Number(o.valorTotal), 0);
 
                 return {
@@ -117,33 +136,31 @@ export async function GET(request: Request) {
                     email: client.email,
                     diasInativo: daysSinceLastOrder,
                     ultimaCompra: lastOrderDate ? lastOrderDate.toISOString() : null,
+                    dataEsperada: dataEsperada ? dataEsperada.toISOString() : null,
+                    diasDeAtraso,
+                    cicloMedioDias,
+                    confiancaCiclo: confianca,
                     totalGasto,
                     totalPedidos: client._count.pedidos,
-                    cicloMedio: averageCycle,
                     motivo,
-
                     alertLevel,
                     contextoParaIA
                 }
             })
-            // Filter: Only show Yellow, Orange, Red
-            .filter(c => c.alertLevel !== 'verde')
-            .sort((a, b) => {
-                // Se null (nunca comprou), colocar pontuação gigante para aparecer em 1º
-                const scoreA = a.diasInativo === null ? 999999 : a.diasInativo;
-                const scoreB = b.diasInativo === null ? 999999 : b.diasInativo;
-                return scoreB - scoreA;
-            })
+            // FILTRO: Apenas clientes com diasDeAtraso > 0 (estouraram o próprio ciclo)
+            .filter(c => c.diasDeAtraso > 0)
+            // ORDENAÇÃO: Decrescente por diasDeAtraso (quem mais atrasou aparece primeiro)
+            .sort((a, b) => b.diasDeAtraso - a.diasDeAtraso)
 
         // Summary stats
         const summary = {
-            total: inactiveClients.length,
-            vermelho: inactiveClients.filter(c => c.alertLevel === 'vermelho').length,
-            laranja: inactiveClients.filter(c => c.alertLevel === 'laranja').length,
-            amarelo: inactiveClients.filter(c => c.alertLevel === 'amarelo').length
+            total: analyzedClients.length,
+            vermelho: analyzedClients.filter(c => c.alertLevel === 'vermelho').length,
+            laranja: analyzedClients.filter(c => c.alertLevel === 'laranja').length,
+            amarelo: analyzedClients.filter(c => c.alertLevel === 'amarelo').length
         }
 
-        return NextResponse.json({ clients: inactiveClients, summary })
+        return NextResponse.json({ clients: analyzedClients, summary })
     } catch (error) {
         console.error('Error fetching smart inactive clients:', error)
         return NextResponse.json({ error: 'Failed to fetch inactive clients' }, { status: 500 })

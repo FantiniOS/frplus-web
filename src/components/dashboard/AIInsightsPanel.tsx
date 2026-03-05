@@ -9,11 +9,13 @@ interface InactiveClient {
     id: string;
     nomeFantasia: string;
     diasInativo: number | null;
+    diasDeAtraso: number;
+    cicloMedioDias: number;
     alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde';
     telefone: string;
     email: string;
-    motivo?: string; // Reason for the alert
-    cicloMedio?: number; // Average cycle in days
+    ultimaCompra: string | null;
+    motivo?: string;
 }
 
 interface Opportunity {
@@ -149,29 +151,35 @@ export function AIInsightsPanel() {
                         <p className="text-xs text-gray-500 text-center py-4">Nenhum cliente inativo</p>
                     ) : (
                         <div className="space-y-2">
-                            {inactiveClients.map(client => (
-                                <div key={client.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-medium text-white truncate">{client.nomeFantasia}</p>
-                                        <p className="text-[10px] text-gray-500">
-                                            {client.diasInativo ? `${client.diasInativo} dias sem comprar` : 'Nunca comprou'}
-                                        </p>
-                                        {client.motivo && (
-                                            <p className="text-[9px] text-blue-400 mt-0.5 italic">
-                                                🧠 {client.motivo}
-                                            </p>
-                                        )}
+                            {inactiveClients.map(client => {
+                                const atrasoColor = client.alertLevel === 'vermelho'
+                                    ? 'text-red-400'
+                                    : client.alertLevel === 'laranja'
+                                        ? 'text-orange-400'
+                                        : 'text-yellow-400';
+                                return (
+                                    <div key={client.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium text-white truncate">{client.nomeFantasia}</p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className={`text-[10px] font-bold ${atrasoColor}`}>
+                                                    {client.diasDeAtraso >= 9999 ? '∞ atraso' : `${client.diasDeAtraso}d atraso`}
+                                                </span>
+                                                <span className="text-[10px] text-gray-600">|</span>
+                                                <span className="text-[10px] text-blue-400">Ciclo: {client.cicloMedioDias}d</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <span className={`w-2 h-2 rounded-full ${(alertColors[client.alertLevel] || alertColors.verde).split(' ')[0]}`}></span>
+                                            <WhatsAppButton
+                                                clienteId={client.id}
+                                                telefone={client.telefone}
+                                                size="sm"
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                        <span className={`w-2 h-2 rounded-full ${(alertColors[client.alertLevel] || alertColors.verde).split(' ')[0]}`}></span>
-                                        <WhatsAppButton
-                                            clienteId={client.id}
-                                            telefone={client.telefone}
-                                            size="sm"
-                                        />
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
