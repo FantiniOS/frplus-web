@@ -119,6 +119,25 @@ export default function DashboardPage() {
     return m;
   }, [products]);
 
+  // DEBUG: Registra os pedidos do mês para entender por que a comissão falha
+  console.log('Pedidos do Mês atual sendo processados para comissão:', monthlyOrders.map(o => ({
+    id: o.id,
+    cliente: o.nomeCliente,
+    tipo: o.tipo,
+    status: o.status,
+    valorTotal: o.valorTotal,
+    fabricaIdOriginal: o.fabricaId,
+    itensFabricas: o.itens?.map(i => produtoFabricaMap.get(i.produtoId)),
+    comissaoCalculada: (() => {
+      let fabId = o.fabricaId;
+      if (!fabId && o.itens?.length > 0) {
+        fabId = produtoFabricaMap.get(o.itens[0].produtoId) || undefined;
+      }
+      const taxa = (taxaMap.get(fabId || '') || 0) / 100;
+      return o.valorTotal * taxa;
+    })()
+  })));
+
   const comissaoFaturada = useMemo(() =>
     monthlyOrders
       .filter(o => o.tipo !== 'Bonificacao')

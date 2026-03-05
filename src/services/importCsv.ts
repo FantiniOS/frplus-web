@@ -201,7 +201,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                     const allClients = await prisma.cliente.findMany({ select: { id: true, cnpj: true } });
                     const clientByCnpj = new Map(allClients.map(c => [c.cnpj, c.id]));
 
-                    const allProducts = await prisma.produto.findMany({ select: { id: true, codigo: true, precoAtacado: true } });
+                    const allProducts = await prisma.produto.findMany({ select: { id: true, codigo: true, precoAtacado: true, fabricaId: true } });
                     const productByCode = new Map(allProducts.map(p => [p.codigo, p]));
 
                     console.log(`[CSV Import] ${orderNums.length} orders to process. ${existingOrderIds.size} already exist (will update). ${orderNums.length - existingOrderIds.size} new.`);
@@ -220,6 +220,19 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                             condPagto = 'BONIFICACAO';
                         }
 
+                        // Calculate fabricaId based on the first recognized item
+                        let orderFabricaId = undefined;
+                        if (rows.length > 0) {
+                            for (const row of rows) {
+                                const prodCode = row['Produto'];
+                                const product = productByCode.get(prodCode);
+                                if (product && product.fabricaId && product.fabricaId !== defaultFactory!.id) {
+                                    orderFabricaId = product.fabricaId;
+                                    break;
+                                }
+                            }
+                        }
+
                         updatePromises.push(
                             prisma.pedido.update({
                                 where: { id: orderNum },
@@ -228,6 +241,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                     condicaoPagamento: condPagto,
                                     tipo: tipoPedido,
                                     data: parseDate(firstRow['DT_Emissao']),
+                                    ...(orderFabricaId && { fabricaId: orderFabricaId }),
                                 }
                             }).then(() => { stats.ordersUpdated++; })
                                 .catch((e) => { stats.errors.push(`Erro ao atualizar Pedido ${orderNum}: ${e}`); })
@@ -261,12 +275,16 @@ export async function importSalesCsv(fileBuffer: Buffer) {
 
                         const itemsData = [];
                         let totalOrder = 0;
+                        let orderFabricaId = undefined;
 
                         for (const row of rows) {
                             const prodCode = row['Produto'];
                             const product = productByCode.get(prodCode);
 
                             if (product) {
+                                if (!orderFabricaId && product.fabricaId && product.fabricaId !== defaultFactory!.id) {
+                                    orderFabricaId = product.fabricaId;
+                                }
                                 const qty = parseFloat(row['Quantidade'].replace(',', '.')) || 0;
                                 let unitPrice = parseBrlFloat(row['Prc_Unitario']);
 
@@ -292,7 +310,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                     data: {
                                         id: orderNum,
                                         clienteId: clientId,
-                                        fabricaId: defaultFactory!.id,
+                                        fabricaId: orderFabricaId || defaultFactory!.id,
                                         status: 'Concluido',
                                         tipo: tipoPedido,
                                         valorTotal: totalOrder,
