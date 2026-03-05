@@ -32,6 +32,41 @@ interface ProductPurchaseStats {
 }
 
 // ============================================================
+// CONSTANTES
+// ============================================================
+
+/** Threshold em dias para considerar o cliente como churn (resgate). */
+const DIAS_PARA_CHURN = 90;
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+/**
+ * Extrai APENAS o nome da Marca/Representada de uma string de produto.
+ * Ex: 'VINAGRE DE MACA 750ML - BELMONT' → 'Belmont'
+ * Ex: 'Vinagre de Álcool 750ml' → último token capitalizado
+ * Se houver traço separador, pega o trecho após o último traço.
+ * Senão, retorna a última palavra como fallback.
+ */
+function extrairMarca(produtoNome: string): string {
+    if (!produtoNome || produtoNome.trim() === '') return '';
+
+    // Se tem separador ' - ', a marca está depois do último traço
+    if (produtoNome.includes(' - ')) {
+        const partes = produtoNome.split(' - ');
+        const marca = partes[partes.length - 1].trim();
+        // Capitalizar: 'BELMONT' → 'Belmont'
+        return marca.charAt(0).toUpperCase() + marca.slice(1).toLowerCase();
+    }
+
+    // Fallback: última palavra (pode ser a marca em nomes curtos)
+    const tokens = produtoNome.trim().split(/\s+/);
+    const ultima = tokens[tokens.length - 1];
+    return ultima.charAt(0).toUpperCase() + ultima.slice(1).toLowerCase();
+}
+
+// ============================================================
 // ETAPA 1: MINERAÇÃO DE DADOS (Prisma Queries)
 // ============================================================
 
@@ -456,20 +491,38 @@ async function consolidarFatos(clienteId: string): Promise<FatosEstrategicos> {
 // ETAPA 3: INJEÇÃO DE CONTEXTO NO LLM (Strict System Prompt)
 // ============================================================
 
-async function gerarMensagemComLLM(fatos: FatosEstrategicos, nomeUsuario: string, nomeCliente: string): Promise<string> {
-    // Montar contexto dos fatos estratégicos
+async function gerarMensagemComLLM(fatos: FatosEstrategicos, nomeUsuario: string, nomeCliente: string, diasSemComprar: number | null): Promise<string> {
+    // Extrair apenas a marca do produto foco (nunca o nome completo/SKU)
+    const marcaFoco = extrairMarca(fatos.produtoFoco);
+
+    // Montar contexto dos fatos estratégicos (usando marca, não produto)
     let contextoDeFatos = `
 FATOS MATEMÁTICOS EXTRAÍDOS DO SISTEMA:
 - Motivo do contato: ${fatos.motivo}
-- Produto foco: ${fatos.produtoFoco}
+- Marca foco: ${marcaFoco}
 - Justificativa baseada em dados: ${fatos.justificativa}`
 
     if (fatos.sugestaoAdicional) {
-        contextoDeFatos += `\n- Sugestão adicional de cross-sell: ${fatos.sugestaoAdicional}`
+        const marcaSugestao = extrairMarca(fatos.sugestaoAdicional.split('(')[0].trim());
+        contextoDeFatos += `\n- Sugestão adicional de cross-sell (marca): ${marcaSugestao}`
     }
 
     if (fatos.fatorSazonal) {
         contextoDeFatos += `\n- Fator sazonal: ${fatos.fatorSazonal}`
+    }
+
+    // ---- Régua de Churn: Injeção Condicional ----
+    let regraAbordagem = '';
+    if (diasSemComprar !== null && diasSemComprar >= DIAS_PARA_CHURN) {
+        // RESGATE DE CLIENTE (churn)
+        regraAbordagem = `
+REGRA DE ABORDAGEM — RESGATE DE CLIENTE:
+ATENÇÃO: Este cliente não compra há ${diasSemComprar} dias e provavelmente foi para a concorrência. NÃO aja como um lembrete de reposição de estoque. Aja como um representante comercial sênior a tentar recuperar a conta da ${marcaFoco}. Seja direto, breve e humano. Reconheça o tempo de afastamento e pergunte abertamente o motivo: foi preço? Foi a concorrência? Houve falha no atendimento? O objetivo é reabrir o diálogo sobre a ${marcaFoco}.`
+    } else if (diasSemComprar !== null && diasSemComprar > 0) {
+        // ATRASO NORMAL (dentro do ciclo estendido)
+        regraAbordagem = `
+REGRA DE ABORDAGEM — ATRASO NORMAL:
+O cliente está com um pequeno atraso. Fale sobre evitar a ruptura de estoque e a reposição dos produtos da ${marcaFoco}. Mantenha um tom coloquial e focado em não deixar o cliente sem a ${marcaFoco} para as vendas.`
     }
 
     const isCrossSell = fatos.motivo === 'Cross-Sell'
@@ -481,35 +534,38 @@ Escreva uma mensagem de WhatsApp curta (máximo 3 parágrafos curtos) para o seu
 
 REGRA ABSOLUTA: NÃO gere textos com campos ou colchetes para preencher como [Nome], [Sua Empresa] ou [Empresa]. Escreva o texto final e completo, pronto para ser enviado no WhatsApp, assinando com o seu nome ${nomeUsuario}.
 
-REGRA 1: Inicie a mensagem SEMPRE com um cumprimento informal usando o nome do cliente: ${nomeCliente}. Exemplo: "Fala ${nomeCliente}, tudo bem?"
+REGRA 1 (INEGOCIÁVEL): NUNCA cite o nome de um produto específico, embalagem, gramatura ou SKU (ex: 'Vinagre de Maçã 750ml'). NUNCA use termos de enfeite como 'mix de produtos', 'linha de produtos' ou 'portfólio'. A ÚNICA referência permitida a um produto é pelo nome da Marca/Representada (ex: '${marcaFoco}'). Use o nome da marca de forma natural no texto.
 
-REGRA 2: Você é PROIBIDO de inventar ofertas, produtos ou motivos genéricos. Construa seu argumento EXCLUSIVAMENTE baseando-se nestes fatos matemáticos extraídos do sistema:
+REGRA 2: Inicie a mensagem SEMPRE com um cumprimento informal usando o nome do cliente: ${nomeCliente}. Exemplo: "Fala ${nomeCliente}, tudo bem?"
+
+REGRA 3: Você é PROIBIDO de inventar ofertas, produtos ou motivos genéricos. Construa seu argumento EXCLUSIVAMENTE baseando-se nestes fatos matemáticos extraídos do sistema:
 ${contextoDeFatos}
+${regraAbordagem}
 ${isCrossSell ? `
 REGRA ESPECIAL — CROSS-SELL (ESTRATÉGIAS BIFURCADAS):
-O contexto real: você quer introduzir o produto "${fatos.produtoFoco}" mas sabe que o comprador resiste a cadastrar itens novos (sem espaço na gôndola, aversão a risco).
+O contexto real: você quer introduzir a marca "${marcaFoco}" mas sabe que o comprador resiste a cadastrar itens novos (sem espaço na gôndola, aversão a risco).
 
 ${fatos.recebeBonificacao ? `TÁTICA ESTRITA que você DEVE seguir: ESTE CLIENTE TEM DIREITO A VERBA (Risco Financiado)
 - A ÚNICA moeda de troca que a fábrica libera para bonificação é o "Vinagre de Álcool 750ml".
 - Diga que você conseguiu liberar uma verba em caixas de Vinagre de Álcool 750ml bonificadas (giro garantido, 100% de lucro pro cliente).
-- Proponha que o cliente use o lucro garantido do Vinagre 750ml bonificado para "bancar" a entrada de um lote minúsculo (teste) do "${fatos.produtoFoco}".
+- Proponha que o cliente use o lucro garantido do Vinagre 750ml bonificado para "bancar" a entrada de um lote minúsculo (teste) da ${marcaFoco}.
 - Argumente que dessa forma o cliente faz um teste de gôndola com risco financeiro ZERO — a própria fábrica já pagou a conta com a bonificação do Vinagre.
 - Seja direto, comercial e fale de rentabilidade. NÃO mencione "pontos extras" ou "verbas flexíveis" — eles NÃO existem.
 - Exemplo de tom: "${fatos.comprador}, pra você não tirar um real do bolso no teste desse item novo, vou te mandar X caixas do 750ml bonificadas. O lucro do 750ml cobre o teste e a gente tenta rentabilizar melhor esse espaço na gôndola."` : `TÁTICA ESTRITA que você DEVE seguir: ESTE CLIENTE NÃO TEM VERBA (Otimização de Centímetro Quadrado/Substituição)
 - O cliente NÃO tem verba/bonificação livre e não tem espaço físico na prateleira.
 - A sua ÚNICA saída é pedir para ele substituir o espaço de um produto da concorrência que gira mal.
-- Não peça cadastro novo. Peça para ele reduzir 1 frente do concorrente de baixo giro na gôndola e colocar o seu "${fatos.produtoFoco}" no lugar.
+- Não peça cadastro novo. Peça para ele reduzir 1 frente do concorrente de baixo giro na gôndola e colocar a ${marcaFoco} no lugar.
 - Proponha isso como um teste de margem/rentabilidade de 30 dias.
 - Seja incisivo: diga que você quer ajudar a rentabilizar aquele espaço morto na prateleira.
-- Exemplo de tom: "${fatos.comprador}, sei que a gôndola está apertada, mas você tem produto de concorrente aí parado que não te dá margem. Tira uma frente dele por 30 dias e coloca o ${fatos.produtoFoco} no lugar pra gente testar a rentabilidade desse espaço. Se não girar, a gente tira."`}
+- Exemplo de tom: "${fatos.comprador}, sei que a gôndola está apertada, mas você tem produto de concorrente aí parado que não te dá margem. Tira uma frente dele por 30 dias e coloca a ${marcaFoco} no lugar pra gente testar a rentabilidade desse espaço. Se não girar, a gente tira."`}
 ` : ''}
-REGRA 3: O tom deve ser de parceria e consultoria. Nunca use jargões robóticos como "Prezado", "Venho por meio desta" ou "Gostaria de oferecer". Fale como quem quer ajudar o cliente a ganhar mais dinheiro.
+REGRA 4: O tom deve ser de parceria e consultoria. Nunca use jargões robóticos como "Prezado", "Venho por meio desta" ou "Gostaria de oferecer". Fale como quem quer ajudar o cliente a ganhar mais dinheiro.
 
-REGRA 4: Termine a mensagem com uma pergunta leve para incentivar a resposta. Exemplos: "Posso separar esse kit pra você?", "Quer que eu monte a proposta certinha?", "Faz sentido pra você?".
+REGRA 5: Termine a mensagem com uma pergunta leve para incentivar a resposta. Exemplos: "Posso separar esse kit pra você?", "Quer que eu monte a proposta certinha?", "Faz sentido pra você?".
 
-REGRA 5: NÃO use markdown, asteriscos, negritos ou formatação especial. Escreva texto puro como uma mensagem de WhatsApp normal.
+REGRA 6: NÃO use markdown, asteriscos, negritos ou formatação especial. Escreva texto puro como uma mensagem de WhatsApp normal.
 
-REGRA 6: Escreva APENAS a mensagem. Sem explicações, sem alternativas, sem notas.`
+REGRA 7: Escreva APENAS a mensagem. Sem explicações, sem alternativas, sem notas.`
 
     // ---- TENTATIVA 1: Groq (primário, mais rápido) ----
     const groqKey = process.env.GROQ_API_KEY
@@ -621,8 +677,18 @@ export async function POST(request: Request) {
 
         const nomeCliente = fatosEstrategicos.comprador || clienteExiste.nomeFantasia.split(' ')[0]
 
-        // ETAPA 3: Gerar mensagem com LLM
-        const mensagem = await gerarMensagemComLLM(fatosEstrategicos, nomeUsuario, nomeCliente)
+        // Calcular dias sem comprar para régua de churn
+        const ultimoPedido = await prisma.pedido.findFirst({
+            where: { clienteId: body.clienteId, tipo: 'Venda' },
+            orderBy: { data: 'desc' },
+            select: { data: true }
+        })
+        const diasSemComprar = ultimoPedido
+            ? Math.floor((Date.now() - new Date(ultimoPedido.data).getTime()) / (1000 * 60 * 60 * 24))
+            : null
+
+        // ETAPA 3: Gerar mensagem com LLM (passa diasSemComprar para régua de churn)
+        const mensagem = await gerarMensagemComLLM(fatosEstrategicos, nomeUsuario, nomeCliente, diasSemComprar)
 
         return NextResponse.json({
             mensagem,
