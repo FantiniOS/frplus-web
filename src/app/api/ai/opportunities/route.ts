@@ -10,10 +10,8 @@ export const dynamic = 'force-dynamic'
 // ============================================================
 
 /**
- * Extrai APENAS o nome da Marca/Representada de uma string de produto.
+ * Extrai a Marca de uma string de produto.
  * Ex: 'VINAGRE DE MACA 750ML - BELMONT' → 'Belmont'
- * Se houver traço separador, pega o trecho após o último traço.
- * Senão, retorna a última palavra como fallback.
  */
 function extrairMarca(produtoNome: string): string {
     if (!produtoNome || produtoNome.trim() === '') return '';
@@ -27,45 +25,116 @@ function extrairMarca(produtoNome: string): string {
     return ultima.charAt(0).toUpperCase() + ultima.slice(1).toLowerCase();
 }
 
-/** Retorna vocabulário de negócio adaptado ao segmento do cliente. */
-function getVocabularioSegmento(segmento: string): {
-    argVenda: string;
-    argEspaco: string;
-    argResultado: string;
-    termoLocal: string;
-} {
-    const isAtacado = segmento === 'atacado' || segmento === 'avista';
-    if (isAtacado) {
-        return {
-            argVenda: 'giro e volume na sua malha de clientes',
-            argEspaco: 'espaço no estoque e no pallet',
-            argResultado: 'margem de revenda e rentabilidade por caixa',
-            termoLocal: 'estoque'
-        };
+/**
+ * Transforma uma string técnica de nota fiscal num nome comercial natural.
+ * Ex: 'VINAGRE DE ALCOOL - 2 LITROS 5%' → 'o vinagre de álcool de 2 litros'
+ * Ex: 'VINAGRE DE MACA 750ML - BELMONT' → 'o vinagre de maçã 750ml da Belmont'
+ * Ex: 'MOSTARDA AMARELA 200G - BELMONT' → 'a mostarda amarela 200g da Belmont'
+ * Regra: nunca retorna a string técnica crua. Sempre humaniza.
+ */
+function formatarNomeComercial(produtoNome: string): string {
+    if (!produtoNome || produtoNome.trim() === '') return 'o produto';
+    const marca = extrairMarca(produtoNome);
+
+    // Limpar: remover marca da string se vier após ' - '
+    let descricao = produtoNome;
+    if (produtoNome.includes(' - ')) {
+        descricao = produtoNome.split(' - ').slice(0, -1).join(' - ').trim();
     }
-    // Varejo: redes, 50a199, 200a699
-    return {
-        argVenda: 'mix completo no ponto de venda e ticket médio',
-        argEspaco: 'espaço na gôndola',
-        argResultado: 'rentabilidade por metro de prateleira e evitar ruptura',
-        termoLocal: 'gôndola'
-    };
+
+    // Lowercase e remover % soltos e números de registro
+    descricao = descricao
+        .toLowerCase()
+        .replace(/\b\d+%/g, '')       // remove percentuais soltos (5%, 4%, etc)
+        .replace(/\s{2,}/g, ' ')       // normaliza espaços duplos
+        .trim();
+
+    // Humanizar embalagens comuns
+    descricao = descricao
+        .replace(/(\d+)\s*ml\b/gi, '$1ml')
+        .replace(/(\d+)\s*litros?\b/gi, 'de $1 litros')
+        .replace(/(\d+)\s*l\b/gi, 'de $1 litros')
+        .replace(/(\d+)\s*g\b/gi, '$1g')
+        .replace(/(\d+)\s*kg\b/gi, '$1kg');
+
+    // Artigo — feminino para categorias comuns
+    const femininas = ['mostarda', 'maionese', 'pimenta', 'azeitona', 'ketchup', 'catchup', 'massa', 'farinha', 'ervilha', 'sardinha', 'salsa', 'linhaça'];
+    const artigoFem = femininas.some(f => descricao.includes(f));
+    const artigo = artigoFem ? 'a' : 'o';
+
+    if (marca) {
+        return `${artigo} ${descricao} da ${marca}`;
+    }
+    return `${artigo} ${descricao}`;
 }
 
-/** Gera a tática de cross-sell adaptada ao segmento. */
-function getTaticaCrossSell(segmento: string, recebeBonificacao: boolean, marcaFoco: string, comprador: string): string {
+/**
+ * Retorna o bloco de CONTROLE DE VOCABULÁRIO para o system prompt.
+ * Abordagem POSITIVA: diz o que DEVE usar, não o que não deve.
+ */
+function getControleVocabulario(segmento: string): string {
     const isAtacado = segmento === 'atacado' || segmento === 'avista';
-    const vocab = getVocabularioSegmento(segmento);
-
-    if (recebeBonificacao) {
-        return `Use a ESTRATÉGIA DE RISCO FINANCIADO: ofereça caixas bonificadas de Vinagre de Álcool 750ml (giro garantido, 100% de lucro) como financiador do risco. Proponha que o lucro do Vinagre 750ml bonificado cubra a entrada de um lote teste da ${marcaFoco}, assim o cliente testa com risco financeiro ZERO. Seja direto, comercial e fale de ${vocab.argResultado}.`;
-    }
 
     if (isAtacado) {
-        return `Use a ESTRATÉGIA DE VOLUME: o cliente é ATACADO — NÃO tem gôndola, tem estoque e pallet. PROIBIDO usar as palavras 'gôndola', 'prateleira', 'consumidor final' ou 'supermercado'. A TÁTICA: mostre que a ${marcaFoco} tem alto giro entre os varejistas da região e que adicionar ao estoque dele vai abastecer a malha de clientes dele com um item de margem de revenda comprovada. Proponha um lote teste com volume mínimo para avaliação de giro. Fale de volume, margem de revenda e demanda dos varejistas da região.`;
+        return `CONTROLE DE CENÁRIO — ATACADISTA/DISTRIBUIDOR:
+O cliente é um ATACADISTA/DISTRIBUIDOR. O cenário dele é um GALPÃO LOGÍSTICO, não uma loja.
+Você DEVE usar EXCLUSIVAMENTE estas palavras: 'giro de estoque', 'volume', 'pallet', 'margem de revenda', 'abastecer seus clientes', 'espaço no depósito', 'demanda dos varejistas da região'.
+O argumento de venda é RENTABILIDADE EM ESCALA e GIRO RÁPIDO para a malha de clientes dele.
+PALAVRAS 100% PROIBIDAS NESTE CONTEXTO: 'gôndola', 'prateleira', 'consumidor final', 'supermercado', 'ponto de venda', 'tirar uma frente', 'mix na loja'.`;
     }
 
-    return `Use a ESTRATÉGIA DE OTIMIZAÇÃO DE GÔNDOLA: o cliente é VAREJO. A TÁTICA: peça para ele substituir o espaço de um produto da concorrência que gira mal na gôndola e colocar a ${marcaFoco} no lugar para um teste de rentabilidade de 30 dias no ponto de venda. Fale de ${vocab.argResultado}.`;
+    return `CONTROLE DE CENÁRIO — VAREJISTA:
+O cliente é um VAREJISTA com loja física.
+Você DEVE usar estas palavras: 'ponto de venda', 'gôndola', 'prateleira', 'mix de loja', 'ticket médio', 'consumidor final', 'evitar ruptura'.
+O argumento de venda é COMPLETAR O MIX na gôndola e AUMENTAR O TICKET MÉDIO.`;
+}
+
+/**
+ * Gera o contextoParaIA completo para cross-sell com:
+ * - Controle de vocabulário positivo por segmento
+ * - Regra de ocultação de SKU
+ * - Estrutura de argumento em 4 passos
+ * - Tática de bonificação ou substituição adaptada
+ */
+function getContextoCrossSell(params: {
+    segmento: string;
+    comprador: string;
+    nomeComercial: string;
+    marca: string;
+    segmentLabel: string;
+    recebeBonificacao: boolean;
+    motivo: string; // 'nunca comprou' | 'parou de comprar há 6+ meses' | 'alto giro global'
+}): string {
+    const { segmento, comprador, nomeComercial, marca, segmentLabel, recebeBonificacao, motivo } = params;
+    const isAtacado = segmento === 'atacado' || segmento === 'avista';
+    const vocabControle = getControleVocabulario(segmento);
+
+    const propostaVolume = isAtacado
+        ? 'Vamos colocar 1 pallet no próximo pedido para testar o giro?'
+        : 'Vamos colocar algumas caixas no próximo pedido para testar a saída na gôndola?';
+
+    const taticaBonificacao = recebeBonificacao
+        ? `\nTÁTICA EXTRA — RISCO FINANCIADO: Você pode oferecer caixas bonificadas de Vinagre de Álcool 750ml como financiador do risco. O lucro do Vinagre bonificado cobre a entrada do lote teste. O cliente testa com risco ZERO.`
+        : '';
+
+    return `${vocabControle}
+
+REGRA DE LIMPEZA VISUAL (INEGOCIÁVEL):
+Ao mencionar o produto, NUNCA repita a string técnica de nota fiscal (ex: 'VINAGRE DE ALCOOL - 2 LITROS 5%') nem fragmentos sem sentido (ex: 'a 2 litros 5%').
+Transforme SEMPRE em um termo comercial natural. Use a categoria + embalagem ou a marca.
+Exemplos corretos: 'o galão de 2 litros', 'o vinagre de álcool de 2 litros', 'a linha de 2 litros da ${marca}'.
+O nome comercial para usar nesta mensagem é: "${nomeComercial}".
+
+ESTRUTURA OBRIGATÓRIA DA MENSAGEM (4 passos):
+1. Cumprimento rápido e informal usando o nome: ${comprador}.
+2. "Identifiquei que você tem um ótimo ${isAtacado ? 'giro de estoque' : 'movimento no ponto de venda'} com a nossa linha, mas ainda não trabalha com ${nomeComercial}."
+3. Motivo: "${motivo}. Outros ${isAtacado ? 'distribuidores' : 'parceiros'} do mesmo perfil (${segmentLabel}) estão tendo excelente ${isAtacado ? 'margem de revenda e giro' : 'saída na gôndola e ticket médio'} com ele."
+4. Proposta: "${propostaVolume}"
+${taticaBonificacao}
+
+Escreva a mensagem seguindo esta estrutura. Tom comercial direto, sem enrolação. Máximo 3 parágrafos curtos.
+NÃO use markdown, asteriscos ou formatação. Texto puro de WhatsApp.
+Escreva APENAS a mensagem final, sem explicações.`;
 }
 
 export async function GET() {
@@ -194,7 +263,6 @@ export async function GET() {
             // Determine if client has a history of receiving bonifications
             const recebeBonificacao = client.pedidos.some(p => p.tipo === 'Bonificacao')
             const clientSegmentForVocab = client.tabelaPreco || '50a199'
-            const vocab = getVocabularioSegmento(clientSegmentForVocab)
             const isAtacado = clientSegmentForVocab === 'atacado' || clientSegmentForVocab === 'avista'
 
             // ==========================================================
@@ -256,7 +324,7 @@ export async function GET() {
                         if (!prod) continue
 
                         const marca = extrairMarca(prod.nome)
-                        const tatica = getTaticaCrossSell(clientSegmentForVocab, recebeBonificacao, marca, greetingName)
+                        const nomeComercial = formatarNomeComercial(prod.nome)
 
                         opportunities.push({
                             type: 'crossSell',
@@ -265,10 +333,18 @@ export async function GET() {
                             clienteTelefone: phone,
                             description: isAtacado
                                 ? `Oportunidade: Introduzir ${marca} para aumentar o giro e a margem de revenda no estoque.`
-                                : `Oportunidade: Introduzir ${marca} para elevar o ${vocab.argVenda}. Foco em ${vocab.argResultado}.`,
+                                : `Oportunidade: Introduzir ${marca} para completar o mix na gôndola e elevar o ticket médio.`,
                             priority: 'alta',
                             actionLabel: 'Oferecer Produto',
-                            contextoParaIA: `Atue como um vendedor experiente proativo. REGRA: NUNCA cite descrições técnicas de nota fiscal (ex: 'VINAGRE DE MACA 750ML'). Fale apenas o nome da marca de forma natural. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Você quer introduzir a marca ${marca} (alta saída entre clientes de ${segmentLabel}). Analise o histórico: identifique categorias da ${marca} que o cliente NÃO compra e argumente o PORQUÊ de adicionar esse item usando vocabulário de ${isAtacado ? 'distribuição (giro, pallet, volume, estoque, margem de revenda)' : 'varejo (ponto de venda, gôndola, mix, ruptura, ticket médio)'}. ${tatica}`
+                            contextoParaIA: getContextoCrossSell({
+                                segmento: clientSegmentForVocab,
+                                comprador: greetingName,
+                                nomeComercial,
+                                marca,
+                                segmentLabel,
+                                recebeBonificacao,
+                                motivo: `Este cliente nunca comprou ${nomeComercial}, mas é um dos itens de maior saída entre clientes de ${segmentLabel}`
+                            })
                         })
 
                         globalSuggestedProducts.add(prodId)
@@ -288,7 +364,7 @@ export async function GET() {
                             if (!prod) continue
 
                             const marcaFallback = extrairMarca(prod.nome)
-                            const taticaFallback = getTaticaCrossSell(clientSegmentForVocab, recebeBonificacao, marcaFallback, greetingName)
+                            const nomeComercialFb = formatarNomeComercial(prod.nome)
 
                             opportunities.push({
                                 type: 'crossSell',
@@ -297,10 +373,18 @@ export async function GET() {
                                 clienteTelefone: phone,
                                 description: isAtacado
                                     ? `Oportunidade: Reintroduzir ${marcaFallback} no estoque — alto giro entre distribuidores do mesmo porte.`
-                                    : `Oportunidade: Reintroduzir ${marcaFallback} na ${vocab.termoLocal} — foco em ${vocab.argResultado}.`,
+                                    : `Oportunidade: Reintroduzir ${marcaFallback} na gôndola — foco em rentabilidade e evitar ruptura.`,
                                 priority: 'media',
                                 actionLabel: 'Oferecer Produto',
-                                contextoParaIA: `Atue como um vendedor experiente proativo. REGRA: NUNCA cite descrições técnicas de nota fiscal. Fale apenas o nome da marca. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Você quer reintroduzir a marca ${marcaFallback} (popular entre clientes de ${segmentLabel}, faz +6 meses que este não compra). Argumente usando vocabulário de ${isAtacado ? 'distribuição (giro, pallet, volume, margem de revenda)' : 'varejo (gôndola, ponto de venda, mix, ticket médio)'}. ${taticaFallback}`
+                                contextoParaIA: getContextoCrossSell({
+                                    segmento: clientSegmentForVocab,
+                                    comprador: greetingName,
+                                    nomeComercial: nomeComercialFb,
+                                    marca: marcaFallback,
+                                    segmentLabel,
+                                    recebeBonificacao,
+                                    motivo: `O cliente já comprou ${nomeComercialFb} mas parou há mais de 6 meses. É popular entre clientes de ${segmentLabel}`
+                                })
                             })
 
                             globalSuggestedProducts.add(prodId)
@@ -318,7 +402,7 @@ export async function GET() {
                             if (!prod) continue
 
                             const marcaGlobal = extrairMarca(prod.nome)
-                            const taticaGlobal = getTaticaCrossSell(clientSegmentForVocab, recebeBonificacao, marcaGlobal, greetingName)
+                            const nomeComercialGlob = formatarNomeComercial(prod.nome)
 
                             opportunities.push({
                                 type: 'crossSell',
@@ -327,10 +411,18 @@ export async function GET() {
                                 clienteTelefone: phone,
                                 description: isAtacado
                                     ? `Oportunidade: ${marcaGlobal} tem alto giro no mercado — cliente nunca experimentou no estoque.`
-                                    : `Oportunidade: ${marcaGlobal} é um dos itens de maior giro — cliente nunca teve na ${vocab.termoLocal}.`,
+                                    : `Oportunidade: ${marcaGlobal} é um dos itens de maior giro — cliente nunca teve na gôndola.`,
                                 priority: 'baixa',
                                 actionLabel: 'Oferecer Produto',
-                                contextoParaIA: `Atue como um vendedor experiente proativo. REGRA: NUNCA cite descrições técnicas de nota fiscal. Fale apenas o nome da marca. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Você quer introduzir a marca ${marcaGlobal} (um dos itens de maior giro no mercado, cliente nunca experimentou). Argumente usando vocabulário de ${isAtacado ? 'distribuição (giro, volume, pallet, margem de revenda)' : 'varejo (gôndola, ponto de venda, mix, ticket médio)'}. ${taticaGlobal}`
+                                contextoParaIA: getContextoCrossSell({
+                                    segmento: clientSegmentForVocab,
+                                    comprador: greetingName,
+                                    nomeComercial: nomeComercialGlob,
+                                    marca: marcaGlobal,
+                                    segmentLabel,
+                                    recebeBonificacao,
+                                    motivo: `${nomeComercialGlob} é um dos itens de maior giro no mercado e o cliente nunca experimentou`
+                                })
                             })
 
                             globalSuggestedProducts.add(stat.produtoId)
