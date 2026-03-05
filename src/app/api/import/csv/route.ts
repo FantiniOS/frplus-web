@@ -14,15 +14,16 @@ export async function POST(req: NextRequest) {
 
         const formData = await req.formData();
         const file = formData.get('file') as File;
+        const fabricaId = formData.get('fabricaId') as string;
 
-        if (!file) {
-            return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+        if (!file || !fabricaId) {
+            return NextResponse.json({ error: 'Missing file or fabricaId' }, { status: 400 });
         }
 
-        console.log('[CSV Import] File received:', file.name, 'Size:', file.size, 'bytes');
+        console.log(`[CSV Import] File: ${file.name} | Size: ${file.size} bytes | FabricaId: ${fabricaId}`);
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const stats = await importSalesCsv(buffer);
+        const stats = await importSalesCsv(buffer, fabricaId);
 
         console.log('[CSV Import] Success:', JSON.stringify(stats));
         return NextResponse.json({ success: true, stats });

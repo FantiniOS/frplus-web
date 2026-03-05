@@ -42,17 +42,19 @@ export default function ConfiguracoesPage() {
 
     // Import State
     const [importFile, setImportFile] = useState<File | null>(null);
+    const [selectedFabricaId, setSelectedFabricaId] = useState<string>("");
     const [isImporting, setIsImporting] = useState(false);
     const [importStats, setImportStats] = useState<any>(null);
 
     const handleImport = async () => {
-        if (!importFile) return;
+        if (!importFile || !selectedFabricaId) return;
 
         setIsImporting(true);
         setImportStats(null);
 
         const formData = new FormData();
         formData.append('file', importFile);
+        formData.append('fabricaId', selectedFabricaId);
 
         try {
             const res = await fetch('/api/import/csv', {
@@ -294,7 +296,24 @@ export default function ConfiguracoesPage() {
                     </div>
                 </div>
 
-                <div className="bg-black/20 rounded-lg p-4 border border-white/5">
+                <div className="bg-black/20 rounded-lg p-4 border border-white/5 space-y-4">
+                    {/* Factory Selection */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-300">Vincular Importação à Representada (Obrigatório)</label>
+                        <select
+                            value={selectedFabricaId}
+                            onChange={(e) => setSelectedFabricaId(e.target.value)}
+                            className="w-full rounded-lg bg-black/40 border border-white/10 p-2.5 text-white focus:border-emerald-500 focus:outline-none disabled:opacity-50 appearance-none cursor-pointer"
+                        >
+                            <option value="" disabled>Selecione a Representada...</option>
+                            {fabricas.map(fab => (
+                                <option key={fab.id} value={fab.id}>
+                                    {fab.nome}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                         <input
                             type="file"
@@ -310,7 +329,7 @@ export default function ConfiguracoesPage() {
                         />
                         <button
                             onClick={handleImport}
-                            disabled={!importFile || isImporting}
+                            disabled={!importFile || !selectedFabricaId || isImporting}
                             className="shrink-0 flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isImporting ? (

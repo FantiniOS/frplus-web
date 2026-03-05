@@ -52,7 +52,7 @@ const parseDate = (dateStr: string) => {
     }
 }
 
-export async function importSalesCsv(fileBuffer: Buffer) {
+export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string) {
     const results: any[] = [];
     const stream = Readable.from(fileBuffer);
 
@@ -84,11 +84,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                         errors: [] as string[]
                     };
 
-                    // Pre-fetch or ensure Default Factory exists
-                    let defaultFactory = await prisma.fabrica.findFirst({ where: { nome: 'Importação' } });
-                    if (!defaultFactory) {
-                        defaultFactory = await prisma.fabrica.create({ data: { nome: 'Importação' } });
-                    }
+                    // Removed dummy 'Importação' logic
 
                     // --- 1. Distinct Clients ---
                     const clientsMap = new Map<string, any>();
@@ -164,7 +160,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                     data: {
                                         codigo: p.code,
                                         nome: p.name,
-                                        fabricaId: defaultFactory!.id,
+                                        fabricaId: targetFabricaId,
                                         precoAtacado: p.price,
                                         preco50a199: p.price,
                                         preco200a699: p.price,
@@ -220,18 +216,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                             condPagto = 'BONIFICACAO';
                         }
 
-                        // Calculate fabricaId based on the first recognized item
-                        let orderFabricaId = undefined;
-                        if (rows.length > 0) {
-                            for (const row of rows) {
-                                const prodCode = row['Produto'];
-                                const product = productByCode.get(prodCode);
-                                if (product && product.fabricaId && product.fabricaId !== defaultFactory!.id) {
-                                    orderFabricaId = product.fabricaId;
-                                    break;
-                                }
-                            }
-                        }
+                        // Factory is directly chosen by UI
 
                         updatePromises.push(
                             prisma.pedido.update({
@@ -241,7 +226,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                     condicaoPagamento: condPagto,
                                     tipo: tipoPedido,
                                     data: parseDate(firstRow['DT_Emissao']),
-                                    ...(orderFabricaId && { fabricaId: orderFabricaId }),
+                                    fabricaId: targetFabricaId,
                                 }
                             }).then(() => { stats.ordersUpdated++; })
                                 .catch((e) => { stats.errors.push(`Erro ao atualizar Pedido ${orderNum}: ${e}`); })
@@ -275,16 +260,12 @@ export async function importSalesCsv(fileBuffer: Buffer) {
 
                         const itemsData = [];
                         let totalOrder = 0;
-                        let orderFabricaId = undefined;
 
                         for (const row of rows) {
                             const prodCode = row['Produto'];
                             const product = productByCode.get(prodCode);
 
                             if (product) {
-                                if (!orderFabricaId && product.fabricaId && product.fabricaId !== defaultFactory!.id) {
-                                    orderFabricaId = product.fabricaId;
-                                }
                                 const qty = parseFloat(row['Quantidade'].replace(',', '.')) || 0;
                                 let unitPrice = parseBrlFloat(row['Prc_Unitario']);
 
@@ -310,7 +291,7 @@ export async function importSalesCsv(fileBuffer: Buffer) {
                                     data: {
                                         id: orderNum,
                                         clienteId: clientId,
-                                        fabricaId: orderFabricaId || defaultFactory!.id,
+                                        fabricaId: targetFabricaId,
                                         status: 'Concluido',
                                         tipo: tipoPedido,
                                         valorTotal: totalOrder,
