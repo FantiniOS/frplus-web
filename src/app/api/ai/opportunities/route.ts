@@ -5,6 +5,69 @@ import { getServerUser } from '@/lib/getServerUser'
 // GET /api/ai/opportunities - Get sales opportunities
 export const dynamic = 'force-dynamic'
 
+// ============================================================
+// HELPERS
+// ============================================================
+
+/**
+ * Extrai APENAS o nome da Marca/Representada de uma string de produto.
+ * Ex: 'VINAGRE DE MACA 750ML - BELMONT' → 'Belmont'
+ * Se houver traço separador, pega o trecho após o último traço.
+ * Senão, retorna a última palavra como fallback.
+ */
+function extrairMarca(produtoNome: string): string {
+    if (!produtoNome || produtoNome.trim() === '') return '';
+    if (produtoNome.includes(' - ')) {
+        const partes = produtoNome.split(' - ');
+        const marca = partes[partes.length - 1].trim();
+        return marca.charAt(0).toUpperCase() + marca.slice(1).toLowerCase();
+    }
+    const tokens = produtoNome.trim().split(/\s+/);
+    const ultima = tokens[tokens.length - 1];
+    return ultima.charAt(0).toUpperCase() + ultima.slice(1).toLowerCase();
+}
+
+/** Retorna vocabulário de negócio adaptado ao segmento do cliente. */
+function getVocabularioSegmento(segmento: string): {
+    argVenda: string;
+    argEspaco: string;
+    argResultado: string;
+    termoLocal: string;
+} {
+    const isAtacado = segmento === 'atacado' || segmento === 'avista';
+    if (isAtacado) {
+        return {
+            argVenda: 'giro e volume na sua malha de clientes',
+            argEspaco: 'espaço no estoque e no pallet',
+            argResultado: 'margem de revenda e rentabilidade por caixa',
+            termoLocal: 'estoque'
+        };
+    }
+    // Varejo: redes, 50a199, 200a699
+    return {
+        argVenda: 'mix completo no ponto de venda e ticket médio',
+        argEspaco: 'espaço na gôndola',
+        argResultado: 'rentabilidade por metro de prateleira e evitar ruptura',
+        termoLocal: 'gôndola'
+    };
+}
+
+/** Gera a tática de cross-sell adaptada ao segmento. */
+function getTaticaCrossSell(segmento: string, recebeBonificacao: boolean, marcaFoco: string, comprador: string): string {
+    const isAtacado = segmento === 'atacado' || segmento === 'avista';
+    const vocab = getVocabularioSegmento(segmento);
+
+    if (recebeBonificacao) {
+        return `Use a ESTRATÉGIA DE RISCO FINANCIADO: ofereça caixas bonificadas de Vinagre de Álcool 750ml (giro garantido, 100% de lucro) como financiador do risco. Proponha que o lucro do Vinagre 750ml bonificado cubra a entrada de um lote teste da ${marcaFoco}, assim o cliente testa com risco financeiro ZERO. Seja direto, comercial e fale de ${vocab.argResultado}.`;
+    }
+
+    if (isAtacado) {
+        return `Use a ESTRATÉGIA DE VOLUME: o cliente é ATACADO — NÃO tem gôndola, tem estoque e pallet. PROIBIDO usar as palavras 'gôndola', 'prateleira', 'consumidor final' ou 'supermercado'. A TÁTICA: mostre que a ${marcaFoco} tem alto giro entre os varejistas da região e que adicionar ao estoque dele vai abastecer a malha de clientes dele com um item de margem de revenda comprovada. Proponha um lote teste com volume mínimo para avaliação de giro. Fale de volume, margem de revenda e demanda dos varejistas da região.`;
+    }
+
+    return `Use a ESTRATÉGIA DE OTIMIZAÇÃO DE GÔNDOLA: o cliente é VAREJO. A TÁTICA: peça para ele substituir o espaço de um produto da concorrência que gira mal na gôndola e colocar a ${marcaFoco} no lugar para um teste de rentabilidade de 30 dias no ponto de venda. Fale de ${vocab.argResultado}.`;
+}
+
 export async function GET() {
     try {
         const user = await getServerUser();
@@ -130,9 +193,9 @@ export async function GET() {
 
             // Determine if client has a history of receiving bonifications
             const recebeBonificacao = client.pedidos.some(p => p.tipo === 'Bonificacao')
-            const taticasCrossSell = recebeBonificacao
-                ? "Use a ESTRATÉGIA DE RISCO FINANCIADO: você quer introduzir este produto, mas o comprador resiste a itens novos. A TÁTICA: ofereça caixas bonificadas de Vinagre de Álcool 750ml (giro garantido, 100% de lucro) como financiador do risco. Proponha que o lucro do Vinagre 750ml bonificado cubra a entrada de um lote teste, assim o cliente testa com risco financeiro ZERO. Seja direto, comercial e fale de rentabilidade."
-                : "Use a ESTRATÉGIA DE OTIMIZAÇÃO DE CENTÍMETRO QUADRADO: o cliente NÃO tem verba/bonificação e não tem espaço físico na gôndola. A TÁTICA: peça para ele substituir o espaço de um produto da concorrência que gira mal. Não peça cadastro novo. Peça para ele reduzir 1 frente do concorrente de baixo giro e colocar o seu produto no lugar para um teste de margem/rentabilidade de 30 dias. Seja incisivo, diga que quer ajudar a rentabilizar aquele espaço morto na prateleira."
+            const clientSegmentForVocab = client.tabelaPreco || '50a199'
+            const vocab = getVocabularioSegmento(clientSegmentForVocab)
+            const isAtacado = clientSegmentForVocab === 'atacado' || clientSegmentForVocab === 'avista'
 
             // ==========================================================
             // --- CROSS-SELL: Perfil do Cliente / Segmentação ---
@@ -192,15 +255,20 @@ export async function GET() {
                         const prod = productMap.get(prodId)
                         if (!prod) continue
 
+                        const marca = extrairMarca(prod.nome)
+                        const tatica = getTaticaCrossSell(clientSegmentForVocab, recebeBonificacao, marca, greetingName)
+
                         opportunities.push({
                             type: 'crossSell',
                             clienteId: client.id,
                             clienteNome: client.nomeFantasia,
                             clienteTelefone: phone,
-                            description: `Oportunidade Estratégica: Introduzir "${prod.nome}" para elevar o ticket médio. Foco em rentabilidade para o cliente através da substituição de concorrentes de baixo giro na gôndola.`,
+                            description: isAtacado
+                                ? `Oportunidade: Introduzir ${marca} para aumentar o giro e a margem de revenda no estoque.`
+                                : `Oportunidade: Introduzir ${marca} para elevar o ${vocab.argVenda}. Foco em ${vocab.argResultado}.`,
                             priority: 'alta',
                             actionLabel: 'Oferecer Produto',
-                            contextoParaIA: `Atue como um vendedor experiente proativo. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Você quer introduzir "${prod.nome}" (alta saída entre clientes de ${segmentLabel}). ${taticasCrossSell}`
+                            contextoParaIA: `Atue como um vendedor experiente proativo. REGRA: NUNCA cite descrições técnicas de nota fiscal (ex: 'VINAGRE DE MACA 750ML'). Fale apenas o nome da marca de forma natural. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Você quer introduzir a marca ${marca} (alta saída entre clientes de ${segmentLabel}). Analise o histórico: identifique categorias da ${marca} que o cliente NÃO compra e argumente o PORQUÊ de adicionar esse item usando vocabulário de ${isAtacado ? 'distribuição (giro, pallet, volume, estoque, margem de revenda)' : 'varejo (ponto de venda, gôndola, mix, ruptura, ticket médio)'}. ${tatica}`
                         })
 
                         globalSuggestedProducts.add(prodId)
@@ -219,15 +287,20 @@ export async function GET() {
                             const prod = productMap.get(prodId)
                             if (!prod) continue
 
+                            const marcaFallback = extrairMarca(prod.nome)
+                            const taticaFallback = getTaticaCrossSell(clientSegmentForVocab, recebeBonificacao, marcaFallback, greetingName)
+
                             opportunities.push({
                                 type: 'crossSell',
                                 clienteId: client.id,
                                 clienteNome: client.nomeFantasia,
                                 clienteTelefone: phone,
-                                description: `Oportunidade Estratégica: Introduzir "${prod.nome}" para elevar o ticket médio. Foco em rentabilidade para o cliente através da substituição de concorrentes de baixo giro na gôndola.`,
+                                description: isAtacado
+                                    ? `Oportunidade: Reintroduzir ${marcaFallback} no estoque — alto giro entre distribuidores do mesmo porte.`
+                                    : `Oportunidade: Reintroduzir ${marcaFallback} na ${vocab.termoLocal} — foco em ${vocab.argResultado}.`,
                                 priority: 'media',
                                 actionLabel: 'Oferecer Produto',
-                                contextoParaIA: `Atue como um vendedor experiente proativo. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Você quer reintroduzir "${prod.nome}" (popular entre clientes de ${segmentLabel}, faz +6 meses que este não compra). ${taticasCrossSell}`
+                                contextoParaIA: `Atue como um vendedor experiente proativo. REGRA: NUNCA cite descrições técnicas de nota fiscal. Fale apenas o nome da marca. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Você quer reintroduzir a marca ${marcaFallback} (popular entre clientes de ${segmentLabel}, faz +6 meses que este não compra). Argumente usando vocabulário de ${isAtacado ? 'distribuição (giro, pallet, volume, margem de revenda)' : 'varejo (gôndola, ponto de venda, mix, ticket médio)'}. ${taticaFallback}`
                             })
 
                             globalSuggestedProducts.add(prodId)
@@ -244,15 +317,20 @@ export async function GET() {
                             const prod = productMap.get(stat.produtoId)
                             if (!prod) continue
 
+                            const marcaGlobal = extrairMarca(prod.nome)
+                            const taticaGlobal = getTaticaCrossSell(clientSegmentForVocab, recebeBonificacao, marcaGlobal, greetingName)
+
                             opportunities.push({
                                 type: 'crossSell',
                                 clienteId: client.id,
                                 clienteNome: client.nomeFantasia,
                                 clienteTelefone: phone,
-                                description: `Oportunidade Estratégica: Introduzir "${prod.nome}" para elevar o ticket médio. Foco em rentabilidade para o cliente através da substituição de concorrentes de baixo giro na gôndola.`,
+                                description: isAtacado
+                                    ? `Oportunidade: ${marcaGlobal} tem alto giro no mercado — cliente nunca experimentou no estoque.`
+                                    : `Oportunidade: ${marcaGlobal} é um dos itens de maior giro — cliente nunca teve na ${vocab.termoLocal}.`,
                                 priority: 'baixa',
                                 actionLabel: 'Oferecer Produto',
-                                contextoParaIA: `Atue como um vendedor experiente proativo. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Você quer introduzir "${prod.nome}" (um dos itens de maior giro no mercado, cliente nunca experimentou). ${taticasCrossSell}`
+                                contextoParaIA: `Atue como um vendedor experiente proativo. REGRA: NUNCA cite descrições técnicas de nota fiscal. Fale apenas o nome da marca. Escreva uma mensagem persuasiva de WhatsApp para o cliente ${greetingName}. Você quer introduzir a marca ${marcaGlobal} (um dos itens de maior giro no mercado, cliente nunca experimentou). Argumente usando vocabulário de ${isAtacado ? 'distribuição (giro, volume, pallet, margem de revenda)' : 'varejo (gôndola, ponto de venda, mix, ticket médio)'}. ${taticaGlobal}`
                             })
 
                             globalSuggestedProducts.add(stat.produtoId)
