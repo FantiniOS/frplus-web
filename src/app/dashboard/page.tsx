@@ -130,8 +130,15 @@ export default function DashboardPage() {
     itensFabricas: o.itens?.map(i => produtoFabricaMap.get(i.produtoId)),
     comissaoCalculada: (() => {
       let fabId = o.fabricaId;
-      if (!fabId && o.itens?.length > 0) {
-        fabId = produtoFabricaMap.get(o.itens[0].produtoId) || undefined;
+      const isImportacao = fabId && fabricas.find(f => f.id === fabId)?.nome === 'Importação';
+
+      if ((!fabId || isImportacao) && o.itens?.length > 0) {
+        const validItemFabId = o.itens
+          .map(i => produtoFabricaMap.get(i.produtoId))
+          .find(id => id && fabricas.find(f => f.id === id)?.nome !== 'Importação');
+        if (validItemFabId) {
+          fabId = validItemFabId;
+        }
       }
       const taxa = (taxaMap.get(fabId || '') || 0) / 100;
       return o.valorTotal * taxa;
@@ -142,15 +149,27 @@ export default function DashboardPage() {
     monthlyOrders
       .filter(o => o.tipo !== 'Bonificacao')
       .reduce((acc, pedido) => {
-        // Tenta fabricaId do pedido; se null, busca pela fabricaId do primeiro item
         let fabId = pedido.fabricaId;
-        if (!fabId && pedido.itens?.length > 0) {
-          fabId = produtoFabricaMap.get(pedido.itens[0].produtoId) || undefined;
+
+        // Se a fábrica do pedido for a padrão de 'Importação', forçamos o fallback para os itens
+        // pois a importação tem taxa 0, e queremos a taxa real do produto caso já tenha sido vinculada.
+        const isImportacao = fabId && fabricas.find(f => f.id === fabId)?.nome === 'Importação';
+
+        if ((!fabId || isImportacao) && pedido.itens?.length > 0) {
+          // Busca a primeira fábrica válida mapiada nos produtos
+          const validItemFabId = pedido.itens
+            .map(i => produtoFabricaMap.get(i.produtoId))
+            .find(id => id && fabricas.find(f => f.id === id)?.nome !== 'Importação');
+
+          if (validItemFabId) {
+            fabId = validItemFabId;
+          }
         }
+
         const taxa = (taxaMap.get(fabId || '') || 0) / 100;
         return acc + pedido.valorTotal * taxa;
       }, 0),
-    [monthlyOrders, taxaMap, produtoFabricaMap]
+    [monthlyOrders, taxaMap, produtoFabricaMap, fabricas]
   );
 
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
