@@ -14,96 +14,113 @@ export async function GET(request: Request) {
 
         const { searchParams } = new URL(request.url)
         const clienteId = searchParams.get('clienteId')
-        const dataInicio = searchParams.get('dataInicio')
-        const dataFim = searchParams.get('dataFim')
+        const dataInicioRaw = searchParams.get('dataInicio')
+        const dataFimRaw = searchParams.get('dataFim')
 
         if (!clienteId) {
             return NextResponse.json({ error: 'Cliente ID é obrigatório' }, { status: 400 })
         }
 
-        // Base where clause for Pedido
+        // ====== SAFE DATE PARSING ======
+        let dataInicio: Date | undefined
+        let dataFim: Date | undefined
+
+        if (dataInicioRaw) {
+            dataInicio = new Date(dataInicioRaw)
+            if (isNaN(dataInicio.getTime())) dataInicio = undefined
+        }
+        if (dataFimRaw) {
+            dataFim = new Date(dataFimRaw)
+            if (isNaN(dataFim.getTime())) dataFim = undefined
+        }
+
+        // ====== BUILD PEDIDO WHERE ======
         const pedidoWhere: any = {
-            clienteId: clienteId,
+            clienteId,
             status: {
-                in: ['Concluido', 'Faturado'] // Only count actual sales
+                in: ['Concluido', 'Faturado', 'concluido', 'faturado']
             }
         }
 
         if (dataInicio && dataFim) {
-            pedidoWhere.dataEmissao = { // Adjusted to standard field, but will check schema soon
-                gte: new Date(dataInicio),
-                lte: new Date(dataFim)
-            }
+            pedidoWhere.data = { gte: dataInicio, lte: dataFim }
         } else if (dataInicio) {
-            pedidoWhere.dataEmissao = { gte: new Date(dataInicio) }
+            pedidoWhere.data = { gte: dataInicio }
         } else if (dataFim) {
-            pedidoWhere.dataEmissao = { lte: new Date(dataFim) }
+            pedidoWhere.data = { lte: dataFim }
         }
 
-        // Fetch items and group by product
-        const itemsGrouped = await prisma.itemPedido.groupBy({
-            by: ['produtoId'],
+        // ====== FINDMANY + INCLUDE (no groupBy) ======
+        const items = await prisma.itemPedido.findMany({
             where: {
                 pedido: pedidoWhere
             },
-            _sum: {
-                quantidade: true,
-                total: true
-            },
-            orderBy: {
-                _sum: {
-                    quantidade: 'desc'
+            include: {
+                produto: {
+                    select: {
+                        id: true,
+                        nome: true,
+                        fabricaId: true,
+                        fabrica: {
+                            select: { nome: true }
+                        }
+                    }
                 }
             }
         })
 
-        // Ensure we have results
-        if (!itemsGrouped || itemsGrouped.length === 0) {
+        if (!items || items.length === 0) {
             return NextResponse.json({
                 data: [],
                 summary: { totalCaixas: 0, totalFaturado: 0 }
             })
         }
 
-        // Compute total volume for ABC logic
+        // ====== IN-MEMORY AGGREGATION (.reduce) ======
+        const grouped = items.reduce((acc, item) => {
+            const pid = item.produtoId
+            if (!acc[pid]) {
+                acc[pid] = {
+                    produtoId: pid,
+                    nomeProduto: item.produto?.nome || 'Produto Desconhecido',
+                    marca: item.produto?.fabrica?.nome || '',
+                    quantidade: 0,
+                    valorTotal: 0
+                }
+            }
+            acc[pid].quantidade += item.quantidade
+            acc[pid].valorTotal += Number(item.total || 0)
+            return acc
+        }, {} as Record<string, { produtoId: string; nomeProduto: string; marca: string; quantidade: number; valorTotal: number }>)
+
+        // ====== SORT BY VOLUME DESC ======
+        const sorted = Object.values(grouped).sort((a, b) => b.quantidade - a.quantidade)
+
+        // ====== TOTALS ======
         let totalCaixas = 0
         let totalFaturado = 0
-        itemsGrouped.forEach(item => {
-            totalCaixas += item._sum.quantidade || 0
-            totalFaturado += Number(item._sum.total || 0)
+        sorted.forEach(item => {
+            totalCaixas += item.quantidade
+            totalFaturado += item.valorTotal
         })
 
-        // Fetch product names for the grouped list
-        const productIds = itemsGrouped.map(item => item.produtoId)
-        const products = await prisma.produto.findMany({
-            where: { id: { in: productIds } },
-            select: { id: true, nome: true }
-        })
-
-        const productMap = new Map()
-        products.forEach(p => productMap.set(p.id, p))
-
-        // Assign ABC tags based on cumulative volume % (80-15-5 rule standard)
+        // ====== ABC CLASSIFICATION (80-15-5) ======
         let accumulatedVolume = 0
-        const result = itemsGrouped.map((item, index) => {
-            const qty = item._sum.quantidade || 0
-            const value = Number(item._sum.total || 0)
-            accumulatedVolume += qty
+        const result = sorted.map((item, index) => {
+            accumulatedVolume += item.quantidade
             const percent = (accumulatedVolume / totalCaixas) * 100
 
             let curvaTag = 'C'
             if (percent <= 80) curvaTag = 'A'
             else if (percent <= 95) curvaTag = 'B'
 
-            const prd = productMap.get(item.produtoId)
-
             return {
                 posicao: index + 1,
                 produtoId: item.produtoId,
-                nomeProduto: prd ? prd.nome : 'Produto Desconhecido',
-                marca: '',
-                quantidade: qty,
-                valorTotal: value,
+                nomeProduto: item.nomeProduto,
+                marca: item.marca,
+                quantidade: item.quantidade,
+                valorTotal: item.valorTotal,
                 curva: curvaTag
             }
         })
@@ -117,7 +134,8 @@ export async function GET(request: Request) {
         })
 
     } catch (error: any) {
-        console.error('Curva ABC Error:', error)
-        return NextResponse.json({ error: 'Erro ao gerar Curva ABC' }, { status: 500 })
+        console.error('Curva ABC Error:', error?.message || error)
+        console.error('Curva ABC Stack:', error?.stack)
+        return NextResponse.json({ error: 'Erro ao gerar Curva ABC', details: error?.message }, { status: 500 })
     }
 }
