@@ -393,7 +393,7 @@ export default function CurvaABCPage() {
                             ) : (
                                 <Search className="h-4 w-4" />
                             )}
-                            Gerar Análise Volumétrica
+                            Gerar Análise Financeira
                         </button>
                     </div>
                 </div>
@@ -409,7 +409,7 @@ export default function CurvaABCPage() {
                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                                 <Package className="h-16 w-16" />
                             </div>
-                            <p className="text-sm font-medium text-indigo-300">Volume Total Escoado (Curva Principal)</p>
+                            <p className="text-sm font-medium text-indigo-300">Volume Total Escoado</p>
                             <h3 className="mt-2 text-3xl font-bold text-white tracking-tight">
                                 {summary.totalCaixas.toLocaleString('pt-BR')} <span className="text-lg text-gray-400 font-normal">unid.</span>
                             </h3>
@@ -419,7 +419,7 @@ export default function CurvaABCPage() {
                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                                 <DollarSign className="h-16 w-16" />
                             </div>
-                            <p className="text-sm font-medium text-emerald-300">Faturamento Global do Período</p>
+                            <p className="text-sm font-medium text-emerald-300">Faturamento Global (Curva Principal)</p>
                             <h3 className="mt-2 text-3xl font-bold text-white tracking-tight">
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.totalFaturado)}
                             </h3>
@@ -457,10 +457,10 @@ export default function CurvaABCPage() {
                                                     Curva {item.curva}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right text-emerald-400 font-semibold">
+                                            <td className="px-6 py-4 text-right text-gray-400">
                                                 {item.quantidade.toLocaleString('pt-BR')} <span className="text-xs text-gray-500 font-normal">cx/un</span>
                                             </td>
-                                            <td className="px-6 py-4 text-right text-gray-300">
+                                            <td className="px-6 py-4 text-right text-emerald-400 font-bold text-base">
                                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valorTotal)}
                                             </td>
                                         </tr>

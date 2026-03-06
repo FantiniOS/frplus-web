@@ -93,8 +93,8 @@ export async function GET(request: Request) {
             return acc
         }, {} as Record<string, { produtoId: string; nomeProduto: string; marca: string; quantidade: number; valorTotal: number }>)
 
-        // ====== SORT BY VOLUME DESC ======
-        const sorted = Object.values(grouped).sort((a, b) => b.quantidade - a.quantidade)
+        // ====== SORT BY REVENUE DESC (Financial Ranking) ======
+        const sorted = Object.values(grouped).sort((a, b) => b.valorTotal - a.valorTotal)
 
         // ====== TOTALS ======
         let totalCaixas = 0
@@ -104,11 +104,11 @@ export async function GET(request: Request) {
             totalFaturado += item.valorTotal
         })
 
-        // ====== ABC CLASSIFICATION (80-15-5) ======
-        let accumulatedVolume = 0
+        // ====== ABC CLASSIFICATION — FINANCIAL (80-15-5 on Revenue) ======
+        let accumulatedRevenue = 0
         const result = sorted.map((item, index) => {
-            accumulatedVolume += item.quantidade
-            const percent = (accumulatedVolume / totalCaixas) * 100
+            accumulatedRevenue += item.valorTotal
+            const percent = totalFaturado > 0 ? (accumulatedRevenue / totalFaturado) * 100 : 0
 
             let curvaTag = 'C'
             if (percent <= 80) curvaTag = 'A'
