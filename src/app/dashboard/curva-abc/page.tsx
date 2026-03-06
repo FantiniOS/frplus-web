@@ -11,7 +11,7 @@ import {
     Download
 } from "lucide-react";
 
-
+import { MonthSelector } from "@/components/ui/MonthSelector";
 import { buscarClientesParaSelect } from "./actions";
 
 interface Cliente {
@@ -38,8 +38,13 @@ interface CurvaSummary {
 export default function CurvaABCPage() {
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [selectedCliente, setSelectedCliente] = useState<string>('');
-    const [dataInicio, setDataInicio] = useState("");
-    const [dataFim, setDataFim] = useState("");
+
+    const now = new Date();
+    const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
+    });
 
     const [loading, setLoading] = useState(false);
     const [resultados, setResultados] = useState<CurvaItem[]>([]);
@@ -70,12 +75,17 @@ export default function CurvaABCPage() {
         try {
             const params = new URLSearchParams();
             params.append('clienteId', selectedCliente);
-            if (dataInicio) params.append('dataInicio', new Date(dataInicio).toISOString());
 
-            if (dataFim) {
-                const df = new Date(dataFim)
-                df.setHours(23, 59, 59, 999)
-                params.append('dataFim', df.toISOString());
+            if (selectedMonth) {
+                const [yearStr, monthStr] = selectedMonth.split('-');
+                const year = parseInt(yearStr);
+                const month = parseInt(monthStr) - 1; // JS months are 0-indexed
+
+                const startOfMonth = new Date(year, month, 1);
+                const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+                params.append('dataInicio', startOfMonth.toISOString());
+                params.append('dataFim', endOfMonth.toISOString());
             }
 
             const res = await fetch(`/api/curva-abc?${params.toString()}`);
@@ -139,28 +149,13 @@ export default function CurvaABCPage() {
                         </select>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="col-span-1 md:col-span-2 space-y-2">
                         <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Data Inicial
+                            Puxar referencial (Mês / Ano)
                         </label>
-                        <input
-                            type="date"
-                            className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 px-3 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            value={dataInicio}
-                            onChange={(e) => setDataInicio(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Data Final
-                        </label>
-                        <input
-                            type="date"
-                            className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 px-3 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            value={dataFim}
-                            onChange={(e) => setDataFim(e.target.value)}
-                        />
+                        <div>
+                            <MonthSelector value={selectedMonth} onChange={setSelectedMonth} />
+                        </div>
                     </div>
 
                     <div className="col-span-1 md:col-span-4 mt-2">
