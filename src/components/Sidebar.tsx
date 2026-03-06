@@ -14,7 +14,8 @@ import {
   Shield,
   Lightbulb,
   MessageCircle,
-  Wallet
+  Wallet,
+  Filter
 } from "lucide-react";
 import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,6 +49,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
         { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
         { icon: BarChart3, label: "Relatórios", href: "/dashboard/relatorios" },
+        { icon: Filter, label: "Curva ABC", href: "/dashboard/curva-abc" },
       ]
     },
   ];
