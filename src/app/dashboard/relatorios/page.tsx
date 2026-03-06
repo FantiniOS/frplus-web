@@ -225,17 +225,6 @@ export default function RelatoriosPage() {
 
                 // Company Name
                 const logoRenderedW = (logoData && logoResult) ? (19.5 * logoResult.width / logoResult.height) : 0;
-                const titleX = logoData ? margin.left + logoRenderedW + 6 : margin.left;
-                pageDoc.setTextColor(255, 255, 255);
-                pageDoc.setFontSize(18);
-                pageDoc.setFont('helvetica', 'bold');
-                pageDoc.text('FRPlus', titleX, 16);
-
-                // Company subtitle
-                pageDoc.setFontSize(7.5);
-                pageDoc.setFont('helvetica', 'normal');
-                pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
-                pageDoc.text('Gestão Comercial Inteligente', titleX, 21.5);
 
                 // Report title - right-aligned, bold
                 pageDoc.setFontSize(13);
