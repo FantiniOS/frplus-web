@@ -353,7 +353,7 @@ export default function CurvaABCPage() {
             </div>
 
             {/* FILTROS */}
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4 lg:p-6 backdrop-blur-md">
+            <div className="relative z-50 rounded-xl border border-white/10 bg-black/40 p-4 lg:p-6 backdrop-blur-md">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div className="col-span-1 md:col-span-2 space-y-2">
                         <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
