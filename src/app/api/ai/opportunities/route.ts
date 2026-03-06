@@ -359,8 +359,8 @@ export async function GET() {
                             clienteNome: client.nomeFantasia,
                             clienteTelefone: phone,
                             description: isAtacado
-                                ? `Oportunidade: Introduzir ${marca} para aumentar o giro e a margem de revenda no estoque.`
-                                : `Oportunidade: Introduzir ${marca} para completar o mix na gôndola e elevar o ticket médio.`,
+                                ? `Oportunidade: Introduzir ${nomeComercial} para aumentar o giro e a margem de revenda no estoque.`
+                                : `Oportunidade: Introduzir ${nomeComercial} para completar o mix na gôndola e elevar o ticket médio.`,
                             priority: 'alta',
                             actionLabel: 'Oferecer Produto',
                             contextoParaIA: getContextoCrossSell({
@@ -401,8 +401,8 @@ export async function GET() {
                                 clienteNome: client.nomeFantasia,
                                 clienteTelefone: phone,
                                 description: isAtacado
-                                    ? `Oportunidade: Reintroduzir ${marcaFallback} no estoque — alto giro entre distribuidores do mesmo porte.`
-                                    : `Oportunidade: Reintroduzir ${marcaFallback} na gôndola — foco em rentabilidade e evitar ruptura.`,
+                                    ? `Oportunidade: Reintroduzir ${nomeComercialFb} no estoque — alto giro entre distribuidores do mesmo porte.`
+                                    : `Oportunidade: Reintroduzir ${nomeComercialFb} na gôndola — foco em rentabilidade e evitar ruptura.`,
                                 priority: 'media',
                                 actionLabel: 'Oferecer Produto',
                                 contextoParaIA: getContextoCrossSell({
@@ -441,8 +441,8 @@ export async function GET() {
                                 clienteNome: client.nomeFantasia,
                                 clienteTelefone: phone,
                                 description: isAtacado
-                                    ? `Oportunidade: ${marcaGlobal} tem alto giro no mercado — cliente nunca experimentou no estoque.`
-                                    : `Oportunidade: ${marcaGlobal} é um dos itens de maior giro — cliente nunca teve na gôndola.`,
+                                    ? `Oportunidade: ${nomeComercialGlob} tem alto giro no mercado — cliente nunca experimentou no estoque.`
+                                    : `Oportunidade: ${nomeComercialGlob} é um dos itens de maior giro — cliente nunca teve na gôndola.`,
                                 priority: 'baixa',
                                 actionLabel: 'Oferecer Produto',
                                 contextoParaIA: getContextoCrossSell({
