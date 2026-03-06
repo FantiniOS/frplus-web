@@ -349,6 +349,19 @@ export default function AIInsightsPage() {
                     messageSuggestion: `Olá ${insight.clienteNome}, chegaram novidades da linha Premium que combinam muito com seu perfil. Posso te mandar o catálogo atualizado?`
                 };
             case 'untappedPotential':
+                if (insight.actionLabel === 'Aumento de Ticket') {
+                    return {
+                        title: 'Aumento de Ticket (Gap de Volume)',
+                        analysis: `Histórico mostra que ${insight.clienteNome} já teve um volume muito maior (Top Tier), mas reduziu a conversão no trimestre recente. O cliente está ativo, mas perdendo tração.`,
+                        possibleCauses: [
+                            'Concorrência ganhando espaço na gôndola/estoque.',
+                            'Dificuldade de girar produtos específicos.',
+                            'Abastecendo o grosso do estoque com outro distribuidor.'
+                        ],
+                        recommendation: 'Trabalhar um Mix ou oferta de volume pesado para recuperar a fatia de mercado (Share of Wallet).',
+                        messageSuggestion: `Olá ${insight.clienteNome}, estava analisando os números e notei que a gente pode melhorar muito essa parceria. Tenho uma oportunidade perfeita para alavancar seu estoque de [Produto].`
+                    }
+                }
                 return {
                     title: 'Alto Potencial de Reativação',
                     analysis: `Histórico mostra que ${insight.clienteNome} já foi um cliente Top Tier, mas reduziu drasticamente a frequência. O potencial de recuperação é alto.`,
