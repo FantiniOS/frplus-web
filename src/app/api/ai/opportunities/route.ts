@@ -4,6 +4,7 @@ import { getServerUser } from '@/lib/getServerUser'
 
 // GET /api/ai/opportunities - Get sales opportunities
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 // ============================================================
 // HELPERS
@@ -93,8 +94,8 @@ O argumento de venda é COMPLETAR O MIX na gôndola e AUMENTAR O TICKET MÉDIO.`
  * Gera o contextoParaIA completo para cross-sell com:
  * - Controle de vocabulário positivo por segmento
  * - Regra de ocultação de SKU
- * - Estrutura de argumento em 4 passos
- * - Tática de bonificação ou substituição adaptada
+ * - Estrutura de argumento em 4 passos e fechamento agressivo
+ * - Tática de bonificação adaptada
  */
 function getContextoCrossSell(params: {
     segmento: string;
@@ -104,37 +105,52 @@ function getContextoCrossSell(params: {
     segmentLabel: string;
     recebeBonificacao: boolean;
     motivo: string; // 'nunca comprou' | 'parou de comprar há 6+ meses' | 'alto giro global'
+    isAtivo: boolean;
+    score: number;
 }): string {
-    const { segmento, comprador, nomeComercial, marca, segmentLabel, recebeBonificacao, motivo } = params;
+    const { segmento, comprador, nomeComercial, marca, segmentLabel, recebeBonificacao, motivo, isAtivo, score } = params;
     const isAtacado = segmento === 'atacado' || segmento === 'avista';
     const vocabControle = getControleVocabulario(segmento);
 
-    const propostaVolume = isAtacado
-        ? 'Vamos colocar 1 pallet no próximo pedido para testar o giro?'
-        : 'Vamos colocar algumas caixas no próximo pedido para testar a saída na gôndola?';
+    const propostaFechamento = isAtacado
+        ? 'Vamos botar um pallet no próximo pedido para você testar essa rentabilidade hoje?'
+        : 'Vamos fechar um lote teste agora para você não perder mais venda na gôndola?';
 
     const taticaBonificacao = recebeBonificacao
         ? `\nTÁTICA EXTRA — RISCO FINANCIADO: Você pode oferecer caixas bonificadas de Vinagre de Álcool 750ml como financiador do risco. O lucro do Vinagre bonificado cobre a entrada do lote teste. O cliente testa com risco ZERO.`
         : '';
+        
+    const fomoMath = score > 0 
+        ? `Temos ${score} unidades vendidas de ${nomeComercial} girando rapidamente em clientes do mesmo perfil (${segmentLabel}). Você está deixando dinheiro na mesa para a concorrência por não ter este produto.` 
+        : `Este item tem alto giro em clientes do mesmo perfil (${segmentLabel}). Você está deixando dinheiro na mesa para a concorrência por não ter este produto.`;
+
+    const statusRule = isAtivo 
+        ? `REGRA CRÍTICA DE SEPARAÇÃO LÓGICA: O cliente comprou nos últimos 30 dias, logo é um CLIENTE ATIVO. Você NUNCA, JAMAIS, deve usar palavras como "reativar", "sumido", "lembrar de repor" ou "faz tempo que não compra". Trate-o como um cliente ativo de quem você quer AUMENTAR O TICKET MÉDIO com uma oportunidade puramente de CROSS-SELL/UP-SELL de um produto que ele NÃO tem.`
+        : `REGRA DE CONTEXTO: O cliente não compra há algum tempo. No entanto, o foco não é implorar retorno e sim provar matematicamente que ele está perdendo dinheiro sem este produto.`;
 
     return `${vocabControle}
 
 REGRA DE LIMPEZA VISUAL (INEGOCIÁVEL):
-Ao mencionar o produto, NUNCA repita a string técnica de nota fiscal (ex: 'VINAGRE DE ALCOOL - 2 LITROS 5%') nem fragmentos sem sentido (ex: 'a 2 litros 5%').
+Ao mencionar o produto, NUNCA repita a string técnica de nota fiscal (ex: 'VINAGRE DE ALCOOL - 2 LITROS 5%').
 Transforme SEMPRE em um termo comercial natural. Use a categoria + embalagem ou a marca.
 Exemplos corretos: 'o galão de 2 litros', 'o vinagre de álcool de 2 litros', 'a linha de 2 litros da ${marca}'.
 O nome comercial para usar nesta mensagem é: "${nomeComercial}".
 
-ESTRUTURA OBRIGATÓRIA DA MENSAGEM (4 passos):
-1. Cumprimento rápido e informal usando o nome: ${comprador}.
-2. "Identifiquei que você tem um ótimo ${isAtacado ? 'giro de estoque' : 'movimento no ponto de venda'} com a nossa linha, mas ainda não trabalha com ${nomeComercial}."
-3. Motivo: "${motivo}. Outros ${isAtacado ? 'distribuidores' : 'parceiros'} do mesmo perfil (${segmentLabel}) estão tendo excelente ${isAtacado ? 'margem de revenda e giro' : 'saída na gôndola e ticket médio'} com ele."
-4. Proposta: "${propostaVolume}"
+INVERSÃO DE PROTAGONISMO (A LÓGICA PREDADORA):
+O objetivo principal, único e absoluto desta mensagem é VENDER O PRODUTO NOVO (${nomeComercial}). O histórico de compras do cliente é apenas o gancho inicial. Assuma a postura de um consultor focado agressivamente em rentabilidade e otimização.
+
+${statusRule}
+
+ESTRUTURA OBRIGATÓRIA DA MENSAGEM (4 passos curtos, diretos e sem enrolação):
+1. Cumprimento direto usando o nome: ${comprador}.
+2. Gancho: Mencione o histórico dele com nossa linha (sem implorar retorno).
+3. A Oportunidade (Alavancagem Obrigatória): "${motivo}. ${fomoMath}" Construa seu argumento focando fortemente nos indicadores do seu setor (${isAtacado ? 'focando em giro rápido, alto volume e rentabilidade/margem no pallet' : 'focando no crescimento do ticket médio e rentabilidade na gôndola/ponto de venda'}).
+4. Fechamento Agressivo: "${propostaFechamento}" Terminando SEMPRE com uma chamada de vendas contundente e real. É ESTRITAMENTE PROIBIDO usar perguntas fracas como "Faz sentido?", "O que acha?" ou "Podemos conversar?". Seja imperativo.
 ${taticaBonificacao}
 
-Escreva a mensagem seguindo esta estrutura. Tom comercial direto, sem enrolação. Máximo 3 parágrafos curtos.
+Escreva a mensagem seguindo esta estrutura. Tom comercial consultivo e agressivo. Máximo 3 parágrafos curtos.
 NÃO use markdown, asteriscos ou formatação. Texto puro de WhatsApp.
-Escreva APENAS a mensagem final, sem explicações.`;
+Escreva APENAS a mensagem final, sem explicações extras.`;
 }
 
 export async function GET() {
@@ -230,6 +246,9 @@ export async function GET() {
         const sixMonthsAgo = new Date()
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
         // Track suggested products to diversify cross-sell across clients
         const globalSuggestedProducts = new Set<string>()
 
@@ -244,6 +263,8 @@ export async function GET() {
             const thisMonthOrders = recentOrders.filter(o =>
                 new Date(o.data).getMonth() === currentMonth
             )
+
+            const isAtivo = client.pedidos.some(o => new Date(o.data) >= thirtyDaysAgo)
 
             // --- UPGRADE OPPORTUNITY ---
             const using50a199 = recentOrders.some(o => o.tabelaPreco === '50a199')
@@ -343,7 +364,9 @@ export async function GET() {
                                 marca,
                                 segmentLabel,
                                 recebeBonificacao,
-                                motivo: `Este cliente nunca comprou ${nomeComercial}, mas é um dos itens de maior saída entre clientes de ${segmentLabel}`
+                                motivo: `Este cliente nunca comprou ${nomeComercial}, mas é um dos itens de maior saída entre clientes de ${segmentLabel}`,
+                                isAtivo,
+                                score
                             })
                         })
 
@@ -383,7 +406,9 @@ export async function GET() {
                                     marca: marcaFallback,
                                     segmentLabel,
                                     recebeBonificacao,
-                                    motivo: `O cliente já comprou ${nomeComercialFb} mas parou há mais de 6 meses. É popular entre clientes de ${segmentLabel}`
+                                    motivo: `O cliente já comprou ${nomeComercialFb} mas parou há mais de 6 meses. É popular entre clientes de ${segmentLabel}`,
+                                    isAtivo,
+                                    score
                                 })
                             })
 
@@ -421,7 +446,9 @@ export async function GET() {
                                     marca: marcaGlobal,
                                     segmentLabel,
                                     recebeBonificacao,
-                                    motivo: `${nomeComercialGlob} é um dos itens de maior giro no mercado e o cliente nunca experimentou`
+                                    motivo: `${nomeComercialGlob} é um dos itens de maior giro no mercado e o cliente nunca experimentou`,
+                                    isAtivo,
+                                    score: stat._sum.quantidade ?? 0
                                 })
                             })
 
