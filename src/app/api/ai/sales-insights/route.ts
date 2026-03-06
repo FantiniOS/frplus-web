@@ -28,6 +28,29 @@ function extrairMarca(produtoNome: string): string {
 /**
  * Humanizar nome do produto
  */
+// Function to clean corporate prefixes from company names
+function cleanCompanyName(name: string): string {
+    if (!name) return 'parceiro';
+    let cleaned = name.toUpperCase();
+    const prefixesToRemove = [
+        'SUPERMERCADO', 'SUPERMERCADOS', 'ATACAREJO', 'ATACADISTA', 'ATACADAO',
+        'COMERCIAL', 'DISTRIBUIDORA', 'MERCADINHO', 'MERCEARIA', 'PADARIA',
+        'LTDA', 'S/A', 'CIA', 'EIRELI', 'ME', 'EPP', 'SA', 'LIMITADA', '-'
+    ];
+
+    for (const prefix of prefixesToRemove) {
+        const regex = new RegExp(`\\b${prefix}\\b`, 'gi');
+        cleaned = cleaned.replace(regex, '');
+    }
+
+    cleaned = cleaned.trim().replace(/\s+/g, ' '); // Remove extra spaces
+
+    // Capitalize first letters
+    cleaned = cleaned.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+
+    return cleaned || 'parceiro';
+}
+
 function formatarNomeComercial(produtoNome: string): string {
     if (!produtoNome || produtoNome.trim() === '') return 'o produto';
     const marca = extrairMarca(produtoNome);
@@ -73,31 +96,50 @@ function getContextoAlavancagem(params: {
     metricText: string;
     isAtivo: boolean;
     score: number;
+    diasDesdeUltimaCompra: number;
 }): string {
-    const { segmento, comprador, nomeComercial, score } = params;
+    const { segmento, comprador, nomeComercial, score, diasDesdeUltimaCompra } = params;
     const isAtacado = segmento === 'atacado' || segmento === 'avista';
     const vocabControle = getControleVocabulario(segmento);
 
     const fomoData = score > 0 ? score : (isAtacado ? 350 : 45); // Fallback numérico se não houver score exato.
     const fomoMetricText = isAtacado ? 'unidades' : 'caixas';
 
-    const passo1 = isAtacado
-        ? `Fala ${comprador}, teu estoque da linha de ${nomeComercial} deve estar no limite pelos meus cálculos. Como estamos em fechamento de mês e teu giro costuma dobrar agora, vamos antecipar essa reposição?`
-        : `Fala ${comprador}, tua gôndola da linha de ${nomeComercial} deve estar baixando rápido pelos meus cálculos. Como o movimento aumenta no final de semana, vamos antecipar a reposição?`;
+    // REGRA 1: Sanidade Física de Display (Produtos volumosos não vão no caixa)
+    const isVolumeGrande = /5\s*l|5\s*litros|2\s*l|2\s*litros|fardo|galão/i.test(nomeComercial);
+    const espacoPallet = isVolumeGrande ? 'um pallet' : (isAtacado ? 'um pallet' : 'um display');
+    const espacoGondola = isVolumeGrande ? 'na base da gôndola ou ponto extra' : (isAtacado ? 'no ponto extra' : 'na frente de caixa');
 
-    const passo2 = isAtacado
-        ? `Aproveitando o pedido: os outros atacadistas aqui da região já giraram ${fomoData} ${fomoMetricText} de [PRODUTO]. Você tá deixando essa margem na mesa para a concorrência.`
-        : `Aproveitando o pedido: os mercadinhos aqui da região já giraram ${fomoData} ${fomoMetricText} de [PRODUTO]. Você tá perdendo esse ticket médio na gôndola.`;
+    // REGRA 2: Hierarquia de Resgate (Churn > 90 dias)
+    let passo1 = '';
+    let passo2 = '';
+    let passo3 = '';
 
-    const passo3 = isAtacado
-        ? `Vamos botar um pallet dele nesse pedido de hoje pra você testar essa rentabilidade?`
-        : `Vamos botar um display dele no pedido de hoje pra testar essa saída?`;
+    if (diasDesdeUltimaCompra > 90) {
+        // MODO RESGATE (Cliente Perdido/Inativo)
+        passo1 = `Fala ${comprador}, faz um tempão que não rodamos um pedido. O que houve? A concorrência tomou o espaço por aí?`;
+        passo2 = `Inclusive, tô com a linha de [PRODUTO] aqui que a rede inteira tá girando (${fomoData} ${fomoMetricText} na região) e você tá ficando de fora.`;
+        passo3 = `Vamos bater um papo pra eu te colocar de volta no jogo e testar essa rentabilidade com ${espacoPallet}?`;
+    } else {
+        // MODO REPOSIÇÃO (Giro Normal)
+        passo1 = isAtacado
+            ? `Fala ${comprador}, teu estoque da linha de ${nomeComercial} deve estar no limite pelos meus cálculos. Como a semana tá virando e teu giro costuma dobrar, vamos antecipar essa reposição?`
+            : `Fala ${comprador}, tua gôndola da linha de ${nomeComercial} deve estar baixando rápido. Como o movimento aumenta no final de semana, vamos antecipar a reposição?`;
+
+        passo2 = isAtacado
+            ? `Aproveitando o pedido: os outros atacadistas aqui da região já giraram ${fomoData} ${fomoMetricText} de [PRODUTO]. Você tá deixando essa margem na mesa para a concorrência.`
+            : `Aproveitando o pedido: os mercadinhos aqui da região já giraram ${fomoData} ${fomoMetricText} de [PRODUTO]. Você tá perdendo esse ticket médio.`;
+
+        passo3 = isAtacado
+            ? `Vamos botar ${espacoPallet} disso no pedido de hoje pra você testar essa rentabilidade?`
+            : `Vamos botar ${espacoPallet} no pedido de hoje pra testar essa saída ${espacoGondola}?`;
+    }
 
     return `REGRA ABSOLUTA 1 (ZERO ALUCINAÇÃO): NUNCA, SOB NENHUMA HIPÓTESE, invente ou sugira descontos, bonificações, amostras grátis, "condições especiais obscuras", prazos estendidos ou promoções. Você NÃO TEM autorização para negociar valores ou dar produtos de graça. Foco APENAS na venda do produto pelo giro dele.
 
-REGRA ABSOLUTA 2 (PERSPECTIVA): Você escreve DIRETAMENTE para o comprador no WhatsApp. NUNCA use a terceira pessoa (ex: "este cliente não compra", "o cliente tem giro"). Use SEMPRE "você", "teu estoque", "sua operação", "tua gôndola".
+REGRA ABSOLUTA 2 (PERSPECTIVA): Você escreve DIRETAMENTE para o comprador no WhatsApp. NUNCA use a terceira pessoa (ex: "este cliente não compra", "o cliente tem giro"). Use SEMPRE "você", "teu estoque", "sua operação".
 
-REGRA ABSOLUTA 3 (TOM WHATSAPP RAIZ): Proibido jargões corporativos (ex: "nossos principais clientes", "valoriza a eficiência", "soluções inovadoras", "gostaria de reafirmar nossa parceria"). Escreva como um vendedor mandando um áudio transcrito: seco, rápido, comercial e focado no dinheiro.
+REGRA ABSOLUTA 3 (TOM WHATSAPP RAIZ): Proibido jargões corporativos (ex: "nossos principais clientes", "valoriza a eficiência", "soluções inovadoras"). Escreva como um vendedor mandando um áudio transcrito: seco, rápido, comercial e focado no dinheiro.
 
 REGRA ABSOLUTA 4 (LIMPEZA TEXTUAL): NUNCA repita o nome do produto exatamente como está no banco de dados se for muito longo. Adapte. Ex: Se o produto é "Vinho Fino Seco Tinto 750ml", chame de "Vinho Tinto" ou "a linha de Vinhos".
 
@@ -107,9 +149,9 @@ Produto Alvo para o Cross-Sell/Up-Sell: ${nomeComercial}
 INSTRUÇÃO FINAL: 
 Escreva a mensagem seguindo EXATAMENTE este roteiro de 3 passos em um único bloco ou parágrafos curtos:
 
-Passo 1 (Reposição): Adapte esta frase mantendo o sentido: "${passo1}"
-Passo 2 (Bote/Cross-sell): Substitua [PRODUTO] por '${nomeComercial}' e use esta exata estrutura: "${passo2}"
-Passo 3 (Fechamento): Use EXATAMENTE esta frase: "${passo3}"
+Passo 1 (Abordagem): Adapte esta frase mantendo o sentido e o tom: "${passo1}"
+Passo 2 (Bote/Cross-sell): Substitua [PRODUTO] por '${nomeComercial}' e use esta exata estrutura e dados: "${passo2}"
+Passo 3 (Fechamento): Use EXATAMENTE esta frase sem mudar a formatação estrutural do pedido: "${passo3}"
 
 Escreva AGORA a mensagem final seguindo estritamente as amarras acima.`;
 }
@@ -255,8 +297,14 @@ export async function GET() {
                 if (prod) nomeComercialFoco = formatarNomeComercial(prod.nome)
             }
 
-            // @ts-ignore
-            const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
+            // Determine physical buyer name (Strip corporate prefixes)
+            let greetingName = 'parceiro'
+            if (client.comprador && client.comprador.trim() !== '') {
+                greetingName = client.comprador.split(' ')[0]
+            } else {
+                const cleanedName = cleanCompanyName(client.nomeFantasia)
+                greetingName = `equipe do ${cleanedName}`
+            }
 
             // Calculate client's average ticket
             const clientAvgTicket = client.pedidos.reduce((acc, o) => acc + Number(o.valorTotal), 0) / client.pedidos.length
@@ -280,7 +328,8 @@ export async function GET() {
                         motivoGancho: 'Ticket médio abaixo do potencial do seu porte',
                         metricText: `R$ ${clientAvgTicket.toFixed(2)} vs R$ ${globalAvgTicket.toFixed(2)} (Média local)`,
                         isAtivo,
-                        score: topMissingProductScore
+                        score: topMissingProductScore,
+                        diasDesdeUltimaCompra
                     })
                 })
             }
@@ -312,7 +361,8 @@ export async function GET() {
                             motivoGancho: 'Houve uma queda abrupta no volume de compras recente',
                             metricText: `R$ ${recent3Total.toFixed(2)} vs R$ ${previous3Total.toFixed(2)} nos 3 pedidos anteriores`,
                             isAtivo,
-                            score: topMissingProductScore
+                            score: topMissingProductScore,
+                            diasDesdeUltimaCompra
                         })
                     })
                 }
@@ -357,7 +407,8 @@ export async function GET() {
                         motivoGancho: dynamicHook,
                         metricText: `Ritmo antigo: R$ ${(avgMonthly * 3).toFixed(2)}/trimestre. Atual: R$ ${last3MonthsTotal.toFixed(2)}`,
                         isAtivo,
-                        score: topMissingProductScore
+                        score: topMissingProductScore,
+                        diasDesdeUltimaCompra
                     })
                 })
             }
