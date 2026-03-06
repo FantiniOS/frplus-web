@@ -29,3 +29,25 @@ export async function buscarClientesParaSelect() {
         return [];
     }
 }
+
+export async function buscarFabricasParaSelect() {
+    try {
+        const user = await getServerUser();
+        if (!user) return [];
+
+        const fabricas = await prisma.fabrica.findMany({
+            select: {
+                id: true,
+                nome: true
+            },
+            orderBy: {
+                nome: 'asc'
+            }
+        });
+
+        return fabricas;
+    } catch (error) {
+        console.error("Erro ao buscar fábricas para select:", error);
+        return [];
+    }
+}

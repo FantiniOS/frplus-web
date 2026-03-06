@@ -13,12 +13,17 @@ import {
 } from "lucide-react";
 
 import { MonthSelector } from "@/components/ui/MonthSelector";
-import { buscarClientesParaSelect } from "./actions";
+import { buscarClientesParaSelect, buscarFabricasParaSelect } from "./actions";
 
 interface Cliente {
     id: string;
     nomeFantasia: string;
     cnpj: string;
+}
+
+interface Fabrica {
+    id: string;
+    nome: string;
 }
 
 interface CurvaItem {
@@ -38,7 +43,9 @@ interface CurvaSummary {
 
 export default function CurvaABCPage() {
     const [clientes, setClientes] = useState<Cliente[]>([]);
-    const [selectedCliente, setSelectedCliente] = useState<string>('');
+    const [fabricas, setFabricas] = useState<Fabrica[]>([]);
+    const [selectedCliente, setSelectedCliente] = useState<string>('TODOS');
+    const [selectedFabrica, setSelectedFabrica] = useState<string>('TODAS');
 
     const now = new Date();
     const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -52,31 +59,36 @@ export default function CurvaABCPage() {
     const [resultados, setResultados] = useState<CurvaItem[]>([]);
     const [summary, setSummary] = useState<CurvaSummary | null>(null);
 
-    // Fetch clients on mount
     useEffect(() => {
-        const fetchClientes = async () => {
+        const fetchData = async () => {
             try {
-                const data = await buscarClientesParaSelect();
-                if (Array.isArray(data)) {
-                    setClientes(data);
-                }
+                const [clientesData, fabricasData] = await Promise.all([
+                    buscarClientesParaSelect(),
+                    buscarFabricasParaSelect()
+                ]);
+                if (Array.isArray(clientesData)) setClientes(clientesData);
+                if (Array.isArray(fabricasData)) setFabricas(fabricasData);
             } catch (error) {
-                console.error("Erro ao carregar clientes", error);
+                console.error("Erro ao carregar dados", error);
             }
         };
-        fetchClientes();
+        fetchData();
     }, []);
 
     const handleGerarAnalise = async () => {
-        if (!selectedCliente) {
-            alert("Selecione um cliente para gerar a Curva ABC.");
-            return;
-        }
-
         setLoading(true);
         try {
             const params = new URLSearchParams();
-            params.append('clienteId', selectedCliente);
+
+            // Optional client filter
+            if (selectedCliente && selectedCliente !== 'TODOS') {
+                params.append('clienteId', selectedCliente);
+            }
+
+            // Optional fábrica filter
+            if (selectedFabrica && selectedFabrica !== 'TODAS') {
+                params.append('fabricaId', selectedFabrica);
+            }
 
             if (selectedMonth) {
                 const [yearStr, monthStr] = selectedMonth.split('-');
@@ -196,7 +208,13 @@ export default function CurvaABCPage() {
 
                 const logoRenderedW = (logoData && logoResult) ? (19.5 * logoResult.width / logoResult.height) : 0;
 
-                const clientName = clientes.find(c => c.id === selectedCliente)?.nomeFantasia || 'Cliente Desconhecido';
+                // Dynamic context based on active filters
+                const clientLabel = selectedCliente === 'TODOS'
+                    ? 'Todos os Clientes'
+                    : (clientes.find(c => c.id === selectedCliente)?.nomeFantasia || 'Cliente');
+                const fabricaLabel = selectedFabrica === 'TODAS'
+                    ? 'Todas as Fábricas'
+                    : (fabricas.find(f => f.id === selectedFabrica)?.nome || 'Fábrica');
 
                 pageDoc.setFontSize(13);
                 pageDoc.setFont('helvetica', 'bold');
@@ -206,7 +224,7 @@ export default function CurvaABCPage() {
                 pageDoc.setFontSize(9);
                 pageDoc.setFont('helvetica', 'normal');
                 pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
-                pageDoc.text(clientName, pageWidth - margin.right, 20, { align: 'right' });
+                pageDoc.text(`${clientLabel}  •  ${fabricaLabel}`, pageWidth - margin.right, 20, { align: 'right' });
 
                 pageDoc.setFontSize(7);
                 const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -304,8 +322,10 @@ export default function CurvaABCPage() {
                 drawFooter(doc, i, pageCount);
             }
 
-            const clientName = clientes.find(c => c.id === selectedCliente)?.nomeFantasia || 'Cliente';
-            doc.save(`CurvaABC_${clientName.replace(/ /g, '_')}_${selectedMonth}.pdf`);
+            const pdfClientLabel = selectedCliente === 'TODOS'
+                ? 'Geral'
+                : (clientes.find(c => c.id === selectedCliente)?.nomeFantasia || 'Cliente');
+            doc.save(`CurvaABC_${pdfClientLabel.replace(/ /g, '_')}_${selectedMonth}.pdf`);
 
         } catch (error) {
             console.error('Erro ao exportar PDF Curva ABC:', error);
@@ -344,20 +364,38 @@ export default function CurvaABCPage() {
 
             {/* FILTROS */}
             <div className="relative z-50 rounded-xl border border-white/10 bg-black/40 p-4 lg:p-6 backdrop-blur-md">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                     <div className="col-span-1 md:col-span-2 space-y-2">
                         <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Cliente *
+                            Cliente
                         </label>
                         <select
                             className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 px-3 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             value={selectedCliente}
                             onChange={(e) => setSelectedCliente(e.target.value)}
                         >
-                            <option value="" disabled className="bg-zinc-900">Selecione um cliente...</option>
+                            <option value="TODOS" className="bg-zinc-900">🌐 Todos os Clientes</option>
                             {clientes.map(c => (
                                 <option key={c.id} value={c.id} className="bg-zinc-900">
                                     {`${c.nomeFantasia} - ${c.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}`}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2 space-y-2">
+                        <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Fábrica / Representada
+                        </label>
+                        <select
+                            className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 px-3 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            value={selectedFabrica}
+                            onChange={(e) => setSelectedFabrica(e.target.value)}
+                        >
+                            <option value="TODAS" className="bg-zinc-900">🏭 Todas as Fábricas</option>
+                            {fabricas.map(f => (
+                                <option key={f.id} value={f.id} className="bg-zinc-900">
+                                    {f.nome}
                                 </option>
                             ))}
                         </select>
@@ -372,10 +410,10 @@ export default function CurvaABCPage() {
                         </div>
                     </div>
 
-                    <div className="col-span-1 md:col-span-4 mt-2">
+                    <div className="col-span-1 md:col-span-6 mt-2">
                         <button
                             onClick={handleGerarAnalise}
-                            disabled={loading || !selectedCliente}
+                            disabled={loading}
                             className="w-full md:w-auto px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
                         >
                             {loading ? (

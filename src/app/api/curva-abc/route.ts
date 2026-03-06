@@ -13,13 +13,10 @@ export async function GET(request: Request) {
         }
 
         const { searchParams } = new URL(request.url)
-        const clienteId = searchParams.get('clienteId')
+        const clienteId = searchParams.get('clienteId') // optional now
+        const fabricaId = searchParams.get('fabricaId') // NEW: optional
         const dataInicioRaw = searchParams.get('dataInicio')
         const dataFimRaw = searchParams.get('dataFim')
-
-        if (!clienteId) {
-            return NextResponse.json({ error: 'Cliente ID é obrigatório' }, { status: 400 })
-        }
 
         // ====== SAFE DATE PARSING ======
         let dataInicio: Date | undefined
@@ -34,14 +31,19 @@ export async function GET(request: Request) {
             if (isNaN(dataFim.getTime())) dataFim = undefined
         }
 
-        // ====== BUILD PEDIDO WHERE ======
+        // ====== BUILD DYNAMIC PEDIDO WHERE ======
         const pedidoWhere: any = {
-            clienteId,
             status: {
                 in: ['Concluido', 'Faturado', 'concluido', 'faturado']
             }
         }
 
+        // Optional client filter
+        if (clienteId && clienteId !== 'TODOS') {
+            pedidoWhere.clienteId = clienteId
+        }
+
+        // Date filter (always recommended)
         if (dataInicio && dataFim) {
             pedidoWhere.data = { gte: dataInicio, lte: dataFim }
         } else if (dataInicio) {
@@ -50,11 +52,19 @@ export async function GET(request: Request) {
             pedidoWhere.data = { lte: dataFim }
         }
 
-        // ====== FINDMANY + INCLUDE (no groupBy) ======
+        // ====== BUILD DYNAMIC ITEM WHERE ======
+        const itemWhere: any = {
+            pedido: pedidoWhere
+        }
+
+        // Optional fábrica filter (filters on the product's fabricaId)
+        if (fabricaId && fabricaId !== 'TODAS') {
+            itemWhere.produto = { fabricaId }
+        }
+
+        // ====== FINDMANY + INCLUDE ======
         const items = await prisma.itemPedido.findMany({
-            where: {
-                pedido: pedidoWhere
-            },
+            where: itemWhere,
             include: {
                 produto: {
                     select: {
