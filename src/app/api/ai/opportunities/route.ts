@@ -119,12 +119,12 @@ function getContextoCrossSell(params: {
     const taticaBonificacao = recebeBonificacao
         ? `\nTÁTICA EXTRA — RISCO FINANCIADO: Você pode oferecer caixas bonificadas de Vinagre de Álcool 750ml como financiador do risco. O lucro do Vinagre bonificado cobre a entrada do lote teste. O cliente testa com risco ZERO.`
         : '';
-        
-    const fomoMath = score > 0 
-        ? `Temos ${score} unidades vendidas de ${nomeComercial} girando rapidamente em clientes do mesmo perfil (${segmentLabel}). Você está deixando dinheiro na mesa para a concorrência por não ter este produto.` 
+
+    const fomoMath = score > 0
+        ? `Temos ${score} unidades vendidas de ${nomeComercial} girando rapidamente em clientes do mesmo perfil (${segmentLabel}). Você está deixando dinheiro na mesa para a concorrência por não ter este produto.`
         : `Este item tem alto giro em clientes do mesmo perfil (${segmentLabel}). Você está deixando dinheiro na mesa para a concorrência por não ter este produto.`;
 
-    const statusRule = isAtivo 
+    const statusRule = isAtivo
         ? `REGRA CRÍTICA DE SEPARAÇÃO LÓGICA: O cliente comprou nos últimos 30 dias, logo é um CLIENTE ATIVO. Você NUNCA, JAMAIS, deve usar palavras como "reativar", "sumido", "lembrar de repor" ou "faz tempo que não compra". Trate-o como um cliente ativo de quem você quer AUMENTAR O TICKET MÉDIO com uma oportunidade puramente de CROSS-SELL/UP-SELL de um produto que ele NÃO tem.`
         : `REGRA DE CONTEXTO: O cliente não compra há algum tempo. No entanto, o foco não é implorar retorno e sim provar matematicamente que ele está perdendo dinheiro sem este produto.`;
 
@@ -167,12 +167,18 @@ export async function GET() {
         const clients = await prisma.cliente.findMany({
             include: {
                 pedidos: {
+                    where: {
+                        tipo: 'Venda',
+                        status: {
+                            in: ['Novo', 'Pendente', 'Processando', 'Concluido', 'Faturado', 'Importado']
+                        }
+                    },
                     include: {
                         itens: {
                             select: { produtoId: true, quantidade: true }
                         }
                     },
-                    orderBy: { data: 'desc' }
+                    orderBy: { data: 'desc' },
                 }
             }
         })
@@ -246,8 +252,7 @@ export async function GET() {
         const sixMonthsAgo = new Date()
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const hoje = new Date()
 
         // Track suggested products to diversify cross-sell across clients
         const globalSuggestedProducts = new Set<string>()
@@ -264,7 +269,8 @@ export async function GET() {
                 new Date(o.data).getMonth() === currentMonth
             )
 
-            const isAtivo = client.pedidos.some(o => new Date(o.data) >= thirtyDaysAgo)
+            const diasDesdeUltimaCompra = client.pedidos[0] ? Math.floor((hoje.getTime() - new Date(client.pedidos[0].data).getTime()) / (1000 * 60 * 60 * 24)) : 999;
+            const isAtivo = diasDesdeUltimaCompra <= 45;
 
             // --- UPGRADE OPPORTUNITY ---
             const using50a199 = recentOrders.some(o => o.tabelaPreco === '50a199')

@@ -124,6 +124,12 @@ export async function GET() {
         const clients = await prisma.cliente.findMany({
             include: {
                 pedidos: {
+                    where: {
+                        tipo: 'Venda',
+                        status: {
+                            in: ['Novo', 'Pendente', 'Processando', 'Concluido', 'Faturado', 'Importado']
+                        }
+                    },
                     orderBy: { data: 'desc' },
                     include: {
                         itens: true
@@ -192,10 +198,15 @@ export async function GET() {
             contextoParaIA: string
         }> = []
 
+        const hoje = new Date()
+
         for (const client of clients) {
             if (client.pedidos.length < 2) continue
 
-            const isAtivo = client.pedidos.some(o => new Date(o.data) >= thirtyDaysAgo)
+            // Nova Regra de Limite (45 Dias):
+            const diasDesdeUltimaCompra = client.pedidos[0] ? Math.floor((hoje.getTime() - new Date(client.pedidos[0].data).getTime()) / (1000 * 60 * 60 * 24)) : 999;
+            const isAtivo = diasDesdeUltimaCompra <= 45;
+
             const clientSegment = client.tabelaPreco || '50a199'
             const segmentLabel = segmentLabels[clientSegment] || clientSegment
 
@@ -324,20 +335,26 @@ export async function GET() {
             const last3MonthsTotal = last3Months.reduce((acc, o) => acc + Number(o.valorTotal), 0)
 
             if (avgMonthly > 1000 && last3MonthsTotal < avgMonthly * 2) {
+                const isCurrentlyActive = isAtivo;
+                const dynamicActionLabel = isCurrentlyActive ? 'Aumento de Ticket' : 'Reativar Cliente';
+                const dynamicHook = isCurrentlyActive
+                    ? 'Cliente recentemente ativo, mas comprando consideravelmente abaixo do seu potencial histórico trimestral.'
+                    : 'Cliente com histórico altíssimo mas atividade muito fraca nos últimos 3 meses.';
+
                 insights.push({
                     type: 'untappedPotential',
                     clienteId: client.id,
                     clienteNome: client.nomeFantasia,
-                    description: `Cliente historicamente forte com atividade reduzida recente.`,
-                    metric: `Potencial: R$ ${(avgMonthly * 3).toFixed(2)}/trimestre`,
+                    description: `Cliente historicamente forte com atividade reduzida neste trimestre.`,
+                    metric: `Potencial: R$ ${(avgMonthly * 3).toFixed(2)}/trim. atual: R$ ${last3MonthsTotal.toFixed(2)}`,
                     priority: 'alta',
-                    actionLabel: 'Reativar Cliente',
+                    actionLabel: dynamicActionLabel,
                     contextoParaIA: getContextoAlavancagem({
                         segmento: clientSegment,
                         comprador: greetingName,
                         nomeComercial: nomeComercialFoco,
                         segmentLabel,
-                        motivoGancho: 'Cliente com histórico altíssimo mas atividade muito fraca nos últimos 3 meses.',
+                        motivoGancho: dynamicHook,
                         metricText: `Ritmo antigo: R$ ${(avgMonthly * 3).toFixed(2)}/trimestre. Atual: R$ ${last3MonthsTotal.toFixed(2)}`,
                         isAtivo,
                         score: topMissingProductScore
