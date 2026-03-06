@@ -8,7 +8,8 @@ import {
     TrendingUp,
     Package,
     DollarSign,
-    Download
+    Download,
+    FileDown
 } from "lucide-react";
 
 import { MonthSelector } from "@/components/ui/MonthSelector";
@@ -47,6 +48,7 @@ export default function CurvaABCPage() {
     });
 
     const [loading, setLoading] = useState(false);
+    const [exportando, setExportando] = useState(false);
     const [resultados, setResultados] = useState<CurvaItem[]>([]);
     const [summary, setSummary] = useState<CurvaSummary | null>(null);
 
@@ -114,6 +116,215 @@ export default function CurvaABCPage() {
         }
     }
 
+    // ====== PREMIUM PDF EXPORT ENGINE ======
+    const handleExportPDF = async () => {
+        if (!summary || resultados.length === 0) return;
+        setExportando(true);
+
+        try {
+            const jsPDF = (await import('jspdf')).default;
+            const autoTable = (await import('jspdf-autotable')).default;
+
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = { left: 14, right: 14 };
+            const contentWidth = pageWidth - margin.left - margin.right;
+
+            // ====== PREMIUM COLOR PALETTE ======
+            const colors = {
+                headerDark: [10, 10, 14] as [number, number, number],
+                headerMid: [18, 18, 26] as [number, number, number],
+                accentBlue: [37, 99, 235] as [number, number, number],
+                accentCyan: [6, 182, 212] as [number, number, number],
+                textDark: [20, 20, 30] as [number, number, number],
+                textMuted: [120, 120, 140] as [number, number, number],
+                textLight: [200, 200, 220] as [number, number, number],
+                white: [255, 255, 255] as [number, number, number],
+                rowEven: [250, 251, 254] as [number, number, number],
+                greenAccent: [16, 185, 129] as [number, number, number],
+                tableBorder: [226, 232, 240] as [number, number, number],
+            };
+
+            // ====== LOGO LOADER ======
+            const loadLogo = (): Promise<{ data: string; width: number; height: number } | null> => {
+                return new Promise((resolve) => {
+                    const logoImg = new Image();
+                    logoImg.crossOrigin = 'anonymous';
+                    logoImg.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = logoImg.width;
+                        canvas.height = logoImg.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx?.drawImage(logoImg, 0, 0);
+                        resolve({ data: canvas.toDataURL('image/png'), width: logoImg.width, height: logoImg.height });
+                    };
+                    logoImg.onerror = () => resolve(null);
+                    logoImg.src = '/logo.png';
+                });
+            };
+
+            const logoResult = await loadLogo();
+            const logoData = logoResult?.data || null;
+
+            // Header Helper
+            const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
+                const headerHeight = 38;
+
+                pageDoc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
+                pageDoc.rect(0, 0, pageWidth, headerHeight, 'F');
+
+                pageDoc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                pageDoc.rect(0, headerHeight, pageWidth, 1.5, 'F');
+                pageDoc.setFillColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
+                pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.5, 'F');
+
+                if (logoData) {
+                    try {
+                        const logoH = 19.5;
+                        let logoW = 19.5;
+                        if (logoResult) {
+                            logoW = logoH * (logoResult.width / logoResult.height);
+                        }
+                        pageDoc.addImage(logoData, 'PNG', margin.left, 6, logoW, logoH);
+                    } catch { }
+                }
+
+                const logoRenderedW = (logoData && logoResult) ? (19.5 * logoResult.width / logoResult.height) : 0;
+                const titleX = logoData ? margin.left + logoRenderedW + 6 : margin.left;
+                pageDoc.setTextColor(255, 255, 255);
+                pageDoc.setFontSize(18);
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.text('FRPlus', titleX, 16);
+
+                pageDoc.setFontSize(7.5);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+                pageDoc.text('Gestão Comercial Inteligente', titleX, 21.5);
+
+                const clientName = clientes.find(c => c.id === selectedCliente)?.nomeFantasia || 'Cliente Desconhecido';
+
+                pageDoc.setFontSize(13);
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.setTextColor(255, 255, 255);
+                pageDoc.text('Análise de Curva ABC', pageWidth - margin.right, 14, { align: 'right' });
+
+                pageDoc.setFontSize(9);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+                pageDoc.text(clientName, pageWidth - margin.right, 20, { align: 'right' });
+
+                pageDoc.setFontSize(7);
+                const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                pageDoc.text(`Mês Referência: ${selectedMonth.split('-').reverse().join('/')}  •  Emitido em ${dateStr}`, pageWidth - margin.right, 25, { align: 'right' });
+
+                if (pageNum > 1) {
+                    pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                    pageDoc.text(`(Continuação)`, pageWidth - margin.right, 30, { align: 'right' });
+                }
+
+                return headerHeight + 5;
+            };
+
+            const drawFooter = (pageDoc: typeof doc, pageNum: number, totalPages: number) => {
+                const footerY = pageHeight - 12;
+
+                pageDoc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
+                pageDoc.setLineWidth(0.3);
+                pageDoc.line(margin.left, footerY - 3, pageWidth - margin.right, footerY - 3);
+
+                pageDoc.setFontSize(7);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                pageDoc.text('FRPlus — Gestão Comercial Inteligente', margin.left, footerY);
+                pageDoc.text('Documento gerado pelo módulo analítico', pageWidth / 2, footerY, { align: 'center' });
+
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.text(`${pageNum} / ${totalPages}`, pageWidth - margin.right, footerY, { align: 'right' });
+            };
+
+            const drawKpiCard = (x: number, y: number, w: number, h: number, label: string, value: string, color: [number, number, number]) => {
+                doc.setFillColor(colors.rowEven[0], colors.rowEven[1], colors.rowEven[2]);
+                doc.roundedRect(x, y, w, h, 2, 2, 'F');
+
+                doc.setFillColor(color[0], color[1], color[2]);
+                doc.rect(x, y, 2.5, h, 'F');
+
+                doc.setFontSize(7);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                doc.text(label.toUpperCase(), x + 6, y + 6);
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
+                doc.text(value, x + 6, y + 14);
+            };
+
+            let startY = drawHeader(doc, 1);
+            startY += 2;
+
+            // KPI CARDS
+            const cardW = (contentWidth - 4) / 2;
+            const cardH = 18;
+            drawKpiCard(margin.left, startY, cardW, cardH, 'Volume Físico Total Escoado', `${summary.totalCaixas.toLocaleString('pt-BR')} caixas/unid.`, colors.accentBlue);
+            drawKpiCard(margin.left + cardW + 4, startY, cardW, cardH, 'Faturamento Global', new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.totalFaturado), colors.greenAccent);
+
+            startY += cardH + 6;
+
+            // TABLE DATA
+            autoTable(doc, {
+                startY,
+                head: [['Pos.', 'Produto', 'Marca', 'Curva', 'Volume', 'Total Faturado']],
+                body: resultados.map(item => [
+                    `${item.posicao}º`,
+                    item.nomeProduto,
+                    item.marca || '-',
+                    item.curva,
+                    item.quantidade.toLocaleString('pt-BR'),
+                    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valorTotal)
+                ]),
+                styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
+                headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
+                alternateRowStyles: { fillColor: colors.rowEven },
+                columnStyles: {
+                    0: { halign: 'center', fontStyle: 'bold', cellWidth: 12 },
+                    1: { halign: 'left' },
+                    2: { halign: 'left' },
+                    3: { halign: 'center', fontStyle: 'bold' },
+                    4: { halign: 'right', fontStyle: 'bold', textColor: colors.accentBlue },
+                    5: { halign: 'right', fontStyle: 'bold', textColor: colors.greenAccent }
+                },
+                foot: [['', '', '', 'TOTAL', summary.totalCaixas.toLocaleString('pt-BR'), new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.totalFaturado)]],
+                footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
+                margin: { top: startY, left: margin.left, right: margin.right },
+                didDrawPage: (data: { pageNumber: number }) => {
+                    if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
+                }
+            });
+
+            // Footers
+            const pageCount = doc.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                drawFooter(doc, i, pageCount);
+            }
+
+            const clientName = clientes.find(c => c.id === selectedCliente)?.nomeFantasia || 'Cliente';
+            doc.save(`CurvaABC_${clientName.replace(/ /g, '_')}_${selectedMonth}.pdf`);
+
+        } catch (error) {
+            console.error('Erro ao exportar PDF Curva ABC:', error);
+            alert("Erro ao processar PDF.");
+        } finally {
+            setExportando(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -126,6 +337,19 @@ export default function CurvaABCPage() {
                         Analise o ranking de volume (caixas/unidades) transacionado por um cliente específico.
                     </p>
                 </div>
+
+                {resultados.length > 0 && (
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleExportPDF}
+                            disabled={exportando}
+                            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+                        >
+                            <FileDown className="h-4 w-4" />
+                            {exportando ? 'Gerando...' : 'Exportar PDF'}
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* FILTROS */}
