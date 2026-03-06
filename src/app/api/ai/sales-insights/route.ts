@@ -57,15 +57,11 @@ function formatarNomeComercial(produtoNome: string): string {
 function getControleVocabulario(segmento: string): string {
     const isAtacado = segmento === 'atacado' || segmento === 'avista';
     if (isAtacado) {
-        return `CONTROLE DE CENÁRIO — ATACADISTA/DISTRIBUIDOR:
-O cliente é um ATACADISTA/DISTRIBUIDOR. Cenário: GALPÃO LOGÍSTICO.
-Use EXCLUSIVAMENTE estas palavras: 'giro de estoque', 'volume', 'pallet', 'margem de revenda', 'abastecer seus clientes'.
-PALAVRAS PROIBIDAS: 'gôndola', 'prateleira', 'consumidor final', 'ponto de venda'.`;
+        return `O cliente é um ATACADISTA/DISTRIBUIDOR.
+Use termos como: giro, volume, pallet, margem na ponta.`;
     }
-    return `CONTROLE DE CENÁRIO — VAREJISTA:
-O cliente é um VAREJISTA com loja física.
-Use estas palavras: 'ponto de venda', 'gôndola', 'prateleira', 'ticket médio', 'evitar ruptura'.
-Argumento: COMPLETAR O MIX e AUMENTAR TICKET MÉDIO.`;
+    return `O cliente é um VAREJISTA.
+Use termos como: gôndola, prateleira, ticket médio.`;
 }
 
 function getContextoAlavancagem(params: {
@@ -73,45 +69,49 @@ function getContextoAlavancagem(params: {
     comprador: string;
     nomeComercial: string;
     segmentLabel: string;
-    motivoGancho: string; // Ex: Ticket caindo, volume baixo
+    motivoGancho: string;
     metricText: string;
     isAtivo: boolean;
     score: number;
 }): string {
-    const { segmento, comprador, nomeComercial, segmentLabel, motivoGancho, metricText, isAtivo, score } = params;
+    const { segmento, comprador, nomeComercial, score } = params;
     const isAtacado = segmento === 'atacado' || segmento === 'avista';
     const vocabControle = getControleVocabulario(segmento);
 
-    const propostaFechamento = isAtacado
-        ? 'Vamos botar um pallet no próximo pedido para você testar essa rentabilidade hoje?'
-        : 'Vamos fechar um lote teste agora para você não perder mais venda na gôndola?';
+    const fomoData = score > 0 ? score : (isAtacado ? 350 : 45); // Fallback numérico se não houver score exato.
+    const fomoMetricText = isAtacado ? 'unidades' : 'caixas';
 
-    const fomoMath = score > 0
-        ? `Temos ${score} unidades vendidas de ${nomeComercial} girando rapidamente em clientes do mesmo perfil (${segmentLabel}). Você está deixando dinheiro na mesa para a concorrência por não ter este produto na operação.`
-        : `Este item tem alto giro em clientes do mesmo perfil (${segmentLabel}). Você está deixando dinheiro na mesa por não ter ele na operação.`;
+    const passo1 = isAtacado
+        ? `Fala ${comprador}, teu estoque da linha de ${nomeComercial} deve estar no limite pelos meus cálculos. Como estamos em fechamento de mês e teu giro costuma dobrar agora, vamos antecipar essa reposição?`
+        : `Fala ${comprador}, tua gôndola da linha de ${nomeComercial} deve estar baixando rápido pelos meus cálculos. Como o movimento aumenta no final de semana, vamos antecipar a reposição?`;
 
-    const statusRule = isAtivo
-        ? `REGRA CRÍTICA DE SEPARAÇÃO LÓGICA: O cliente comprou nos últimos 30 dias (CLIENTE ATIVO). Você NUNCA deve usar palavras passivas como "reativar", "sumido", ou "faz tempo". O gancho inicial (${motivoGancho}) serve apenas para validar a necessidade do Cross-Sell/Up-Sell de um produto forte que ele não possui.`
-        : `REGRA DE CONTEXTO: O cliente reduziu compras recentemente. Ainda assim, evite postura pedinte. Prove matematicamente o prejuízo de não repor estoque.`;
+    const passo2 = isAtacado
+        ? `Aproveitando o pedido: os outros atacadistas aqui da região já giraram ${fomoData} ${fomoMetricText} de [PRODUTO]. Você tá deixando essa margem na mesa para a concorrência.`
+        : `Aproveitando o pedido: os mercadinhos aqui da região já giraram ${fomoData} ${fomoMetricText} de [PRODUTO]. Você tá perdendo esse ticket médio na gôndola.`;
 
-    return `${vocabControle}
+    const passo3 = isAtacado
+        ? `Vamos botar um pallet dele nesse pedido de hoje pra você testar essa rentabilidade?`
+        : `Vamos botar um display dele no pedido de hoje pra testar essa saída?`;
 
-REGRA DE LIMPEZA VISUAL (INEGOCIÁVEL):
-Use SEMPRE o termo comercial natural para o produto foco: "${nomeComercial}". NUNCA use strings de sistema.
+    return `REGRA ABSOLUTA 1 (ZERO ALUCINAÇÃO): NUNCA, SOB NENHUMA HIPÓTESE, invente ou sugira descontos, bonificações, amostras grátis, "condições especiais obscuras", prazos estendidos ou promoções. Você NÃO TEM autorização para negociar valores ou dar produtos de graça. Foco APENAS na venda do produto pelo giro dele.
 
-INVERSÃO DE PROTAGONISMO (LÓGICA PREDADORA):
-O objetivo principal, único e absoluto desta mensagem é ALAVANCAR O TICKET VENDENDO O PRODUTO NOVO (${nomeComercial}). A análise prévia ("${motivoGancho}") é só o gancho inicial. Seja agressivo e consultivo focando em rentabilidade e otimização.
+REGRA ABSOLUTA 2 (PERSPECTIVA): Você escreve DIRETAMENTE para o comprador no WhatsApp. NUNCA use a terceira pessoa (ex: "este cliente não compra", "o cliente tem giro"). Use SEMPRE "você", "teu estoque", "sua operação", "tua gôndola".
 
-${statusRule}
+REGRA ABSOLUTA 3 (TOM WHATSAPP RAIZ): Proibido jargões corporativos (ex: "nossos principais clientes", "valoriza a eficiência", "soluções inovadoras", "gostaria de reafirmar nossa parceria"). Escreva como um vendedor mandando um áudio transcrito: seco, rápido, comercial e focado no dinheiro.
 
-ESTRUTURA OBRIGATÓRIA (4 passos curtos, puramente comerciais):
-1. Cumprimento direto usando o nome: ${comprador}.
-2. Gancho: Mencione levemente o status atual dele ("${motivoGancho}": ${metricText}).
-3. A Oportunidade (Alavancagem e FOMO): Introduza ${nomeComercial}. ${fomoMath} Destaque o ${isAtacado ? 'giro rápido no pallet' : 'aumento do ticket médio na gôndola'}.
-4. Fechamento Agressivo: "${propostaFechamento}" Terminando SEMPRE com uma chamada imperativa e focada na venda. NUNCA faça perguntas como "Faz sentido?", "O que acha?".
+REGRA ABSOLUTA 4 (LIMPEZA TEXTUAL): NUNCA repita o nome do produto exatamente como está no banco de dados se for muito longo. Adapte. Ex: Se o produto é "Vinho Fino Seco Tinto 750ml", chame de "Vinho Tinto" ou "a linha de Vinhos".
 
-Escreva a mensagem seguindo esta estrutura. Máximo 3 parágrafos curtos.
-NÃO use markdown ou formatação. Apenas o texto puro de WhatsApp.`;
+${vocabControle}
+Produto Alvo para o Cross-Sell/Up-Sell: ${nomeComercial}
+
+INSTRUÇÃO FINAL: 
+Escreva a mensagem seguindo EXATAMENTE este roteiro de 3 passos em um único bloco ou parágrafos curtos:
+
+Passo 1 (Reposição): Adapte esta frase mantendo o sentido: "${passo1}"
+Passo 2 (Bote/Cross-sell): Substitua [PRODUTO] por '${nomeComercial}' e use esta exata estrutura: "${passo2}"
+Passo 3 (Fechamento): Use EXATAMENTE esta frase: "${passo3}"
+
+Escreva AGORA a mensagem final seguindo estritamente as amarras acima.`;
 }
 
 export async function GET() {
