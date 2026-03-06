@@ -28,6 +28,7 @@ interface InactiveClient {
     alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde';
     motivo?: string;
     messageSuggestion?: string;
+    contextoParaIA?: string;
 }
 
 interface Opportunity {
@@ -39,6 +40,7 @@ interface Opportunity {
     priority: 'alta' | 'media' | 'baixa';
     actionLabel: string;
     messageSuggestion?: string;
+    contextoParaIA?: string;
 }
 
 interface SalesInsight {
@@ -49,6 +51,7 @@ interface SalesInsight {
     metric: string;
     priority: 'alta' | 'media' | 'baixa';
     actionLabel: string;
+    contextoParaIA?: string;
 }
 
 export default function AIInsightsPage() {
@@ -124,7 +127,7 @@ export default function AIInsightsPage() {
     ).slice(0, 30);
 
     // AI Message Generation Handler
-    const handleGenerateAIMessage = async (clienteId: string) => {
+    const handleGenerateAIMessage = async (clienteId: string, contextoParaIA?: string) => {
         setGeneratingMessageFor(clienteId);
         setAiGeneratedMessage(null);
         setAiMessageError(null);
@@ -136,7 +139,7 @@ export default function AIInsightsPage() {
             const res = await fetch('/api/ai/generate-message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clienteId })
+                body: JSON.stringify({ clienteId, contextoParaIA })
             });
 
             const data = await res.json();
@@ -529,7 +532,7 @@ export default function AIInsightsPage() {
                                                         <td className="px-4 py-3">
                                                             <div className="flex items-center justify-center gap-2">
                                                                 <button
-                                                                    onClick={() => handleGenerateAIMessage(client.id)}
+                                                                    onClick={() => handleGenerateAIMessage(client.id, client.contextoParaIA)}
                                                                     disabled={generatingMessageFor === client.id}
                                                                     className="p-2 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
                                                                     title="Gerar Mensagem IA"
@@ -611,7 +614,7 @@ export default function AIInsightsPage() {
                                                         <span className="text-xs text-purple-400 uppercase font-semibold">{typeLabel}</span>
                                                         <div className="flex items-center gap-2">
                                                             <button
-                                                                onClick={() => handleGenerateAIMessage(opp.clienteId)}
+                                                                onClick={() => handleGenerateAIMessage(opp.clienteId, opp.contextoParaIA)}
                                                                 disabled={generatingMessageFor === opp.clienteId}
                                                                 className="px-3 py-1 rounded-lg text-sm bg-violet-600/20 text-violet-400 hover:bg-violet-600/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                                                                 title="Gerar Mensagem IA"
@@ -665,7 +668,7 @@ export default function AIInsightsPage() {
                                                     <span className="text-xs text-purple-400 uppercase">{insight.type}</span>
                                                     <div className="flex items-center gap-2">
                                                         <button
-                                                            onClick={() => handleGenerateAIMessage(insight.clienteId)}
+                                                            onClick={() => handleGenerateAIMessage(insight.clienteId, insight.contextoParaIA)}
                                                             disabled={generatingMessageFor === insight.clienteId}
                                                             className="px-3 py-1 rounded-lg bg-violet-600/20 text-violet-400 text-sm hover:bg-violet-600/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                                                             title="Gerar Mensagem IA"

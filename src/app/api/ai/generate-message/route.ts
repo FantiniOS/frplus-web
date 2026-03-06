@@ -22,6 +22,7 @@ interface FatosEstrategicos {
 
 interface GenerateMessageRequest {
     clienteId: string
+    contextoParaIA?: string
 }
 
 interface ProductPurchaseStats {
@@ -677,7 +678,7 @@ export async function POST(request: Request) {
 
         const nomeCliente = fatosEstrategicos.comprador || clienteExiste.nomeFantasia.split(' ')[0]
 
-        // Calcular dias sem comprar para régua de churn
+        // Calcular dias sem comprar para régua de churn (Apenas para fallback)
         const ultimoPedido = await prisma.pedido.findFirst({
             where: { clienteId: body.clienteId, tipo: 'Venda' },
             orderBy: { data: 'desc' },
@@ -687,8 +688,67 @@ export async function POST(request: Request) {
             ? Math.floor((Date.now() - new Date(ultimoPedido.data).getTime()) / (1000 * 60 * 60 * 24))
             : null
 
-        // ETAPA 3: Gerar mensagem com LLM (passa diasSemComprar para régua de churn)
-        const mensagem = await gerarMensagemComLLM(fatosEstrategicos, nomeUsuario, nomeCliente, diasSemComprar)
+        // ETAPA 3: Gerar mensagem com LLM
+        let mensagem = ''
+
+        // NOVO FLUXO (BYPASS): Se o Frontend já enviou o contexto predador/inteligente das abas 
+        // de Oportunidades ou Alavancagem, ignorar a Régua Passiva e rodar LLM diretamente com este prompt.
+        if (body.contextoParaIA && body.contextoParaIA.trim() !== '') {
+            console.log(`[AI Gen] Usando bypass de contexto externo para ${nomeCliente}`);
+
+            // O contextoParaIA já contém a estrutura obrigatória, os fatores FOMO e as restrições 
+            // de segmento e fechamento agressivo implementadas nas requests anteriores.
+            const directSystemPrompt = `Você é o representante comercial '${nomeUsuario}'. Assine a mensagem usando este nome.
+O cliente alvo se chama '${nomeCliente}'.
+
+REGRA 1: Escreva a mensagem APENAS como o texto puro final pronto para contato via WhatsApp. Sem marcações markdown, asteriscos intensos ou blocos de notas extras.
+REGRA 2: NÃO crie lacunas preenchíveis como [Seu Nome], use diretamente a sua assinatura: ${nomeUsuario}.
+
+${body.contextoParaIA}`;
+
+            try {
+                const groqKey = process.env.GROQ_API_KEY
+                let generated = false;
+                if (groqKey) {
+                    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: 'llama-3.3-70b-versatile',
+                            messages: [
+                                { role: 'system', content: directSystemPrompt },
+                                { role: 'user', content: 'Crie a mensagem exata seguindo a estrutura fornecida nas regras de contexto.' }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 500
+                        })
+                    })
+                    if (groqRes.ok) {
+                        const groqData = await groqRes.json()
+                        mensagem = groqData.choices?.[0]?.message?.content?.trim()
+                        generated = !!mensagem && mensagem.length > 10;
+                    }
+                }
+
+                if (!generated && process.env.GEMINI_API_KEY) {
+                    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+                    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+                    const result = await model.generateContent(`${directSystemPrompt}\n\nAgora gere a mensagem exata.`)
+                    mensagem = result.response.text().trim()
+                }
+
+                if (!mensagem) throw new Error("Fallback LLM também falhou no Bypass.");
+            } catch (err) {
+                // Se o bypass falhar severamente nas duas APIs mas puder usar o fallback, delegar ao fluxo normal 
+                // senão lançamos o erro (que cairá no catch master).
+                throw err;
+            }
+        }
+        else {
+            // FLUXO ANTIGO: Consolidação de fatos genéricos (Clientes inativos ou sem prompt customizado)
+            console.log(`[AI Gen] Usando LLM Flow padrão para ${nomeCliente}`);
+            mensagem = await gerarMensagemComLLM(fatosEstrategicos, nomeUsuario, nomeCliente, diasSemComprar)
+        }
 
         return NextResponse.json({
             mensagem,
