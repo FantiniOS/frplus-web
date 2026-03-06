@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 
 
+import { buscarClientesParaSelect } from "./actions";
+
 interface Cliente {
     id: string;
     nomeFantasia: string;
@@ -47,8 +49,7 @@ export default function CurvaABCPage() {
     useEffect(() => {
         const fetchClientes = async () => {
             try {
-                const res = await fetch('/api/clientes');
-                const data = await res.json();
+                const data = await buscarClientesParaSelect();
                 if (Array.isArray(data)) {
                     setClientes(data);
                 }
