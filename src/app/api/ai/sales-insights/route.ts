@@ -105,35 +105,23 @@ function getContextoAlavancagem(params: {
     const fomoData = score > 0 ? score : (isAtacado ? 350 : 45); // Fallback numérico se não houver score exato.
     const fomoMetricText = isAtacado ? 'unidades' : 'caixas';
 
-    // REGRA 1: Sanidade Física de Display (Produtos volumosos não vão no caixa)
+    // REGRA 1: Sanidade Física de Display
     const isVolumeGrande = /5\s*l|5\s*litros|2\s*l|2\s*litros|fardo|galão/i.test(nomeComercial);
     const espacoPallet = isVolumeGrande ? 'um pallet' : (isAtacado ? 'um pallet' : 'um display');
     const espacoGondola = isVolumeGrande ? 'na base da gôndola ou ponto extra' : (isAtacado ? 'no ponto extra' : 'na frente de caixa');
 
-    // REGRA 2: Hierarquia de Resgate (Churn > 90 dias)
-    let passo1 = '';
-    let passo2 = '';
-    let passo3 = '';
+    // MODO REPOSIÇÃO (Giro Normal) - Cliente Ativo
+    const passo1 = isAtacado
+        ? `Fala ${comprador}, teu estoque da linha de ${nomeComercial} deve estar no limite pelos meus cálculos. Como a semana tá virando e teu giro costuma dobrar, vamos antecipar essa reposição?`
+        : `Fala ${comprador}, tua gôndola da linha de ${nomeComercial} deve estar baixando rápido. Como o movimento aumenta no final de semana, vamos antecipar a reposição?`;
 
-    if (diasDesdeUltimaCompra > 90) {
-        // MODO RESGATE (Cliente Perdido/Inativo)
-        passo1 = `Fala ${comprador}, faz um tempão que não rodamos um pedido. O que houve? A concorrência tomou o espaço por aí?`;
-        passo2 = `Inclusive, tô com a linha de [PRODUTO] aqui que a rede inteira tá girando (${fomoData} ${fomoMetricText} na região) e você tá ficando de fora.`;
-        passo3 = `Vamos bater um papo pra eu te colocar de volta no jogo e testar essa rentabilidade com ${espacoPallet}?`;
-    } else {
-        // MODO REPOSIÇÃO (Giro Normal)
-        passo1 = isAtacado
-            ? `Fala ${comprador}, teu estoque da linha de ${nomeComercial} deve estar no limite pelos meus cálculos. Como a semana tá virando e teu giro costuma dobrar, vamos antecipar essa reposição?`
-            : `Fala ${comprador}, tua gôndola da linha de ${nomeComercial} deve estar baixando rápido. Como o movimento aumenta no final de semana, vamos antecipar a reposição?`;
+    const passo2 = isAtacado
+        ? `Aproveitando o pedido: os outros atacadistas aqui da região já giraram ${fomoData} ${fomoMetricText} de [PRODUTO]. Você tá deixando essa margem na mesa para a concorrência.`
+        : `Aproveitando o pedido: os mercadinhos aqui da região já giraram ${fomoData} ${fomoMetricText} de [PRODUTO]. Você tá perdendo esse ticket médio.`;
 
-        passo2 = isAtacado
-            ? `Aproveitando o pedido: os outros atacadistas aqui da região já giraram ${fomoData} ${fomoMetricText} de [PRODUTO]. Você tá deixando essa margem na mesa para a concorrência.`
-            : `Aproveitando o pedido: os mercadinhos aqui da região já giraram ${fomoData} ${fomoMetricText} de [PRODUTO]. Você tá perdendo esse ticket médio.`;
-
-        passo3 = isAtacado
-            ? `Vamos botar ${espacoPallet} disso no pedido de hoje pra você testar essa rentabilidade?`
-            : `Vamos botar ${espacoPallet} no pedido de hoje pra testar essa saída ${espacoGondola}?`;
-    }
+    const passo3 = isAtacado
+        ? `Vamos botar ${espacoPallet} disso no pedido de hoje pra você testar essa rentabilidade?`
+        : `Vamos botar ${espacoPallet} no pedido de hoje pra testar essa saída ${espacoGondola}?`;
 
     return `REGRA ABSOLUTA 1 (ZERO ALUCINAÇÃO): NUNCA, SOB NENHUMA HIPÓTESE, invente ou sugira descontos, bonificações, amostras grátis, "condições especiais obscuras", prazos estendidos ou promoções. Você NÃO TEM autorização para negociar valores ou dar produtos de graça. Foco APENAS na venda do produto pelo giro dele.
 
@@ -163,7 +151,18 @@ export async function GET() {
             return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
         }
         // Get all clients with order statistics
+        const dataCorte = new Date();
+        dataCorte.setDate(dataCorte.getDate() - 90);
+
         const clients = await prisma.cliente.findMany({
+            where: {
+                pedidos: {
+                    some: {
+                        data: { gte: dataCorte },
+                        status: { in: ['FATURADO', 'CONCLUIDO', 'Faturado', 'Concluido'] }
+                    }
+                }
+            },
             include: {
                 pedidos: {
                     where: {
@@ -385,11 +384,7 @@ export async function GET() {
             const last3MonthsTotal = last3Months.reduce((acc, o) => acc + Number(o.valorTotal), 0)
 
             if (avgMonthly > 1000 && last3MonthsTotal < avgMonthly * 2) {
-                const isCurrentlyActive = isAtivo;
-                const dynamicActionLabel = isCurrentlyActive ? 'Aumento de Ticket' : 'Reativar Cliente';
-                const dynamicHook = isCurrentlyActive
-                    ? 'Cliente recentemente ativo, mas comprando consideravelmente abaixo do seu potencial histórico trimestral.'
-                    : 'Cliente com histórico altíssimo mas atividade muito fraca nos últimos 3 meses.';
+                const dynamicHook = 'Cliente com histórico altíssimo mas comprando consideravelmente abaixo do seu potencial histórico trimestral.';
 
                 insights.push({
                     type: 'untappedPotential',
@@ -398,7 +393,7 @@ export async function GET() {
                     description: `Cliente historicamente forte com atividade reduzida neste trimestre.`,
                     metric: `Potencial: R$ ${(avgMonthly * 3).toFixed(2)}/trim. atual: R$ ${last3MonthsTotal.toFixed(2)}`,
                     priority: 'alta',
-                    actionLabel: dynamicActionLabel,
+                    actionLabel: 'Aumento de Ticket',
                     contextoParaIA: getContextoAlavancagem({
                         segmento: clientSegment,
                         comprador: greetingName,
