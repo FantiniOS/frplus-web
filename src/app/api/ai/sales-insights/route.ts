@@ -272,6 +272,8 @@ export async function GET() {
 
             for (const pedido of client.pedidos) {
                 const dataPedido = new Date(pedido.data)
+
+                // Ignorar pedidos mais velhos que 6 meses
                 if (dataPedido < seisMesesAtras) continue;
 
                 const isRecente = dataPedido >= tresMesesAtras;
@@ -284,11 +286,13 @@ export async function GET() {
                     const curr = produtosCompradosRecentes.get(item.produtoId) || { nome: nomeStr, qtdTotal: 0, comprasAnteriores: 0, comprasRecentes: 0 };
 
                     curr.qtdTotal += item.quantidade;
+
                     if (isRecente) {
                         curr.comprasRecentes += item.quantidade;
                     } else {
                         curr.comprasAnteriores += item.quantidade;
                     }
+
                     produtosCompradosRecentes.set(item.produtoId, curr);
                 }
             }
@@ -303,7 +307,7 @@ export async function GET() {
                     `- ${p.nome}: Total (6 meses): ${p.qtdTotal}cx | Média Trimestre Antigo: ${p.comprasAnteriores}cx -> Trimestre Atual (Últimos 3m): ${p.comprasRecentes}cx`
                 ).join('\n');
             } else {
-                dadosHistoricosFormatados = 'Sem histórico de produtos nos últimos 6 meses.';
+                dadosHistoricosFormatados = 'Sem histórico considerável nos últimos 6 meses para gerar um breakdown detalhado.';
             }
 
             const clientSegment = client.tabelaPreco || '50a199'
