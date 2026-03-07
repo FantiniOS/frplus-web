@@ -45,7 +45,14 @@ export async function GET(request: Request) {
                     where: { tipo: 'Venda' },
                     orderBy: { data: 'desc' },
                     take: 10, // 10 pedidos para calcular ciclo médio com precisão
-                    select: { data: true, valorTotal: true, tipo: true }
+                    select: {
+                        data: true,
+                        valorTotal: true,
+                        tipo: true,
+                        itens: {
+                            include: { produto: true }
+                        }
+                    }
                 },
                 _count: { select: { pedidos: true } }
             }
@@ -80,6 +87,24 @@ export async function GET(request: Request) {
                     diasDeAtraso = 9999;
                 }
 
+                // ---- Encontrar o Produto Favorito (Mais Comprado em Quantidade) ----
+                let produtoFavorito = 'Mix Geral';
+                const volumePorProduto: Record<string, number> = {};
+
+                salesOrders.forEach(pedido => {
+                    if (pedido.itens) {
+                        pedido.itens.forEach((item: any) => {
+                            const nomeProduto = item.produto?.nome || 'Produto Desconhecido';
+                            volumePorProduto[nomeProduto] = (volumePorProduto[nomeProduto] || 0) + Number(item.quantidade);
+                        });
+                    }
+                });
+
+                if (Object.keys(volumePorProduto).length > 0) {
+                    const sortedProducts = Object.entries(volumePorProduto).sort((a, b) => b[1] - a[1]);
+                    produtoFavorito = sortedProducts[0][0]; // Pega o nome do produto com maior volume
+                }
+
                 // ---- Alert Level baseado na relação com o ciclo ----
                 // @ts-ignore - comprador exists in schema
                 const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
@@ -87,6 +112,17 @@ export async function GET(request: Request) {
                 let alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde' = 'verde';
                 let motivo = '';
                 let contextoParaIA = '';
+
+                // TEMPLATE OURO DE INATIVOS (Injeção de Dados Reais)
+                const baseContext = `
+Aja como um Executivo de Vendas sênior focado em resgate de clientes (Inatividade).
+Você DEVE obrigatoriamente usar os seguintes dados numéricos do cliente para montar o argumento de venda:
+- Dias inativo: ${daysSinceLastOrder || 0} dias sem comprar.
+- Ciclo Médio: O cliente tinha o costume de comprar a cada ${cicloMedioDias} dias.
+- Produto Curva A do Cliente (O que ele mais comprava): ${produtoFavorito}.
+
+Crie uma mensagem persuasiva focada em reativar a parceria usando o ${produtoFavorito} como 'isca' para contato. Quebre o gelo citando de forma elegante que notou a ausência dele nos últimos ${daysSinceLastOrder || 0} dias, visto que ele comprava a cada ${cicloMedioDias} dias. Ofereça uma condição especial para a volta.
+                `.trim();
 
                 if (daysSinceLastOrder === null) {
                     alertLevel = 'vermelho';
@@ -103,19 +139,19 @@ export async function GET(request: Request) {
                     if (daysSinceLastOrder >= 180) {
                         alertLevel = 'vermelho';
                         motivo = `Sem comprar há mais de 6 meses (${daysSinceLastOrder} dias). Atraso de ${diasDeAtraso} dias além do ciclo.`;
-                        contextoParaIA = `Atue como um vendedor agressivo de resgate. O cliente ${greetingName} está sem comprar há mais de 6 meses. O risco de churn foi ativado. Mande uma mensagem forte de rentabilização, mostre que você sentiu falta dele, e ofereça uma excelente oportunidade comercial apenas para quebrar esse gelo.`;
+                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA: CHURN CRÍTICO (> 6 meses). A abordagem deve ser enérgica e incisiva, mostrando que o cliente fez muita falta e que a distribuidora está disposta a fazer negócio de qualquer jeito para tê-lo de volta com o ${produtoFavorito}.`;
                     } else if (ratio >= 2.0 || (salesOrders.length <= 1 && daysSinceLastOrder >= 45)) {
                         alertLevel = 'vermelho';
                         motivo = `Ciclo: a cada ${cicloMedioDias} dias | Atraso: ${diasDeAtraso} dias — Crítico (${ratio >= 2.0 ? ratio.toFixed(1) + 'x o ciclo' : '> 45 dias'}).`;
-                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está num atraso CRÍTICO severo (sem compras há ${daysSinceLastOrder} dias, atraso de ${diasDeAtraso} dias). Objetivo: Retomar a parceria urgentemente oferecendo alguma novidade forte.`;
+                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA: ALTO. O cliente estourou 2x o próprio ciclo. Mostre proatividade, pergunte se houve algum problema e force o fechamento do ${produtoFavorito}.`;
                     } else if (ratio >= 1.5) {
                         alertLevel = 'laranja';
                         motivo = `Ciclo: a cada ${cicloMedioDias} dias | Atraso: ${diasDeAtraso} dias — Risco.`;
-                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está com atraso considerável de ${diasDeAtraso} dias. Lembre-o de repor estoque e mande dicas fáceis.`;
+                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA: MÉDIO. Lembrebre-o suavemente de repor os estoques antes que acabe a mercadoria, perguntando como está o giro do ${produtoFavorito}.`;
                     } else if (ratio >= 1.2 || (daysSinceLastOrder > 30 && cicloMedioDias < 30)) {
                         alertLevel = 'amarelo';
                         motivo = `Ciclo: a cada ${cicloMedioDias} dias | Atraso: ${diasDeAtraso} dias — Atenção.`;
-                        contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} está num atraso LEVE de ${diasDeAtraso} dias. Faça uma abordagem leve de reposição.`;
+                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA: PREVENTIVO. Faça uma abordagem leve de serviço de reposição de gôndola.`;
                     } else {
                         alertLevel = 'verde';
                         motivo = `Dentro do ciclo esperado (a cada ${cicloMedioDias} dias).`;
