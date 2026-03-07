@@ -688,22 +688,62 @@ export async function POST(request: Request) {
             ? Math.floor((Date.now() - new Date(ultimoPedido.data).getTime()) / (1000 * 60 * 60 * 24))
             : null
 
-        // ETAPA 3: Gerar mensagem com LLM
         let mensagem = ''
 
+        // ==========================================================
+        // DADOS REAIS: REGRAS DE NEGÓCIO E HISTÓRICO DE COMPRAS
+        // ==========================================================
+
+        // Busca de 120 dias faturados e agrupamento
+        const dataLimite = new Date();
+        dataLimite.setDate(dataLimite.getDate() - 120);
+
+        const historicoItens = await prisma.itemPedido.findMany({
+            where: {
+                pedido: {
+                    clienteId: body.clienteId,
+                    data: { gte: dataLimite },
+                    status: { in: ['FATURADO', 'CONCLUIDO', 'Faturado', 'Concluido'] }
+                }
+            },
+            include: { produto: true }
+        });
+
+        // .reduce() para agrupar em memória (por nome de produto)
+        type HistoricoAcumulador = Record<string, number>;
+
+        const volumePorProduto = historicoItens.reduce((acc: HistoricoAcumulador, item: any) => {
+            const nomeStr = item.produto?.nome || 'Produto Desconhecido';
+            acc[nomeStr] = (acc[nomeStr] || 0) + item.quantidade;
+            return acc;
+        }, {} as HistoricoAcumulador);
+
+        const arrVolumes = Object.entries(volumePorProduto).sort((a, b) => b[1] - a[1]);
+
+        let payloadHistorico = 'O cliente não comprou nenhum produto faturado nos últimos 120 dias.';
+        if (arrVolumes.length > 0) {
+            payloadHistorico = 'Histórico de 120 dias - ' + arrVolumes
+                .map(([nome, qtd]) => `${nome}: ${qtd} caixas`)
+                .join(' | ');
+        }
+
         // NOVO FLUXO (BYPASS): Se o Frontend já enviou o contexto predador/inteligente das abas 
-        // de Oportunidades ou Alavancagem, ignorar a Régua Passiva e rodar LLM diretamente com este prompt.
+        // de Oportunidades ou Alavancagem, ignorar a Régua Passiva e rodar LLM com este prompt.
         if (body.contextoParaIA && body.contextoParaIA.trim() !== '') {
             console.log(`[AI Gen] Usando bypass de contexto externo para ${nomeCliente}`);
 
-            // O contextoParaIA já contém a estrutura obrigatória, os fatores FOMO e as restrições 
-            // de segmento e fechamento agressivo implementadas nas requests anteriores.
-            const directSystemPrompt = `Você é o representante comercial '${nomeUsuario}'. Assine a mensagem usando este nome.
-O cliente alvo se chama '${nomeCliente}'.
+            // O System Prompt re-escrito conforme exigência arquitetural e layout de painéis
+            const directSystemPrompt = `Você é um Gerente Comercial analítico e direto. É ESTRITAMENTE PROIBIDO usar jargões como Top Tier, Share of Wallet, Sinergia ou Queda Abrupta. Baseie sua análise APENAS nos dados numéricos fornecidos no contexto. Você DEVE obrigatoriamente citar os nomes dos produtos e a quantidade exata (caixas/volume) no seu texto. Aja com foco em rua, faturamento e concorrência na gôndola.
 
-REGRA 1: Escreva a mensagem APENAS como o texto puro final pronto para contato via WhatsApp. Sem marcações markdown, asteriscos intensos ou blocos de notas extras.
-REGRA 2: NÃO crie lacunas preenchíveis como [Seu Nome], use diretamente a sua assinatura: ${nomeUsuario}.
+Gere OBRIGATORIAMENTE sua resposta estruturada com estes 3 painéis (usando markdown rigoroso):
+# AI INSIGHT
+## Análise do Comportamento
+## Recomendação da IA
 
+DADOS REAIS DE COMPRAS DO CLIENTE:
+${payloadHistorico}
+
+CONTEXTO DA AÇÃO / OPORTUNIDADE:
 ${body.contextoParaIA}`;
 
             try {
