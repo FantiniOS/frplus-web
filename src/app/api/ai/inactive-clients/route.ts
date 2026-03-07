@@ -113,21 +113,27 @@ export async function GET(request: Request) {
                 let motivo = '';
                 let contextoParaIA = '';
 
+                // ---- Calcular Mês de Referência (Atual vs Próximo) ----
+                const isEndOfMonth = hoje.getDate() >= 20;
+                const targetMonthDate = new Date(hoje);
+                if (isEndOfMonth) {
+                    targetMonthDate.setMonth(hoje.getMonth() + 1);
+                }
+                const mesReferencia = targetMonthDate.toLocaleDateString('pt-BR', { month: 'long' });
+
                 // TEMPLATE OURO DE INATIVOS (Injeção de Dados Reais)
                 const baseContext = `
-Aja como um Executivo de Vendas sênior focado em resgate de clientes (Inatividade).
-Você DEVE obrigatoriamente usar os seguintes dados numéricos do cliente para montar o argumento de venda:
-- Dias inativo: ${daysSinceLastOrder || 0} dias sem comprar.
-- Ciclo Médio: O cliente tinha o costume de comprar a cada ${cicloMedioDias} dias.
-- Produto Curva A do Cliente (O que ele mais comprava): ${produtoFavorito}.
+Você é um representante comercial B2B. Sua missão é resgatar um cliente inativo. NUNCA use jargões corporativos. 
+Baseie a sua análise em fatos.
 
-Crie uma mensagem persuasiva focada em reativar a parceria usando o ${produtoFavorito} como 'isca' para contato. Quebre o gelo citando de forma elegante que notou a ausência dele nos últimos ${daysSinceLastOrder || 0} dias, visto que ele comprava a cada ${cicloMedioDias} dias. Ofereça uma condição especial para a volta.
+Use EXATAMENTE este modelo como base para escrever a mensagem do WhatsApp (não altere a estrutura, apenas adapte levemente se achar que soa muito robótico, mantendo todos os números):
+> Fala ${greetingName}, tudo bem? Percebi que já faz um tempo que não compramos juntos, especificamente o ${produtoFavorito}, que costumava ser um dos seus favoritos. Já se passaram ${daysSinceLastOrder || 0} dias desde a última compra, e geralmente você costumava comprar a cada ${cicloMedioDias} dias. Eu estava me perguntando, o que mudou? Foi o preço, a concorrência ou algo não foi como você esperava na última compra? Eu sei que historicamente você costuma comprar mais no mês de ${mesReferencia}, então talvez seja um bom momento para reavaliarmos como posso ajudar. Você está pronto para reabastecer ou precisa de algo mais?
                 `.trim();
 
                 if (daysSinceLastOrder === null) {
                     alertLevel = 'vermelho';
                     motivo = 'Cliente ATIVO, mas nunca efetuou uma compra. Atraso máximo.';
-                    contextoParaIA = `Atue como um vendedor experiente proativo. O cliente ${greetingName} tem cadastro ativo mas nunca foi faturado. Envie uma mensagem quebrando o gelo, ofereça as novidades e mostre que a distribuidora tem ótimos preços para primeira compra.`;
+                    contextoParaIA = `Você é um representante comercial B2B. O cliente ${greetingName} tem cadastro ativo mas nunca comprou nada na distribuidora. Envie uma mensagem quebrando o gelo, ofereça as novidades e mostre que a distribuidora tem ótimos preços para primeira compra. NUNCA use jargões.`;
                 } else if (diasDeAtraso <= 0) {
                     // Dentro do ciclo esperado - sem atraso
                     alertLevel = 'verde';
@@ -139,19 +145,19 @@ Crie uma mensagem persuasiva focada em reativar a parceria usando o ${produtoFav
                     if (daysSinceLastOrder >= 180) {
                         alertLevel = 'vermelho';
                         motivo = `Sem comprar há mais de 6 meses (${daysSinceLastOrder} dias). Atraso de ${diasDeAtraso} dias além do ciclo.`;
-                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA: CHURN CRÍTICO (> 6 meses). A abordagem deve ser enérgica e incisiva, mostrando que o cliente fez muita falta e que a distribuidora está disposta a fazer negócio de qualquer jeito para tê-lo de volta com o ${produtoFavorito}.`;
+                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA DO CASO: CHURN CRÍTICO (> 6 meses inativo). Dê um tom de urgência sutil.`;
                     } else if (ratio >= 2.0 || (salesOrders.length <= 1 && daysSinceLastOrder >= 45)) {
                         alertLevel = 'vermelho';
                         motivo = `Ciclo: a cada ${cicloMedioDias} dias | Atraso: ${diasDeAtraso} dias — Crítico (${ratio >= 2.0 ? ratio.toFixed(1) + 'x o ciclo' : '> 45 dias'}).`;
-                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA: ALTO. O cliente estourou 2x o próprio ciclo. Mostre proatividade, pergunte se houve algum problema e force o fechamento do ${produtoFavorito}.`;
+                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA DO CASO: ALTO (Estourou 2x o próprio ciclo). Dê um tom investigativo e de resgate de parceria.`;
                     } else if (ratio >= 1.5) {
                         alertLevel = 'laranja';
                         motivo = `Ciclo: a cada ${cicloMedioDias} dias | Atraso: ${diasDeAtraso} dias — Risco.`;
-                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA: MÉDIO. Lembrebre-o suavemente de repor os estoques antes que acabe a mercadoria, perguntando como está o giro do ${produtoFavorito}.`;
+                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA DO CASO: MÉDIO (Atraso relevante). Dê um tom de ajuda e reposição de estoque.`;
                     } else if (ratio >= 1.2 || (daysSinceLastOrder > 30 && cicloMedioDias < 30)) {
                         alertLevel = 'amarelo';
                         motivo = `Ciclo: a cada ${cicloMedioDias} dias | Atraso: ${diasDeAtraso} dias — Atenção.`;
-                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA: PREVENTIVO. Faça uma abordagem leve de serviço de reposição de gôndola.`;
+                        contextoParaIA = baseContext + `\n\nNÍVEL DE ALERTA DO CASO: PREVENTIVO (Atraso leve). Dê um tom leve de check-in operacional.`;
                     } else {
                         alertLevel = 'verde';
                         motivo = `Dentro do ciclo esperado (a cada ${cicloMedioDias} dias).`;
