@@ -98,7 +98,7 @@ function getContextoAlavancagem(params: {
     score: number;
     diasDesdeUltimaCompra: number;
 }): string {
-    const { segmento, comprador, nomeComercial, score, diasDesdeUltimaCompra } = params;
+    const { segmento, comprador, nomeComercial, score, diasDesdeUltimaCompra, metricText, motivoGancho } = params;
     const isAtacado = segmento === 'atacado' || segmento === 'avista';
     const vocabControle = getControleVocabulario(segmento);
 
@@ -123,25 +123,30 @@ function getContextoAlavancagem(params: {
         ? `Vamos botar ${espacoPallet} disso no pedido de hoje pra você testar essa rentabilidade?`
         : `Vamos botar ${espacoPallet} no pedido de hoje pra testar essa saída ${espacoGondola}?`;
 
-    return `REGRA ABSOLUTA 1 (ZERO ALUCINAÇÃO): NUNCA, SOB NENHUMA HIPÓTESE, invente ou sugira descontos, bonificações, amostras grátis, "condições especiais obscuras", prazos estendidos ou promoções. Você NÃO TEM autorização para negociar valores ou dar produtos de graça. Foco APENAS na venda do produto pelo giro dele.
+    return `REGRA ABSOLUTA 1 (ZERO MENTIRAS E ZERO CONDIÇÕES): NUNCA, SOB NENHUMA HIPÓTESE, invente ou sugira "condições especiais", descontos, bonificações, amostras grátis, prazos estendidos ou promoções. O representante não pode queimar margem. A recomendação deve ser puramente ESTRATÉGICA focada no giro do produto.
 
-REGRA ABSOLUTA 2 (PERSPECTIVA): Você escreve DIRETAMENTE para o comprador no WhatsApp. NUNCA use a terceira pessoa (ex: "este cliente não compra", "o cliente tem giro"). Use SEMPRE "você", "teu estoque", "sua operação".
+REGRA ABSOLUTA 2 (FIM DO LERO-LERO): PROIBIDO usar adjetivos vagos e genéricos como "redução significativa", "queda abrupta", "sazonalidade do setor" ou "insatisfação". Você DEVE citar os números exatos e motivos matemáticos reais fornecidos abaixo.
 
-REGRA ABSOLUTA 3 (TOM WHATSAPP RAIZ): Proibido jargões corporativos (ex: "nossos principais clientes", "valoriza a eficiência", "soluções inovadoras"). Escreva como um vendedor mandando um áudio transcrito: seco, rápido, comercial e focado no dinheiro.
+REGRA ABSOLUTA 3 (ANÁLISE CIRÚRGICA DE DADOS): Aja como um Analista de Dados Sênior direcionando o Vendedor. Se a queda aconteceu, mas o cliente comprou outros itens, aponte isso: "Como ele comprou produto X normalmente, o problema não é limite, mas sim perda de espaço na gôndola para o produto Y".
 
-REGRA ABSOLUTA 4 (LIMPEZA TEXTUAL): NUNCA repita o nome do produto exatamente como está no banco de dados se for muito longo. Adapte. Ex: Se o produto é "Vinho Fino Seco Tinto 750ml", chame de "Vinho Tinto" ou "a linha de Vinhos".
+ESTRUTURA OBRIGATÓRIA DA RECOMENDAÇÃO (Gere EXATAMENTE estes 3 tópicos, sem saudações):
 
+1. Raio-X da Queda:
+(Analise os números reais de faturamento fornecidos abaixo. Liste a % de queda e o valor exato. Destaque qual Produto/Marca focada foi o responsável pelo buraco.)
+
+2. Ponto de Atenção:
+(Qual a provável causa matemática? Ex: Perdeu espaço na gôndola para a concorrência no produto específico? Deixou o ticket médio na mesa?)
+
+3. Ação Recomendada para o Representante:
+(O que o vendedor deve fazer fisicamente ou por telefone amanhã? Ex: "Ligar perguntando especificamente como está o estoque do produto X e se alguma marca entrou rasgando o preço".)
+
+DADOS REAIS PARA ANÁLISE:
+- Produto/Marca Foco da Queda/Lacuna: ${nomeComercial}
+- Indicador Financeiro Atual: ${metricText}
+- Motivo Técnico Extraído: ${motivoGancho}
 ${vocabControle}
-Produto Alvo para o Cross-Sell/Up-Sell: ${nomeComercial}
 
-INSTRUÇÃO FINAL: 
-Escreva a mensagem seguindo EXATAMENTE este roteiro de 3 passos em um único bloco ou parágrafos curtos:
-
-Passo 1 (Abordagem): Adapte esta frase mantendo o sentido e o tom: "${passo1}"
-Passo 2 (Bote/Cross-sell): Substitua [PRODUTO] por '${nomeComercial}' e use esta exata estrutura e dados: "${passo2}"
-Passo 3 (Fechamento): Use EXATAMENTE esta frase sem mudar a formatação estrutural do pedido: "${passo3}"
-
-Escreva AGORA a mensagem final seguindo estritamente as amarras acima.`;
+Gere o Insight Analítico AGORA, seguindo rigorosamente a estrutura de 3 tópicos acima.`;
 }
 
 export async function GET() {
