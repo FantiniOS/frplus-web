@@ -689,6 +689,8 @@ export async function POST(request: Request) {
             : null
 
         let mensagem = ''
+        let analiseInterna = ''
+        let mensagemWhatsApp = ''
 
         // ==========================================================
         // DADOS REAIS: REGRAS DE NEGÓCIO E HISTÓRICO DE COMPRAS
@@ -735,10 +737,11 @@ export async function POST(request: Request) {
             // O System Prompt re-escrito conforme exigência arquitetural e layout de painéis
             const directSystemPrompt = `Você é um Gerente Comercial analítico e direto. É ESTRITAMENTE PROIBIDO usar jargões como Top Tier, Share of Wallet, Sinergia ou Queda Abrupta. Baseie sua análise APENAS nos dados numéricos fornecidos no contexto. Você DEVE obrigatoriamente citar os nomes dos produtos e a quantidade exata (caixas/volume) no seu texto. Aja com foco em rua, faturamento e concorrência na gôndola.
 
-Gere OBRIGATORIAMENTE sua resposta estruturada com estes 3 painéis (usando markdown rigoroso):
-# AI INSIGHT
-## Análise do Comportamento
-## Recomendação da IA
+Você DEVE retornar sua resposta ESTRITAMENTE em formato JSON. O JSON deve possuir EXATAMENTE estas duas chaves:
+{
+  "analiseInterna": "O Raio-X do cliente. Direto, numérico e analítico. Focado em dar argumentos de venda fortes e matemáticos para o representante (sem jargões) baseados no caso.",
+  "mensagemWhatsApp": "O texto persuasivo, pronto para ser enviado ao cliente, usando o tom de um representante de rua. Assine como '${nomeUsuario}'."
+}
 
 DADOS REAIS DE COMPRAS DO CLIENTE:
 ${payloadHistorico}
@@ -757,8 +760,9 @@ ${body.contextoParaIA}`;
                             model: 'llama-3.3-70b-versatile',
                             messages: [
                                 { role: 'system', content: directSystemPrompt },
-                                { role: 'user', content: 'Crie a mensagem exata seguindo a estrutura fornecida nas regras de contexto.' }
+                                { role: 'user', content: 'Crie a mensagem exata seguindo a estrutura fornecida nas regras de contexto retornando apenas JSON.' }
                             ],
+                            response_format: { type: 'json_object' },
                             temperature: 0.7,
                             max_tokens: 500
                         })
@@ -778,6 +782,19 @@ ${body.contextoParaIA}`;
                 }
 
                 if (!mensagem) throw new Error("Fallback LLM também falhou no Bypass.");
+
+                // Parse the JSON safely
+                try {
+                    const jsonStr = mensagem.replace(/```json/gi, '').replace(/```/g, '').trim();
+                    const parsed = JSON.parse(jsonStr);
+                    analiseInterna = parsed.analiseInterna || '';
+                    mensagemWhatsApp = parsed.mensagemWhatsApp || '';
+                    mensagem = mensagemWhatsApp; // Fallback compatibility
+                } catch (e) {
+                    console.error("[AI Gen] Failed to parse JSON response:", e);
+                    mensagemWhatsApp = mensagem;
+                }
+
             } catch (err) {
                 // Se o bypass falhar severamente nas duas APIs mas puder usar o fallback, delegar ao fluxo normal 
                 // senão lançamos o erro (que cairá no catch master).
@@ -792,6 +809,8 @@ ${body.contextoParaIA}`;
 
         return NextResponse.json({
             mensagem,
+            analiseInterna,
+            mensagemWhatsApp,
             fatosEstrategicos,
             cliente: {
                 id: clienteExiste.id,

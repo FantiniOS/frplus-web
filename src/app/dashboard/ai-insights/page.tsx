@@ -87,7 +87,7 @@ export default function AIInsightsPage() {
 
     // AI Message Generation State
     const [generatingMessageFor, setGeneratingMessageFor] = useState<string | null>(null);
-    const [aiGeneratedMessage, setAiGeneratedMessage] = useState<string | null>(null);
+    const [aiGeneratedMessage, setAiGeneratedMessage] = useState<{ analiseInterna: string; mensagemWhatsApp: string } | null>(null);
     const [aiMessageError, setAiMessageError] = useState<string | null>(null);
     const [aiMessageClientInfo, setAiMessageClientInfo] = useState<{ nome: string; telefone: string } | null>(null);
     const [aiMessageFatos, setAiMessageFatos] = useState<{ motivo: string; produtoFoco: string; justificativa: string; sugestaoAdicional?: string; fatorSazonal?: string } | null>(null);
@@ -156,7 +156,10 @@ export default function AIInsightsPage() {
                 throw new Error(data.error || 'Erro ao gerar mensagem');
             }
 
-            setAiGeneratedMessage(data.mensagem);
+            setAiGeneratedMessage({
+                analiseInterna: data.analiseInterna || 'Análise indisponível no momento.',
+                mensagemWhatsApp: data.mensagemWhatsApp || data.mensagem || 'Mensagem não gerada.'
+            });
             setAiMessageClientInfo(data.cliente);
             setAiMessageFatos(data.fatosEstrategicos);
         } catch (err) {
@@ -542,39 +545,19 @@ export default function AIInsightsPage() {
                                                             )}
                                                         </td>
                                                         <td className="px-4 py-3 text-center text-gray-300 hidden md:table-cell">{client.totalPedidos}</td>
-                                                        <td className="px-4 py-3">
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <button
-                                                                    onClick={() => handleGenerateAIMessage(client.id, client.contextoParaIA)}
-                                                                    disabled={generatingMessageFor === client.id}
-                                                                    className="p-2 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
-                                                                    title="Gerar Mensagem IA"
-                                                                >
-                                                                    {generatingMessageFor === client.id ? (
-                                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                                    ) : (
-                                                                        <Bot className="h-4 w-4" />
-                                                                    )}
-                                                                </button>
-                                                                <WhatsAppButton
-                                                                    clienteId={client.id}
-                                                                    telefone={client.celular || client.telefone}
-                                                                />
-                                                                <a
-                                                                    href={`mailto:${client.email}`}
-                                                                    className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
-                                                                    title="Email"
-                                                                >
-                                                                    <Mail className="h-4 w-4" />
-                                                                </a>
-                                                                <a
-                                                                    href={`tel:${client.telefone}`}
-                                                                    className="p-2 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-colors"
-                                                                    title="Ligar"
-                                                                >
-                                                                    <Phone className="h-4 w-4" />
-                                                                </a>
-                                                            </div>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <button
+                                                                onClick={() => handleGenerateAIMessage(client.id, client.contextoParaIA)}
+                                                                disabled={generatingMessageFor === client.id}
+                                                                className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+                                                            >
+                                                                {generatingMessageFor === client.id ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <Bot className="h-4 w-4" />
+                                                                )}
+                                                                Resgatar Cliente
+                                                            </button>
                                                         </td>
                                                     </tr>
                                                 );
@@ -629,22 +612,15 @@ export default function AIInsightsPage() {
                                                             <button
                                                                 onClick={() => handleGenerateAIMessage(opp.clienteId, opp.contextoParaIA)}
                                                                 disabled={generatingMessageFor === opp.clienteId}
-                                                                className="px-3 py-1 rounded-lg text-sm bg-violet-600/20 text-violet-400 hover:bg-violet-600/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                                                                title="Gerar Mensagem IA"
+                                                                className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors flex items-center gap-2 disabled:opacity-50"
                                                             >
                                                                 {generatingMessageFor === opp.clienteId ? (
-                                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                                    <Loader2 className="w-4 h-4 animate-spin" />
                                                                 ) : (
-                                                                    <Bot className="w-3 h-3" />
+                                                                    <Bot className="w-4 h-4" />
                                                                 )}
-                                                                IA
+                                                                Explorar Oportunidade
                                                             </button>
-                                                            <WhatsAppButton
-                                                                clienteId={opp.clienteId}
-                                                                telefone={opp.clienteTelefone}
-                                                                label={opp.actionLabel}
-                                                                size="md"
-                                                            />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -683,21 +659,14 @@ export default function AIInsightsPage() {
                                                         <button
                                                             onClick={() => handleGenerateAIMessage(insight.clienteId, insight.contextoParaIA)}
                                                             disabled={generatingMessageFor === insight.clienteId}
-                                                            className="px-3 py-1 rounded-lg bg-violet-600/20 text-violet-400 text-sm hover:bg-violet-600/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                                                            title="Gerar Mensagem IA"
+                                                            className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors flex items-center gap-2 disabled:opacity-50"
                                                         >
                                                             {generatingMessageFor === insight.clienteId ? (
-                                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                                <Loader2 className="w-4 h-4 animate-spin" />
                                                             ) : (
-                                                                <Bot className="w-3 h-3" />
+                                                                <Bot className="w-4 h-4" />
                                                             )}
-                                                            IA
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleAction(insight)}
-                                                            className="px-3 py-1 rounded-lg bg-blue-600/20 text-blue-400 text-sm hover:bg-blue-600/30 transition-colors"
-                                                        >
-                                                            {insight.actionLabel}
+                                                            Alavancar Vendas
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1086,37 +1055,38 @@ export default function AIInsightsPage() {
                                         </div>
                                     )}
 
-                                    {/* Generated Message */}
+                                    {/* Raio-X AI Insight */}
                                     <div className="space-y-2">
-                                        <h4 className="text-sm font-semibold text-green-400 flex items-center gap-2">
-                                            <MessageCircle className="w-4 h-4" />
-                                            Mensagem Gerada
+                                        <h4 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
+                                            <TrendingUp className="w-4 h-4" />
+                                            Raio-X do Cliente
                                         </h4>
-                                        <div className="bg-black/30 rounded-xl p-4 border border-white/5">
-                                            <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
-                                                {aiGeneratedMessage}
+                                        <div className="bg-blue-900/10 rounded-xl p-4 border border-blue-500/10">
+                                            <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                                {aiGeneratedMessage?.analiseInterna}
                                             </p>
                                         </div>
                                     </div>
 
                                     {/* Actions */}
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={() => { if (aiGeneratedMessage) copyToClipboard(aiGeneratedMessage); }}
-                                            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors text-sm"
-                                        >
-                                            <Copy className="w-4 h-4" />
-                                            Copiar
-                                        </button>
-                                        {aiMessageClientInfo?.telefone && (
+                                    <div className="pt-2">
+                                        {aiMessageClientInfo?.telefone ? (
                                             <a
-                                                href={`https://wa.me/55${aiMessageClientInfo.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(aiGeneratedMessage || '')}`}
+                                                href={`https://wa.me/55${aiMessageClientInfo.telefone.replace(/\\D/g, '')}?text=${encodeURIComponent(aiGeneratedMessage?.mensagemWhatsApp || '')}`}
                                                 target="_blank"
-                                                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-medium transition-colors shadow-lg shadow-green-900/20 text-sm"
+                                                className="flex w-full items-center justify-center gap-2 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold transition-colors shadow-lg shadow-green-900/20 text-sm"
                                             >
-                                                <MessageCircle className="w-4 h-4" />
-                                                Enviar WhatsApp
+                                                <MessageCircle className="w-5 h-5" />
+                                                Enviar Mensagem ao Cliente
                                             </a>
+                                        ) : (
+                                            <button
+                                                onClick={() => { if (aiGeneratedMessage) copyToClipboard(aiGeneratedMessage.mensagemWhatsApp); }}
+                                                className="flex w-full items-center justify-center gap-2 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-colors text-sm"
+                                            >
+                                                <Copy className="w-5 h-5" />
+                                                Copiar Mensagem (Sem Telefone)
+                                            </button>
                                         )}
                                     </div>
                                 </div>
