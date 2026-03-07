@@ -164,7 +164,19 @@ export async function GET() {
         // ============================================================
 
         // 1. Get all clients with their order history
+        // Definição do Ponto de Corte
+        const dataCorte = new Date();
+        dataCorte.setDate(dataCorte.getDate() - 60);
+
         const clients = await prisma.cliente.findMany({
+            where: {
+                pedidos: {
+                    some: {
+                        data: { gte: dataCorte },
+                        status: { in: ['FATURADO', 'CONCLUIDO', 'Faturado', 'Concluido'] }
+                    }
+                }
+            },
             include: {
                 pedidos: {
                     where: {
