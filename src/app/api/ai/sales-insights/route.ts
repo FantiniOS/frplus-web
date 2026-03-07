@@ -97,8 +97,9 @@ function getContextoAlavancagem(params: {
     isAtivo: boolean;
     score: number;
     diasDesdeUltimaCompra: number;
+    dadosHistoricosFormatados: string;
 }): string {
-    const { segmento, comprador, nomeComercial, score, diasDesdeUltimaCompra, metricText, motivoGancho } = params;
+    const { segmento, comprador, nomeComercial, score, diasDesdeUltimaCompra, metricText, motivoGancho, dadosHistoricosFormatados } = params;
     const isAtacado = segmento === 'atacado' || segmento === 'avista';
     const vocabControle = getControleVocabulario(segmento);
 
@@ -144,7 +145,13 @@ DADOS REAIS PARA ANÁLISE:
 - Produto/Marca Foco da Queda/Lacuna: ${nomeComercial}
 - Indicador Financeiro Atual: ${metricText}
 - Motivo Técnico Extraído: ${motivoGancho}
+
+=== DADOS HISTÓRICOS REAIS DO CLIENTE (ÚLTIMOS 6 MESES) ===
+${dadosHistoricosFormatados}
+===========================================================
 ${vocabControle}
+
+ATENÇÃO: Baseie a sua análise e recomendação ESTRITAMENTE nos dados reais fornecidos acima. Cite os números e os nomes/marcas dos produtos no seu texto.
 
 Gere o Insight Analítico AGORA, seguindo rigorosamente a estrutura de 3 tópicos acima.`;
 }
@@ -245,6 +252,8 @@ export async function GET() {
         }> = []
 
         const hoje = new Date()
+        const seisMesesAtras = new Date()
+        seisMesesAtras.setMonth(seisMesesAtras.getMonth() - 6)
 
         for (const client of clients) {
             if (client.pedidos.length < 2) continue
@@ -252,6 +261,50 @@ export async function GET() {
             // Nova Regra de Limite (45 Dias):
             const diasDesdeUltimaCompra = client.pedidos[0] ? Math.floor((hoje.getTime() - new Date(client.pedidos[0].data).getTime()) / (1000 * 60 * 60 * 24)) : 999;
             const isAtivo = diasDesdeUltimaCompra <= 45;
+
+            // Extrair o histórico detalhado de compras dos últimos 6 meses para este cliente
+            let dadosHistoricosFormatados = '';
+            const produtosCompradosRecentes = new Map<string, { nome: string, qtdTotal: number, comprasAnteriores: number, comprasRecentes: number }>();
+
+            // Separar os últimos 6 meses em dois blocos: 3 meses mais antigos vs 3 meses mais recentes pra mostrar a queda
+            const tresMesesAtras = new Date()
+            tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3)
+
+            for (const pedido of client.pedidos) {
+                const dataPedido = new Date(pedido.data)
+                if (dataPedido < seisMesesAtras) continue;
+
+                const isRecente = dataPedido >= tresMesesAtras;
+
+                for (const item of pedido.itens) {
+                    const prod = productMap.get(item.produtoId);
+                    if (!prod) continue;
+
+                    const nomeStr = formatarNomeComercial(prod.nome);
+                    const curr = produtosCompradosRecentes.get(item.produtoId) || { nome: nomeStr, qtdTotal: 0, comprasAnteriores: 0, comprasRecentes: 0 };
+
+                    curr.qtdTotal += item.quantidade;
+                    if (isRecente) {
+                        curr.comprasRecentes += item.quantidade;
+                    } else {
+                        curr.comprasAnteriores += item.quantidade;
+                    }
+                    produtosCompradosRecentes.set(item.produtoId, curr);
+                }
+            }
+
+            // Formatar os Top 8 produtos para o LLM
+            const topProdutosHistorico = Array.from(produtosCompradosRecentes.values())
+                .sort((a, b) => b.qtdTotal - a.qtdTotal)
+                .slice(0, 8);
+
+            if (topProdutosHistorico.length > 0) {
+                dadosHistoricosFormatados = topProdutosHistorico.map(p =>
+                    `- ${p.nome}: Total (6 meses): ${p.qtdTotal}cx | Média Trimestre Antigo: ${p.comprasAnteriores}cx -> Trimestre Atual (Últimos 3m): ${p.comprasRecentes}cx`
+                ).join('\n');
+            } else {
+                dadosHistoricosFormatados = 'Sem histórico de produtos nos últimos 6 meses.';
+            }
 
             const clientSegment = client.tabelaPreco || '50a199'
             const segmentLabel = segmentLabels[clientSegment] || clientSegment
@@ -333,7 +386,8 @@ export async function GET() {
                         metricText: `R$ ${clientAvgTicket.toFixed(2)} vs R$ ${globalAvgTicket.toFixed(2)} (Média local)`,
                         isAtivo,
                         score: topMissingProductScore,
-                        diasDesdeUltimaCompra
+                        diasDesdeUltimaCompra,
+                        dadosHistoricosFormatados
                     })
                 })
             }
@@ -366,7 +420,8 @@ export async function GET() {
                             metricText: `R$ ${recent3Total.toFixed(2)} vs R$ ${previous3Total.toFixed(2)} nos 3 pedidos anteriores`,
                             isAtivo,
                             score: topMissingProductScore,
-                            diasDesdeUltimaCompra
+                            diasDesdeUltimaCompra,
+                            dadosHistoricosFormatados
                         })
                     })
                 }
@@ -408,7 +463,8 @@ export async function GET() {
                         metricText: `Ritmo antigo: R$ ${(avgMonthly * 3).toFixed(2)}/trimestre. Atual: R$ ${last3MonthsTotal.toFixed(2)}`,
                         isAtivo,
                         score: topMissingProductScore,
-                        diasDesdeUltimaCompra
+                        diasDesdeUltimaCompra,
+                        dadosHistoricosFormatados
                     })
                 })
             }
