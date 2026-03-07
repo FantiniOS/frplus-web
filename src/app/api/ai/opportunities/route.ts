@@ -58,10 +58,15 @@ function formatarNomeComercial(produtoNome: string): string {
         .replace(/(\d+)\s*g\b/gi, '$1g')
         .replace(/(\d+)\s*kg\b/gi, '$1kg');
 
-    // Artigo — feminino para categorias comuns
-    const femininas = ['mostarda', 'maionese', 'pimenta', 'azeitona', 'ketchup', 'catchup', 'massa', 'farinha', 'ervilha', 'sardinha', 'salsa', 'linhaça'];
-    const artigoFem = femininas.some(f => descricao.includes(f));
-    const artigo = artigoFem ? 'a' : 'o';
+    // Artigo — Regras de Gênero
+    const masculinos = ['molho', 'vinagre', 'azeite', 'extrato', 'palmito', 'milho', 'cogumelo', 'feijão', 'arroz'];
+    const femininas = ['mostarda', 'maionese', 'pimenta', 'azeitona', 'ketchup', 'catchup', 'massa', 'farinha', 'ervilha', 'sardinha', 'salsa', 'linhaça', 'água', 'bebida'];
+
+    // Prioridade para masculinos (ex: "molho de pimenta" deve ser "o molho")
+    const isMasculino = masculinos.some(m => descricao.startsWith(m) || descricao.includes(' ' + m));
+    const isFeminina = femininas.some(f => descricao.startsWith(f) || descricao.includes(' ' + f));
+
+    const artigo = isMasculino ? 'o' : (isFeminina ? 'a' : 'o');
 
     if (marca) {
         return `${artigo} ${descricao} da ${marca}`;

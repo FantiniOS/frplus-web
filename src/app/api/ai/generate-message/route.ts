@@ -67,6 +67,50 @@ function extrairMarca(produtoNome: string): string {
     return ultima.charAt(0).toUpperCase() + ultima.slice(1).toLowerCase();
 }
 
+/**
+ * Transforma uma string técnica de nota fiscal num nome comercial natural.
+ */
+function formatarNomeComercial(produtoNome: string): string {
+    if (!produtoNome || produtoNome.trim() === '') return 'o produto';
+    const marca = extrairMarca(produtoNome);
+
+    // Limpar: remover marca da string se vier após ' - '
+    let descricao = produtoNome;
+    if (produtoNome.includes(' - ')) {
+        descricao = produtoNome.split(' - ').slice(0, -1).join(' - ').trim();
+    }
+
+    // Lowercase e remover % soltos e números de registro
+    descricao = descricao
+        .toLowerCase()
+        .replace(/\b\d+%/g, '')       // remove percentuais soltos (5%, 4%, etc)
+        .replace(/\s{2,}/g, ' ')       // normaliza espaços duplos
+        .trim();
+
+    // Humanizar embalagens comuns
+    descricao = descricao
+        .replace(/(\d+)\s*ml\b/gi, '$1ml')
+        .replace(/(\d+)\s*litros?\b/gi, 'de $1 litros')
+        .replace(/(\d+)\s*l\b/gi, 'de $1 litros')
+        .replace(/(\d+)\s*g\b/gi, '$1g')
+        .replace(/(\d+)\s*kg\b/gi, '$1kg');
+
+    // Artigo — Regras de Gênero
+    const masculinos = ['molho', 'vinagre', 'azeite', 'extrato', 'palmito', 'milho', 'cogumelo', 'feijão', 'arroz'];
+    const femininas = ['mostarda', 'maionese', 'pimenta', 'azeitona', 'ketchup', 'catchup', 'massa', 'farinha', 'ervilha', 'sardinha', 'salsa', 'linhaça', 'água', 'bebida'];
+
+    // Prioridade para masculinos (ex: "molho de pimenta" deve ser "o molho")
+    const isMasculino = masculinos.some(m => descricao.startsWith(m) || descricao.includes(' ' + m));
+    const isFeminina = femininas.some(f => descricao.startsWith(f) || descricao.includes(' ' + f));
+
+    const artigo = isMasculino ? 'o' : (isFeminina ? 'a' : 'o');
+
+    if (marca) {
+        return `${artigo} ${descricao} da ${marca}`;
+    }
+    return `${artigo} ${descricao}`;
+}
+
 // ============================================================
 // ETAPA 1: MINERAÇÃO DE DADOS (Prisma Queries)
 // ============================================================
@@ -725,7 +769,7 @@ export async function POST(request: Request) {
         let payloadHistorico = 'O cliente não comprou nenhum produto faturado nos últimos 120 dias.';
         if (arrVolumes.length > 0) {
             payloadHistorico = 'Histórico de 120 dias - ' + arrVolumes
-                .map(([nome, qtd]) => `${nome}: ${qtd} caixas`)
+                .map(([nome, qtd]) => `${qtd} caixas d${formatarNomeComercial(nome)}`)
                 .join(' | ');
         }
 
@@ -740,7 +784,7 @@ export async function POST(request: Request) {
 Você DEVE retornar sua resposta ESTRITAMENTE em formato JSON. O JSON deve possuir EXATAMENTE estas duas chaves:
 {
   "estudoInterno": "Um resumo rápido de 2 linhas focado em fatos para o representante ler (ex: 'Cliente inativo há X dias. Parou de comprar Produto Y. Ciclo normal era Z dias.').",
-  "mensagemWhatsApp": "O texto persuasivo, pronto para ser enviado ao cliente, usando o tom de um representante de rua. Assine como '${nomeUsuario}'."
+  "mensagemWhatsApp": "O texto persuasivo, pronto para ser enviado ao cliente, usando o tom de um representante de rua. Use quebras de linha (\n) para separar a saudação, o corpo da mensagem e o fechamento/assinatura. Assine como '${nomeUsuario}'."
 }
 
 DADOS REAIS DE COMPRAS DO CLIENTE:
