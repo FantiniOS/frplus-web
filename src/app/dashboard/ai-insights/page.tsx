@@ -87,7 +87,7 @@ export default function AIInsightsPage() {
 
     // AI Message Generation State
     const [generatingMessageFor, setGeneratingMessageFor] = useState<string | null>(null);
-    const [aiGeneratedMessage, setAiGeneratedMessage] = useState<{ analiseInterna: string; mensagemWhatsApp: string } | null>(null);
+    const [aiGeneratedMessage, setAiGeneratedMessage] = useState<{ estudoInterno: string; mensagemWhatsApp: string } | null>(null);
     const [aiMessageError, setAiMessageError] = useState<string | null>(null);
     const [aiMessageClientInfo, setAiMessageClientInfo] = useState<{ nome: string; telefone: string } | null>(null);
     const [aiMessageFatos, setAiMessageFatos] = useState<{ motivo: string; produtoFoco: string; justificativa: string; sugestaoAdicional?: string; fatorSazonal?: string } | null>(null);
@@ -157,7 +157,7 @@ export default function AIInsightsPage() {
             }
 
             setAiGeneratedMessage({
-                analiseInterna: data.analiseInterna || 'Análise indisponível no momento.',
+                estudoInterno: data.estudoInterno || 'Análise indisponível no momento.',
                 mensagemWhatsApp: data.mensagemWhatsApp || data.mensagem || 'Mensagem não gerada.'
             });
             setAiMessageClientInfo(data.cliente);
@@ -1063,7 +1063,7 @@ export default function AIInsightsPage() {
                                         </h4>
                                         <div className="bg-blue-900/10 rounded-xl p-4 border border-blue-500/10">
                                             <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                                {aiGeneratedMessage?.analiseInterna}
+                                                {aiGeneratedMessage?.estudoInterno}
                                             </p>
                                         </div>
                                     </div>

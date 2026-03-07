@@ -689,7 +689,7 @@ export async function POST(request: Request) {
             : null
 
         let mensagem = ''
-        let analiseInterna = ''
+        let estudoInterno = ''
         let mensagemWhatsApp = ''
 
         // ==========================================================
@@ -739,7 +739,7 @@ export async function POST(request: Request) {
 
 Você DEVE retornar sua resposta ESTRITAMENTE em formato JSON. O JSON deve possuir EXATAMENTE estas duas chaves:
 {
-  "analiseInterna": "O Raio-X do cliente. Direto, numérico e analítico. Focado em dar argumentos de venda fortes e matemáticos para o representante (sem jargões) baseados no caso.",
+  "estudoInterno": "Um resumo rápido de 2 linhas focado em fatos para o representante ler (ex: 'Cliente inativo há X dias. Parou de comprar Produto Y. Ciclo normal era Z dias.').",
   "mensagemWhatsApp": "O texto persuasivo, pronto para ser enviado ao cliente, usando o tom de um representante de rua. Assine como '${nomeUsuario}'."
 }
 
@@ -787,7 +787,7 @@ ${body.contextoParaIA}`;
                 try {
                     const jsonStr = mensagem.replace(/```json/gi, '').replace(/```/g, '').trim();
                     const parsed = JSON.parse(jsonStr);
-                    analiseInterna = parsed.analiseInterna || '';
+                    estudoInterno = parsed.estudoInterno || parsed.analiseInterna || '';
                     mensagemWhatsApp = parsed.mensagemWhatsApp || '';
                     mensagem = mensagemWhatsApp; // Fallback compatibility
                 } catch (e) {
@@ -809,7 +809,7 @@ ${body.contextoParaIA}`;
 
         return NextResponse.json({
             mensagem,
-            analiseInterna,
+            estudoInterno,
             mensagemWhatsApp,
             fatosEstrategicos,
             cliente: {
