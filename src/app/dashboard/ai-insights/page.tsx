@@ -1072,7 +1072,7 @@ export default function AIInsightsPage() {
                                     <div className="pt-2">
                                         {aiMessageClientInfo?.telefone ? (
                                             <a
-                                                href={`https://wa.me/55${aiMessageClientInfo.telefone.replace(/\\D/g, '')}?text=${encodeURIComponent(aiGeneratedMessage?.mensagemWhatsApp || '')}`}
+                                                href={`https://wa.me/55${aiMessageClientInfo.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(aiGeneratedMessage?.mensagemWhatsApp || '')}`}
                                                 target="_blank"
                                                 className="flex w-full items-center justify-center gap-2 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold transition-colors shadow-lg shadow-green-900/20 text-sm"
                                             >

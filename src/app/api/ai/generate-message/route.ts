@@ -608,9 +608,11 @@ REGRA 4: O tom deve ser de parceria e consultoria. Nunca use jargões robóticos
 
 REGRA 5: Termine a mensagem com uma pergunta leve para incentivar a resposta. Exemplos: "Posso separar esse kit pra você?", "Quer que eu monte a proposta certinha?", "Faz sentido pra você?".
 
-REGRA 6: NÃO use markdown, asteriscos, negritos ou formatação especial. Escreva texto puro como uma mensagem de WhatsApp normal.
+REGRA 6: Use quebras de linha duplas (\n\n) para separar claramente a saudação, o corpo da mensagem e o fechamento. A mensagem deve ser visualmente organizada em parágrafos.
 
-REGRA 7: Escreva APENAS a mensagem. Sem explicações, sem alternativas, sem notas.`
+REGRA 7: NÃO use markdown, asteriscos, negritos ou formatação especial. Escreva texto puro como uma mensagem de WhatsApp normal.
+
+REGRA 8: Escreva APENAS a mensagem. Sem explicações, sem alternativas, sem notas.`
 
     // ---- TENTATIVA 1: Groq (primário, mais rápido) ----
     const groqKey = process.env.GROQ_API_KEY
@@ -784,7 +786,7 @@ export async function POST(request: Request) {
 Você DEVE retornar sua resposta ESTRITAMENTE em formato JSON. O JSON deve possuir EXATAMENTE estas duas chaves:
 {
   "estudoInterno": "Um resumo rápido de 2 linhas focado em fatos para o representante ler (ex: 'Cliente inativo há X dias. Parou de comprar Produto Y. Ciclo normal era Z dias.').",
-  "mensagemWhatsApp": "O texto persuasivo, pronto para ser enviado ao cliente, usando o tom de um representante de rua. Use quebras de linha (\n) para separar a saudação, o corpo da mensagem e o fechamento/assinatura. Assine como '${nomeUsuario}'."
+  "mensagemWhatsApp": "O texto persuasivo, pronto para ser enviado ao cliente. Use quebras de linha DUPLAS (\\n\\n) para separar a saudação, o corpo da mensagem e o fechamento/assinatura, garantindo que a mensagem não fique em um bloco único de texto. Assine como '${nomeUsuario}'."
 }
 
 DADOS REAIS DE COMPRAS DO CLIENTE:
