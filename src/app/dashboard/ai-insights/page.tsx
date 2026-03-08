@@ -497,6 +497,7 @@ export default function AIInsightsPage() {
                                                 <th className="px-4 py-3 text-left">Cliente</th>
                                                 <th className="px-4 py-3 text-left hidden sm:table-cell">Cidade</th>
                                                 <th className="px-4 py-3 text-left">Ciclo de Vendas</th>
+                                                <th className="px-4 py-3 text-center">Dias s/ Comprar</th>
                                                 <th className="px-4 py-3 text-center">Atraso</th>
                                                 <th className="px-4 py-3 text-center hidden md:table-cell">Pedidos</th>
                                                 <th className="px-4 py-3 text-center">Ações</th>
@@ -533,13 +534,19 @@ export default function AIInsightsPage() {
                                                             </div>
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
+                                                            <span className="text-white font-bold text-lg">
+                                                                {client.diasInativo !== null ? client.diasInativo : '∞'}
+                                                            </span>
+                                                            <p className="text-[10px] text-gray-500">Dias</p>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
                                                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${atrasoColor}`}>
                                                                 {client.diasDeAtraso >= 9999
                                                                     ? '∞'
-                                                                    : `${client.diasDeAtraso} dias`}
+                                                                    : `+${client.diasDeAtraso} dias`}
                                                             </span>
                                                             {client.motivo && (
-                                                                <div className="text-[10px] text-gray-500 mt-1 max-w-[180px] mx-auto leading-tight italic">
+                                                                <div className="text-[10px] text-gray-500 mt-1 max-w-[150px] mx-auto leading-tight italic">
                                                                     {client.motivo}
                                                                 </div>
                                                             )}

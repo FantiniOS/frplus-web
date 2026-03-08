@@ -42,7 +42,10 @@ export async function GET(request: Request) {
             where: { status: 'Ativo' },
             include: {
                 pedidos: {
-                    where: { tipo: 'Venda' },
+                    where: {
+                        tipo: 'Venda',
+                        status: { in: ['Concluido', 'FATURADO'] }
+                    },
                     orderBy: { data: 'desc' },
                     take: 10, // 10 pedidos para calcular ciclo médio com precisão
                     select: {
@@ -54,7 +57,16 @@ export async function GET(request: Request) {
                         }
                     }
                 },
-                _count: { select: { pedidos: true } }
+                _count: {
+                    select: {
+                        pedidos: {
+                            where: {
+                                tipo: 'Venda',
+                                status: { in: ['Concluido', 'FATURADO'] }
+                            }
+                        }
+                    }
+                }
             }
         })
 
@@ -67,21 +79,25 @@ export async function GET(request: Request) {
                 const lastOrder = salesOrders[0];
                 const lastOrderDate = lastOrder?.data ? new Date(lastOrder.data) : null;
 
-                const daysSinceLastOrder = lastOrderDate
-                    ? Math.floor((hoje.getTime() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
-                    : null;
+                // Dias sem comprar (Total absoluto)
+                let daysSinceLastOrder = null;
+                if (lastOrderDate) {
+                    const diffTime = hoje.getTime() - lastOrderDate.getTime();
+                    daysSinceLastOrder = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+                }
 
                 // ---- Calcular Ciclo Médio Individual ----
                 const pedidosDatas = salesOrders.map(o => new Date(o.data));
                 const { cicloMedioDias, confianca } = calcularCicloMedio(pedidosDatas);
 
-                // ---- Calcular Data Esperada e Dias de Atraso ----
+                // ---- Calcular Data Esperada e Dias de Atraso (Excedente ao Ciclo) ----
                 let dataEsperada: Date | null = null;
                 let diasDeAtraso = 0;
 
                 if (lastOrderDate) {
                     dataEsperada = new Date(lastOrderDate.getTime() + cicloMedioDias * 24 * 60 * 60 * 1000);
-                    diasDeAtraso = Math.max(0, Math.floor((hoje.getTime() - dataEsperada.getTime()) / (1000 * 60 * 60 * 24)));
+                    const diffTimeAtraso = hoje.getTime() - dataEsperada.getTime();
+                    diasDeAtraso = Math.max(0, Math.floor(diffTimeAtraso / (1000 * 60 * 60 * 24)));
                 } else {
                     // Nunca comprou — atraso máximo para aparecer no topo
                     diasDeAtraso = 9999;
@@ -124,10 +140,10 @@ export async function GET(request: Request) {
                 // TEMPLATE OURO DE INATIVOS (Injeção de Dados Reais)
                 const baseContext = `
 Você é um representante comercial B2B. Sua missão é resgatar um cliente inativo. NUNCA use jargões corporativos. 
-Baseie a sua análise em fatos.
+Baseie a sua análise em fatos reais de compra.
 
 Use EXATAMENTE este modelo como base para escrever a mensagem do WhatsApp (não altere a estrutura, apenas adapte levemente se achar que soa muito robótico, mantendo todos os números):
-> Fala ${greetingName}, tudo bem? Percebi que já faz um tempo que não compramos juntos, especificamente o ${produtoFavorito}, que costumava ser um dos seus favoritos. Já se passaram ${daysSinceLastOrder || 0} dias desde a última compra, e geralmente você costumava comprar a cada ${cicloMedioDias} dias. Eu estava me perguntando, o que mudou? Foi o preço, a concorrência ou algo não foi como você esperava na última compra? Eu sei que historicamente você costuma comprar mais no mês de ${mesReferencia}, então talvez seja um bom momento para reavaliarmos como posso ajudar. Você está pronto para reabastecer ou precisa de algo mais?
+> Fala ${greetingName}, tudo bem? Percebi que já faz um tempo que não compramos juntos, especificamente o ${produtoFavorito}, que costumava ser um dos seus favoritos. Já se passaram ${daysSinceLastOrder || 0} dias desde a última compra (que foi validada no nosso sistema faturamento), e geralmente você costumava comprar a cada ${cicloMedioDias} dias. Eu estava me perguntando, o que mudou? Foi o preço, a concorrência ou algo não foi como você esperava na última compra? Eu sei que historicamente você costuma comprar mais no mês de ${mesReferencia}, então talvez seja um bom momento para reavaliarmos como posso ajudar. Você está pronto para reabastecer ou precisa de algo mais?
                 `.trim();
 
                 if (daysSinceLastOrder === null) {
