@@ -597,7 +597,7 @@ export default function AIInsightsPage() {
                                                                 ) : (
                                                                     <Bot className="w-4 h-4" />
                                                                 )}
-                                                                Explorar Oportunidade
+                                                                Oferecer Novo Produto
                                                             </button>
                                                         </div>
                                                     </div>
