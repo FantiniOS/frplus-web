@@ -8,7 +8,7 @@ import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCi
 import { MessageModal } from '@/components/dashboard/MessageModal';
 import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
 
-interface InactiveClient {
+interface PrestesAComprarClient {
     id: string;
     nomeFantasia: string;
     razaoSocial: string;
@@ -25,7 +25,6 @@ interface InactiveClient {
     confiancaCiclo: 'alta' | 'media' | 'baixa';
     totalGasto: number;
     totalPedidos: number;
-    alertLevel: 'vermelho' | 'laranja' | 'amarelo' | 'verde';
     motivo?: string;
     messageSuggestion?: string;
     contextoParaIA?: string;
@@ -59,7 +58,7 @@ export default function AIInsightsPage() {
     const { usuario } = useAuth();
     const nomeRepresentante = usuario?.nome || 'Representante';
     const nomeEmpresa = usuario?.empresa || 'Fantini Representações';
-    const [activeTab, setActiveTab] = useState<'inactive' | 'opportunities' | 'insights' | 'campaigns'>('inactive');
+    const [activeTab, setActiveTab] = useState<'prestesAComprar' | 'opportunities' | 'campaigns'>('prestesAComprar');
     const [daysFilter, setDaysFilter] = useState(15);
     const [selectedProduct, setSelectedProduct] = useState<string>('');
     const [generatedScripts, setGeneratedScripts] = useState<{ launch: string; reactivation: string; prospecting: string } | null>(null);
@@ -71,19 +70,18 @@ export default function AIInsightsPage() {
     const [companyMessages, setCompanyMessages] = useState<{ formal: string; casual: string; pitch: string } | null>(null);
     const [showcaseMessage, setShowcaseMessage] = useState<string>('');
     const [loading, setLoading] = useState(true);
-    const [inactiveClients, setInactiveClients] = useState<InactiveClient[]>([]);
+    const [prestesAComprarClients, setPrestesAComprarClients] = useState<PrestesAComprarClient[]>([]);
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [salesInsights, setSalesInsights] = useState<SalesInsight[]>([]);
     const [summaries, setSummaries] = useState({
-        inactive: { total: 0, vermelho: 0, laranja: 0, amarelo: 0 },
+        prestesAComprar: { total: 0 },
         opportunities: { total: 0, upgrade: 0, crossSell: 0, seasonal: 0 },
-        insights: { total: 0, lowTicket: 0, decliningVolume: 0, untappedPotential: 0 },
         campaigns: { total: 1 } // Always available
     });
 
     // Message Modal State
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
-    const [selectedClientForMessage, setSelectedClientForMessage] = useState<InactiveClient | null>(null);
+    const [selectedClientForMessage, setSelectedClientForMessage] = useState<PrestesAComprarClient | null>(null);
 
     // AI Message Generation State
     const [generatingMessageFor, setGeneratingMessageFor] = useState<string | null>(null);
@@ -178,28 +176,21 @@ export default function AIInsightsPage() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [inactiveRes, oppRes, insightsRes] = await Promise.all([
-                fetch(`/api/ai/inactive-clients?days=${daysFilter}`, { cache: 'no-store' }),
-                fetch('/api/ai/opportunities', { cache: 'no-store' }),
-                fetch('/api/ai/sales-insights', { cache: 'no-store' })
+            const [prestesAComprarRes, oppRes] = await Promise.all([
+                fetch(`/api/ai/prestes-a-comprar?days=${daysFilter}`, { cache: 'no-store' }),
+                fetch('/api/ai/opportunities', { cache: 'no-store' })
             ]);
 
-            if (inactiveRes.ok) {
-                const data = await inactiveRes.json();
-                setInactiveClients(data.clients || []);
-                setSummaries(prev => ({ ...prev, inactive: data.summary }));
+            if (prestesAComprarRes.ok) {
+                const data = await prestesAComprarRes.json();
+                setPrestesAComprarClients(data.clients || []);
+                setSummaries(prev => ({ ...prev, prestesAComprar: data.summary }));
             }
 
             if (oppRes.ok) {
                 const data = await oppRes.json();
                 setOpportunities(data.opportunities || []);
                 setSummaries(prev => ({ ...prev, opportunities: data.summary }));
-            }
-
-            if (insightsRes.ok) {
-                const data = await insightsRes.json();
-                setSalesInsights(data.insights || []);
-                setSummaries(prev => ({ ...prev, insights: data.summary }));
             }
         } catch (error) {
             console.error('Error fetching AI data:', error);
@@ -226,9 +217,8 @@ export default function AIInsightsPage() {
     };
 
     const tabs = [
-        { id: 'inactive' as const, label: 'Clientes Inativos', icon: AlertTriangle, color: 'text-red-400', count: summaries.inactive.total },
+        { id: 'prestesAComprar' as const, label: 'Prestes a Comprar', icon: Sparkles, color: 'text-green-400', count: summaries.prestesAComprar.total },
         { id: 'opportunities' as const, label: 'Oportunidades', icon: Lightbulb, color: 'text-yellow-400', count: summaries.opportunities.total },
-        { id: 'insights' as const, label: 'Alavancagem', icon: TrendingUp, color: 'text-blue-400', count: summaries.insights.total },
         { id: 'campaigns' as const, label: 'Campanhas', icon: Megaphone, color: 'text-purple-400', count: 0 }
     ];
 
@@ -462,31 +452,22 @@ export default function AIInsightsPage() {
                     </div>
                 ) : (
                     <>
-                        {/* Inactive Clients Tab */}
-                        {activeTab === 'inactive' && (
-                            // ... (keep existing activeTab === 'inactive' content) ...
+                        {/* Prestes a Comprar Tab */}
+                        {activeTab === 'prestesAComprar' && (
                             <div className="space-y-4">
                                 <div className="flex items-center gap-4 pb-4 border-b border-white/10">
                                     <Filter className="h-4 w-4 text-gray-400" />
-                                    <span className="text-sm text-gray-400">Clientes que estouraram seu ciclo individual de compras</span>
+                                    <span className="text-sm text-gray-400">Clientes que estão na janela exata para um novo pedido</span>
                                 </div>
 
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="p-3 rounded-lg bg-white/5 text-center">
-                                        <p className="text-2xl font-bold text-white">{summaries.inactive.total}</p>
-                                        <p className="text-xs text-gray-400">Total Atrasados</p>
+                                        <p className="text-2xl font-bold text-white">{summaries.prestesAComprar.total}</p>
+                                        <p className="text-xs text-gray-400">Total na Janela</p>
                                     </div>
-                                    <div className="p-3 rounded-lg bg-red-500/10 text-center">
-                                        <p className="text-2xl font-bold text-red-400">{summaries.inactive.vermelho}</p>
-                                        <p className="text-xs text-gray-400">🔴 Crítico</p>
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-orange-500/10 text-center">
-                                        <p className="text-2xl font-bold text-orange-400">{summaries.inactive.laranja}</p>
-                                        <p className="text-xs text-gray-400">🟠 Risco</p>
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-yellow-500/10 text-center">
-                                        <p className="text-2xl font-bold text-yellow-400">{summaries.inactive.amarelo}</p>
-                                        <p className="text-xs text-gray-400">🟡 Atenção</p>
+                                    <div className="p-3 rounded-lg bg-green-500/10 text-center">
+                                        <p className="text-2xl font-bold text-green-400">{summaries.prestesAComprar.total}</p>
+                                        <p className="text-xs text-gray-400">Prontos para Comprar</p>
                                     </div>
                                 </div>
 
@@ -496,20 +477,18 @@ export default function AIInsightsPage() {
                                             <tr>
                                                 <th className="px-4 py-3 text-left">Cliente</th>
                                                 <th className="px-4 py-3 text-left hidden sm:table-cell">Cidade</th>
-                                                <th className="px-4 py-3 text-left">Ciclo de Vendas</th>
-                                                <th className="px-4 py-3 text-center">Dias s/ Comprar</th>
-                                                <th className="px-4 py-3 text-center">Atraso</th>
-                                                <th className="px-4 py-3 text-center hidden md:table-cell">Pedidos</th>
+                                                <th className="px-4 py-3 text-left">Último Pedido / Ciclo</th>
+                                                <th className="px-4 py-3 text-center">Dias Hoje</th>
+                                                <th className="px-4 py-3 text-center hidden md:table-cell">Dias Restantes</th>
                                                 <th className="px-4 py-3 text-center">Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
-                                            {inactiveClients.map(client => {
-                                                const atrasoColor = client.alertLevel === 'vermelho'
-                                                    ? 'bg-red-500/20 text-red-400 border-red-500/40'
-                                                    : client.alertLevel === 'laranja'
-                                                        ? 'bg-orange-500/20 text-orange-400 border-orange-500/40'
-                                                        : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40';
+                                            {prestesAComprarClients.map(client => {
+                                                const maxWindow = client.cicloMedioDias + 5;
+                                                const diasRestantes = client.diasInativo !== null ? maxWindow - client.diasInativo : 0;
+                                                const alertaColor = diasRestantes <= 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-green-500/20 text-green-400 border-green-500/40';
+
                                                 return (
                                                     <tr key={client.id} className="hover:bg-white/5">
                                                         <td className="px-4 py-3">
@@ -539,19 +518,11 @@ export default function AIInsightsPage() {
                                                             </span>
                                                             <p className="text-[10px] text-gray-500">Dias</p>
                                                         </td>
-                                                        <td className="px-4 py-3 text-center">
-                                                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${atrasoColor}`}>
-                                                                {client.diasDeAtraso >= 9999
-                                                                    ? '∞'
-                                                                    : `+${client.diasDeAtraso} dias`}
+                                                        <td className="px-4 py-3 text-center hidden md:table-cell">
+                                                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${alertaColor}`}>
+                                                                {diasRestantes <= 0 ? 'Expirando' : `${diasRestantes} dias na janela`}
                                                             </span>
-                                                            {client.motivo && (
-                                                                <div className="text-[10px] text-gray-500 mt-1 max-w-[150px] mx-auto leading-tight italic">
-                                                                    {client.motivo}
-                                                                </div>
-                                                            )}
                                                         </td>
-                                                        <td className="px-4 py-3 text-center text-gray-300 hidden md:table-cell">{client.totalPedidos}</td>
                                                         <td className="px-4 py-3 text-right">
                                                             <button
                                                                 onClick={() => handleGenerateAIMessage(client.id, client.contextoParaIA)}
@@ -563,7 +534,7 @@ export default function AIInsightsPage() {
                                                                 ) : (
                                                                     <Bot className="h-4 w-4" />
                                                                 )}
-                                                                Resgatar Cliente
+                                                                Gerar Lembrete de Pedido
                                                             </button>
                                                         </td>
                                                     </tr>
@@ -571,8 +542,8 @@ export default function AIInsightsPage() {
                                             })}
                                         </tbody>
                                     </table>
-                                    {inactiveClients.length === 0 && (
-                                        <p className="text-center text-gray-500 py-8">Nenhum cliente inativo encontrado</p>
+                                    {prestesAComprarClients.length === 0 && (
+                                        <p className="text-center text-gray-500 py-8">Nenhum cliente prestes a comprar no momento</p>
                                     )}
                                 </div>
                             </div>
@@ -633,52 +604,6 @@ export default function AIInsightsPage() {
                                                 </div>
                                             )
                                         })}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Sales Insights Tab */}
-                        {activeTab === 'insights' && (
-                            <div className="space-y-4">
-                                {salesInsights.length === 0 ? (
-                                    <p className="text-center text-gray-500 py-8">Nenhum insight disponível</p>
-                                ) : (
-                                    <div className="grid gap-3">
-                                        {salesInsights.map((insight, idx) => (
-                                            <div key={idx} className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-lg">
-                                                            {insight.type === 'lowTicket' ? '💰' : insight.type === 'decliningVolume' ? '📉' : '🎯'}
-                                                        </span>
-                                                        <p className="font-medium text-white">{insight.clienteNome}</p>
-                                                    </div>
-                                                    <span className={`px-2 py-1 rounded-full text-xs border ${(priorityColors[insight.priority] || priorityColors.baixa)}`}>
-                                                        {insight.priority}
-                                                    </span>
-                                                </div>
-                                                <p className="text-sm text-gray-400">{insight.description}</p>
-                                                <p className="text-sm text-blue-400 mt-1">{insight.metric}</p>
-                                                <div className="flex items-center justify-between mt-3">
-                                                    <span className="text-xs text-purple-400 uppercase">{insight.type}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={() => handleGenerateAIMessage(insight.clienteId, insight.contextoParaIA)}
-                                                            disabled={generatingMessageFor === insight.clienteId}
-                                                            className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors flex items-center gap-2 disabled:opacity-50"
-                                                        >
-                                                            {generatingMessageFor === insight.clienteId ? (
-                                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                            ) : (
-                                                                <Bot className="w-4 h-4" />
-                                                            )}
-                                                            Alavancar Vendas
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
                                     </div>
                                 )}
                             </div>
