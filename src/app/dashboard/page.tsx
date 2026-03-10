@@ -88,7 +88,7 @@ export default function DashboardPage() {
       };
     })
     .sort((a, b) => b.total - a.total)
-    .slice(0, 5);
+    .slice(0, 8);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -385,7 +385,7 @@ export default function DashboardPage() {
       )}
 
       {/* ===== CHART + SIDEBAR ===== */}
-      <div className="grid gap-4 md:grid-cols-7">
+      <div className="grid gap-4 md:grid-cols-7 min-h-[400px]">
         {/* Chart */}
         <InteractiveChart
           data={salesData}
@@ -395,10 +395,10 @@ export default function DashboardPage() {
         />
 
         {/* Right Column */}
-        <div className="md:col-span-3 space-y-4">
+        <div className="md:col-span-3">
 
           {/* Top Products */}
-          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-5 shadow-xl shadow-black/30">
+          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-5 shadow-xl shadow-black/30 h-full flex flex-col">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-1.5 rounded-lg bg-violet-500/15">
                 <Award className="h-3.5 w-3.5 text-violet-400" />
@@ -408,9 +408,9 @@ export default function DashboardPage() {
             </div>
 
             {topProducts.length === 0 ? (
-              <p className="text-xs text-gray-600 text-center py-6">Sem dados de vendas neste período</p>
+              <p className="text-xs text-gray-600 text-center py-6 flex-1 flex items-center justify-center">Sem dados de vendas neste período</p>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3 flex-1 overflow-y-auto pr-1">
                 {topProducts.map((prod, i) => {
                   const maxTotal = topProducts[0]?.total || 1;
                   const barWidth = Math.max((prod.total / maxTotal) * 100, 8);
