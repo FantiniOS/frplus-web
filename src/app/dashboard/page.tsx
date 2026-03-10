@@ -256,11 +256,27 @@ export default function DashboardPage() {
       label: 'Lembretes de Prospecção',
       value: lembretes.length > 0 ? (
         <div className="flex flex-col gap-1 mt-1 max-h-[48px] overflow-y-auto pr-1 custom-scrollbar">
-          {lembretes.map((p, i) => (
-             <span key={i} className="text-sm font-semibold text-white/90 truncate leading-tight">
-               {p.nomeEmpresa}
-             </span>
-          ))}
+          {lembretes.map((p, i) => {
+             let colorClass = 'text-white/90';
+             if (p.dataProximoContato) {
+                const data = new Date(p.dataProximoContato);
+                const hoje = new Date();
+                hoje.setHours(0,0,0,0);
+                const diffTime = data.getTime() - hoje.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays < 0) colorClass = 'text-rose-500'; // Atrasado
+                else if (diffDays === 0) colorClass = 'text-rose-400'; // Hoje
+                else if (diffDays <= 3) colorClass = 'text-amber-400'; // Próximo
+                else colorClass = 'text-emerald-400'; // Seguro
+             }
+
+             return (
+               <span key={i} className={`text-sm font-semibold truncate leading-tight ${colorClass}`}>
+                 • {p.nomeEmpresa}
+               </span>
+             );
+          })}
         </div>
       ) : (
         <span className="text-xl font-bold text-white tracking-tight">0</span>
