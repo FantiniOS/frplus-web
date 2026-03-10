@@ -10,6 +10,7 @@ import { MonthSelector } from "@/components/ui/MonthSelector";
 import { useState, useMemo, Suspense, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, Phone } from "lucide-react";
+import { VisitasCalendar } from "@/components/dashboard/VisitasCalendar";
 import { getLembretesProspeccao } from "@/app/actions/prospects";
 
 export default function DashboardPage() {
@@ -242,17 +243,6 @@ export default function DashboardPage() {
       onClick: () => setShowBonifDetails(true)
     },
     {
-      label: 'Comissão Estimada',
-      value: formatCurrency(comissaoFaturada),
-      sub: `Comissão ponderada por representada`,
-      icon: Wallet,
-      gradient: 'from-amber-500/20 to-amber-500/[0.02]',
-      iconBg: 'bg-amber-500/15',
-      iconColor: 'text-amber-400',
-      borderHover: 'hover:border-amber-500/30',
-      glow: 'group-hover:shadow-amber-500/10'
-    },
-    {
       label: 'Lembretes de Prospecção',
       value: lembretes.length > 0 ? (
         <div className="flex flex-col gap-1 mt-1 max-h-[48px] overflow-y-auto pr-1 custom-scrollbar">
@@ -315,16 +305,15 @@ export default function DashboardPage() {
       </div>
 
       {/* ===== KPI CARDS ===== */}
-      <div className="relative z-10 grid gap-3 grid-cols-2 lg:grid-cols-4">
-        {kpis.map((kpi, i) => (
+      <div className="relative z-10 grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-start">
+        {/* KPI 1 and 2 */}
+        {kpis.slice(0, 2).map((kpi, i) => (
           <div
             key={i}
             onClick={'onClick' in kpi && kpi.onClick ? kpi.onClick : undefined}
-            className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} ${'onClick' in kpi && kpi.onClick ? 'cursor-pointer' : 'cursor-default'} overflow-hidden`}
+            className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} ${'onClick' in kpi && kpi.onClick ? 'cursor-pointer' : 'cursor-default'} overflow-hidden h-[140px] flex flex-col justify-center`}
           >
-            {/* Background shimmer */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
-
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{kpi.label}</span>
@@ -334,9 +323,32 @@ export default function DashboardPage() {
               </div>
               <p className="text-xl font-bold text-white tracking-tight">{kpi.value}</p>
               <p className="text-[11px] text-gray-500 mt-1">{kpi.sub}</p>
-              {'onClick' in kpi && kpi.onClick && (
-                <p className="text-[10px] text-rose-400/70 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">Ver detalhes →</p>
-              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Visitas Calendar replacing 3rd Card */}
+        <div className="md:col-span-1 border-none shadow-none lg:col-span-1 h-[420px] lg:h-auto lg:row-span-3">
+          <VisitasCalendar year={chartYear!} month={chartMonth!} />
+        </div>
+
+        {/* KPI 3 (Lembretes) */}
+        {kpis.slice(2).map((kpi, i) => (
+          <div
+            key={`kpi3-${i}`}
+            onClick={'onClick' in kpi && kpi.onClick ? kpi.onClick : undefined}
+            className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} ${'onClick' in kpi && kpi.onClick ? 'cursor-pointer' : 'cursor-default'} overflow-hidden h-[180px] lg:h-[140px] flex flex-col justify-center`}
+          >
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
+            <div className="relative z-10 h-full flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{kpi.label}</span>
+                <div className={`p-1.5 rounded-lg ${kpi.iconBg}`}>
+                  <kpi.icon className={`h-3.5 w-3.5 ${kpi.iconColor}`} />
+                </div>
+              </div>
+              <div className="flex-1 min-h-0 text-xl font-bold text-white tracking-tight">{kpi.value}</div>
+              <p className="text-[11px] text-gray-500 mt-1">{kpi.sub}</p>
             </div>
           </div>
         ))}

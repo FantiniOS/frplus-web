@@ -1,11 +1,13 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowLeft, Save, Building2, MapPin, DollarSign, Search, Loader2, User } from "lucide-react";
+import { ArrowLeft, Save, Building2, MapPin, DollarSign, Search, Loader2, User, CalendarPlus, X } from "lucide-react";
 import { useData, Client } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
+import { agendarVisita } from "@/app/actions/visitas";
 
 export default function EditarClientePage({ params }: { params: { id: string } }) {
     const { clients, updateClient, showToast } = useData();
@@ -14,6 +16,13 @@ export default function EditarClientePage({ params }: { params: { id: string } }
     const [formData, setFormData] = useState<Partial<Client>>({});
     const [loadingCnpj, setLoadingCnpj] = useState(false);
     const [loadingCep, setLoadingCep] = useState(false);
+
+    // Modal Visita State
+    const [showModalVisita, setShowModalVisita] = useState(false);
+    const [dataVisita, setDataVisita] = useState('');
+    const [horaVisita, setHoraVisita] = useState('');
+    const [obsVisita, setObsVisita] = useState('');
+    const [loadingVisita, setLoadingVisita] = useState(false);
 
     useEffect(() => {
         if (isIndustria) {
@@ -115,6 +124,39 @@ export default function EditarClientePage({ params }: { params: { id: string } }
         }
     };
 
+    const handleAgendarVisita = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!dataVisita || !horaVisita) {
+            showToast("Preencha data e hora da visita", "error");
+            return;
+        }
+
+        setLoadingVisita(true);
+        try {
+            const dateObj = new Date(`${dataVisita}T${horaVisita}:00`);
+            
+            const res = await agendarVisita({
+                clienteId: formData.id!,
+                dataVisita: dateObj,
+                observacoes: obsVisita
+            });
+
+            if (res.success) {
+                showToast("Visita agendada com sucesso!", "success");
+                setShowModalVisita(false);
+                setDataVisita('');
+                setHoraVisita('');
+                setObsVisita('');
+            } else {
+                showToast("Erro ao agendar visita", "error");
+            }
+        } catch (error) {
+            showToast("Erro ao agendar visita", "error");
+        } finally {
+            setLoadingVisita(false);
+        }
+    };
+
     return (
         <div className="max-w-2xl mx-auto space-y-4">
             {/* Header */}
@@ -125,9 +167,17 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                     </Link>
                     <h1 className="text-xl font-bold text-white">Editar Cliente</h1>
                 </div>
-                <button onClick={handleSubmit} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-500">
-                    <Save className="h-4 w-4" /> Salvar
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowModalVisita(true)}
+                        className="flex items-center gap-2 rounded-lg bg-emerald-600/20 px-4 py-1.5 text-sm font-medium text-emerald-400 hover:bg-emerald-600/30 transition-colors"
+                    >
+                        <CalendarPlus className="h-4 w-4" /> Agendar Visita
+                    </button>
+                    <button onClick={handleSubmit} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-500">
+                        <Save className="h-4 w-4" /> Salvar
+                    </button>
+                </div>
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
@@ -283,6 +333,86 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                     </div>
                 </div>
             </form>
+
+            {/* ===== MODAL AGENDAR VISITA ===== */}
+            {showModalVisita && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModalVisita(false)} />
+                    
+                    <div className="relative w-full max-w-md rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] shadow-2xl shadow-black/50 animate-in zoom-in-95 duration-200">
+                        <form onSubmit={handleAgendarVisita}>
+                            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-emerald-500/15">
+                                        <CalendarPlus className="h-5 w-5 text-emerald-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-white">Agendar Visita</h3>
+                                        <p className="text-xs text-gray-400">Marque um horário com este cliente</p>
+                                    </div>
+                                </div>
+                                <button type="button" onClick={() => setShowModalVisita(false)} className="p-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            <div className="p-5 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-gray-300">Data *</label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={dataVisita}
+                                            onChange={(e) => setDataVisita(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-gray-300">Horário *</label>
+                                        <input
+                                            type="time"
+                                            required
+                                            value={horaVisita}
+                                            onChange={(e) => setHoraVisita(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-gray-300">Observações / Pauta</label>
+                                    <textarea
+                                        rows={3}
+                                        value={obsVisita}
+                                        onChange={(e) => setObsVisita(e.target.value)}
+                                        placeholder="O que será discutido?"
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 p-5 border-t border-white/[0.06] bg-black/20 rounded-b-2xl">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModalVisita(false)}
+                                    className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/5 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loadingVisita}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                                >
+                                    {loadingVisita ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarPlus className="h-4 w-4" />}
+                                    Confirmar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

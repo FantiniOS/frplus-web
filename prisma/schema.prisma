@@ -60,6 +60,7 @@ model Cliente {
   observacoes       String?
   pedidos           Pedido[]
   verbas            Verba[]
+  visitas           Visita[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   contatoClientes   ContatoCliente[]
@@ -145,4 +146,15 @@ model Prospect {
   status             String    @default("ATIVO")
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+}
+
+model Visita {
+  id          String   @id @default(uuid())
+  clienteId   String
+  cliente     Cliente  @relation(fields: [clienteId], references: [id])
+  dataVisita  DateTime
+  status      String   @default("AGENDADA")
+  observacoes String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
