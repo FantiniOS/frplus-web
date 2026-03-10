@@ -20,13 +20,14 @@ export async function getProspects() {
 export async function getLembretesProspeccao() {
     try {
         const hoje = new Date()
-        // zera a hora para pegar tudo do dia
-        hoje.setHours(23, 59, 59, 999)
+        const limiteFuturo = new Date(hoje)
+        limiteFuturo.setDate(hoje.getDate() + 10)
+        limiteFuturo.setHours(23, 59, 59, 999)
 
         const lembretes = await prisma.prospect.findMany({
             where: {
                 dataProximoContato: {
-                    lte: hoje
+                    lte: limiteFuturo
                 },
                 status: 'ATIVO'
             },

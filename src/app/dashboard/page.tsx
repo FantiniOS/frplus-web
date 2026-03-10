@@ -254,8 +254,18 @@ export default function DashboardPage() {
     },
     {
       label: 'Lembretes de Prospecção',
-      value: String(lembretes.length),
-      sub: `${lembretes.filter(p => p.dataProximoContato && new Date(p.dataProximoContato) < new Date(new Date().setHours(0,0,0,0))).length} contatos atrasados`,
+      value: lembretes.length > 0 ? (
+        <div className="flex flex-col gap-1 mt-1 max-h-[48px] overflow-y-auto pr-1 custom-scrollbar">
+          {lembretes.map((p, i) => (
+             <span key={i} className="text-sm font-semibold text-white/90 truncate leading-tight">
+               {p.nomeEmpresa}
+             </span>
+          ))}
+        </div>
+      ) : (
+        <span className="text-xl font-bold text-white tracking-tight">0</span>
+      ),
+      sub: `${lembretes.length} contatos nos próximos 10 dias`,
       icon: Phone,
       gradient: 'from-blue-500/20 to-blue-500/[0.02]',
       iconBg: 'bg-blue-500/15',
