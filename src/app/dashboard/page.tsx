@@ -1,6 +1,6 @@
 'use client';
 
-import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, Zap, Gift, X, Wallet, MessageCircle } from "lucide-react";
+import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, Gift, X, Wallet, MessageCircle } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -89,8 +89,6 @@ export default function DashboardPage() {
     })
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
-
-  const recentOrders = [...monthlyOrders].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).slice(0, 5);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -442,44 +440,6 @@ export default function DashboardPage() {
                     </div>
                   );
                 })}
-              </div>
-            )}
-          </div>
-
-          {/* Recent Orders */}
-          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-5 shadow-xl shadow-black/30">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-cyan-500/15">
-                  <Zap className="h-3.5 w-3.5 text-cyan-400" />
-                </div>
-                <h3 className="text-sm font-semibold text-white/90">Últimos Pedidos</h3>
-              </div>
-              <Link href="/dashboard/pedidos" className="text-[10px] text-gray-500 hover:text-blue-400 transition-colors">
-                Ver todos →
-              </Link>
-            </div>
-
-            {recentOrders.length === 0 ? (
-              <p className="text-xs text-gray-600 text-center py-6">Nenhum pedido recente</p>
-            ) : (
-              <div className="space-y-1">
-                {recentOrders.slice(0, 4).map((venda, i) => (
-                  <div key={i} className="flex items-center justify-between py-2.5 border-b border-white/[0.04] last:border-0 group/order hover:bg-white/[0.02] -mx-2 px-2 rounded-lg transition-colors">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-white/80 truncate">{venda.nomeCliente}</p>
-                      <p className="text-[10px] text-gray-600 mt-0.5">
-                        {new Date(venda.data).toLocaleDateString('pt-BR')}
-                        {venda.tipo === 'Bonificacao' && (
-                          <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-medium">BONIF</span>
-                        )}
-                      </p>
-                    </div>
-                    <p className="text-xs font-bold text-white/90 tabular-nums flex-shrink-0">
-                      R$ {(venda.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                ))}
               </div>
             )}
           </div>
