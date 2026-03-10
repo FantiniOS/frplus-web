@@ -53,7 +53,13 @@ export async function GET(request: Request) {
                         valorTotal: true,
                         tipo: true,
                         itens: {
-                            include: { produto: true }
+                            include: {
+                                produto: {
+                                    include: {
+                                        fabrica: true
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -103,22 +109,22 @@ export async function GET(request: Request) {
                     diasDeAtraso = 9999;
                 }
 
-                // ---- Encontrar o Produto Favorito (Mais Comprado em Quantidade) ----
-                let produtoFavorito = 'Mix Geral';
-                const volumePorProduto: Record<string, number> = {};
+                // ---- Encontrar a Fábrica Favorita (Mais Comprada em Quantidade) ----
+                let fabricaFavorita = 'Mix Geral';
+                const volumePorFabrica: Record<string, number> = {};
 
                 salesOrders.forEach(pedido => {
                     if (pedido.itens) {
                         pedido.itens.forEach((item: any) => {
-                            const nomeProduto = item.produto?.nome || 'Produto Desconhecido';
-                            volumePorProduto[nomeProduto] = (volumePorProduto[nomeProduto] || 0) + Number(item.quantidade);
+                            const nomeFabrica = item.produto?.fabrica?.nome || 'Fábrica Desconhecida';
+                            volumePorFabrica[nomeFabrica] = (volumePorFabrica[nomeFabrica] || 0) + Number(item.quantidade);
                         });
                     }
                 });
 
-                if (Object.keys(volumePorProduto).length > 0) {
-                    const sortedProducts = Object.entries(volumePorProduto).sort((a, b) => b[1] - a[1]);
-                    produtoFavorito = sortedProducts[0][0]; // Pega o nome do produto com maior volume
+                if (Object.keys(volumePorFabrica).length > 0) {
+                    const sortedFactories = Object.entries(volumePorFabrica).sort((a, b) => b[1] - a[1]);
+                    fabricaFavorita = sortedFactories[0][0]; // Pega o nome da fábrica com maior volume
                 }
 
                 // ---- Alert Level baseado na relação com o ciclo ----
@@ -136,14 +142,15 @@ export async function GET(request: Request) {
                 }
                 const mesReferencia = targetMonthDate.toLocaleDateString('pt-BR', { month: 'long' });
 
-                // NOVO TEMPLATE: Prestes a Comprar (Injeção de Dados Reais)
+                // NOVO TEMPLATE: Prestes a Comprar (Injeção de Dados Reais usando a Fábrica)
                 const baseContext = `
-Você é um representante comercial de rua. Escreva uma mensagem curta de WhatsApp para o cliente. Use os dados:
+Você é o representante comercial Carlos Fantini. Escreva uma mensagem curta de WhatsApp para o cliente. Use os dados:
 - Nome: ${greetingName}
-- Produto: ${produtoFavorito}
+- Fábrica: ${fabricaFavorita}
 - Ciclo: ${cicloMedioDias}
-TEXTO BASE (Adapte para ficar natural, sem jargões e sem inventar nomes de assinatura):
-Fala ${greetingName}, bom dia! Tudo bem? Pelo meu controle de estoque aqui, já faz uns ${cicloMedioDias} dias que rodamos o último pedido, então já deve estar na hora de repor o ${produtoFavorito}, certo? Tô montando a rota de entregas de hoje, quer que eu já lance o seu pedido para garantir o faturamento? Me dá um alô!
+TEXTO BASE (Adapte para ficar natural, sem jargões):
+Fala ${greetingName}, bom dia! Tudo bem? Pelo meu controle de estoque aqui, já faz uns ${cicloMedioDias} dias que rodamos o último pedido, então já deve estar na hora de repor a linha da ${fabricaFavorita}, certo? Tô montando a rota de entregas de hoje, quer que eu já lance o seu pedido para garantir o faturamento? Me dá um alô!
+Abs, Carlos Fantini
                 `.trim();
 
                 contextoParaIA = baseContext;
