@@ -213,12 +213,38 @@ export async function GET() {
             if (!produtoNovoRec) continue;
             const nomeProdutoNovo = formatarNomeComercial(produtoNovoRec.nome);
 
-            const systemPrompt = `Você é um representante comercial de rua. Seu objetivo é introduzir um produto novo no mix do cliente. Use os dados:
+            // Identifica o Perfil/Segmento do Cliente
+            let segmentoCliente = 'REDE/SUPERMERCADO'; // Default para varejo
+            const isAtacadoByTabela = client.tabelaPreco?.toLowerCase().includes('atacado');
+            const razaoUpper = client.razaoSocial.toUpperCase();
+            const fantasiaUpper = client.nomeFantasia.toUpperCase();
+            const isAtacadoByName = razaoUpper.includes('ATACADO') || razaoUpper.includes('DISTRIBUIDOR') || fantasiaUpper.includes('ATACADO') || fantasiaUpper.includes('DISTRIBUIDOR');
+
+            if (isAtacadoByTabela || isAtacadoByName) {
+                segmentoCliente = 'ATACADO/DISTRIBUIDOR';
+            }
+
+            // Seleciona o vocabulário baseado no segmento
+            const isAtacado = segmentoCliente === 'ATACADO/DISTRIBUIDOR';
+            const termoEstoque = isAtacado ? 'estoque' : 'mix da gôndola';
+            const termoOperacao = isAtacado ? 'operação' : (razaoUpper.includes('REDE') || fantasiaUpper.includes('REDE') ? 'rede' : 'loja');
+
+            const systemPrompt = `Você é o representante comercial Carlos Fantini fazendo um Cross-sell. Escreva uma mensagem de WhatsApp.
+
+DADOS DO CLIENTE:
 - Nome: ${greetingName}
-- Produto Novo: ${nomeProdutoNovo}
 - Produto Atual: ${nomeProdutoAtual}
-TEXTO BASE (Adapte a gramática, sem robô, sem assinar seu nome):
-Fala ${greetingName}, parceiro! O seu giro do ${nomeProdutoAtual} tá legal demais, mas reparei que você ainda não colocou o ${nomeProdutoNovo} na gôndola. Esse item tá saindo muito aqui na região, é Curva A total, tá todo mundo levando. O que acha de colocarmos umas caixas dele no seu próximo pedido só pra você testar a saída aí na loja? Certeza que não vai parar na prateleira.`;
+- Produto Novo: ${nomeProdutoNovo}
+- Perfil do Cliente: ${segmentoCliente}
+
+REGRAS DE VOCABULÁRIO (MUITO IMPORTANTE):
+1. PROIBIDO usar gírias de gênero como "parceiro" ou "campeão". Seja educado e direto.
+2. SE o Perfil for "ATACADO" ou "DISTRIBUIDOR": É PROIBIDO usar "gôndola", "prateleira" ou "loja". Use termos de atacado: "estoque", "giro", "repasse para seus clientes", "operação", "pallet".
+3. SE o Perfil for "REDE" ou "SUPERMERCADO": Use "abastecer as lojas", "gôndola", "ponto de venda".
+
+TEXTO BASE (Adapte as palavras entre chaves para o vocabulário correto do perfil do cliente):
+Fala ${greetingName}, tudo bem? O seu giro do ${nomeProdutoAtual} tá legal demais, mas reparei que você ainda não colocou o ${nomeProdutoNovo} no seu ${termoEstoque}. Esse item tá saindo muito aqui na região, é um produto que tem grande aceitação. O que acha de colocarmos um volume dele no seu próximo pedido só pra você testar a saída na sua ${termoOperacao}? Certeza que vai girar rápido!
+Abs, Carlos Fantini`;
 
             opportunities.push({
                 type: 'crossSell',
