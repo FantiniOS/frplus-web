@@ -1,15 +1,16 @@
 'use client';
 
-import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, Zap, Gift, X, Wallet } from "lucide-react";
+import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, Zap, Gift, X, Wallet, MessageCircle } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
 import { InteractiveChart } from "@/components/dashboard/InteractiveChart";
 import { MonthSelector } from "@/components/ui/MonthSelector";
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, Suspense, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, Phone } from "lucide-react";
+import { getLembretesProspeccao } from "@/app/actions/prospects";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
@@ -209,6 +210,13 @@ export default function DashboardPage() {
       .reduce((acc, o) => acc + o.valorTotal, 0),
     [orders, filterYear]
   );
+  
+  // ====== LEADS / PROSPECTS ======
+  const [lembretes, setLembretes] = useState<any[]>([]);
+  useEffect(() => {
+    getLembretesProspeccao().then(setLembretes).catch(console.error);
+  }, []);
+  
   // ====== END DATA LOGIC ======
 
   const kpis = [
@@ -245,17 +253,6 @@ export default function DashboardPage() {
       iconColor: 'text-amber-400',
       borderHover: 'hover:border-amber-500/30',
       glow: 'group-hover:shadow-amber-500/10'
-    },
-    {
-      label: 'Ticket Médio',
-      value: `R$ ${avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      sub: 'Por pedido',
-      icon: TrendingUp,
-      gradient: 'from-blue-500/20 to-blue-500/[0.02]',
-      iconBg: 'bg-blue-500/15',
-      iconColor: 'text-blue-400',
-      borderHover: 'hover:border-blue-500/30',
-      glow: 'group-hover:shadow-blue-500/10'
     }
   ];
 
@@ -469,6 +466,52 @@ export default function DashboardPage() {
                     <p className="text-xs font-bold text-white/90 tabular-nums flex-shrink-0">
                       R$ {(venda.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Lembretes de Prospecção */}
+          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-5 shadow-xl shadow-black/30">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-blue-500/15">
+                  <Phone className="h-3.5 w-3.5 text-blue-400" />
+                </div>
+                <h3 className="text-sm font-semibold text-white/90">Lembretes de Prospecção</h3>
+              </div>
+              <Link href="/dashboard/prospects" className="text-[10px] text-gray-500 hover:text-blue-400 transition-colors">
+                Gerenciar →
+              </Link>
+            </div>
+
+            {lembretes.length === 0 ? (
+              <p className="text-xs text-gray-600 text-center py-6">Nenhum retorno agendado para hoje</p>
+            ) : (
+              <div className="space-y-1">
+                {lembretes.slice(0, 4).map((prospect, i) => (
+                  <div key={i} className="flex items-center justify-between py-2.5 border-b border-white/[0.04] last:border-0 group/order hover:bg-white/[0.02] -mx-2 px-2 rounded-lg transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-white/80 truncate">{prospect.nomeEmpresa}</p>
+                      <p className="text-[10px] text-gray-600 mt-0.5 flex items-center gap-1">
+                        {prospect.nomeContato}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                       {prospect.dataProximoContato && new Date(prospect.dataProximoContato) < new Date(new Date().setHours(0,0,0,0)) && (
+                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-400 font-medium">ATRASADO</span>
+                       )}
+                      <a
+                        href={`https://wa.me/55${prospect.telefone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-md hover:bg-emerald-500/10 text-emerald-500 transition-colors"
+                        title="Chamar no WhatsApp"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>

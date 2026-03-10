@@ -15,7 +15,8 @@ import {
   Lightbulb,
   MessageCircle,
   Wallet,
-  Filter
+  Filter,
+  UserPlus
 } from "lucide-react";
 import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +41,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       title: "Cadastros",
       items: [
         { icon: Users, label: "Clientes", href: "/dashboard/clientes" },
+        { icon: UserPlus, label: "Futuros Clientes", href: "/dashboard/prospects" },
         { icon: ShoppingBag, label: "Produtos", href: "/dashboard/produtos" },
       ]
     },

@@ -133,3 +133,16 @@ model Verba {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
+
+model Prospect {
+  id                 String    @id @default(cuid())
+  nomeEmpresa        String
+  nomeContato        String
+  telefone           String
+  observacoes        String?
+  dataUltimoContato  DateTime?
+  dataProximoContato DateTime?
+  status             String    @default("ATIVO")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
