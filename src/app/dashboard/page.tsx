@@ -304,40 +304,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ===== KPI CARDS ===== */}
-      <div className="relative z-10 grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-start">
-        {/* KPI 1 and 2 */}
-        {kpis.slice(0, 2).map((kpi, i) => (
+      {/* ===== LINHA SUPERIOR: KPI CARDS ===== */}
+      <div className="relative z-10 grid gap-6 grid-cols-1 md:grid-cols-3 mb-6">
+        {/* Render Only Small KPIs (Faturamento, Bonificado, Lembretes) */}
+        {kpis.map((kpi, i) => (
           <div
             key={i}
             onClick={'onClick' in kpi && kpi.onClick ? kpi.onClick : undefined}
             className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} ${'onClick' in kpi && kpi.onClick ? 'cursor-pointer' : 'cursor-default'} overflow-hidden h-[140px] flex flex-col justify-center`}
-          >
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{kpi.label}</span>
-                <div className={`p-1.5 rounded-lg ${kpi.iconBg}`}>
-                  <kpi.icon className={`h-3.5 w-3.5 ${kpi.iconColor}`} />
-                </div>
-              </div>
-              <p className="text-xl font-bold text-white tracking-tight">{kpi.value}</p>
-              <p className="text-[11px] text-gray-500 mt-1">{kpi.sub}</p>
-            </div>
-          </div>
-        ))}
-
-        {/* Visitas Calendar replacing 3rd Card */}
-        <div className="md:col-span-1 border-none shadow-none lg:col-span-1 h-[420px] lg:h-auto lg:row-span-3">
-          <VisitasCalendar year={chartYear!} month={chartMonth!} />
-        </div>
-
-        {/* KPI 3 (Lembretes) */}
-        {kpis.slice(2).map((kpi, i) => (
-          <div
-            key={`kpi3-${i}`}
-            onClick={'onClick' in kpi && kpi.onClick ? kpi.onClick : undefined}
-            className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} ${'onClick' in kpi && kpi.onClick ? 'cursor-pointer' : 'cursor-default'} overflow-hidden h-[180px] lg:h-[140px] flex flex-col justify-center`}
           >
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
             <div className="relative z-10 h-full flex flex-col">
@@ -422,21 +396,21 @@ export default function DashboardPage() {
         document.body
       )}
 
-      {/* ===== CHART + SIDEBAR ===== */}
-      <div className="grid gap-4 md:grid-cols-7 min-h-[400px]">
-        {/* Chart */}
-        <InteractiveChart
-          data={salesData}
-          maxSale={maxSale}
-          totalSales={stats.totalSales}
-          monthName={monthName}
-        />
+      {/* ===== LINHA INFERIOR: CONTEÚDO PRINCIPAL + SIDEBAR CALENDÁRIO ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* COLUNA ESQUERDA (Gráfico + Top Produtos) */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          {/* Chart */}
+          <InteractiveChart
+            data={salesData}
+            maxSale={maxSale}
+            totalSales={stats.totalSales}
+            monthName={monthName}
+          />
 
-        {/* Right Column */}
-        <div className="md:col-span-3">
-
-          {/* Top Products */}
-          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-5 shadow-xl shadow-black/30 h-full flex flex-col">
+          {/* Top Produtos */}
+          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-5 shadow-xl shadow-black/30 flex flex-col min-h-[300px]">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-1.5 rounded-lg bg-violet-500/15">
                 <Award className="h-3.5 w-3.5 text-violet-400" />
@@ -481,7 +455,13 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+        </div>
 
+        {/* COLUNA DIREITA (Calendário de Visitas) */}
+        <div className="lg:col-span-1">
+          <div className="h-full w-full min-h-[500px]">
+            <VisitasCalendar year={chartYear!} month={chartMonth!} />
+          </div>
         </div>
       </div>
 
