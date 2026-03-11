@@ -9,16 +9,17 @@ import { createPortal } from "react-dom";
 
 interface Visita {
   id: string;
-  clienteId: string;
+  titulo: string;
+  clienteId: string | null;
   dataVisita: Date;
   observacoes: string | null;
   status: string;
-  cliente: {
-    nomeFantasia: string;
+  cliente?: {
+    nomeFantasia: string | null;
     razaoSocial: string;
     telefone: string;
     celular: string;
-  }
+  } | null;
 }
 
 interface VisitasCalendarProps {
@@ -34,6 +35,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
 
   const [showAddVisita, setShowAddVisita] = useState(false);
   const [editingVisitaId, setEditingVisitaId] = useState<string | null>(null);
+  const [titulo, setTitulo] = useState("");
   const [selectedClienteId, setSelectedClienteId] = useState("");
   const [hora, setHora] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -54,8 +56,8 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
 
   const handleAgendarVisita = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClienteId || !hora || !selectedDate) {
-      alert("Preencha todos os campos obrigatórios.");
+    if (!titulo || !hora || !selectedDate) {
+      alert("Preencha todos os campos obrigatórios (Título e Horário).");
       return;
     }
 
@@ -68,12 +70,15 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
       let res;
       if (editingVisitaId) {
         res = await atualizarVisita(editingVisitaId, {
+          titulo,
+          clienteId: selectedClienteId || undefined,
           dataVisita: datePart,
           observacoes: observacoes || undefined,
         });
       } else {
         res = await agendarVisita({
-          clienteId: selectedClienteId,
+          titulo,
+          clienteId: selectedClienteId || undefined,
           dataVisita: datePart,
           observacoes: observacoes || undefined,
         });
@@ -83,10 +88,10 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
         closeModal();
         loadVisitas();
       } else {
-        alert("Erro ao salvar visita: " + res.error);
+        alert("Erro ao salvar compromisso: " + res.error);
       }
     } catch (err) {
-      alert("Erro inesperado ao salvar visita.");
+      alert("Erro inesperado ao salvar compromisso.");
     } finally {
       setSubmitting(false);
     }
@@ -94,7 +99,8 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
 
   const handleEditClick = (v: Visita) => {
     setEditingVisitaId(v.id);
-    setSelectedClienteId(v.clienteId);
+    setTitulo(v.titulo || "");
+    setSelectedClienteId(v.clienteId || "");
     setHora(new Date(v.dataVisita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
     setObservacoes(v.observacoes || "");
     setShowAddVisita(true);
@@ -124,6 +130,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
     if (submitting) return;
     setShowAddVisita(false);
     setEditingVisitaId(null);
+    setTitulo("");
     setSelectedClienteId("");
     setHora("");
     setObservacoes("");
@@ -170,7 +177,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
         <div className="p-1.5 rounded-lg bg-emerald-500/15">
           <Calendar className="h-4 w-4 text-emerald-400" />
         </div>
-        <h3 className="text-sm font-semibold text-white/90">Calendário de Visitas</h3>
+        <h3 className="text-sm font-semibold text-white/90">Agenda</h3>
         <span className="text-[10px] text-gray-600 ml-auto capitalize">
           {new Date(year, month).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
         </span>
@@ -234,6 +241,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
                   <button
                     onClick={() => {
                         setEditingVisitaId(null);
+                        setTitulo("");
                         setSelectedClienteId("");
                         setHora("");
                         setObservacoes("");
@@ -242,18 +250,18 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors text-xs font-semibold"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Agendar Visita
+                    Novo
                   </button>
                 </div>
                 
                 {selectedVisitas.length === 0 ? (
-                  <p className="text-xs text-gray-600 text-center py-4">Nenhuma visita agendada</p>
+                  <p className="text-xs text-gray-600 text-center py-4">Nenhum compromisso agendado</p>
                 ) : (
                   <div className="space-y-2 pb-2">
                     {selectedVisitas.map(v => {
                       const timeStr = new Date(v.dataVisita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                      const clientName = v.cliente.nomeFantasia || v.cliente.razaoSocial;
-                      const phone = v.cliente.celular || v.cliente.telefone;
+                      const clientName = v.cliente ? (v.cliente.nomeFantasia || v.cliente.razaoSocial) : null;
+                      const phone = v.cliente ? (v.cliente.celular || v.cliente.telefone) : null;
 
                       return (
                         <div key={v.id} className={`group relative rounded-lg border border-white/[0.04] p-3 transition-colors overflow-hidden ${v.status === 'REALIZADA' ? 'bg-white/[0.01]' : 'bg-white/[0.02] hover:bg-white/[0.04]'}`}>
@@ -262,21 +270,28 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
                           
                           <div className={`flex items-start justify-between pl-2 ${v.status === 'REALIZADA' ? 'opacity-50' : ''}`}>
                             <div className="flex-1 min-w-0 pr-3">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded ${v.status === 'REALIZADA' ? 'text-gray-400 bg-gray-500/10 line-through' : 'text-emerald-400 bg-emerald-500/10'}`}>
-                                  {timeStr}
-                                </span>
-                                <p className={`text-sm font-medium truncate ${v.status === 'REALIZADA' ? 'text-gray-400 line-through' : 'text-white/90'}`}>
-                                  {clientName}
-                                </p>
-                                {v.status === 'REALIZADA' && (
-                                  <span className="inline-block text-[10px] bg-emerald-500/10 text-emerald-400/80 font-medium px-2 py-0.5 rounded-full no-underline ml-1">
-                                    Concluído
+                              <div className="flex flex-col gap-0.5 mb-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[11px] font-bold font-mono px-1.5 py-0.5 rounded ${v.status === 'REALIZADA' ? 'text-gray-400 bg-gray-500/10 line-through' : 'text-emerald-400 bg-emerald-500/10'}`}>
+                                    {timeStr}
                                   </span>
+                                  <p className={`text-sm font-semibold truncate ${v.status === 'REALIZADA' ? 'text-gray-400 line-through' : 'text-white/90'}`}>
+                                    {v.titulo}
+                                  </p>
+                                  {v.status === 'REALIZADA' && (
+                                    <span className="inline-block text-[10px] bg-emerald-500/10 text-emerald-400/80 font-medium px-2 py-0.5 rounded-full no-underline ml-1">
+                                      Concluído
+                                    </span>
+                                  )}
+                                </div>
+                                {clientName && (
+                                  <div className="flex items-center gap-1.5 mt-0.5 pl-0.5">
+                                    <span className="text-xs text-gray-500 truncate capitalize">{clientName}</span>
+                                  </div>
                                 )}
                               </div>
                               {v.observacoes && (
-                                <p className={`text-[10px] mt-1.5 line-clamp-2 pl-1 italic border-l ${v.status === 'REALIZADA' ? 'text-gray-600 border-gray-600/30' : 'text-gray-500 border-white/10'}`}>
+                                <p className={`text-[10px] mt-1 line-clamp-2 pl-1 italic border-l ${v.status === 'REALIZADA' ? 'text-gray-600 border-gray-600/30' : 'text-gray-500 border-white/10'}`}>
                                   "{v.observacoes}"
                                 </p>
                               )}
@@ -308,7 +323,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
                               </button>
                               {phone && (
                                 <button
-                                  onClick={() => handleWhatsApp(phone, clientName, timeStr)}
+                                  onClick={() => handleWhatsApp(phone, clientName || "Cliente", timeStr)}
                                   className="flex-shrink-0 p-2 rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-all shadow-sm group-hover:shadow-[#25D366]/20"
                                   title="Falar no WhatsApp"
                                 >
@@ -335,7 +350,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={closeModal}>
           <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-6 shadow-2xl shadow-black/50" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white tracking-tight">{editingVisitaId ? 'Editar Visita' : 'Agendar Visita'}</h2>
+              <h2 className="text-xl font-bold text-white tracking-tight">{editingVisitaId ? 'Editar Compromisso' : 'Novo Compromisso'}</h2>
               <button 
                 type="button"
                 onClick={closeModal} 
@@ -347,42 +362,54 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
 
             <form onSubmit={handleAgendarVisita} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Data da Visita</label>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Assunto / Título *</label>
                 <input
                   type="text"
-                  value={selectedDate ? new Date(year, month, selectedDate).toLocaleDateString('pt-BR') : ''}
-                  disabled
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white cursor-not-allowed opacity-70"
+                  value={titulo}
+                  onChange={e => setTitulo(e.target.value)}
+                  className="w-full bg-[#0a0f1a] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50"
+                  placeholder="Ex: Visitar cliente, Reunião de equipe..."
+                  required
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Data</label>
+                  <input
+                    type="text"
+                    value={selectedDate ? new Date(year, month, selectedDate).toLocaleDateString('pt-BR') : ''}
+                    disabled
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white cursor-not-allowed opacity-70"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Horário *</label>
+                  <input
+                    type="time"
+                    value={hora}
+                    onChange={e => setHora(e.target.value)}
+                    className="w-full bg-[#0a0f1a] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 appearance-none [color-scheme:dark]"
+                    required
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Cliente *</label>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Cliente Relacionado (Opcional)</label>
                 <select
                   value={selectedClienteId}
                   onChange={e => setSelectedClienteId(e.target.value)}
                   className={`w-full bg-[#0a0f1a] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 appearance-none ${editingVisitaId ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  required
                   disabled={!!editingVisitaId}
                 >
-                  <option value="" disabled>Selecione um cliente...</option>
+                  <option value="">Nenhum cliente específico</option>
                   {clientes.map(c => (
                     <option key={c.id} value={c.id}>
                       {c.nomeFantasia && c.nomeFantasia.trim() !== '' ? c.nomeFantasia : c.razaoSocial}
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Horário *</label>
-                <input
-                  type="time"
-                  value={hora}
-                  onChange={e => setHora(e.target.value)}
-                  className="w-full bg-[#0a0f1a] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 appearance-none [color-scheme:dark]"
-                  required
-                />
               </div>
 
               <div>

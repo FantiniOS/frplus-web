@@ -150,8 +150,9 @@ model Prospect {
 
 model Visita {
   id          String   @id @default(uuid())
-  clienteId   String
-  cliente     Cliente  @relation(fields: [clienteId], references: [id])
+  titulo      String   @default("Compromisso")
+  clienteId   String?
+  cliente     Cliente? @relation(fields: [clienteId], references: [id])
   dataVisita  DateTime
   status      String   @default("AGENDADA")
   observacoes String?

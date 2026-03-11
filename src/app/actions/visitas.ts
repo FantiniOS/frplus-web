@@ -5,14 +5,16 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export async function agendarVisita(data: {
-  clienteId: string;
+  titulo: string;
+  clienteId?: string;
   dataVisita: Date;
   observacoes?: string;
 }) {
   try {
     const visita = await prisma.visita.create({
       data: {
-        clienteId: data.clienteId,
+        titulo: data.titulo,
+        clienteId: data.clienteId || undefined,
         dataVisita: data.dataVisita,
         observacoes: data.observacoes,
       },
@@ -76,6 +78,8 @@ export async function excluirVisita(id: string) {
 }
 
 export async function atualizarVisita(id: string, data: {
+  titulo: string;
+  clienteId?: string;
   dataVisita: Date;
   observacoes?: string;
 }) {
@@ -83,6 +87,8 @@ export async function atualizarVisita(id: string, data: {
     const visita = await prisma.visita.update({
       where: { id },
       data: {
+        titulo: data.titulo,
+        clienteId: data.clienteId || null,
         dataVisita: data.dataVisita,
         observacoes: data.observacoes,
       },

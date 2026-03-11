@@ -136,6 +136,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
             const dateObj = new Date(`${dataVisita}T${horaVisita}:00`);
             
             const res = await agendarVisita({
+                titulo: "Visita Agendada",
                 clienteId: formData.id!,
                 dataVisita: dateObj,
                 observacoes: obsVisita
