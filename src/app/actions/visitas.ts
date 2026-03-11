@@ -96,3 +96,18 @@ export async function atualizarVisita(id: string, data: {
     return { success: false, error: 'Erro ao atualizar visita: ' + error.message };
   }
 }
+
+export async function marcarVisitaConcluida(id: string) {
+  try {
+    const visita = await prisma.visita.update({
+      where: { id },
+      data: {
+        status: 'REALIZADA'
+      }
+    });
+    return { success: true, visita };
+  } catch (error: any) {
+    console.error('Erro ao concluir visita:', error);
+    return { success: false, error: 'Erro ao concluir visita: ' + error.message };
+  }
+}

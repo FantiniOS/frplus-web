@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { getVisitasDoMes, agendarVisita, excluirVisita, atualizarVisita } from "@/app/actions/visitas";
-import { Calendar, ChevronLeft, ChevronRight, MessageSquareCode, Clock, MapPin, Search, Plus, X, Pencil, Trash2 } from "lucide-react";
+import { getVisitasDoMes, agendarVisita, excluirVisita, atualizarVisita, marcarVisitaConcluida } from "@/app/actions/visitas";
+import { Calendar, ChevronLeft, ChevronRight, MessageSquareCode, Clock, MapPin, Search, Plus, X, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createPortal } from "react-dom";
@@ -108,6 +108,15 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
       } else {
         alert("Erro ao excluir visita.");
       }
+    }
+  };
+
+  const handleConcluir = async (id: string) => {
+    const res = await marcarVisitaConcluida(id);
+    if (res.success) {
+      loadVisitas();
+    } else {
+      alert("Erro ao marcar visita como concluída.");
     }
   };
 
@@ -247,26 +256,42 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
                       const phone = v.cliente.celular || v.cliente.telefone;
 
                       return (
-                        <div key={v.id} className="group relative rounded-lg border border-white/[0.04] bg-white/[0.02] p-3 hover:bg-white/[0.04] transition-colors overflow-hidden">
+                        <div key={v.id} className={`group relative rounded-lg border border-white/[0.04] p-3 transition-colors overflow-hidden ${v.status === 'REALIZADA' ? 'bg-white/[0.01]' : 'bg-white/[0.02] hover:bg-white/[0.04]'}`}>
                            {/* Status Indicator Bar */}
-                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500/50" />
+                           <div className={`absolute left-0 top-0 bottom-0 w-1 ${v.status === 'REALIZADA' ? 'bg-gray-500/30' : 'bg-emerald-500/50'}`} />
                           
-                          <div className="flex items-start justify-between pl-2">
+                          <div className={`flex items-start justify-between pl-2 ${v.status === 'REALIZADA' ? 'opacity-50' : ''}`}>
                             <div className="flex-1 min-w-0 pr-3">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs font-bold text-emerald-400 font-mono bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded ${v.status === 'REALIZADA' ? 'text-gray-400 bg-gray-500/10 line-through' : 'text-emerald-400 bg-emerald-500/10'}`}>
                                   {timeStr}
                                 </span>
-                                <p className="text-sm font-medium text-white/90 truncate">{clientName}</p>
+                                <p className={`text-sm font-medium truncate ${v.status === 'REALIZADA' ? 'text-gray-400 line-through' : 'text-white/90'}`}>
+                                  {clientName}
+                                </p>
+                                {v.status === 'REALIZADA' && (
+                                  <span className="inline-block text-[10px] bg-emerald-500/10 text-emerald-400/80 font-medium px-2 py-0.5 rounded-full no-underline ml-1">
+                                    Concluído
+                                  </span>
+                                )}
                               </div>
                               {v.observacoes && (
-                                <p className="text-[10px] text-gray-500 mt-1.5 line-clamp-2 pl-1 italic border-l border-white/10">
+                                <p className={`text-[10px] mt-1.5 line-clamp-2 pl-1 italic border-l ${v.status === 'REALIZADA' ? 'text-gray-600 border-gray-600/30' : 'text-gray-500 border-white/10'}`}>
                                   "{v.observacoes}"
                                 </p>
                               )}
                             </div>
                             
                             <div className="flex items-center gap-1">
+                              {v.status !== 'REALIZADA' && (
+                                <button
+                                  onClick={() => handleConcluir(v.id)}
+                                  className="flex-shrink-0 p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all shadow-sm group-hover:shadow-emerald-500/20"
+                                  title="Marcar como Concluída"
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleEditClick(v)}
                                 className="flex-shrink-0 p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all shadow-sm group-hover:shadow-blue-500/20"
