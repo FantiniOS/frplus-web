@@ -62,3 +62,37 @@ export async function getVisitasDoMes(ano: number, mes: number) {
     return { success: false, error: 'Erro ao buscar visitas: ' + error.message };
   }
 }
+
+export async function excluirVisita(id: string) {
+  try {
+    await prisma.visita.delete({
+      where: { id },
+    });
+    return { success: true };
+  } catch (error: any) {
+    console.error('Erro ao excluir visita:', error);
+    return { success: false, error: 'Erro ao excluir visita: ' + error.message };
+  }
+}
+
+export async function atualizarVisita(id: string, data: {
+  dataVisita: Date;
+  observacoes?: string;
+}) {
+  try {
+    const visita = await prisma.visita.update({
+      where: { id },
+      data: {
+        dataVisita: data.dataVisita,
+        observacoes: data.observacoes,
+      },
+      include: {
+        cliente: true,
+      },
+    });
+    return { success: true, visita };
+  } catch (error: any) {
+    console.error('Erro ao atualizar visita:', error);
+    return { success: false, error: 'Erro ao atualizar visita: ' + error.message };
+  }
+}
