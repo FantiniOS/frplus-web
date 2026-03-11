@@ -413,7 +413,7 @@ export default function DashboardPage() {
         {/* COLUNA DIREITA (Calendário de Visitas) */}
         <div className="lg:col-span-1">
           <div className="h-full w-full min-h-[400px]">
-            <VisitasCalendar year={chartYear!} month={chartMonth!} />
+            <VisitasCalendar year={chartYear!} month={chartMonth!} clientes={clients} />
           </div>
         </div>
       </div>

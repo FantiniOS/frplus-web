@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { getVisitasDoMes } from "@/app/actions/visitas";
-import { Calendar, ChevronLeft, ChevronRight, MessageSquareCode, Clock, MapPin, Search } from "lucide-react";
+import { getVisitasDoMes, agendarVisita } from "@/app/actions/visitas";
+import { Calendar, ChevronLeft, ChevronRight, MessageSquareCode, Clock, MapPin, Search, Plus, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { createPortal } from "react-dom";
 
 interface Visita {
   id: string;
@@ -22,24 +23,68 @@ interface Visita {
 interface VisitasCalendarProps {
   year: number;
   month: number;
+  clientes?: { id: string; nomeFantasia?: string | null; razaoSocial: string }[];
 }
 
-export function VisitasCalendar({ year, month }: VisitasCalendarProps) {
+export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarProps) {
   const [visitas, setVisitas] = useState<Visita[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<number | null>(new Date().getDate());
 
-  useEffect(() => {
-    async function loadVisitas() {
-      setLoading(true);
-      const res = await getVisitasDoMes(year, month);
-      if (res.success && res.visitas) {
-        setVisitas(res.visitas as unknown as Visita[]); // Handling Prisma date conversion
-      }
-      setLoading(false);
+  const [showAddVisita, setShowAddVisita] = useState(false);
+  const [selectedClienteId, setSelectedClienteId] = useState("");
+  const [hora, setHora] = useState("");
+  const [observacoes, setObservacoes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadVisitas = async () => {
+    setLoading(true);
+    const res = await getVisitasDoMes(year, month);
+    if (res.success && res.visitas) {
+      setVisitas(res.visitas as unknown as Visita[]); // Handling Prisma date conversion
     }
+    setLoading(false);
+  };
+
+  useEffect(() => {
     loadVisitas();
   }, [year, month]);
+
+  const handleAgendarVisita = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClienteId || !hora || !selectedDate) {
+      alert("Preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const datePart = new Date(year, month, selectedDate);
+      const [hours, minutes] = hora.split(':').map(Number);
+      datePart.setHours(hours, minutes, 0, 0);
+
+      const res = await agendarVisita({
+        clienteId: selectedClienteId,
+        dataVisita: datePart,
+        observacoes: observacoes || undefined,
+      });
+
+      if (res.success) {
+        setShowAddVisita(false);
+        setSelectedClienteId("");
+        setHora("");
+        setObservacoes("");
+        // Refetch to update the calendar
+        loadVisitas();
+      } else {
+        alert("Erro ao agendar visita: " + res.error);
+      }
+    } catch (err) {
+      alert("Erro inesperado ao agendar visita.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // Calendar logic
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -139,9 +184,18 @@ export function VisitasCalendar({ year, month }: VisitasCalendarProps) {
           <div className="flex-1 overflow-y-auto pr-1 min-h-[120px] custom-scrollbar">
             {selectedDate && (
               <div className="space-y-3">
-                <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider sticky top-0 bg-[#0c1221] py-1 z-10">
-                  {new Date(year, month, selectedDate).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                </h4>
+                <div className="sticky top-0 bg-[#0c1221] py-1 z-10 flex items-center justify-between">
+                  <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                    {new Date(year, month, selectedDate).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </h4>
+                  <button
+                    onClick={() => setShowAddVisita(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors text-xs font-semibold"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Agendar Visita
+                  </button>
+                </div>
                 
                 {selectedVisitas.length === 0 ? (
                   <p className="text-xs text-gray-600 text-center py-4">Nenhuma visita agendada</p>
@@ -194,6 +248,93 @@ export function VisitasCalendar({ year, month }: VisitasCalendarProps) {
           </div>
         </div>
       )}
+
+      {/* Modal de Agendamento */}
+      {showAddVisita && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => !submitting && setShowAddVisita(false)}>
+          <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-6 shadow-2xl shadow-black/50" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white tracking-tight">Agendar Visita</h2>
+              <button 
+                type="button"
+                onClick={() => !submitting && setShowAddVisita(false)} 
+                className="p-2 rounded-full hover:bg-white/10 transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-400 hover:text-white" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAgendarVisita} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Data da Visita</label>
+                <input
+                  type="text"
+                  value={selectedDate ? new Date(year, month, selectedDate).toLocaleDateString('pt-BR') : ''}
+                  disabled
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white cursor-not-allowed opacity-70"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Cliente *</label>
+                <select
+                  value={selectedClienteId}
+                  onChange={e => setSelectedClienteId(e.target.value)}
+                  className="w-full bg-[#0a0f1a] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 appearance-none"
+                  required
+                >
+                  <option value="" disabled>Selecione um cliente...</option>
+                  {clientes.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.nomeFantasia && c.nomeFantasia.trim() !== '' ? c.nomeFantasia : c.razaoSocial}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Horário *</label>
+                <input
+                  type="time"
+                  value={hora}
+                  onChange={e => setHora(e.target.value)}
+                  className="w-full bg-[#0a0f1a] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 appearance-none [color-scheme:dark]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Observações</label>
+                <textarea
+                  value={observacoes}
+                  onChange={e => setObservacoes(e.target.value)}
+                  className="w-full bg-[#0a0f1a] border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500/50 min-h-[100px] resize-none"
+                  placeholder="Assuntos para a reunião, metas, etc."
+                />
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowAddVisita(false)}
+                  disabled={submitting}
+                  className="px-6 py-2.5 rounded-xl font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-6 py-2.5 rounded-xl font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  {submitting ? 'Salvando...' : 'Confirmar Agendamento'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>, document.body
+      )}
+
     </div>
   );
 }
