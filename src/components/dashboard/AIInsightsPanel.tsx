@@ -102,7 +102,7 @@ export function AIInsightsPanel() {
             </div>
 
             {/* Cards Grid */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
                 {/* Card 1: Prestes a Comprar */}
                 <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm shadow-xl">
                     <div className="flex items-center justify-between mb-4">
@@ -171,32 +171,6 @@ export function AIInsightsPanel() {
                             ))}
                         </div>
                     )}
-                </div>
-
-                {/* Card 3: Campanhas */}
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm shadow-xl flex flex-col">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                            <Megaphone className="h-4 w-4 text-blue-400" />
-                            <span className="text-sm font-medium text-white">Campanhas</span>
-                        </div>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">
-                            Em Breve
-                        </span>
-                    </div>
-
-                    <div className="flex-1 flex flex-col items-center justify-center p-4 text-center mt-2">
-                        <div className="p-3 bg-white/5 rounded-full mb-3">
-                            <Megaphone className="h-6 w-6 text-gray-500 opacity-50" />
-                        </div>
-                        <p className="text-sm font-medium text-gray-300">Disparos em Massa</p>
-                        <p className="text-xs text-gray-500 mt-2 max-w-[200px] leading-relaxed">
-                            Acompanhamento de campanhas automatizadas e engajamento da fila de clientes.
-                        </p>
-                        <span className="mt-4 text-[10px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
-                            Roadmap v2
-                        </span>
-                    </div>
                 </div>
             </div>
         </div>
