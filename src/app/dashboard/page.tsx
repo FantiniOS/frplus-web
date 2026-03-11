@@ -396,11 +396,11 @@ export default function DashboardPage() {
         document.body
       )}
 
-      {/* ===== LINHA INFERIOR: CONTEÚDO PRINCIPAL + SIDEBAR CALENDÁRIO ===== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ===== LINHA MEIO: CONTEÚDO PRINCIPAL + SIDEBAR CALENDÁRIO ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         
-        {/* COLUNA ESQUERDA (Gráfico + Top Produtos) */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
+        {/* COLUNA ESQUERDA (Gráfico) */}
+        <div className="lg:col-span-2">
           {/* Chart */}
           <InteractiveChart
             data={salesData}
@@ -408,7 +408,18 @@ export default function DashboardPage() {
             totalSales={stats.totalSales}
             monthName={monthName}
           />
+        </div>
 
+        {/* COLUNA DIREITA (Calendário de Visitas) */}
+        <div className="lg:col-span-1">
+          <div className="h-full w-full min-h-[400px]">
+            <VisitasCalendar year={chartYear!} month={chartMonth!} />
+          </div>
+        </div>
+      </div>
+
+      {/* ===== LINHA INFERIOR: TOP PRODUTOS ===== */}
+      <div className="grid grid-cols-1">
           {/* Top Produtos */}
           <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-5 shadow-xl shadow-black/30 flex flex-col min-h-[300px]">
             <div className="flex items-center gap-2 mb-4">
@@ -422,7 +433,7 @@ export default function DashboardPage() {
             {topProducts.length === 0 ? (
               <p className="text-xs text-gray-600 text-center py-6 flex-1 flex items-center justify-center">Sem dados de vendas neste período</p>
             ) : (
-              <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 flex-1 overflow-y-auto pr-1">
                 {topProducts.map((prod, i) => {
                   const maxTotal = topProducts[0]?.total || 1;
                   const barWidth = Math.max((prod.total / maxTotal) * 100, 8);
@@ -455,14 +466,6 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* COLUNA DIREITA (Calendário de Visitas) */}
-        <div className="lg:col-span-1">
-          <div className="h-full w-full min-h-[500px]">
-            <VisitasCalendar year={chartYear!} month={chartMonth!} />
-          </div>
-        </div>
       </div>
 
       {/* ===== AI Insights ===== */}
