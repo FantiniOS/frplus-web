@@ -82,8 +82,6 @@ export default function RelatoriosPage() {
         });
 
         return { totalVendas, totalPedidos, ticketMedio, vendasPorDia, clientesPorDia };
-
-        return { totalVendas, totalPedidos, ticketMedio, vendasPorDia };
     }, [pedidosFiltrados]);
 
     // Product Statistics

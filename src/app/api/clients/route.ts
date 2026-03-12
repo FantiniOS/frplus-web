@@ -64,7 +64,7 @@ export async function GET() {
                 datasPorCliente.set(pedido.clienteId, lista)
             }
 
-            for (const [clienteId, datas] of datasPorCliente.entries()) {
+            for (const [clienteId, datas] of Array.from(datasPorCliente.entries())) {
                 const media = calcularMediaCicloDias(datas)
                 mediaCicloPorCliente.set(clienteId, media)
             }
