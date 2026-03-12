@@ -456,6 +456,7 @@ export default function RelatoriosPage() {
                 doc.text(subtitleLabel, margin.left + 5, startY + 6);
                 // Product count
                 const totalProds = products.filter(p => {
+                    if (p.ativo === false) return false;
                     if (fabricaSelecionada === 'todas') return true;
                     if (fabricaSelecionada === 'sem-fabrica') return !p.fabricaId;
                     return p.fabricaId === fabricaSelecionada;
@@ -468,6 +469,7 @@ export default function RelatoriosPage() {
 
                 // Filter products
                 const produtosFiltrados = products.filter(p => {
+                    if (p.ativo === false) return false;
                     if (fabricaSelecionada === 'todas') return true;
                     if (fabricaSelecionada === 'sem-fabrica') return !p.fabricaId;
                     return p.fabricaId === fabricaSelecionada;
@@ -1154,6 +1156,7 @@ export default function RelatoriosPage() {
                             {(() => {
                                 // Filtrar produtos pela fábrica selecionada
                                 const produtosFiltrados = products.filter(p => {
+                                    if (p.ativo === false) return false;
                                     if (fabricaSelecionada === 'todas') return true;
                                     if (fabricaSelecionada === 'sem-fabrica') return !p.fabricaId;
                                     return p.fabricaId === fabricaSelecionada;
