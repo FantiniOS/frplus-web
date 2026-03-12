@@ -28,6 +28,7 @@ interface PrestesAComprarClient {
     motivo?: string;
     messageSuggestion?: string;
     contextoParaIA?: string;
+    statusCiclo: 'ATRASADO' | 'PRESTES';
 }
 
 interface Opportunity {
@@ -492,7 +493,18 @@ export default function AIInsightsPage() {
                                                 return (
                                                     <tr key={client.id} className="hover:bg-white/5">
                                                         <td className="px-4 py-3">
-                                                            <p className="font-medium text-white">{client.nomeFantasia}</p>
+                                                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                <p className="font-medium text-white">{client.nomeFantasia}</p>
+                                                                {client.statusCiclo === 'ATRASADO' ? (
+                                                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-500/20 text-red-400 border border-red-500/30 break-normal whitespace-nowrap">
+                                                                        Atrasado há {client.diasInativo !== null ? client.diasInativo - client.cicloMedioDias : 0} dias
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 break-normal whitespace-nowrap">
+                                                                        No prazo (Faltam {client.diasInativo !== null ? Math.max(0, client.cicloMedioDias - client.diasInativo) : 0} dias)
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <p className="text-xs text-gray-500">{client.razaoSocial}</p>
                                                         </td>
                                                         <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>

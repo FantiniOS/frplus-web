@@ -158,6 +158,11 @@ Abs, Carlos Fantini
                 // Total gasto nos pedidos disponíveis
                 const totalGasto = client.pedidos.reduce((acc, o) => acc + Number(o.valorTotal), 0);
 
+                let statusCiclo: 'ATRASADO' | 'PRESTES' = 'PRESTES';
+                if (daysSinceLastOrder !== null && daysSinceLastOrder > cicloMedioDias) {
+                    statusCiclo = 'ATRASADO';
+                }
+
                 return {
                     id: client.id,
                     nomeFantasia: client.nomeFantasia,
@@ -176,13 +181,14 @@ Abs, Carlos Fantini
                     totalGasto,
                     totalPedidos: client._count.pedidos,
                     motivo,
+                    statusCiclo,
                     contextoParaIA
                 }
             })
-            // FILTRO DE OURO: Apenas clientes na janela exata de compra
-            // diasDesdeUltimoPedido >= mediaCicloDias - 3 && diasDesdeUltimoPedido <= mediaCicloDias + 5
-            .filter(c => c.diasInativo !== null && c.diasInativo >= (c.cicloMedioDias - 3) && c.diasInativo <= (c.cicloMedioDias + 5))
-            // ORDENAÇÃO: Quem está mais próximo de estourar o limite máximo na frente
+            // FILTRO DE OURO: Retorna todos os clientes onde diasDesdeUltimoPedido >= (mediaCicloDias - 3)
+            // REMOVE limite superior para manter atrasados no radar
+            .filter(c => c.diasInativo !== null && c.diasInativo >= (c.cicloMedioDias - 3))
+            // ORDENAÇÃO: Quem está mais atrasado aparece primeiro no topo
             .sort((a, b) => b.diasInativo! - a.diasInativo!)
 
         // Summary stats
