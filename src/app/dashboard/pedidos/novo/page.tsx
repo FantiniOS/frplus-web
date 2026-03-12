@@ -173,6 +173,7 @@ export default function NovoPedidoPage() {
     const produtosFiltrados = useMemo(() => {
         if (!fabricaSelecionada) return [];
         return products.filter(p => {
+            if (p.ativo === false) return false;
             const matchFabrica = p.fabricaId === fabricaSelecionada.id;
             const matchSearch = (p.nome || '').toLowerCase().includes(searchProduct.toLowerCase()) ||
                 (p.codigo || '').toLowerCase().includes(searchProduct.toLowerCase());
@@ -184,7 +185,7 @@ export default function NovoPedidoPage() {
     const categorias = useMemo(() => {
         if (!fabricaSelecionada) return [];
         const cats = products
-            .filter(p => p.fabricaId === fabricaSelecionada.id)
+            .filter(p => p.fabricaId === fabricaSelecionada.id && p.ativo !== false)
             .map(p => p.categoria)
             .filter((c): c is string => !!c);
         return Array.from(new Set(cats));

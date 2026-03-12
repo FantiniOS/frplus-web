@@ -106,16 +106,23 @@ export default function ProdutosPage() {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: index * 0.03 }}
-                                        className="form-card group hover:bg-white/5 transition-colors p-3"
+                                        className={`form-card group hover:bg-white/5 transition-colors p-3 ${product.ativo === false ? 'opacity-50' : ''}`}
                                     >
                                         {/* Card Content Wrapper */}
                                         <div className="flex flex-col gap-2">
 
                                             {/* Row 1: Nome e Ações */}
                                             <div className="flex justify-between items-start gap-2">
-                                                <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 min-h-[2.5em] flex items-center">
-                                                    {product.nome}
-                                                </h3>
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 min-h-[2.5em] flex items-center">
+                                                        {product.nome}
+                                                    </h3>
+                                                    {product.ativo === false && (
+                                                        <span className="inline-flex items-center rounded-md bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold text-red-400 border border-red-500/20 uppercase whitespace-nowrap flex-shrink-0">
+                                                            Inativo
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {!isIndustria && (
                                                     <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0">
                                                         <button

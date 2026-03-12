@@ -51,6 +51,7 @@ export interface Product {
     fabricaId: string;
     fabricaNome?: string;
     categoria?: string;
+    ativo?: boolean;
     // Backward compatibility
     unidade?: string;
     descricao?: string;

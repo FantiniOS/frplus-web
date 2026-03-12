@@ -38,7 +38,8 @@ export async function GET(request: Request, { params }: Params) {
             imagem: product.imagem,
             fabricaId: product.fabricaId,
             fabricaNome: product.fabrica.nome,
-            categoria: product.categoria || 'Geral'
+            categoria: product.categoria || 'Geral',
+            ativo: product.ativo
         })
     } catch (error) {
         console.error('Error fetching product:', error)
@@ -68,7 +69,8 @@ export async function PUT(request: Request, { params }: Params) {
                 precoRedes: body.precoRedes,
                 imagem: body.imagem,
                 fabricaId: body.fabricaId,
-                categoria: body.categoria
+                categoria: body.categoria,
+                ativo: body.ativo !== undefined ? body.ativo : undefined
             }
         })
 

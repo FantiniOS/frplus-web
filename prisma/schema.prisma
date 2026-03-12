@@ -31,6 +31,7 @@ model Produto {
   precoRedes         Decimal      @db.Decimal(10, 2)
   imagem             String?
   categoria          String?
+  ativo              Boolean      @default(true)
   fabricaId          String
   fabrica            Fabrica      @relation(fields: [fabricaId], references: [id])
   itensPedido        ItemPedido[]

@@ -34,7 +34,8 @@ export async function GET() {
             imagem: p.imagem,
             fabricaId: p.fabricaId,
             fabricaNome: p.fabrica.nome,
-            categoria: p.categoria || 'Geral'
+            categoria: p.categoria || 'Geral',
+            ativo: p.ativo
         }))
 
         return NextResponse.json(formattedProducts)

@@ -164,6 +164,19 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
                                 <option value="PCT">Pacote (PCT)</option>
                             </select>
                         </div>
+                        <div className="col-span-2 flex items-center justify-between pt-2 border-t border-white/5">
+                            <div>
+                                <label className="text-sm font-medium text-white">Produto Ativo</label>
+                                <p className="text-xs text-gray-500">Produtos inativos não aparecem na Tabela de Preços e Novo Pedido</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, ativo: prev.ativo === false ? true : false }))}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.ativo === false ? 'bg-gray-600' : 'bg-green-500'}`}
+                            >
+                                <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${formData.ativo === false ? 'translate-x-1' : 'translate-x-6'}`} />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
