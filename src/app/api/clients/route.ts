@@ -4,6 +4,25 @@ import { getServerUser } from '@/lib/getServerUser'
 
 export const dynamic = 'force-dynamic'
 
+function calcularMediaCicloDias(datas: Date[]): number | null {
+    if (!datas || datas.length < 2) return null
+
+    let totalDias = 0
+    let intervalos = 0
+
+    for (let i = 1; i < datas.length; i++) {
+        const diffMs = datas[i].getTime() - datas[i - 1].getTime()
+        const diffDias = diffMs / (1000 * 60 * 60 * 24)
+        totalDias += diffDias
+        intervalos++
+    }
+
+    if (intervalos === 0) return null
+
+    const media = totalDias / intervalos
+    return Math.round(media)
+}
+
 // GET /api/clients - List all clients with last purchase date
 export async function GET() {
     try {
@@ -18,11 +37,53 @@ export async function GET() {
             }
         })
 
-        const formattedClients = clients.map(client => ({
-            ...client,
-            ultima_compra: client.pedidos[0]?.data || null,
-            pedidos: undefined // Remove pedidos array to keep payload clean
-        }))
+        const activeClientIds = clients
+            .filter(client => client.status === 'Ativo')
+            .map(client => client.id)
+
+        let mediaCicloPorCliente = new Map<string, number | null>()
+
+        if (activeClientIds.length > 0) {
+            const pedidosFaturados = await prisma.pedido.findMany({
+                where: {
+                    clienteId: { in: activeClientIds },
+                    status: 'Concluido'
+                },
+                select: {
+                    clienteId: true,
+                    data: true
+                },
+                orderBy: { data: 'asc' }
+            })
+
+            const datasPorCliente = new Map<string, Date[]>()
+
+            for (const pedido of pedidosFaturados) {
+                const lista = datasPorCliente.get(pedido.clienteId) || []
+                lista.push(pedido.data)
+                datasPorCliente.set(pedido.clienteId, lista)
+            }
+
+            for (const [clienteId, datas] of datasPorCliente.entries()) {
+                const media = calcularMediaCicloDias(datas)
+                mediaCicloPorCliente.set(clienteId, media)
+            }
+        }
+
+        const formattedClients = clients.map(client => {
+            const ultimaCompra = client.pedidos[0]?.data || null
+            const mediaCicloDias =
+                client.status === 'Ativo'
+                    ? mediaCicloPorCliente.get(client.id) ?? null
+                    : null
+
+            return {
+                ...client,
+                ultima_compra: ultimaCompra,
+                mediaCicloDias,
+                pedidos: undefined // Remove pedidos array para manter payload enxuto
+            }
+        })
 
         return NextResponse.json(formattedClients)
     } catch (error) {

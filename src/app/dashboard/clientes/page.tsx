@@ -89,6 +89,7 @@ export default function ClientesPage() {
               <th className="w-10 px-4 py-4"></th>
               <th className="px-6 py-4 font-medium">Cliente</th>
               <th className="px-6 py-4 font-medium hidden md:table-cell">Status</th>
+              <th className="px-6 py-4 font-medium hidden md:table-cell">Ciclo de Compras</th>
               <th className="px-6 py-4 font-medium hidden md:table-cell">Localização</th>
               <th className="px-6 py-4 font-medium hidden md:table-cell">Última Compra</th>
               {!isIndustria && <th className="px-6 py-4 font-medium text-right">Ações</th>}
@@ -131,6 +132,23 @@ export default function ClientesPage() {
                     </span>
                   </td>
 
+                  {/* Coluna Ciclo de Compras */}
+                  <td className="px-6 py-4 hidden md:table-cell">
+                    {((cliente.status || 'Ativo') !== 'Ativo') ? (
+                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-gray-500/10 text-gray-400 border-gray-500/20">
+                        Inativo
+                      </span>
+                    ) : (cliente.mediaCicloDias != null) ? (
+                      <span className="text-sm text-gray-100">
+                        A cada {cliente.mediaCicloDias} dias
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-500">
+                        Sem histórico
+                      </span>
+                    )}
+                  </td>
+
                   {/* Coluna Localização */}
                   <td className="px-6 py-4 text-gray-300 hidden md:table-cell">
                     <div className="flex items-center gap-2">
@@ -168,7 +186,7 @@ export default function ClientesPage() {
                 {/* Expanded Detail Row */}
                 {expandedClientId === cliente.id && (
                   <tr className="bg-white/5">
-                    <td colSpan={6} className="p-0">
+                    <td colSpan={7} className="p-0">
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
@@ -230,7 +248,7 @@ export default function ClientesPage() {
             ))}
             {filteredClients.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                   Nenhum cliente encontrado.
                 </td>
               </tr>

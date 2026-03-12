@@ -28,6 +28,7 @@ export interface Client {
     observacoes?: string;
     tabelaPreco?: string;
     ultima_compra?: string;
+    mediaCicloDias?: number | null;
 }
 
 export interface Fabrica {
