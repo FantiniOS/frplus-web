@@ -29,6 +29,8 @@ interface PrestesAComprarClient {
     messageSuggestion?: string;
     contextoParaIA?: string;
     statusCiclo: 'ATRASADO' | 'PRESTES';
+    nomeCliente?: string;
+    nomeRepresentada?: string;
 }
 
 interface Opportunity {
@@ -126,7 +128,7 @@ export default function AIInsightsPage() {
     ).slice(0, 30);
 
     // AI Message Generation Handler
-    const handleGenerateAIMessage = async (clienteId: string, contextoParaIA?: string, diasDesdeUltimoPedido?: number) => {
+    const handleGenerateAIMessage = async (clienteId: string, contextoParaIA?: string, diasDesdeUltimoPedido?: number, nomeCliente?: string, nomeRepresentada?: string) => {
         setGeneratingMessageFor(clienteId);
         setAiGeneratedMessage(null);
         setAiMessageError(null);
@@ -138,7 +140,7 @@ export default function AIInsightsPage() {
             const res = await fetch('/api/ai/generate-message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clienteId, contextoParaIA, diasDesdeUltimoPedido })
+                body: JSON.stringify({ clienteId, contextoParaIA, diasDesdeUltimoPedido, nomeCliente, nomeRepresentada })
             });
 
             const data = await res.json();
@@ -537,7 +539,13 @@ export default function AIInsightsPage() {
                                                         </td>
                                                         <td className="px-4 py-3 text-right">
                                                             <button
-                                                                onClick={() => handleGenerateAIMessage(client.id, client.contextoParaIA, client.diasInativo !== null ? client.diasInativo : undefined)}
+                                                                onClick={() => handleGenerateAIMessage(
+                                                                    client.id, 
+                                                                    client.contextoParaIA, 
+                                                                    client.diasInativo !== null ? client.diasInativo : undefined, 
+                                                                    client.nomeCliente, 
+                                                                    client.nomeRepresentada
+                                                                )}
                                                                 disabled={generatingMessageFor === client.id}
                                                                 className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
                                                             >

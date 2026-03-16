@@ -24,6 +24,8 @@ interface GenerateMessageRequest {
     clienteId: string
     contextoParaIA?: string
     diasDesdeUltimoPedido?: number
+    nomeCliente?: string
+    nomeRepresentada?: string
 }
 
 interface ProductPurchaseStats {
@@ -719,6 +721,84 @@ export async function POST(request: Request) {
         // Capturar sessão ativa para pegar o nome
         const user = await getServerUser()
         const nomeUsuario = user?.nome || 'Representante Comercial'
+
+        console.log('DEBUG MENSAGEM:', { diasFrontend: body.diasDesdeUltimoPedido });
+
+        // Bypass total se tiver as props restritas (Prestes a Comprar)
+        if (body.nomeCliente && body.nomeRepresentada && body.diasDesdeUltimoPedido !== undefined) {
+             const directSystemPrompt = `Você é um Gerente Comercial analítico e direto. É OBRIGATÓRIO utilizar o número exato de dias fornecido na variável \${diasDesdeUltimoPedido}. Não altere nem recalcule este valor.
+
+Você DEVE retornar sua resposta ESTRITAMENTE em formato JSON com as chaves:
+{
+  "estudoInterno": "Resumo em 2 linhas focado em fatos.",
+  "mensagemWhatsApp": "Texto persuasivo, usando quebras de linha DUPLAS (\\n\\n). Assine como '${nomeUsuario}'. O valor de dias sem comprar deve ser exatamente ${body.diasDesdeUltimoPedido}."
+}
+
+INSTRUÇÕES ESTRITAS:
+- Nome do cliente: ${body.nomeCliente}
+- Marca/Representada foco: ${body.nomeRepresentada}
+- Exatos dias sem comprar: \${diasDesdeUltimoPedido} = ${body.diasDesdeUltimoPedido}
+
+CONTEXTO: ${body.contextoParaIA || ''}`;
+
+            try {
+                let mensagem = '';
+                let estudoInterno = '';
+                let mensagemWhatsApp = '';
+
+                const groqKey = process.env.GROQ_API_KEY
+                let generated = false;
+                if (groqKey) {
+                    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: 'llama-3.3-70b-versatile',
+                            messages: [
+                                { role: 'system', content: directSystemPrompt },
+                                { role: 'user', content: 'Gere a mensagem de WhatsApp exata no formato JSON.' }
+                            ],
+                            response_format: { type: 'json_object' },
+                            temperature: 0.7,
+                            max_tokens: 500
+                        })
+                    })
+                    if (groqRes.ok) {
+                        const groqData = await groqRes.json()
+                        mensagem = groqData.choices?.[0]?.message?.content?.trim()
+                        generated = !!mensagem && mensagem.length > 10;
+                    }
+                }
+
+                if (!generated && process.env.GEMINI_API_KEY) {
+                    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+                    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+                    const result = await model.generateContent(`${directSystemPrompt}\n\nAgora gere a mensagem exata.`)
+                    mensagem = result.response.text().trim()
+                }
+
+                if (!mensagem) throw new Error("Fallback LLM também falhou no Bypass Estrutural.");
+
+                try {
+                    const jsonStr = mensagem.replace(/```json/gi, '').replace(/```/g, '').trim();
+                    const parsed = JSON.parse(jsonStr);
+                    estudoInterno = parsed.estudoInterno || parsed.analiseInterna || '';
+                    mensagemWhatsApp = parsed.mensagemWhatsApp || '';
+                } catch (e) {
+                    mensagemWhatsApp = mensagem;
+                }
+
+                return NextResponse.json({
+                    mensagemWhatsApp,
+                    estudoInterno,
+                    cliente: { nome: clienteExiste.nomeFantasia, telefone: clienteExiste.celular || clienteExiste.telefone },
+                    fatosEstrategicos: null
+                });
+
+            } catch (err) {
+                throw err;
+            }
+        }
 
         // ETAPA 1 + 2: Mineração de Dados + Consolidação
         const fatosEstrategicos = await consolidarFatos(body.clienteId)

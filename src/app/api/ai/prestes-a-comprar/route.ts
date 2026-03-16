@@ -182,7 +182,9 @@ Abs, Carlos Fantini
                     totalPedidos: client._count.pedidos,
                     motivo,
                     statusCiclo,
-                    contextoParaIA
+                    contextoParaIA,
+                    nomeCliente: greetingName,
+                    nomeRepresentada: fabricaFavorita
                 }
             })
             // FILTRO DE OURO: Retorna todos os clientes onde diasDesdeUltimoPedido >= (mediaCicloDias - 3)
