@@ -23,6 +23,7 @@ interface FatosEstrategicos {
 interface GenerateMessageRequest {
     clienteId: string
     contextoParaIA?: string
+    diasDesdeUltimoPedido?: number
 }
 
 interface ProductPurchaseStats {
@@ -724,15 +725,8 @@ export async function POST(request: Request) {
 
         const nomeCliente = fatosEstrategicos.comprador || clienteExiste.nomeFantasia.split(' ')[0]
 
-        // Calcular dias sem comprar para régua de churn (Apenas para fallback)
-        const ultimoPedido = await prisma.pedido.findFirst({
-            where: { clienteId: body.clienteId, tipo: 'Venda' },
-            orderBy: { data: 'desc' },
-            select: { data: true }
-        })
-        const diasSemComprar = ultimoPedido
-            ? Math.floor((Date.now() - new Date(ultimoPedido.data).getTime()) / (1000 * 60 * 60 * 24))
-            : null
+        // Dias sem comprar: recebe do Frontend como fonte única de verdade (bypass no recálculo)
+        const diasSemComprar = body.diasDesdeUltimoPedido ?? null;
 
         let mensagem = ''
         let estudoInterno = ''

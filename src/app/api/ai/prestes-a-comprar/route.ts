@@ -149,7 +149,7 @@ Você é o representante comercial Carlos Fantini. Escreva uma mensagem curta de
 - Fábrica: ${fabricaFavorita}
 - Ciclo: ${cicloMedioDias}
 TEXTO BASE (Adapte para ficar natural, sem jargões):
-Fala ${greetingName}, bom dia! Tudo bem? Pelo meu controle de estoque aqui, já faz uns ${cicloMedioDias} dias que rodamos o último pedido, então já deve estar na hora de repor a linha da ${fabricaFavorita}, certo? Tô montando a rota de entregas de hoje, quer que eu já lance o seu pedido para garantir o faturamento? Me dá um alô!
+Fala ${greetingName}, bom dia! Tudo bem? Pelo meu controle de estoque aqui, já faz uns ${daysSinceLastOrder !== null ? daysSinceLastOrder : cicloMedioDias} dias que rodamos o último pedido, então já deve estar na hora de repor a linha da ${fabricaFavorita}, certo? Tô montando a rota de entregas de hoje, quer que eu já lance o seu pedido para garantir o faturamento? Me dá um alô!
 Abs, Carlos Fantini
                 `.trim();
 
