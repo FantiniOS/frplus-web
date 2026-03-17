@@ -264,9 +264,29 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
                       const phone = v.cliente ? (v.cliente.celular || v.cliente.telefone) : null;
 
                       return (
-                        <div key={v.id} className={`group relative rounded-lg border border-white/[0.04] p-3 transition-colors overflow-hidden ${v.status === 'REALIZADA' ? 'bg-white/[0.01]' : 'bg-white/[0.02] hover:bg-white/[0.04]'}`}>
+                        <div key={v.id} className={`group relative rounded-lg border border-white/[0.04] p-3 transition-colors ${v.status === 'REALIZADA' ? 'bg-white/[0.01]' : 'bg-white/[0.02] hover:bg-white/[0.04]'}`}>
                            {/* Status Indicator Bar */}
-                           <div className={`absolute left-0 top-0 bottom-0 w-1 ${v.status === 'REALIZADA' ? 'bg-gray-500/30' : 'bg-emerald-500/50'}`} />
+                           <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${v.status === 'REALIZADA' ? 'bg-gray-500/30' : 'bg-emerald-500/50'}`} />
+                           
+                           {/* Tooltip Hover / Visualização Rápida */}
+                           <div className="absolute z-[100] hidden group-hover:flex flex-col bg-gray-900 text-white text-xs rounded-md p-3 shadow-xl shadow-black/50 w-64 bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none border border-white/10 before:content-[''] before:absolute before:-bottom-2 before:left-1/2 before:-translate-x-1/2 before:border-[6px] before:border-transparent before:border-t-gray-900 before:border-t-[8px]">
+                             <div className="font-bold text-emerald-400 text-sm mb-1">
+                               ⏱ {timeStr}
+                             </div>
+                             <div className="font-semibold text-white/90 mb-1 break-words">
+                               {v.titulo}
+                             </div>
+                             {clientName && (
+                               <div className="text-gray-400 mb-1 capitalize truncate">
+                                 👤 {clientName}
+                               </div>
+                             )}
+                             {v.observacoes && (
+                               <div className="mt-1 pt-2 border-t border-white/10 text-gray-300 line-clamp-4">
+                                 {v.observacoes}
+                               </div>
+                             )}
+                           </div>
                           
                           <div className={`flex items-start justify-between pl-2 ${v.status === 'REALIZADA' ? 'opacity-50' : ''}`}>
                             <div className="flex-1 min-w-0 pr-3">
