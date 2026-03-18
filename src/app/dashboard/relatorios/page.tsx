@@ -197,7 +197,9 @@ export default function RelatoriosPage() {
             const titulosRelatorio: Record<string, string> = {
                 vendas: 'Relatório de Vendas',
                 produtos: 'Ranking de Produtos',
-                clientes: 'Relatório Geral de Clientes',
+                clientes: tabelaSelecionada
+                    ? `Relatório de Clientes — Tabela: ${tabelaSelecionada}`
+                    : 'Relatório Geral de Clientes',
                 tabela: 'Tabela de Preços'
             };
 
@@ -422,18 +424,22 @@ export default function RelatoriosPage() {
                 });
 
             } else if (tipoRelatorio === 'clientes') {
+                // Aplicamos o mesmo filtro do dropdown da interface
+                const clientesFiltrados = estatisticasClientes.filter(c => !tabelaSelecionada || c.tabelaPreco === tabelaSelecionada);
+
                 startY += 2;
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
-                doc.text(`${estatisticasClientes.length} clientes com pedidos no período`, margin.left, startY);
+                const labelFiltro = tabelaSelecionada ? `Tabela: ${tabelaSelecionada}` : 'Todas as Tabelas';
+                doc.text(`${clientesFiltrados.length} clientes · ${labelFiltro}`, margin.left, startY);
                 startY += 6;
 
                 autoTable(doc, {
                     startY,
                     head: [['#', 'Cliente', 'Tabela', 'Pedidos', 'Valor Total', '% Part.']],
-                    body: estatisticasClientes.map((c, i) => {
-                        const totalGeral = estatisticasClientes.reduce((a, x) => a + x.valor, 0);
+                    body: clientesFiltrados.map((c, i) => {
+                        const totalGeral = clientesFiltrados.reduce((a, x) => a + x.valor, 0);
                         const pct = totalGeral > 0 ? ((c.valor / totalGeral) * 100).toFixed(1) : '0.0';
                         return [
                             (i + 1).toString(),
@@ -454,8 +460,8 @@ export default function RelatoriosPage() {
                         4: { halign: 'right', fontStyle: 'bold' },
                         5: { cellWidth: 20, textColor: colors.accentBlue }
                     },
-                    foot: [['', 'TOTAL GERAL', '', estatisticasClientes.reduce((a, c) => a + c.pedidos, 0).toString(),
-                        `R$ ${estatisticasClientes.reduce((a, c) => a + c.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '100%']],
+                    foot: [['', 'TOTAL GERAL', '', clientesFiltrados.reduce((a, c) => a + c.pedidos, 0).toString(),
+                        `R$ ${clientesFiltrados.reduce((a, c) => a + c.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '100%']],
                     footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
                     margin: { top: startY, left: margin.left, right: margin.right },
                     didDrawPage: (data: { pageNumber: number }) => {
