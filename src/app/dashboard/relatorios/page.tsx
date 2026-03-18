@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect, Fragment } from 'react';
-import { useData, Order } from '@/contexts/DataContext';
+import { useData, Order, Client } from '@/contexts/DataContext';
 import {
     FileText, Calendar, Download, TrendingUp, Users, Package,
     DollarSign, BarChart3, PieChart, Filter, Printer, ChevronDown, Check, ChevronUp, FileDown, MessageCircle
@@ -105,22 +105,50 @@ export default function RelatoriosPage() {
 
     // Estatísticas de Clientes
     const estatisticasClientes = useMemo(() => {
-        const clientesVendas = new Map<string, { id: string; nome: string; pedidos: number; valor: number }>();
+        const getTabelaNome = (clientId: string) => {
+            const client = clients.find(c => c.id === clientId);
+            const tbl = client?.tabelaPreco;
+            const nomes = {
+                '50a199': '50 a 199 unid',
+                '200a699': '200 a 699 unid',
+                'atacado': 'Atacado',
+                'avista': 'À Vista',
+                'redes': 'Redes'
+            };
+            return tbl ? (nomes[tbl as keyof typeof nomes] || tbl) : 'Sem Tabela';
+        };
 
-        pedidosFiltrados.forEach(order => {
-            if (order.tipo === 'Bonificacao') return;
-            const atual = clientesVendas.get(order.clienteId) || { id: order.clienteId, nome: order.nomeCliente, pedidos: 0, valor: 0 };
-            clientesVendas.set(order.clienteId, {
-                id: order.clienteId,
-                nome: order.nomeCliente,
-                pedidos: atual.pedidos + 1,
-                valor: atual.valor + order.valorTotal
-            });
+        // Começamos com TODOS os clientes ativos
+        const clientesVendas = new Map<string, { id: string; nome: string; pedidos: number; valor: number; tabelaPreco: string }>();
+
+        clients.forEach(c => {
+            if (c.ativo !== false) {
+                clientesVendas.set(c.id, {
+                    id: c.id,
+                    nome: c.nomeFantasia || c.razaoSocial || 'Sem Nome',
+                    pedidos: 0,
+                    valor: 0,
+                    tabelaPreco: getTabelaNome(c.id)
+                });
+            }
         });
 
-        return Array.from(clientesVendas.values())
-            .sort((a, b) => b.valor - a.valor);
-    }, [pedidosFiltrados]);
+        // Somamos os pedidos do período
+        pedidosFiltrados.forEach(order => {
+            if (order.tipo === 'Bonificacao') return;
+            const atual = clientesVendas.get(order.clienteId);
+            if (atual) {
+                atual.pedidos += 1;
+                atual.valor += Number(order.valorTotal);
+            }
+        });
+
+        // Ordenamos por valor (decrescente) e depois por nome
+        return Array.from(clientesVendas.values()).sort((a, b) => {
+            if (b.valor !== a.valor) return b.valor - a.valor;
+            return a.nome.localeCompare(b.nome);
+        });
+    }, [pedidosFiltrados, clients]);
 
     // Função para imprimir
     const handlePrint = () => {
@@ -168,7 +196,7 @@ export default function RelatoriosPage() {
             const titulosRelatorio: Record<string, string> = {
                 vendas: 'Relatório de Vendas',
                 produtos: 'Ranking de Produtos',
-                clientes: 'Relatório de Clientes',
+                clientes: 'Relatório Geral de Clientes',
                 tabela: 'Tabela de Preços'
             };
 
@@ -402,13 +430,14 @@ export default function RelatoriosPage() {
 
                 autoTable(doc, {
                     startY,
-                    head: [['#', 'Cliente', 'Pedidos', 'Valor Total', '% Participação']],
+                    head: [['#', 'Cliente', 'Tabela', 'Pedidos', 'Valor Total', '% Part.']],
                     body: estatisticasClientes.map((c, i) => {
                         const totalGeral = estatisticasClientes.reduce((a, x) => a + x.valor, 0);
                         const pct = totalGeral > 0 ? ((c.valor / totalGeral) * 100).toFixed(1) : '0.0';
                         return [
                             (i + 1).toString(),
                             c.nome,
+                            c.tabelaPreco,
                             c.pedidos.toString(),
                             `R$ ${c.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
                             `${pct}%`
@@ -420,10 +449,11 @@ export default function RelatoriosPage() {
                     columnStyles: {
                         0: { cellWidth: 12, fontStyle: 'bold' },
                         1: { halign: 'left' },
-                        3: { halign: 'right', fontStyle: 'bold' },
-                        4: { cellWidth: 25, textColor: colors.accentBlue }
+                        2: { halign: 'center', fontSize: 7, textColor: colors.textMuted },
+                        4: { halign: 'right', fontStyle: 'bold' },
+                        5: { cellWidth: 20, textColor: colors.accentBlue }
                     },
-                    foot: [['', 'TOTAL GERAL', estatisticasClientes.reduce((a, c) => a + c.pedidos, 0).toString(),
+                    foot: [['', 'TOTAL GERAL', '', estatisticasClientes.reduce((a, c) => a + c.pedidos, 0).toString(),
                         `R$ ${estatisticasClientes.reduce((a, c) => a + c.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '100%']],
                     footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
                     margin: { top: startY, left: margin.left, right: margin.right },
@@ -652,7 +682,7 @@ export default function RelatoriosPage() {
                             {[
                                 { id: 'vendas', label: 'Vendas', icon: TrendingUp },
                                 { id: 'produtos', label: 'Produtos', icon: Package },
-                                { id: 'clientes', label: 'Clientes', icon: Users },
+                                { id: 'clientes', label: 'Relatório Clientes', icon: Users },
                                 { id: 'tabela', label: 'Tabela de Preços', icon: DollarSign }
                             ].map(tipo => (
                                 <button
@@ -1010,13 +1040,14 @@ export default function RelatoriosPage() {
                 {
                     tipoRelatorio === 'clientes' && (
                         <div className="form-card">
-                            <h3 className="text-lg font-semibold text-white print:text-black mb-4">Ranking de Clientes</h3>
+                            <h3 className="text-lg font-semibold text-white print:text-black mb-4">Relatório Geral de Clientes</h3>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead className="border-b border-white/10 print:border-gray-300">
                                         <tr>
                                             <th className="text-left py-2 text-gray-400 print:text-gray-600">#</th>
                                             <th className="text-left py-2 text-gray-400 print:text-gray-600">Cliente</th>
+                                            <th className="text-center py-2 text-gray-400 print:text-gray-600">Tabela de Preços</th>
                                             <th className="text-center py-2 text-gray-400 print:text-gray-600">Pedidos</th>
                                             <th className="text-right py-2 text-gray-400 print:text-gray-600">Valor Total</th>
                                         </tr>
@@ -1035,6 +1066,17 @@ export default function RelatoriosPage() {
                                                         </div>
                                                     </td>
                                                     <td className="py-2 text-white print:text-black font-medium">{c.nome}</td>
+                                                    <td className="py-2 text-center text-gray-400 print:text-gray-600">
+                                                        {c.tabelaPreco === 'Sem Tabela' ? (
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                                                                Sem Tabela
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                                                {c.tabelaPreco}
+                                                            </span>
+                                                        )}
+                                                    </td>
                                                     <td className="py-2 text-center text-gray-400 print:text-gray-600">{c.pedidos}</td>
                                                     <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
                                                         R$ {c.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -1042,7 +1084,7 @@ export default function RelatoriosPage() {
                                                 </tr>
                                                 {expandedClientId === c.id && (
                                                     <tr className="bg-white/5 print:bg-gray-50">
-                                                        <td colSpan={4} className="p-0">
+                                                        <td colSpan={5} className="p-0">
                                                             <motion.div
                                                                 initial={{ opacity: 0, height: 0 }}
                                                                 animate={{ opacity: 1, height: 'auto' }}
@@ -1133,7 +1175,7 @@ export default function RelatoriosPage() {
                                     </tbody>
                                     <tfoot className="border-t border-white/20 print:border-gray-400">
                                         <tr>
-                                            <td colSpan={2} className="py-2 font-bold text-white print:text-black">Total</td>
+                                            <td colSpan={3} className="py-2 font-bold text-white print:text-black">Total</td>
                                             <td className="py-2 text-center font-bold text-white print:text-black">
                                                 {estatisticasClientes.reduce((acc, c) => acc + c.pedidos, 0)}
                                             </td>

@@ -29,6 +29,7 @@ export interface Client {
     tabelaPreco?: string;
     ultima_compra?: string;
     mediaCicloDias?: number | null;
+    ativo?: boolean;
 }
 
 export interface Fabrica {
