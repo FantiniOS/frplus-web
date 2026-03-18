@@ -18,6 +18,7 @@ export default function RelatoriosPage() {
     }, [refreshData]);
 
     const [tipoRelatorio, setTipoRelatorio] = useState<'vendas' | 'produtos' | 'clientes' | 'tabela'>('vendas');
+    const [tabelaSelecionada, setTabelaSelecionada] = useState<string>('');
 
     // Helpers for local date strings
     const getLocalDate = () => {
@@ -122,7 +123,7 @@ export default function RelatoriosPage() {
         const clientesVendas = new Map<string, { id: string; nome: string; pedidos: number; valor: number; tabelaPreco: string }>();
 
         clients.forEach(c => {
-            if (c.ativo !== false) {
+            if (c.status === 'Ativo' || !c.status) {
                 clientesVendas.set(c.id, {
                     id: c.id,
                     nome: c.nomeFantasia || c.razaoSocial || 'Sem Nome',
@@ -1040,7 +1041,22 @@ export default function RelatoriosPage() {
                 {
                     tipoRelatorio === 'clientes' && (
                         <div className="form-card">
-                            <h3 className="text-lg font-semibold text-white print:text-black mb-4">Relatório Geral de Clientes</h3>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                <h3 className="text-lg font-semibold text-white print:text-black">Relatório Geral de Clientes</h3>
+                                <div className="flex items-center gap-2 print:hidden">
+                                    <label className="text-xs text-gray-400 font-medium">Filtrar por Tabela:</label>
+                                    <select
+                                        value={tabelaSelecionada}
+                                        onChange={(e) => setTabelaSelecionada(e.target.value)}
+                                        className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                                    >
+                                        <option value="">Todas as Tabelas</option>
+                                        {Array.from(new Set(estatisticasClientes.map(c => c.tabelaPreco))).filter(Boolean).sort().map(tabela => (
+                                            <option key={tabela} value={tabela}>{tabela}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead className="border-b border-white/10 print:border-gray-300">
@@ -1053,7 +1069,7 @@ export default function RelatoriosPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {estatisticasClientes.map((c, index) => (
+                                        {estatisticasClientes.filter(c => !tabelaSelecionada || c.tabelaPreco === tabelaSelecionada).map((c, index) => (
                                             <Fragment key={c.id}>
                                                 <tr
                                                     className="border-b border-white/5 print:border-gray-200 cursor-pointer hover:bg-white/5 transition-colors"

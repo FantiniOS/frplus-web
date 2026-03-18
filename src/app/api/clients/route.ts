@@ -27,6 +27,7 @@ function calcularMediaCicloDias(datas: Date[]): number | null {
 export async function GET() {
     try {
         const clients = await prisma.cliente.findMany({
+            where: { status: 'Ativo' },
             orderBy: { nomeFantasia: 'asc' },
             include: {
                 pedidos: {
