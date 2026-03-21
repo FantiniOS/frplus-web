@@ -42,6 +42,7 @@ export default function LoginPage() {
     const result = await login(email, senha);
 
     if (result.success) {
+      router.refresh();
       router.push('/dashboard');
     } else {
       setError(result.error || 'Erro ao fazer login');
