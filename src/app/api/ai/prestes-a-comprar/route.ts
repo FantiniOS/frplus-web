@@ -4,6 +4,7 @@ import { getServerUser } from '@/lib/getServerUser'
 
 // GET /api/ai/prestes-a-comprar - Get clients in the exact buying window
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 /**
  * Calcula o ciclo médio de compra de um cliente baseado nas datas dos pedidos.
