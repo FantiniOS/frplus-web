@@ -842,11 +842,11 @@ CONTEXTO: ${body.contextoParaIA || ''}`;
 
         const arrVolumes = Object.entries(volumePorProduto).sort((a, b) => b[1] - a[1]);
 
-        let payloadHistorico = 'O cliente não comprou nenhum produto faturado nos últimos 120 dias.';
+        let payloadHistorico = 'Nenhum histórico recente.';
         if (arrVolumes.length > 0) {
-            payloadHistorico = 'Histórico de 120 dias - ' + arrVolumes
-                .map(([nome, qtd]) => `${qtd} caixas d${formatarNomeComercial(nome)}`)
-                .join(' | ');
+            // Pega apenas o Top 1
+            const topProduto = formatarNomeComercial(arrVolumes[0][0]);
+            payloadHistorico = `Produto mais comprado recentemente: ${topProduto}`;
         }
 
         // NOVO FLUXO (BYPASS): Se o Frontend já enviou o contexto predador/inteligente das abas 
@@ -854,19 +854,28 @@ CONTEXTO: ${body.contextoParaIA || ''}`;
         if (body.contextoParaIA && body.contextoParaIA.trim() !== '') {
             console.log(`[AI Gen] Usando bypass de contexto externo para ${nomeCliente}`);
 
-            // O System Prompt re-escrito conforme exigência arquitetural e layout de painéis
-            const directSystemPrompt = `Você é um Gerente Comercial analítico e direto. É ESTRITAMENTE PROIBIDO usar jargões como Top Tier, Share of Wallet, Sinergia ou Queda Abrupta. Baseie sua análise APENAS nos dados numéricos fornecidos no contexto. Você DEVE obrigatoriamente citar os nomes dos produtos e a quantidade exata (caixas/volume) no seu texto. Aja com foco em rua, faturamento e concorrência na gôndola.
-
-Você DEVE retornar sua resposta ESTRITAMENTE em formato JSON. O JSON deve possuir EXATAMENTE estas duas chaves:
+            // O System Prompt re-escrito conforme exigência arquitetural e regras impostas pelo usuário
+            const directSystemPrompt = `Você é um Diretor Comercial experiente focando em maximizar o faturamento e a rentabilidade da carteira de clientes.
+        
+Você DEVE retornar sua resposta ESTRITAMENTE em formato JSON. O JSON deve possuir EXATAMENTE estas três chaves:
 {
-  "estudoInterno": "Um resumo rápido de 2 linhas focado em fatos para o representante ler (ex: 'Cliente inativo há X dias. Parou de comprar Produto Y. Ciclo normal era Z dias.').",
-  "mensagemWhatsApp": "O texto persuasivo, pronto para ser enviado ao cliente. Use quebras de linha DUPLAS (\\n\\n) para separar a saudação, o corpo da mensagem e o fechamento/assinatura, garantindo que a mensagem não fique em um bloco único de texto. Assine como '${nomeUsuario}'."
+  "alvo": "Qual produto específico oferecer (O Alvo).",
+  "gatilho": "Uma frase curta com o argumento de venda para convencer o comprador (Ex: 'Aumentar a margem de lucro na gôndola', 'Aproveitar o mesmo frete do pedido atual').",
+  "zap": "A mensagem pronta para o WhatsApp. Extremamente curta, coloquial, amigável e direta (máx 2 linhas), sem listar históricos longos de estoque. Use quebras de linha DUPLAS (\\n\\n)."
 }
 
-DADOS REAIS DE COMPRAS DO CLIENTE:
-${payloadHistorico}
+ESTRATÉGIA OBRIGATÓRIA (CROSS-SELL INTELIGENTE):
+Não sugira apenas produtos aleatórios. Faça o pareamento inteligente: se o cliente tem alto volume em produtos básicos de giro rápido (ex: Vinagre de Álcool), sugira a introdução de produtos de maior valor agregado/margem (ex: Maçã, Balsâmico, Castelo/Belmont Premium) para aumentar o ticket médio.
 
-CONTEXTO DA AÇÃO / OPORTUNIDADE:
+REGRAS DE OURO (INEGOCIÁVEIS):
+Regra 1: Seja extremamente conciso e natural. Fale como um parceiro de negócios, não como um robô corporativo.
+Regra 2: É ESTRITAMENTE PROIBIDO listar mais de um produto do histórico. Cite apenas a influência do contexto abaixo (apresente a relação entre o produto atual e a oportunidade sugerida).
+Regra 3: A IA está estritamente proibida de gerar um parágrafo longo e robótico no "zap". O zap DEVE ter NO MÁXIMO 3 frases curtas: Saudação com assunto, Gatilho de margem e Fechamento. Assine como '${nomeUsuario}'.
+
+CONTEXTO REAL DO CLIENTE:
+Histórico Base para Ponte (Apenas o Produto Principal!): ${payloadHistorico}
+
+AÇÃO/OPORTUNIDADE SUGERIDA (O que você vai analisar e transformar em oferta):
 ${body.contextoParaIA}`;
 
             try {
@@ -910,6 +919,20 @@ ${body.contextoParaIA}`;
                     estudoInterno = parsed.estudoInterno || parsed.analiseInterna || '';
                     mensagemWhatsApp = parsed.mensagemWhatsApp || '';
                     mensagem = mensagemWhatsApp; // Fallback compatibility
+
+                    if (parsed.alvo && parsed.gatilho && parsed.zap) {
+                        return NextResponse.json({
+                            alvo: parsed.alvo,
+                            gatilho: parsed.gatilho,
+                            zap: parsed.zap,
+                            mensagemWhatsApp: parsed.zap, // fallback for safety
+                            cliente: {
+                                id: clienteExiste.id,
+                                nome: clienteExiste.nomeFantasia,
+                                telefone: clienteExiste.celular || clienteExiste.telefone
+                            }
+                        });
+                    }
                 } catch (e) {
                     console.error("[AI Gen] Failed to parse JSON response:", e);
                     mensagemWhatsApp = mensagem;

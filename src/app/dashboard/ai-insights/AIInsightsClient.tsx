@@ -88,7 +88,7 @@ export default function AIInsightsClient() {
 
     // AI Message Generation State
     const [generatingMessageFor, setGeneratingMessageFor] = useState<string | null>(null);
-    const [aiGeneratedMessage, setAiGeneratedMessage] = useState<{ estudoInterno: string; mensagemWhatsApp: string } | null>(null);
+    const [aiGeneratedMessage, setAiGeneratedMessage] = useState<{ estudoInterno: string; mensagemWhatsApp: string; alvo?: string; gatilho?: string; zap?: string } | null>(null);
     const [aiMessageError, setAiMessageError] = useState<string | null>(null);
     const [aiMessageClientInfo, setAiMessageClientInfo] = useState<{ nome: string; telefone: string } | null>(null);
     const [aiMessageFatos, setAiMessageFatos] = useState<{ motivo: string; produtoFoco: string; justificativa: string; sugestaoAdicional?: string; fatorSazonal?: string } | null>(null);
@@ -159,7 +159,10 @@ export default function AIInsightsClient() {
 
             setAiGeneratedMessage({
                 estudoInterno: data.estudoInterno || 'Análise indisponível no momento.',
-                mensagemWhatsApp: data.mensagemWhatsApp || data.mensagem || 'Mensagem não gerada.'
+                mensagemWhatsApp: data.zap || data.mensagemWhatsApp || data.mensagem || 'Mensagem não gerada.',
+                alvo: data.alvo,
+                gatilho: data.gatilho,
+                zap: data.zap
             });
             setAiMessageClientInfo(data.cliente);
             setAiMessageFatos(data.fatosEstrategicos);
@@ -1014,17 +1017,42 @@ export default function AIInsightsClient() {
                                         </div>
                                     )}
 
-                                    {/* Raio-X AI Insight */}
-                                    <div className="space-y-2">
-                                        <h4 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
-                                            <TrendingUp className="w-4 h-4" />
-                                            Raio-X do Cliente
-                                        </h4>
-                                        <div className="bg-blue-900/10 rounded-xl p-4 border border-blue-500/10">
-                                            <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                                {aiGeneratedMessage?.estudoInterno}
-                                            </p>
-                                        </div>
+                                    {/* Raio-X AI Insight / Novos Blocos */}
+                                    <div className="space-y-3">
+                                        {aiGeneratedMessage?.alvo ? (
+                                            <>
+                                                <div className="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/20">
+                                                    <h4 className="text-sm font-bold text-emerald-400 flex items-center gap-2 mb-1">
+                                                        <Target className="w-4 h-4" /> 🎯 O Alvo
+                                                    </h4>
+                                                    <p className="text-sm text-gray-200 leading-relaxed">{aiGeneratedMessage.alvo}</p>
+                                                </div>
+                                                <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/20">
+                                                    <h4 className="text-sm font-bold text-amber-400 flex items-center gap-2 mb-1">
+                                                        <Lightbulb className="w-4 h-4" /> 💡 O Gatilho
+                                                    </h4>
+                                                    <p className="text-sm text-gray-200 leading-relaxed">{aiGeneratedMessage.gatilho}</p>
+                                                </div>
+                                                <div className="bg-blue-600/10 rounded-xl p-4 border border-blue-500/30">
+                                                    <h4 className="text-sm font-bold text-blue-400 flex items-center gap-2 mb-1">
+                                                        <MessageCircle className="w-4 h-4" /> 📱 O Zap
+                                                    </h4>
+                                                    <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">{aiGeneratedMessage.zap}</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <h4 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
+                                                    <TrendingUp className="w-4 h-4" />
+                                                    Raio-X do Cliente
+                                                </h4>
+                                                <div className="bg-blue-900/10 rounded-xl p-4 border border-blue-500/10">
+                                                    <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                                        {aiGeneratedMessage?.estudoInterno}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Actions */}
