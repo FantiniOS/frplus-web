@@ -458,9 +458,14 @@ export default function AIInsightsClient() {
                         {/* Prestes a Comprar Tab */}
                         {activeTab === 'prestesAComprar' && (
                             <div className="space-y-4">
-                                <div className="flex items-center gap-4 pb-4 border-b border-white/10">
-                                    <Filter className="h-4 w-4 text-gray-400" />
-                                    <span className="text-sm text-gray-400">Clientes que estão na janela exata para um novo pedido</span>
+                                <div className="flex flex-col gap-2 pb-5 border-b border-white/10">
+                                    <div className="flex items-center gap-2">
+                                        <Filter className="h-5 w-5 text-blue-400" />
+                                        <span className="text-sm font-semibold text-white uppercase tracking-wider">Regra de Exibição</span>
+                                    </div>
+                                    <p className="text-sm text-gray-400">
+                                        Esta lista é <strong className="text-white">100% baseada em matemática</strong> e não possui limite de quantidade. Exibimos clientes <strong className="text-white">Ativos</strong> que estão há <strong>mais dias sem comprar do que o seu Ciclo/Giro Médio</strong> histórico (com 3 dias de margem de antecedência).
+                                    </p>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -479,10 +484,10 @@ export default function AIInsightsClient() {
                                         <thead className="bg-white/5 text-xs uppercase text-gray-400">
                                             <tr>
                                                 <th className="px-4 py-3 text-left">Cliente</th>
-                                                <th className="px-4 py-3 text-left hidden sm:table-cell">Cidade</th>
-                                                <th className="px-4 py-3 text-left">Último Pedido / Ciclo</th>
-                                                <th className="px-4 py-3 text-center">Dias Hoje</th>
-                                                <th className="px-4 py-3 text-center hidden md:table-cell">Dias Restantes</th>
+                                                <th className="px-4 py-3 text-left hidden sm:table-cell">Região</th>
+                                                <th className="px-4 py-3 text-left">Matemática (Por que está aqui?)</th>
+                                                <th className="px-4 py-3 text-center">Dias Ausente</th>
+                                                <th className="px-4 py-3 text-center hidden md:table-cell">Status da Janela</th>
                                                 <th className="px-4 py-3 text-center">Ações</th>
                                             </tr>
                                         </thead>
@@ -511,19 +516,21 @@ export default function AIInsightsClient() {
                                                         </td>
                                                         <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
                                                         <td className="px-4 py-3">
-                                                            <div className="space-y-1">
-                                                                <p className="text-xs text-gray-400">
-                                                                    <span className="text-gray-500">Última Compra:</span>{' '}
-                                                                    <span className="text-gray-200">
-                                                                        {client.ultimaCompra
-                                                                            ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR')
-                                                                            : 'Nunca'}
+                                                            <div className="space-y-1.5 bg-black/20 p-2 rounded-lg border border-white/5">
+                                                                <div className="flex justify-between items-center text-xs">
+                                                                    <span className="text-gray-500">Última Compra:</span>
+                                                                    <span className="text-gray-200 font-medium ml-2">
+                                                                        {client.ultimaCompra ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca'}
                                                                     </span>
-                                                                </p>
-                                                                <p className="text-xs text-gray-400">
-                                                                    <span className="text-gray-500">Ciclo:</span>{' '}
-                                                                    <span className="text-blue-400 font-medium">a cada {client.cicloMedioDias} dias</span>
-                                                                </p>
+                                                                </div>
+                                                                <div className="flex justify-between items-center text-xs">
+                                                                    <span className="text-gray-500">Dias Ausente:</span>
+                                                                    <span className="text-red-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
+                                                                    <span className="text-gray-500">Giro Médio Calculado:</span>
+                                                                    <span className="text-blue-400 font-medium ml-2">a cada {client.cicloMedioDias} dias</span>
+                                                                </div>
                                                             </div>
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
