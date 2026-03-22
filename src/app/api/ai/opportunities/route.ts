@@ -117,14 +117,18 @@ export async function GET() {
         })
         const productMap = new Map(products.map(p => [p.id, p]))
 
-        // 3. Calculando Curva A Global (Top 50 produtos mais vendidos de todos os tempos)
+        // 3. Calculando Curva Global Completa (Para separar A, B e C)
         const globalStats = await prisma.itemPedido.groupBy({
             by: ['produtoId'],
             _sum: { quantidade: true },
-            orderBy: { _sum: { quantidade: 'desc' } },
-            take: 50
+            orderBy: { _sum: { quantidade: 'desc' } }
         })
-        const globalCurvaAIds = globalStats.map(stat => stat.produtoId);
+        
+        // Define as curvas aproximadas baseadas no ranking
+        const totalItems = globalStats.length;
+        const curvaA_count = Math.floor(totalItems * 0.2) || 10;
+        const globalCurvaAIds = globalStats.slice(0, curvaA_count).map(stat => stat.produtoId);
+        const globalCurvaCIds = globalStats.slice(Math.floor(totalItems * 0.5)).map(stat => stat.produtoId);
 
         // 4. Mapeando produtos por cliente (Curva A do cliente)
         const clientProductMap = new Map<string, Map<string, number>>()
@@ -183,75 +187,77 @@ export async function GET() {
             if (!produtoAtualRec) continue;
             const nomeProdutoAtual = formatarNomeComercial(produtoAtualRec.nome);
 
-            // Encontra 1 produto Curva A Global que o cliente AINDA NÃO COMPROU
+            // Encontra 1 produto Curva C Global que o cliente AINDA NÃO COMPROU e não é Molho
             let produtoNovoId = '';
 
-            // Fazer um giro para tentar diversificar os produtos sugeridos
-            for (const globalId of globalCurvaAIds) {
-                if (!myProducts.has(globalId)) {
-                    if (!globalSuggestedProducts.has(globalId)) {
-                        produtoNovoId = globalId;
-                        break;
-                    }
+            // Tenta pegar primeiro da Curva C (baixo giro/abaixo da média global)
+            for (const globalId of globalCurvaCIds) {
+                const prodRec = productMap.get(globalId);
+                if (!prodRec || !prodRec.ativo) continue;
+                
+                // BLOQUEIO ABSOLUTO: Não pode ser da categoria 'Molho' ou 'Molhos'
+                const cat = (prodRec.categoria || '').toLowerCase();
+                if (cat.includes('molho')) continue;
+
+                if (!myProducts.has(globalId) && !globalSuggestedProducts.has(globalId)) {
+                    produtoNovoId = globalId;
+                    break;
                 }
             }
 
-            // Se nao achou nenhum que ja nao tenha sido sugerido para outro, repete o primeiro que ele nao tem
+            // Fallback se não achou: Qualquer produto ativo não-molho que o cliente não tem
             if (!produtoNovoId) {
-                for (const globalId of globalCurvaAIds) {
-                    if (!myProducts.has(globalId)) {
-                        produtoNovoId = globalId;
+                for (const prodRec of products) {
+                    if (!prodRec.ativo) continue;
+                    const cat = (prodRec.categoria || '').toLowerCase();
+                    if (cat.includes('molho')) continue;
+
+                    if (!myProducts.has(prodRec.id)) {
+                        produtoNovoId = prodRec.id;
                         break;
                     }
                 }
             }
 
-            if (!produtoNovoId) continue; // Cliente já comprou os 50 produtos mais vendidos inteiros (raro)
+            if (!produtoNovoId) continue; 
             globalSuggestedProducts.add(produtoNovoId);
 
             const produtoNovoRec = productMap.get(produtoNovoId);
             if (!produtoNovoRec) continue;
             const nomeProdutoNovo = formatarNomeComercial(produtoNovoRec.nome);
 
-            // Identifica o Perfil/Segmento do Cliente
-            let segmentoCliente = 'REDE/SUPERMERCADO'; // Default para varejo
-            const isAtacadoByTabela = client.tabelaPreco?.toLowerCase().includes('atacado');
-            const razaoUpper = client.razaoSocial.toUpperCase();
-            const fantasiaUpper = client.nomeFantasia.toUpperCase();
-            const isAtacadoByName = razaoUpper.includes('ATACADO') || razaoUpper.includes('DISTRIBUIDOR') || fantasiaUpper.includes('ATACADO') || fantasiaUpper.includes('DISTRIBUIDOR');
+            // Nova Lógica de 3 Vias (Baseado na tabelaPreco)
+            const tabelaLower = (client.tabelaPreco || '').toLowerCase();
+            let strategyContext = '';
+            let triggerPreview = '';
 
-            if (isAtacadoByTabela || isAtacadoByName) {
-                segmentoCliente = 'ATACADO/DISTRIBUIDOR';
+            if (tabelaLower.includes('atacado') || tabelaLower.includes('avista')) {
+                // REGRA 1: Distribuidor/Atacado
+                strategyContext = `REGRA/ESTRATÉGIA (MUITO IMPORTANTE): O cliente é um DISTRIBUIDOR/ATACADO. O argumento é de REPASSE e VOLUME. Você deve sugerir a compra do Produto Oportunidade para que os vendedores dele tenham uma novidade rentável para oferecer aos mercadinhos (B2B), ou para fechamento de palete/carga aproveitando o volume do Carro-Chefe. É ESTRITAMENTE PROIBIDO usar a palavra 'gôndola', 'prateleira' ou 'loja'. Use termos como 'repasse', 'novidade para os clientes dele', 'fechar pallet', 'escala'.`;
+                triggerPreview = `Sugerir ${nomeProdutoNovo} focado em repasse e volume (Atacado).`;
+            } else if (tabelaLower.includes('redes')) {
+                // REGRA 2: Rede de Supermercados
+                strategyContext = `REGRA/ESTRATÉGIA (MUITO IMPORTANTE): O cliente é uma REDE DE SUPERMERCADOS. O argumento é ALTO VOLUME e DOMÍNIO DE GÔNDOLA. Você deve sugerir aproveitar o grande volume do Carro-Chefe para fazer um "paredão" da marca na prateleira, usando o Produto Oportunidade para blocar a concorrência no ponto de venda e ganhar rentabilidade em escala nas lojas. Use termos como 'paredão da marca', 'ganhar espaço de gôndola', 'blocar o concorrente'.`;
+                triggerPreview = `Sugerir ${nomeProdutoNovo} focado em gôndola e volume (Redes).`;
+            } else {
+                // REGRA 3: Varejo Menor (50a199, 200a699, default)
+                strategyContext = `REGRA/ESTRATÉGIA (MUITO IMPORTANTE): O cliente é um VAREJO (MERCADO DE BAIRRO). O argumento é INTRODUÇÃO NA GÔNDOLA por rentabilidade. Fale em aproveitar a viagem/pedido do Carro-Chefe (que já atrai cliente para a loja) para colocar algumas caixas do Produto Oportunidade na prateleira. O objetivo é melhorar o mix da loja e testar essa nova margem para aumentar o ticket. Use termos como 'aproveitar a viagem', 'testar na gôndola', 'melhorar o mix'.`;
+                triggerPreview = `Sugerir ${nomeProdutoNovo} focado em mix e gôndola (Varejo).`;
             }
 
-            // Seleciona o vocabulário baseado no segmento
-            const isAtacado = segmentoCliente === 'ATACADO/DISTRIBUIDOR';
-            const termoEstoque = isAtacado ? 'estoque' : 'mix da gôndola';
-            const termoOperacao = isAtacado ? 'operação' : (razaoUpper.includes('REDE') || fantasiaUpper.includes('REDE') ? 'rede' : 'loja');
+            const systemPrompt = `DADOS DA OPORTUNIDADE:
+- Cliente: ${greetingName}
+- Produto Carro-Chefe do Cliente (Alto Volume): ${nomeProdutoAtual}
+- Produto Oportunidade a ser oferecido (Curva C): ${nomeProdutoNovo}
 
-            const systemPrompt = `Você é o representante comercial Carlos Fantini fazendo um Cross-sell. Escreva uma mensagem de WhatsApp.
-
-DADOS DO CLIENTE:
-- Nome: ${greetingName}
-- Produto Atual: ${nomeProdutoAtual}
-- Produto Novo: ${nomeProdutoNovo}
-- Perfil do Cliente: ${segmentoCliente}
-
-REGRAS DE VOCABULÁRIO (MUITO IMPORTANTE):
-1. PROIBIDO usar gírias de gênero como "parceiro" ou "campeão". Seja educado e direto.
-2. SE o Perfil for "ATACADO" ou "DISTRIBUIDOR": É PROIBIDO usar "gôndola", "prateleira" ou "loja". Use termos de atacado: "estoque", "giro", "repasse para seus clientes", "operação", "pallet".
-3. SE o Perfil for "REDE" ou "SUPERMERCADO": Use "abastecer as lojas", "gôndola", "ponto de venda".
-
-TEXTO BASE (Adapte as palavras entre chaves para o vocabulário correto do perfil do cliente):
-Fala ${greetingName}, tudo bem? O seu giro do ${nomeProdutoAtual} tá legal demais, mas reparei que você ainda não colocou o ${nomeProdutoNovo} no seu ${termoEstoque}. Esse item tá saindo muito aqui na região, é um produto que tem grande aceitação. O que acha de colocarmos um volume dele no seu próximo pedido só pra você testar a saída na sua ${termoOperacao}? Certeza que vai girar rápido!
-Abs, Carlos Fantini`;
+${strategyContext}`;
 
             opportunities.push({
                 type: 'crossSell',
                 clienteId: client.id,
                 clienteNome: client.nomeFantasia,
                 clienteTelefone: phone,
-                description: `Sugerir a introdução de ${nomeProdutoNovo} (Curva A Global) apoiado no alto giro de ${nomeProdutoAtual}.`,
+                description: triggerPreview,
                 priority: 'alta',
                 actionLabel: 'Oferecer Novo Produto',
                 contextoParaIA: systemPrompt
