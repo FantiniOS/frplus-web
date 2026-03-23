@@ -117,38 +117,49 @@ export async function GET() {
         })
         const productMap = new Map(products.map(p => [p.id, p]))
 
-        // 3. Calculando Curva Global Completa (Para separar A, B e C)
-        const globalStats = await prisma.itemPedido.groupBy({
+        // 3. Calculando Lista de Produtos "Vivos" (Blacklist de encalhados e molhos)
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        const recentSales = await prisma.itemPedido.groupBy({
             by: ['produtoId'],
-            _sum: { quantidade: true },
-            orderBy: { _sum: { quantidade: 'desc' } }
-        })
-        
-        // Define as curvas aproximadas baseadas no ranking
-        const totalItems = globalStats.length;
-        const curvaA_count = Math.floor(totalItems * 0.2) || 10;
-        const globalCurvaAIds = globalStats.slice(0, curvaA_count).map(stat => stat.produtoId);
-        const globalCurvaCIds = globalStats.slice(Math.floor(totalItems * 0.5)).map(stat => stat.produtoId);
+            where: {
+                pedido: { 
+                    data: { gte: ninetyDaysAgo },
+                    status: { in: ['FATURADO', 'CONCLUIDO', 'Faturado', 'Concluido'] }
+                }
+            },
+            _sum: { quantidade: true }
+        });
+        const activeProductIds = new Set(
+            recentSales.filter(s => (s._sum.quantidade || 0) > 0).map(s => s.produtoId)
+        );
 
         // 4. Mapeando produtos por cliente (Curva A do cliente)
-        const clientProductMap = new Map<string, Map<string, number>>()
+        const clientProductMap = new Map<string, Map<string, number>>();
+        const clientProductLastDate = new Map<string, Map<string, Date>>();
 
         for (const client of clients) {
-            const prodQtdMap = new Map<string, number>()
+            const prodQtdMap = new Map<string, number>();
+            const prodDateMap = new Map<string, Date>();
             for (const pedido of client.pedidos) {
                 for (const item of pedido.itens) {
-                    prodQtdMap.set(item.produtoId, (prodQtdMap.get(item.produtoId) || 0) + item.quantidade)
+                    prodQtdMap.set(item.produtoId, (prodQtdMap.get(item.produtoId) || 0) + item.quantidade);
+                    
+                    const existingDate = prodDateMap.get(item.produtoId);
+                    if (!existingDate || pedido.data > existingDate) {
+                        prodDateMap.set(item.produtoId, pedido.data);
+                    }
                 }
             }
             if (prodQtdMap.size > 0) {
-                clientProductMap.set(client.id, prodQtdMap)
+                clientProductMap.set(client.id, prodQtdMap);
+                clientProductLastDate.set(client.id, prodDateMap);
             }
         }
 
         // ============================================================
-        // OPPORTUNITY GENERATION
+        // OPPORTUNITY GENERATION (3 LAYERS)
         // ============================================================
-
         const opportunities: Array<{
             type: 'crossSell'
             clienteId: string
@@ -160,20 +171,32 @@ export async function GET() {
             contextoParaIA: string
         }> = []
 
-        // Set to diversify global products across different clients
-        const globalSuggestedProducts = new Set<string>();
+        const data60 = new Date();
+        data60.setDate(data60.getDate() - 60);
+
+        // Pre-compute Alcool and Maca for Cross-Sell
+        const alcoolIds = products.filter(p => 
+            p.ativo && !p.categoria?.toLowerCase().includes('molho') && activeProductIds.has(p.id) &&
+            p.nome.toLowerCase().includes('vinagre') && 
+            (p.nome.toLowerCase().includes('alcool') || p.nome.toLowerCase().includes('álcool'))
+        ).map(p => p.id);
+
+        const macaIds = products.filter(p => 
+            p.ativo && !p.categoria?.toLowerCase().includes('molho') && activeProductIds.has(p.id) &&
+            p.nome.toLowerCase().includes('vinagre') && 
+            (p.nome.toLowerCase().includes('maca') || p.nome.toLowerCase().includes('maçã'))
+        ).map(p => p.id);
 
         for (const client of clients) {
-            if (client.pedidos.length === 0) continue
+            if (client.pedidos.length === 0) continue;
 
-            const phone = client.celular || client.telefone || ''
-            // @ts-ignore
-            const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia.split(' ')[0]
+            const phone = client.celular || client.telefone || '';
+            const greetingName = client.comprador ? client.comprador.split(' ')[0] : (client.nomeFantasia || '').split(' ')[0];
+            const myProducts = clientProductMap.get(client.id);
+            const myDates = clientProductLastDate.get(client.id);
+            if (!myProducts || !myDates) continue;
 
-            const myProducts = clientProductMap.get(client.id)
-            if (!myProducts || myProducts.size === 0) continue;
-
-            // Encontra o Produto Atual (Curva A do Cliente: o que ele mais compra)
+            // Encontra o Produto Atual (Carro-Chefe)
             let maxQtd = -1;
             let produtoAtualId = '';
             myProducts.forEach((qtd, prodId) => {
@@ -181,76 +204,102 @@ export async function GET() {
                     maxQtd = qtd;
                     produtoAtualId = prodId;
                 }
-            })
-
+            });
             const produtoAtualRec = productMap.get(produtoAtualId);
-            if (!produtoAtualRec) continue;
-            const nomeProdutoAtual = formatarNomeComercial(produtoAtualRec.nome);
+            const nomeProdutoAtual = produtoAtualRec ? formatarNomeComercial(produtoAtualRec.nome) : 'o produto principal';
 
-            // Encontra 1 produto Curva C Global que o cliente AINDA NÃO COMPROU e não é Molho
-            let produtoNovoId = '';
+            // Último pedido para checagens
+            const pedidosRealizados = client.pedidos.sort((a,b) => b.data.getTime() - a.data.getTime());
+            const ultimoPedido = pedidosRealizados[0];
+            const ultimoPedidoItems = new Set(ultimoPedido.itens.map(i => i.produtoId));
+            const ultimoVolume = ultimoPedido.itens.reduce((acc, i) => acc + i.quantidade, 0);
 
-            // Tenta pegar primeiro da Curva C (baixo giro/abaixo da média global)
-            for (const globalId of globalCurvaCIds) {
-                const prodRec = productMap.get(globalId);
-                if (!prodRec || !prodRec.ativo) continue;
-                
-                // BLOQUEIO ABSOLUTO: Não pode ser da categoria 'Molho' ou 'Molhos'
-                const cat = (prodRec.categoria || '').toLowerCase();
-                if (cat.includes('molho')) continue;
+            let strategyContext = '';
+            let targetProdId = '';
+            let triggerPreview = '';
 
-                if (!myProducts.has(globalId) && !globalSuggestedProducts.has(globalId)) {
-                    produtoNovoId = globalId;
-                    break;
+            // --- PRIORIDADE 1: O RESGATE ---
+            if (!targetProdId) {
+                for (const [prodId, lastDate] of Array.from(myDates.entries())) {
+                    if (lastDate < data60 && !ultimoPedidoItems.has(prodId) && activeProductIds.has(prodId)) {
+                        const pRec = productMap.get(prodId);
+                        if (pRec && pRec.ativo && !(pRec.categoria || '').toLowerCase().includes('molho')) {
+                            targetProdId = prodId;
+                            break;
+                        }
+                    }
+                }
+                if (targetProdId) {
+                    const nomeTarget = formatarNomeComercial(productMap.get(targetProdId)!.nome);
+                    strategyContext = `ESTRATÉGIA [RESGATE]: O cliente comprava o ${nomeTarget}, mas parou nos últimos 60 dias e não o incluiu no pedido recente. Aja para RECUPERAR ESSA VENDA PERDIDA. Fale que sentiu falta desse item no pedido.`;
+                    triggerPreview = `${nomeTarget} [Resgate]`;
                 }
             }
 
-            // Fallback se não achou: Qualquer produto ativo não-molho que o cliente não tem
-            if (!produtoNovoId) {
-                for (const prodRec of products) {
-                    if (!prodRec.ativo) continue;
-                    const cat = (prodRec.categoria || '').toLowerCase();
-                    if (cat.includes('molho')) continue;
+            // --- PRIORIDADE 2: O CROSS-SELL DE OURO (Álcool -> Maçã) ---
+            if (!targetProdId) {
+                const isConsumingAlcool = alcoolIds.some(id => myProducts.has(id));
+                const isConsumingMaca = macaIds.some(id => myProducts.has(id));
 
-                    if (!myProducts.has(prodRec.id)) {
-                        produtoNovoId = prodRec.id;
-                        break;
+                if (isConsumingAlcool && !isConsumingMaca && macaIds.length > 0) {
+                    targetProdId = macaIds[0];
+                    const nomeTarget = formatarNomeComercial(productMap.get(targetProdId)!.nome);
+                    strategyContext = `ESTRATÉGIA [CROSS-SELL DE OURO]: O cliente tem alto volume em Vinagre de Álcool, mas não compra Vinagre de Maçã. Use a força e a familiaridade do Vinagre de Álcool para INTRODUZIR O ${nomeTarget}. Mostre como o produto tem excelente aceitação.`;
+                    triggerPreview = `${nomeTarget} [Cross-Sell]`;
+                }
+            }
+
+            // --- PRIORIDADE 3: O PULO DE TABELA ---
+            if (!targetProdId) {
+                const tabelaLower = (client.tabelaPreco || '').toLowerCase();
+                let puloVolumeFaltante = 0;
+                let nextTableName = '';
+
+                if (tabelaLower.includes('50a199') && ultimoVolume >= 170 && ultimoVolume < 200) {
+                    puloVolumeFaltante = 200 - ultimoVolume;
+                    nextTableName = '200 a 699 Caixas';
+                } else if (tabelaLower.includes('200a699') && ultimoVolume >= 585 && ultimoVolume < 700) {
+                    puloVolumeFaltante = 700 - ultimoVolume;
+                    nextTableName = 'Atacado (700+)';
+                }
+
+                if (puloVolumeFaltante > 0) {
+                    const balsamicoId = products.find(p => p.ativo && !p.categoria?.toLowerCase().includes('molho') && activeProductIds.has(p.id) && (p.nome.toLowerCase().includes('balsamico') || p.nome.toLowerCase().includes('balsâmico')) && !myProducts.has(p.id))?.id;
+                    
+                    targetProdId = balsamicoId || products.find(p => p.ativo && !p.categoria?.toLowerCase().includes('molho') && activeProductIds.has(p.id) && !myProducts.has(p.id))?.id || '';
+
+                    if (targetProdId) {
+                        const nomeTarget = formatarNomeComercial(productMap.get(targetProdId)!.nome);
+                        strategyContext = `ESTRATÉGIA [PULO DE TABELA]: O último pedido bateu na trave para a próxima tabela (${nextTableName})! Faltam apenas ${Math.ceil(puloVolumeFaltante)} caixas. Sugira o ${nomeTarget} no pedido atual como a "cereja do bolo" para ele atingir esse volume extra e GANHAR O DESCONTO DA NOVA TABELA em tudo.`;
+                        triggerPreview = `${nomeTarget} [Pulo Tab.]`;
                     }
                 }
             }
 
-            if (!produtoNovoId) continue; 
-            globalSuggestedProducts.add(produtoNovoId);
+            if (!targetProdId) continue; // Pula cliente se não se encaixar em nenhuma das 3
 
-            const produtoNovoRec = productMap.get(produtoNovoId);
-            if (!produtoNovoRec) continue;
-            const nomeProdutoNovo = formatarNomeComercial(produtoNovoRec.nome);
+            const nomeProdutoAlvo = formatarNomeComercial(productMap.get(targetProdId)!.nome);
 
-            // Nova Lógica de 3 Vias (Baseado na tabelaPreco)
+            // TOM DE VOZ (Tabela de Preço)
             const tabelaLower = (client.tabelaPreco || '').toLowerCase();
-            let strategyContext = '';
-            let triggerPreview = '';
-
+            let zapStyle = '';
             if (tabelaLower.includes('atacado') || tabelaLower.includes('avista')) {
-                // REGRA 1: Distribuidor/Atacado
-                strategyContext = `REGRA/ESTRATÉGIA (MUITO IMPORTANTE): O cliente é um DISTRIBUIDOR/ATACADO. O argumento é de REPASSE e VOLUME. Você deve sugerir a compra do Produto Oportunidade para que os vendedores dele tenham uma novidade rentável para oferecer aos mercadinhos (B2B), ou para fechamento de palete/carga aproveitando o volume do Carro-Chefe. É ESTRITAMENTE PROIBIDO usar a palavra 'gôndola', 'prateleira' ou 'loja'. Use termos como 'repasse', 'novidade para os clientes dele', 'fechar pallet', 'escala'.`;
-                triggerPreview = `Sugerir ${nomeProdutoNovo} focado em repasse e volume (Atacado).`;
+                zapStyle = `TOM DE VOZ DO ZAP (DISTRIBUIDOR): Foco em repasse, abastecer vendedores para vender aos mercadinhos, logística e volume. PROIBIDO falar de 'gôndola', 'prateleira' ou 'loja'. Use termos como 'girar', 'escala' e 'novidade para seus clientes'.`;
             } else if (tabelaLower.includes('redes')) {
-                // REGRA 2: Rede de Supermercados
-                strategyContext = `REGRA/ESTRATÉGIA (MUITO IMPORTANTE): O cliente é uma REDE DE SUPERMERCADOS. O argumento é ALTO VOLUME e DOMÍNIO DE GÔNDOLA. Você deve sugerir aproveitar o grande volume do Carro-Chefe para fazer um "paredão" da marca na prateleira, usando o Produto Oportunidade para blocar a concorrência no ponto de venda e ganhar rentabilidade em escala nas lojas. Use termos como 'paredão da marca', 'ganhar espaço de gôndola', 'blocar o concorrente'.`;
-                triggerPreview = `Sugerir ${nomeProdutoNovo} focado em gôndola e volume (Redes).`;
+                zapStyle = `TOM DE VOZ DO ZAP (REDES): Foco em alto volume, criar parede da marca na gôndola, rentabilidade em escala e bater a concorrência no ponto de venda.`;
             } else {
-                // REGRA 3: Varejo Menor (50a199, 200a699, default)
-                strategyContext = `REGRA/ESTRATÉGIA (MUITO IMPORTANTE): O cliente é um VAREJO (MERCADO DE BAIRRO). O argumento é INTRODUÇÃO NA GÔNDOLA por rentabilidade. Fale em aproveitar a viagem/pedido do Carro-Chefe (que já atrai cliente para a loja) para colocar algumas caixas do Produto Oportunidade na prateleira. O objetivo é melhorar o mix da loja e testar essa nova margem para aumentar o ticket. Use termos como 'aproveitar a viagem', 'testar na gôndola', 'melhorar o mix'.`;
-                triggerPreview = `Sugerir ${nomeProdutoNovo} focado em mix e gôndola (Varejo).`;
+                zapStyle = `TOM DE VOZ DO ZAP (VAREJO): Foco em introdução na gôndola, aproveitar o pedido para colocar caixas de teste, melhorar o mix da loja e margem direta alta do consumidor final.`;
             }
 
             const systemPrompt = `DADOS DA OPORTUNIDADE:
 - Cliente: ${greetingName}
-- Produto Carro-Chefe do Cliente (Alto Volume): ${nomeProdutoAtual}
-- Produto Oportunidade a ser oferecido (Curva C): ${nomeProdutoNovo}
+- Tabela do Cliente: ${client.tabelaPreco || 'Padrão'}
+- Produto Carro-Chefe (Alto Volume): ${nomeProdutoAtual}
+- Produto Alvo que VOCÊ DEVE VENDER AGORA: ${nomeProdutoAlvo}
 
-${strategyContext}`;
+${strategyContext}
+
+${zapStyle}`;
 
             opportunities.push({
                 type: 'crossSell',
@@ -259,7 +308,7 @@ ${strategyContext}`;
                 clienteTelefone: phone,
                 description: triggerPreview,
                 priority: 'alta',
-                actionLabel: 'Oferecer Novo Produto',
+                actionLabel: 'Gerar Oportunidade',
                 contextoParaIA: systemPrompt
             });
         }

@@ -859,23 +859,23 @@ CONTEXTO: ${body.contextoParaIA || ''}`;
         
 Você DEVE retornar sua resposta ESTRITAMENTE em formato JSON. O JSON deve possuir EXATAMENTE estas três chaves:
 {
-  "alvo": "Qual produto específico oferecer (O Alvo).",
-  "gatilho": "Uma frase curta com o argumento de venda para convencer o comprador (Ex: 'Aumentar a margem de lucro na gôndola', 'Aproveitar o mesmo frete do pedido atual').",
-  "zap": "A mensagem pronta para o WhatsApp. Extremamente curta, coloquial, amigável e direta (máx 2 linhas), sem listar históricos longos de estoque. Use quebras de linha DUPLAS (\\n\\n)."
+  "alvo": "Qual produto específico oferecer e a estratégia (Ex: 'Vinagre de Maçã [Cross-Sell de Ouro]').",
+  "logica": "Por que isso faz sentido comercialmente para ESTE cliente específico, justificando a ação com base no pedido ou no histórico.",
+  "zap": "A mensagem pronta para o WhatsApp. Extremamente curta, coloquial, amigável e direta (máx 2 linhas), usando o tom de voz especificado. Use quebras de linha DUPLAS (\\n\\n)."
 }
 
 ESTRATÉGIA OBRIGATÓRIA (CROSS-SELL INTELIGENTE):
-Não sugira apenas produtos aleatórios. Faça o pareamento inteligente: se o cliente tem alto volume em produtos básicos de giro rápido (ex: Vinagre de Álcool), sugira a introdução de produtos de maior valor agregado/margem (ex: Maçã, Balsâmico, Castelo/Belmont Premium) para aumentar o ticket médio.
+Não sugira apenas produtos aleatórios. Aja ESTRITAMENTE de acordo com a AÇÃO/OPORTUNIDADE e TOM DE VOZ recebidos no contexto.
 
 REGRAS DE OURO (INEGOCIÁVEIS):
 Regra 1: Seja extremamente conciso e natural. Fale como um parceiro de negócios, não como um robô corporativo.
 Regra 2: É ESTRITAMENTE PROIBIDO listar mais de um produto do histórico. Cite apenas a influência do contexto abaixo (apresente a relação entre o produto atual e a oportunidade sugerida).
-Regra 3: A IA está estritamente proibida de gerar um parágrafo longo e robótico no "zap". O zap DEVE ter NO MÁXIMO 3 frases curtas: Saudação com assunto, Gatilho de margem e Fechamento. Assine como '${nomeUsuario}'.
+Regra 3: A IA está estritamente proibida de gerar um parágrafo longo e robótico no "zap". O zap DEVE ter NO MÁXIMO 3 frases curtas: Saudação com assunto, Gatilho/Lógica e Fechamento. Assine como '${nomeUsuario}'.
 
 CONTEXTO REAL DO CLIENTE:
 Histórico Base para Ponte (Apenas o Produto Principal!): ${payloadHistorico}
 
-AÇÃO/OPORTUNIDADE SUGERIDA (O que você vai analisar e transformar em oferta):
+AÇÃO/OPORTUNIDADE E TOM DE VOZ EXIGIDOS (O que você vai analisar e transformar em oferta):
 ${body.contextoParaIA}`;
 
             try {
@@ -920,10 +920,10 @@ ${body.contextoParaIA}`;
                     mensagemWhatsApp = parsed.mensagemWhatsApp || '';
                     mensagem = mensagemWhatsApp; // Fallback compatibility
 
-                    if (parsed.alvo && parsed.gatilho && parsed.zap) {
+                    if (parsed.alvo && parsed.logica && parsed.zap) {
                         return NextResponse.json({
                             alvo: parsed.alvo,
-                            gatilho: parsed.gatilho,
+                            logica: parsed.logica,
                             zap: parsed.zap,
                             mensagemWhatsApp: parsed.zap, // fallback for safety
                             cliente: {

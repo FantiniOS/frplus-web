@@ -88,7 +88,7 @@ export default function AIInsightsClient() {
 
     // AI Message Generation State
     const [generatingMessageFor, setGeneratingMessageFor] = useState<string | null>(null);
-    const [aiGeneratedMessage, setAiGeneratedMessage] = useState<{ estudoInterno: string; mensagemWhatsApp: string; alvo?: string; gatilho?: string; zap?: string } | null>(null);
+    const [aiGeneratedMessage, setAiGeneratedMessage] = useState<{ estudoInterno: string; mensagemWhatsApp: string; alvo?: string; logica?: string; zap?: string } | null>(null);
     const [aiMessageError, setAiMessageError] = useState<string | null>(null);
     const [aiMessageClientInfo, setAiMessageClientInfo] = useState<{ nome: string; telefone: string } | null>(null);
     const [aiMessageFatos, setAiMessageFatos] = useState<{ motivo: string; produtoFoco: string; justificativa: string; sugestaoAdicional?: string; fatorSazonal?: string } | null>(null);
@@ -161,7 +161,7 @@ export default function AIInsightsClient() {
                 estudoInterno: data.estudoInterno || 'Análise indisponível no momento.',
                 mensagemWhatsApp: data.zap || data.mensagemWhatsApp || data.mensagem || 'Mensagem não gerada.',
                 alvo: data.alvo,
-                gatilho: data.gatilho,
+                logica: data.logica,
                 zap: data.zap
             });
             setAiMessageClientInfo(data.cliente);
@@ -1027,12 +1027,14 @@ export default function AIInsightsClient() {
                                                     </h4>
                                                     <p className="text-sm text-gray-200 leading-relaxed">{aiGeneratedMessage.alvo}</p>
                                                 </div>
-                                                <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/20">
-                                                    <h4 className="text-sm font-bold text-amber-400 flex items-center gap-2 mb-1">
-                                                        <Lightbulb className="w-4 h-4" /> 💡 O Gatilho
-                                                    </h4>
-                                                    <p className="text-sm text-gray-200 leading-relaxed">{aiGeneratedMessage.gatilho}</p>
-                                                </div>
+                                                {aiGeneratedMessage.logica && (
+                                                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                                                        <h4 className="flex items-center gap-2 text-amber-400 font-semibold mb-2 text-sm uppercase tracking-wider">
+                                                            <Lightbulb className="w-4 h-4" /> 💡 A Lógica
+                                                        </h4>
+                                                        <p className="text-sm text-gray-200 leading-relaxed">{aiGeneratedMessage.logica}</p>
+                                                    </div>
+                                                )}
                                                 <div className="bg-blue-600/10 rounded-xl p-4 border border-blue-500/30">
                                                     <h4 className="text-sm font-bold text-blue-400 flex items-center gap-2 mb-1">
                                                         <MessageCircle className="w-4 h-4" /> 📱 O Zap
