@@ -12,14 +12,18 @@ export interface ChartDataResponse {
 }
 
 // ══════════════════════════════════════════════════════
-// TIMEZONE FIX: Converte data UTC do Prisma para BRT (UTC-3)
-// Garante que um pedido feito às 00:00 BRT (03:00 UTC) 
-// não caia no dia anterior ao agrupar.
+// CORREÇÃO DEFINITIVA DE TIMEZONE (Intl nativo)
+// Garante o fuso de Brasília considerando o histórico (DST).
 // ══════════════════════════════════════════════════════
-const BRT_OFFSET_MS = -3 * 60 * 60 * 1000 // UTC-3
-
-function toBRT(utcDate: Date): Date {
-    return new Date(utcDate.getTime() + BRT_OFFSET_MS)
+function getBRTDateDetails(date: Date) {
+    // 'en-GB' format is DD/MM/YYYY
+    const str = date.toLocaleDateString('en-GB', { timeZone: 'America/Sao_Paulo' })
+    const [dayStr, monthStr, yearStr] = str.split('/')
+    return {
+        day: parseInt(dayStr, 10),
+        month: parseInt(monthStr, 10) - 1, // 0-indexed para padronizar com JS
+        year: parseInt(yearStr, 10)
+    }
 }
 
 // Days in month helper
@@ -46,17 +50,18 @@ export async function getDashboardChartData(
     }
 
     const now = new Date()
-    const nowBRT = toBRT(now)
+    const nowBRT = getBRTDateDetails(now)
 
     // ──────────────────────────────────────
     // MENSAL: Agrupa valorTotal por DIA
     // ──────────────────────────────────────
     if (view === 'Mensal') {
-        const year = yearParam || nowBRT.getFullYear()
-        const month = monthParam !== null && monthParam !== undefined ? monthParam : nowBRT.getMonth()
+        const year = yearParam || nowBRT.year
+        const month = monthParam !== null && monthParam !== undefined ? monthParam : nowBRT.month
 
-        // Intervalo UTC que cobre o mês inteiro em BRT
-        // Início do mês em BRT = year-month-01 00:00 BRT = year-month-01 03:00 UTC
+        // Construindo as datas de limite de forma nativa considerando UTC-3
+        // Para abranger o mês todo em BRT, do dia 1 ao dia 1 do próximo mês.
+        // O offset base do Brasil é -3h, logo, 00:00 BRT = 03:00 UTC
         const startUTC = new Date(Date.UTC(year, month, 1, 3, 0, 0))
         const endUTC = new Date(Date.UTC(year, month + 1, 1, 3, 0, 0))
 
@@ -71,9 +76,11 @@ export async function getDashboardChartData(
         const dailyMap = new Map<number, number>()
 
         orders.forEach(o => {
-            const brt = toBRT(o.data)
-            const day = brt.getDate()
-            dailyMap.set(day, (dailyMap.get(day) || 0) + Number(o.valorTotal))
+            const { day, month: oMonth, year: oYear } = getBRTDateDetails(o.data)
+            // Agrupa apenas se realmente pertencer ao mês (safety check)
+            if (oMonth === month && oYear === year) {
+                dailyMap.set(day, (dailyMap.get(day) || 0) + Number(o.valorTotal))
+            }
         })
 
         const result: ChartDataResponse[] = []
@@ -91,7 +98,7 @@ export async function getDashboardChartData(
     // ANUAL: Agrupa valorTotal por MÊS
     // ──────────────────────────────────────
     if (view === 'Anual') {
-        const year = yearParam || nowBRT.getFullYear()
+        const year = yearParam || nowBRT.year
 
         // Intervalo UTC que cobre o ano inteiro em BRT
         const startUTC = new Date(Date.UTC(year, 0, 1, 3, 0, 0))
@@ -106,9 +113,10 @@ export async function getDashboardChartData(
 
         const monthlyMap = new Map<number, number>()
         orders.forEach(o => {
-            const brt = toBRT(o.data)
-            const m = brt.getMonth()
-            monthlyMap.set(m, (monthlyMap.get(m) || 0) + Number(o.valorTotal))
+            const { month: m, year: oYear } = getBRTDateDetails(o.data)
+            if (oYear === year) {
+                monthlyMap.set(m, (monthlyMap.get(m) || 0) + Number(o.valorTotal))
+            }
         })
 
         const monthsStr = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -134,12 +142,11 @@ export async function getDashboardChartData(
         })
 
         const yearlyMap = new Map<number, number>()
-        let minYear = nowBRT.getFullYear()
+        let minYear = nowBRT.year
         let maxYear = minYear
 
         orders.forEach(o => {
-            const brt = toBRT(o.data)
-            const y = brt.getFullYear()
+            const { year: y } = getBRTDateDetails(o.data)
             if (y < minYear) minYear = y
             if (y > maxYear) maxYear = y
             yearlyMap.set(y, (yearlyMap.get(y) || 0) + Number(o.valorTotal))
@@ -178,8 +185,8 @@ export async function getAvailableYears(): Promise<number[]> {
 
     const years = new Set<number>()
     orders.forEach(o => {
-        const brt = toBRT(o.data)
-        years.add(brt.getFullYear())
+        const { year } = getBRTDateDetails(o.data)
+        years.add(year)
     })
 
     return Array.from(years).sort((a, b) => b - a) // desc
