@@ -489,7 +489,6 @@ export default function AIInsightsClient() {
                                                 <th className="px-4 py-3 text-left">Cliente</th>
                                                 <th className="px-4 py-3 text-left hidden sm:table-cell">Região</th>
                                                 <th className="px-4 py-3 text-left">Matemática (Por que está aqui?)</th>
-                                                <th className="px-4 py-3 text-center">Dias Ausente</th>
                                                 <th className="px-4 py-3 text-center hidden md:table-cell">Status da Janela</th>
                                                 <th className="px-4 py-3 text-center">Ações</th>
                                             </tr>
@@ -535,12 +534,6 @@ export default function AIInsightsClient() {
                                                                     <span className="text-blue-400 font-medium ml-2">a cada {client.cicloMedioDias} dias</span>
                                                                 </div>
                                                             </div>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-center">
-                                                            <span className="text-white font-bold text-lg">
-                                                                {client.diasInativo !== null ? client.diasInativo : '∞'}
-                                                            </span>
-                                                            <p className="text-[10px] text-gray-500">Dias</p>
                                                         </td>
                                                         <td className="px-4 py-3 text-center hidden md:table-cell">
                                                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${alertaColor}`}>
