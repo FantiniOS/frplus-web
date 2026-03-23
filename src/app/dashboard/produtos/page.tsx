@@ -5,24 +5,50 @@ import { Search, Plus, Package, Trash2, Edit, Factory } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 
 export default function ProdutosPage() {
-    const { products, removeProduct, fabricas } = useData();
+    const { removeProduct, fabricas } = useData();
     const { isIndustria } = useAuth();
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    const handleDelete = () => {
+    const [statusFilter, setStatusFilter] = useState<'Ativos' | 'Inativos' | 'Todos'>('Ativos');
+    const [localProducts, setLocalProducts] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            setIsLoading(true);
+            let param = 'true';
+            if (statusFilter === 'Inativos') param = 'false';
+            if (statusFilter === 'Todos') param = 'Todos';
+
+            try {
+                const res = await fetch(`/api/products?ativo=${param}`);
+                if (res.ok) {
+                    setLocalProducts(await res.json());
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchProducts();
+    }, [statusFilter]);
+
+    const handleDelete = async () => {
         if (deleteId) {
-            removeProduct(deleteId);
+            await removeProduct(deleteId);
+            setLocalProducts(prev => prev.filter(p => p.id !== deleteId));
             setDeleteId(null);
         }
     };
 
-    const filteredProducts = products.filter(product =>
+    const filteredProducts = localProducts.filter(product =>
         (product.nome || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (product.codigo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (product.categoria || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -41,7 +67,7 @@ export default function ProdutosPage() {
         }
         acc[fabricaId].push(product);
         return acc;
-    }, {} as Record<string, typeof products>);
+    }, {} as Record<string, any[]>);
 
     return (
         <div className="space-y-5">
@@ -50,7 +76,7 @@ export default function ProdutosPage() {
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-white">Catálogo de Produtos</h1>
-                    <p className="text-sm text-gray-400">{products.length} produtos cadastrados</p>
+                    <p className="text-sm text-gray-400">{localProducts.length} produtos carregados</p>
                 </div>
                 {!isIndustria && (
                     <Link href="/dashboard/produtos/novo">
@@ -62,16 +88,31 @@ export default function ProdutosPage() {
                 )}
             </div>
 
-            {/* Busca */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                    type="text"
-                    placeholder="Buscar por nome, código ou categoria..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="input-compact pl-10 w-full"
-                />
+            {/* Tabs e Busca */}
+            <div className="flex flex-col gap-4">
+                {/* ROW 1: Status Tabs */}
+                <div className="flex gap-2 border-b border-white/10 pb-4 overflow-x-auto">
+                    {['Ativos', 'Inativos', 'Todos'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setStatusFilter(tab as any)}
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap overflow-hidden ${statusFilter === tab ? 'bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.3)]' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10'}`}
+                        >
+                            {tab}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Buscar por nome, código ou categoria..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="input-compact pl-10 w-full"
+                    />
+                </div>
             </div>
 
             {/* Lista de Produtos por Fábrica */}
@@ -84,7 +125,7 @@ export default function ProdutosPage() {
                         if (a[0] === 'sem-fabrica') return 1;
                         if (b[0] === 'sem-fabrica') return -1;
                         return nomeA.localeCompare(nomeB);
-                    }).map(([fabricaId, groupProducts]: [string, typeof products]) => (
+                    }).map(([fabricaId, groupProducts]: any) => (
                         <div key={fabricaId} className="space-y-3">
                             <div className="flex items-center gap-2 px-1">
                                 <Factory className="h-5 w-5 text-blue-400" />
@@ -100,7 +141,7 @@ export default function ProdutosPage() {
                             </div>
 
                             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                {groupProducts.map((product, index) => (
+                                {groupProducts.map((product: any, index: number) => (
                                     <motion.div
                                         key={product.id}
                                         initial={{ opacity: 0, y: 10 }}
@@ -117,9 +158,13 @@ export default function ProdutosPage() {
                                                     <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 min-h-[2.5em] flex items-center">
                                                         {product.nome}
                                                     </h3>
-                                                    {product.ativo === false && (
-                                                        <span className="inline-flex items-center rounded-md bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold text-red-400 border border-red-500/20 uppercase whitespace-nowrap flex-shrink-0">
+                                                    {product.ativo === false ? (
+                                                        <span className="inline-flex items-center rounded-md bg-gray-500/10 px-1.5 py-0.5 text-[9px] font-bold text-gray-400 border border-gray-500/20 uppercase whitespace-nowrap flex-shrink-0">
                                                             Inativo
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center rounded-md bg-green-500/10 px-1.5 py-0.5 text-[9px] font-bold text-green-400 border border-green-500/20 uppercase whitespace-nowrap flex-shrink-0">
+                                                            Ativo
                                                         </span>
                                                     )}
                                                 </div>
@@ -198,10 +243,14 @@ export default function ProdutosPage() {
                             </div>
                         </div>
                     ))
+                ) : isLoading ? (
+                    <div className="col-span-full py-12 flex justify-center">
+                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-current border-e-transparent align-[-0.125em] text-blue-500 motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+                    </div>
                 ) : (
                     <div className="col-span-full form-card text-center py-8 text-gray-500">
                         <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>Nenhum produto encontrado</p>
+                        <p>Nenhum produto encontrado nesta visão.</p>
                     </div>
                 )}
             </div>

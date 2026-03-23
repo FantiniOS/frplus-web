@@ -4,26 +4,53 @@
 import { Search, Plus, MoreHorizontal, MapPin, Filter, Trash2, Edit, ChevronDown, ChevronUp, User, FileText } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 
 export default function ClientesPage() {
-  const { clients, removeClient } = useData();
+  const { removeClient } = useData();
   const { isIndustria } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+  
+  const [statusFilter, setStatusFilter] = useState<'Ativos' | 'Inativos' | 'Bloqueados' | 'Todos'>('Ativos');
+  const [localClients, setLocalClients] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleDelete = () => {
+  useEffect(() => {
+    const fetchClients = async () => {
+      setIsLoading(true);
+      let param = 'Ativo';
+      if (statusFilter === 'Inativos') param = 'Inativo';
+      if (statusFilter === 'Bloqueados') param = 'Bloqueado';
+      if (statusFilter === 'Todos') param = 'Todos';
+
+      try {
+        const res = await fetch(`/api/clients?status=${param}`);
+        if (res.ok) {
+          setLocalClients(await res.json());
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchClients();
+  }, [statusFilter]);
+
+  const handleDelete = async () => {
     if (deleteId) {
-      removeClient(deleteId);
+      await removeClient(deleteId);
+      setLocalClients(prev => prev.filter(c => c.id !== deleteId));
       setDeleteId(null);
     }
   };
 
-  const filteredClients = clients.filter(client =>
+  const filteredClients = localClients.filter(client =>
     (client.razaoSocial || client.nomeFantasia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (client.cnpj || '').includes(searchTerm) ||
     (client.cidade || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -51,7 +78,7 @@ export default function ClientesPage() {
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-2xl font-bold text-white">Minha Carteira</h1>
-          <p className="text-sm text-gray-400">Gerencie seus {clients.length} clientes.</p>
+          <p className="text-sm text-gray-400">Gerencie seus {localClients.length} clientes.</p>
         </div>
         {!isIndustria && (
           <Link href="/dashboard/clientes/novo">
@@ -64,21 +91,34 @@ export default function ClientesPage() {
       </div>
 
       {/* Barra de Filtros e Busca */}
-      <div className="flex gap-4 rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nome, CNPJ ou cidade..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg bg-black/40 border border-white/10 py-2 pl-10 pr-4 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+      <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+        
+        {/* ROW 1: Status Tabs */}
+        <div className="flex gap-2 border-b border-white/10 pb-4 overflow-x-auto">
+          {['Ativos', 'Inativos', 'Bloqueados', 'Todos'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setStatusFilter(tab as any)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap overflow-hidden ${statusFilter === tab ? 'bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.3)]' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10'}`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
-        <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white hover:bg-white/10">
-          <Filter className="h-4 w-4" />
-          Filtros
-        </button>
+
+        {/* ROW 2: Busca */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nome, CNPJ ou cidade..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-lg bg-black/40 border border-white/10 py-2 pl-10 pr-4 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Tabela de Clientes (Data Grid) */}
@@ -246,7 +286,13 @@ export default function ClientesPage() {
                 )}
               </>
             ))}
-            {filteredClients.length === 0 && (
+            {isLoading ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-e-transparent align-[-0.125em] text-blue-500 motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+                </td>
+              </tr>
+            ) : filteredClients.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                   Nenhum cliente encontrado.

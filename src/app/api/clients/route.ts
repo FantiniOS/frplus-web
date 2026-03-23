@@ -24,10 +24,21 @@ function calcularMediaCicloDias(datas: Date[]): number | null {
 }
 
 // GET /api/clients - List all clients with last purchase date
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url)
+        const statusParam = searchParams.get('status')
+
+        const whereClause: any = {}
+        if (statusParam && statusParam !== 'Todos') {
+            whereClause.status = statusParam
+        } else if (!statusParam) {
+            // Default to 'Ativo' if not specified, to protect other dashboard components
+            whereClause.status = 'Ativo'
+        }
+
         const clients = await prisma.cliente.findMany({
-            where: { status: 'Ativo' },
+            where: whereClause,
             orderBy: { nomeFantasia: 'asc' },
             include: {
                 pedidos: {

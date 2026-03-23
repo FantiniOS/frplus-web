@@ -5,14 +5,25 @@ import { getServerUser } from '@/lib/getServerUser'
 export const dynamic = 'force-dynamic'
 
 // GET /api/products - List all products
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const user = await getServerUser()
         if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+        const { searchParams } = new URL(request.url)
+        const ativoParam = searchParams.get('ativo')
+
         const whereClause: any = {}
         if (user.role === 'industria' && user.fabricaId) {
             whereClause.fabricaId = user.fabricaId
+        }
+
+        if (ativoParam === 'true') {
+            whereClause.ativo = true;
+        } else if (ativoParam === 'false') {
+            whereClause.ativo = false;
+        } else if (!ativoParam) {
+            whereClause.ativo = true; // Default
         }
 
         const products = await prisma.produto.findMany({
