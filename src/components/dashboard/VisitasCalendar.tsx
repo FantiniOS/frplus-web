@@ -29,6 +29,15 @@ interface VisitasCalendarProps {
 }
 
 export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarProps) {
+  const [internalYear, setInternalYear] = useState(year);
+  const [internalMonth, setInternalMonth] = useState(month);
+
+  useEffect(() => {
+    setInternalYear(year);
+    setInternalMonth(month);
+    setSelectedDate(null); // Reset date when global filter changes
+  }, [year, month]);
+
   const [visitas, setVisitas] = useState<Visita[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<number | null>(new Date().getDate());
@@ -46,7 +55,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
 
   const loadVisitas = async () => {
     setLoading(true);
-    const res = await getVisitasDoMes(year, month);
+    const res = await getVisitasDoMes(internalYear, internalMonth);
     if (res.success && res.visitas) {
       setVisitas(res.visitas as unknown as Visita[]); // Handling Prisma date conversion
     }
@@ -55,7 +64,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
 
   useEffect(() => {
     loadVisitas();
-  }, [year, month]);
+  }, [internalYear, internalMonth]);
 
   const handleAgendarVisita = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +75,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
 
     setSubmitting(true);
     try {
-      const datePart = new Date(year, month, selectedDate);
+      const datePart = new Date(internalYear, internalMonth, selectedDate);
       const [hours, minutes] = hora.split(':').map(Number);
       datePart.setHours(hours, minutes, 0, 0);
 
@@ -140,8 +149,8 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
   };
 
   // Calendar logic
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Sun) to 6 (Sat)
+  const daysInMonth = new Date(internalYear, internalMonth + 1, 0).getDate();
+  const firstDayOfMonth = new Date(internalYear, internalMonth, 1).getDay(); // 0 (Sun) to 6 (Sat)
   
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const paddingDays = Array.from({ length: firstDayOfMonth }, (_, i) => null);
@@ -181,9 +190,42 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
           <Calendar className="h-4 w-4 text-emerald-400" />
         </div>
         <h3 className="text-sm font-semibold text-white/90">Agenda</h3>
-        <span className="text-[10px] text-gray-600 ml-auto capitalize">
-          {new Date(year, month).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
-        </span>
+        
+        <div className="ml-auto flex items-center gap-1">
+          <button 
+            onClick={() => {
+              if (internalMonth === 0) {
+                setInternalMonth(11);
+                setInternalYear(internalYear - 1);
+              } else {
+                setInternalMonth(internalMonth - 1);
+              }
+              setSelectedDate(null);
+            }} 
+            className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4 text-gray-400" />
+          </button>
+          
+          <span className="text-xs font-medium text-gray-300 min-w-[100px] text-center capitalize">
+            {new Date(internalYear, internalMonth).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+          </span>
+          
+          <button 
+            onClick={() => {
+              if (internalMonth === 11) {
+                setInternalMonth(0);
+                setInternalYear(internalYear + 1);
+              } else {
+                setInternalMonth(internalMonth + 1);
+              }
+              setSelectedDate(null);
+            }} 
+            className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+          >
+            <ChevronRight className="h-4 w-4 text-gray-400" />
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -209,7 +251,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
 
                 const hasVisitas = visitasByDay.has(day);
                 const isSelected = selectedDate === day;
-                const isToday = day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
+                const isToday = day === new Date().getDate() && internalMonth === new Date().getMonth() && internalYear === new Date().getFullYear();
 
                 return (
                   <button
@@ -242,7 +284,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
               <div className="space-y-3">
                 <div className="sticky top-0 bg-[#0c1221] py-1 z-10 flex items-center justify-between">
                   <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                    {new Date(year, month, selectedDate).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    {new Date(internalYear, internalMonth, selectedDate).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </h4>
                   <button
                     onClick={() => {
@@ -388,7 +430,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
                   <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Data</label>
                   <input
                     type="text"
-                    value={selectedDate ? new Date(year, month, selectedDate).toLocaleDateString('pt-BR') : ''}
+                    value={selectedDate ? new Date(internalYear, internalMonth, selectedDate).toLocaleDateString('pt-BR') : ''}
                     disabled
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white cursor-not-allowed opacity-70"
                   />
@@ -464,7 +506,7 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
           }}
         >
           <div className="font-semibold text-emerald-400 border-b border-white/10 pb-1.5 mb-1.5 text-[11px] uppercase tracking-wider">
-            {new Date(year, month, hoveredDia).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+            {new Date(internalYear, internalMonth, hoveredDia).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
           </div>
           <div className="flex flex-col gap-1.5">
             {visitasByDay.get(hoveredDia)?.slice(0, 4).map((v) => {
