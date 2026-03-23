@@ -113,7 +113,10 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
     setEditingVisitaId(v.id);
     setTitulo(v.titulo || "");
     setSelectedClienteId(v.clienteId || "");
-    setHora(new Date(v.dataVisita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    setHora(
+      String(new Date(v.dataVisita).getUTCHours()).padStart(2, '0') + ':' +
+      String(new Date(v.dataVisita).getUTCMinutes()).padStart(2, '0')
+    );
     setObservacoes(v.observacoes || "");
     setShowAddVisita(true);
   };
@@ -163,9 +166,8 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
   const visitasByDay = new Map<number, Visita[]>();
   visitas.forEach(v => {
     const d = new Date(v.dataVisita);
-    // Ensure we match the local day by forcing timezone or just getting UTC date safely if dates were saved as UTC
-    // Since input type="datetime-local" is local, let's just extract the date
-    const day = d.getDate();
+    // Usa getUTCDate() para evitar deslocamento de timezone no browser
+    const day = d.getUTCDate();
     if (!visitasByDay.has(day)) visitasByDay.set(day, []);
     visitasByDay.get(day)!.push(v);
   });
@@ -307,7 +309,8 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
                 ) : (
                   <div className="space-y-2 pb-2">
                     {selectedVisitas.map(v => {
-                      const timeStr = new Date(v.dataVisita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                      const vDate = new Date(v.dataVisita);
+                      const timeStr = String(vDate.getUTCHours()).padStart(2, '0') + ':' + String(vDate.getUTCMinutes()).padStart(2, '0');
                       const clientName = v.cliente ? (v.cliente.nomeFantasia || v.cliente.razaoSocial) : null;
                       const phone = v.cliente ? (v.cliente.celular || v.cliente.telefone) : null;
 
@@ -510,7 +513,8 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
           </div>
           <div className="flex flex-col gap-1.5">
             {visitasByDay.get(hoveredDia)?.slice(0, 4).map((v) => {
-              const timeStr = new Date(v.dataVisita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+              const vDate2 = new Date(v.dataVisita);
+              const timeStr = String(vDate2.getUTCHours()).padStart(2, '0') + ':' + String(vDate2.getUTCMinutes()).padStart(2, '0');
               return (
                 <div key={v.id} className="text-xs leading-relaxed">
                   <div className="flex items-start gap-1.5">
