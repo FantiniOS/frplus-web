@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { Loader2, Phone } from "lucide-react";
 import { VisitasCalendar } from "@/components/dashboard/VisitasCalendar";
 import { getLembretesProspeccao } from "@/app/actions/prospects";
+import { getDashboardChartData, ChartDataResponse, ChartViewMode } from "@/app/actions/dashboard";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
@@ -24,6 +25,10 @@ export default function DashboardPage() {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     return `${year}-${month}`;
   });
+
+  const [chartView, setChartView] = useState<ChartViewMode>('Mensal');
+  const [chartData, setChartData] = useState<ChartDataResponse[]>([]);
+  const [chartLoading, setChartLoading] = useState(true);
 
   const [yearStr, monthStr] = selectedMonth.split('-');
   const filterYear = selectedMonth ? parseInt(yearStr) : null;
@@ -44,29 +49,25 @@ export default function DashboardPage() {
     totalProducts: products.length
   };
 
-  const chartYear = filterYear || new Date().getFullYear();
-  const chartMonth = filterMonth !== null ? filterMonth : new Date().getMonth();
-  const chartDaysInMonth = new Date(chartYear, chartMonth + 1, 0).getDate();
-  const monthDays = Array.from({ length: chartDaysInMonth }, (_, i) => i + 1);
-
-  const salesData = monthDays.map(day => {
-    const chartDayTotal = orders
-      .filter(o => {
-        const d = new Date(o.data);
-        return d.getUTCFullYear() === chartYear &&
-          d.getUTCMonth() === chartMonth &&
-          d.getUTCDate() === day;
+  useEffect(() => {
+    let mounted = true;
+    setChartLoading(true);
+    getDashboardChartData(chartView, filterYear, filterMonth)
+      .then(data => {
+        if (mounted) {
+          setChartData(data);
+          setChartLoading(false);
+        }
       })
-      .reduce((acc, curr) => acc + curr.valorTotal, 0);
+      .catch(err => {
+        console.error("Erro ao buscar dados do gráfico", err);
+        if (mounted) setChartLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [chartView, filterYear, filterMonth]);
 
-    return {
-      date: new Date(chartYear, chartMonth, day).toISOString(),
-      dayLabel: String(day),
-      value: chartDayTotal
-    };
-  });
-
-  const maxSale = Math.max(...salesData.map(d => d.value), 100);
+  const maxSale = Math.max(...chartData.map(d => d.value), 100);
+  const chartTotalSales = chartData.reduce((acc, curr) => acc + curr.value, 0);
 
   const productSalesMap = new Map<string, { qtd: number; total: number }>();
   monthlyOrders.forEach(order => {
@@ -101,6 +102,12 @@ export default function DashboardPage() {
   const monthName = selectedMonth
     ? new Date(filterYear!, filterMonth!, 1).toLocaleDateString('pt-BR', { month: 'long' })
     : 'Período Completo';
+
+  const chartTitle = chartView === 'Mensal' 
+    ? monthName
+    : chartView === 'Anual' 
+      ? `Ano ${filterYear || new Date().getFullYear()}`
+      : 'Todo o Histórico';
 
   // Ticket médio
   const avgTicket = stats.totalOrders > 0 ? stats.totalSales / stats.totalOrders : 0;
@@ -298,9 +305,26 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Month Selector */}
+        {/* Chart View Selector & Month Selector */}
         <div className="flex items-center gap-3">
-          <MonthSelector value={selectedMonth} onChange={setSelectedMonth} />
+          <div className="hidden sm:flex bg-white/[0.04] p-1 rounded-lg border border-white/[0.08]">
+            {(['Mensal', 'Anual', 'Global'] as const).map(v => (
+              <button
+                key={v}
+                onClick={() => setChartView(v)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  chartView === v
+                    ? 'bg-blue-500/20 text-blue-400 shadow-sm'
+                    : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          {chartView !== 'Global' && (
+            <MonthSelector value={selectedMonth} onChange={setSelectedMonth} />
+          )}
         </div>
       </div>
 
@@ -402,18 +426,26 @@ export default function DashboardPage() {
         {/* COLUNA ESQUERDA (Gráfico) */}
         <div className="lg:col-span-2">
           {/* Chart */}
-          <InteractiveChart
-            data={salesData}
-            maxSale={maxSale}
-            totalSales={stats.totalSales}
-            monthName={monthName}
-          />
+          <div className="relative h-full">
+            {chartLoading && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0f1729]/80 backdrop-blur-sm rounded-2xl border border-white/[0.08]">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              </div>
+            )}
+            <InteractiveChart
+              data={chartData}
+              maxSale={maxSale}
+              totalSales={chartTotalSales}
+              monthName={chartTitle}
+              view={chartView}
+            />
+          </div>
         </div>
 
         {/* COLUNA DIREITA (Calendário de Visitas) */}
         <div className="lg:col-span-1">
           <div className="h-full w-full min-h-[400px]">
-            <VisitasCalendar year={chartYear!} month={chartMonth!} clientes={clients} />
+            <VisitasCalendar year={filterYear || new Date().getFullYear()} month={filterMonth !== null ? filterMonth : new Date().getMonth()} clientes={clients} />
           </div>
         </div>
       </div>

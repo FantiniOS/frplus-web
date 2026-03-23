@@ -11,6 +11,7 @@ interface InteractiveChartProps {
     maxSale: number;
     totalSales: number;
     monthName: string;
+    view?: 'Mensal' | 'Anual' | 'Global';
 }
 
 // ══════════════════════════════════════════════════════
@@ -85,24 +86,23 @@ function getDayType(dateStr: string, holidays: Map<string, string>): { type: 'wo
 
 // ══════════════════════════════════════════════════════
 
-export function InteractiveChart({ data, maxSale, totalSales, monthName }: InteractiveChartProps) {
+export function InteractiveChart({ data, maxSale, totalSales, monthName, view = 'Mensal' }: InteractiveChartProps) {
     const displayValue = totalSales || 0;
     const activeDays = data.filter(d => (d.value || 0) > 0).length;
-    const avgDaily = activeDays > 0 ? displayValue / activeDays : 0;
+    let avgDivisor = activeDays > 0 ? activeDays : 1;
+    if (view === 'Anual') avgDivisor = 12; // Média mensal no ano
+    if (view === 'Global') avgDivisor = data.length || 1; // Média anual
+    const avgDaily = displayValue / avgDivisor;
+
+    const isMensal = view === 'Mensal';
 
     // Pre-compute holidays for the year of the first data point
     const year = data.length > 0 ? new Date(data[0].date).getFullYear() : new Date().getFullYear();
-    const holidays = getBrazilianHolidays(year);
+    const holidays = isMensal ? getBrazilianHolidays(year) : new Map<string, string>();
 
     // Count day types
-    const weekendCount = data.filter(d => {
-        const dt = getDayType(d.date, holidays);
-        return dt.type === 'weekend';
-    }).length;
-    const holidayCount = data.filter(d => {
-        const dt = getDayType(d.date, holidays);
-        return dt.type === 'holiday';
-    }).length;
+    const weekendCount = isMensal ? data.filter(d => getDayType(d.date, holidays).type === 'weekend').length : 0;
+    const holidayCount = isMensal ? data.filter(d => getDayType(d.date, holidays).type === 'holiday').length : 0;
 
     return (
         <div className="md:col-span-4 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-6 h-[420px] flex flex-col shadow-2xl shadow-black/40 relative overflow-hidden">
@@ -115,28 +115,32 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName }: Inter
                 <div>
                     <div className="flex items-center gap-2 mb-1">
                         <div className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-400 to-cyan-400" />
-                        <h3 className="text-base font-semibold text-white/90 tracking-tight">Vendas Diárias</h3>
+                        <h3 className="text-base font-semibold text-white/90 tracking-tight">
+                            {view === 'Mensal' ? 'Vendas Diárias' : view === 'Anual' ? 'Vendas Mensais' : 'Vendas Anuais'}
+                        </h3>
                     </div>
                     <p className="text-xs text-gray-500 ml-3 capitalize">
-                        {monthName} · {activeDays} dias com vendas
+                        {monthName} · {activeDays} {view === 'Mensal' ? 'dias' : view === 'Anual' ? 'meses' : 'anos'} com vendas
                     </p>
                     {/* Legend */}
-                    <div className="flex items-center gap-3 ml-3 mt-1.5">
-                        <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-sm bg-gradient-to-t from-blue-600/70 to-cyan-400/70" />
-                            <span className="text-[9px] text-gray-600">Dia útil</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-sm bg-gradient-to-t from-gray-600/50 to-gray-500/40" />
-                            <span className="text-[9px] text-gray-600">Fim de sem. ({weekendCount})</span>
-                        </div>
-                        {holidayCount > 0 && (
+                    {isMensal && (
+                        <div className="flex items-center gap-3 ml-3 mt-1.5">
                             <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 rounded-sm bg-gradient-to-t from-amber-600/70 to-amber-400/60" />
-                                <span className="text-[9px] text-gray-600">Feriado ({holidayCount})</span>
+                                <div className="w-2 h-2 rounded-sm bg-gradient-to-t from-blue-600/70 to-cyan-400/70" />
+                                <span className="text-[9px] text-gray-600">Dia útil</span>
                             </div>
-                        )}
-                    </div>
+                            <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 rounded-sm bg-gradient-to-t from-gray-600/50 to-gray-500/40" />
+                                <span className="text-[9px] text-gray-600">Fim de sem. ({weekendCount})</span>
+                            </div>
+                            {holidayCount > 0 && (
+                                <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 rounded-sm bg-gradient-to-t from-amber-600/70 to-amber-400/60" />
+                                    <span className="text-[9px] text-gray-600">Feriado ({holidayCount})</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="text-right">
@@ -145,7 +149,7 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName }: Inter
                         R$ {displayValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                     <p className="text-[10px] text-gray-600 mt-0.5">
-                        Média/dia: R$ {avgDaily.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        Média/{view === 'Mensal' ? 'dia' : view === 'Anual' ? 'mês' : 'ano'}: R$ {avgDaily.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </p>
                 </div>
             </div>
@@ -168,11 +172,11 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName }: Inter
                         const val = item.value || 0;
                         const heightPercentage = maxSale > 0 ? Math.max((val / maxSale) * 100, 2) : 2;
                         const hasValue = val > 0;
-                        const showLabel = i === 0 || i === data.length - 1 || i % 3 === 0;
+                        const showLabel = isMensal ? (i === 0 || i === data.length - 1 || i % 3 === 0) : true;
 
-                        const dayInfo = getDayType(item.date, holidays);
-                        const isWeekend = dayInfo.type === 'weekend';
-                        const isHoliday = dayInfo.type === 'holiday';
+                        const dayInfo = isMensal ? getDayType(item.date, holidays) : { type: 'workday', label: '' };
+                        const isWeekend = isMensal && dayInfo.type === 'weekend';
+                        const isHoliday = isMensal && dayInfo.type === 'holiday';
 
                         // Bar color based on day type
                         let barClass = '';
@@ -208,7 +212,7 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName }: Inter
                             <div
                                 key={i}
                                 className="relative flex-1 h-full flex flex-col justify-end items-center group"
-                                title={`Dia ${item.dayLabel}: R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}${tooltipExtra}`}
+                                title={`${view === 'Mensal' ? 'Dia ' : ''}${item.dayLabel}: R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}${tooltipExtra}`}
                             >
                                 {/* Hover tooltip */}
                                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20">
