@@ -6,27 +6,10 @@ import { getServerUser } from '@/lib/getServerUser'
 export type ChartViewMode = 'Mensal' | 'Anual' | 'Global'
 
 export interface ChartDataResponse {
-    date: string
-    dayLabel: string
+    date: string       // YYYY-MM-DD (texto puro, SEM timezone)
+    dayLabel: string   // Label do eixo X (dia, mês abreviado, ou ano)
     value: number
-}
-
-// ══════════════════════════════════════════════════════
-// STRING SLICE — Ignora timezone completamente.
-// As datas do Prisma são salvas como meia-noite UTC
-// (ex: "2026-03-23T00:00:00.000Z"). O dia 23 JÁ É o
-// dia correto. Qualquer conversão de fuso RETROCEDE
-// a data. Por isso, recortamos a string ISO pura.
-// ══════════════════════════════════════════════════════
-function getDateParts(date: Date) {
-    const iso = date.toISOString() // "2026-03-23T00:00:00.000Z"
-    const dateOnly = iso.split('T')[0]  // "2026-03-23"
-    const [yearStr, monthStr, dayStr] = dateOnly.split('-')
-    return {
-        year: parseInt(yearStr, 10),
-        month: parseInt(monthStr, 10) - 1, // 0-indexed (JS convention)
-        day: parseInt(dayStr, 10)
-    }
+    dayOfWeek?: number // 0=Dom, 1=Seg... 6=Sáb (calculado via UTC, sem conversão)
 }
 
 // Days in month helper
@@ -53,16 +36,17 @@ export async function getDashboardChartData(
     }
 
     const now = new Date()
-    const nowParts = getDateParts(now)
+    const nowYear = now.getUTCFullYear()
+    const nowMonth = now.getUTCMonth()
 
     // ──────────────────────────────────────
     // MENSAL: Agrupa valorTotal por DIA
     // ──────────────────────────────────────
     if (view === 'Mensal') {
-        const year = yearParam || nowParts.year
-        const month = monthParam !== null && monthParam !== undefined ? monthParam : nowParts.month
+        const year = yearParam || nowYear
+        const month = monthParam !== null && monthParam !== undefined ? monthParam : nowMonth
 
-        // Datas salvas como meia-noite UTC → filtramos diretamente em UTC
+        // Datas salvas como meia-noite UTC → filtro direto em UTC
         const startUTC = new Date(Date.UTC(year, month, 1, 0, 0, 0))
         const endUTC = new Date(Date.UTC(year, month + 1, 1, 0, 0, 0))
 
@@ -77,16 +61,21 @@ export async function getDashboardChartData(
         const dailyMap = new Map<number, number>()
 
         orders.forEach(o => {
-            const { day } = getDateParts(o.data)
-            dailyMap.set(day, (dailyMap.get(day) || 0) + Number(o.valorTotal))
+            // MÉTODO UTC — sem conversão de fuso
+            const dia = o.data.getUTCDate()
+            dailyMap.set(dia, (dailyMap.get(dia) || 0) + Number(o.valorTotal))
         })
 
         const result: ChartDataResponse[] = []
         for (let day = 1; day <= days; day++) {
+            const d = new Date(Date.UTC(year, month, day))
+            const mm = String(month + 1).padStart(2, '0')
+            const dd = String(day).padStart(2, '0')
             result.push({
-                date: new Date(Date.UTC(year, month, day)).toISOString(),
+                date: `${year}-${mm}-${dd}`,           // Texto puro YYYY-MM-DD
                 dayLabel: String(day),
-                value: dailyMap.get(day) || 0
+                value: dailyMap.get(day) || 0,
+                dayOfWeek: d.getUTCDay()                // 0=Dom via UTC, correto
             })
         }
         return result
@@ -96,7 +85,7 @@ export async function getDashboardChartData(
     // ANUAL: Agrupa valorTotal por MÊS
     // ──────────────────────────────────────
     if (view === 'Anual') {
-        const year = yearParam || nowParts.year
+        const year = yearParam || nowYear
 
         const startUTC = new Date(Date.UTC(year, 0, 1, 0, 0, 0))
         const endUTC = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0))
@@ -110,15 +99,17 @@ export async function getDashboardChartData(
 
         const monthlyMap = new Map<number, number>()
         orders.forEach(o => {
-            const { month: m } = getDateParts(o.data)
-            monthlyMap.set(m, (monthlyMap.get(m) || 0) + Number(o.valorTotal))
+            // MÉTODO UTC — sem conversão de fuso
+            const mes = o.data.getUTCMonth()
+            monthlyMap.set(mes, (monthlyMap.get(mes) || 0) + Number(o.valorTotal))
         })
 
         const monthsStr = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
         const result: ChartDataResponse[] = []
         for (let m = 0; m < 12; m++) {
+            const mm = String(m + 1).padStart(2, '0')
             result.push({
-                date: new Date(Date.UTC(year, m, 1)).toISOString(),
+                date: `${year}-${mm}-01`,
                 dayLabel: monthsStr[m],
                 value: monthlyMap.get(m) || 0
             })
@@ -137,11 +128,12 @@ export async function getDashboardChartData(
         })
 
         const yearlyMap = new Map<number, number>()
-        let minYear = nowParts.year
+        let minYear = nowYear
         let maxYear = minYear
 
         orders.forEach(o => {
-            const { year: y } = getDateParts(o.data)
+            // MÉTODO UTC — sem conversão de fuso
+            const y = o.data.getUTCFullYear()
             if (y < minYear) minYear = y
             if (y > maxYear) maxYear = y
             yearlyMap.set(y, (yearlyMap.get(y) || 0) + Number(o.valorTotal))
@@ -150,7 +142,7 @@ export async function getDashboardChartData(
         const result: ChartDataResponse[] = []
         for (let y = minYear; y <= maxYear; y++) {
             result.push({
-                date: new Date(Date.UTC(y, 0, 1)).toISOString(),
+                date: `${y}-01-01`,
                 dayLabel: String(y),
                 value: yearlyMap.get(y) || 0
             })
@@ -180,9 +172,8 @@ export async function getAvailableYears(): Promise<number[]> {
 
     const years = new Set<number>()
     orders.forEach(o => {
-        const { year } = getDateParts(o.data)
-        years.add(year)
+        years.add(o.data.getUTCFullYear())
     })
 
-    return Array.from(years).sort((a, b) => b - a) // desc
+    return Array.from(years).sort((a, b) => b - a)
 }

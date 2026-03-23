@@ -1,9 +1,10 @@
 "use client";
 
 interface SalesData {
-    date: string;
+    date: string;       // YYYY-MM-DD (texto puro do servidor)
     dayLabel: string;
     value: number;
+    dayOfWeek?: number; // 0=Dom, 1=Seg... 6=Sáb (vindo do servidor via UTC)
 }
 
 interface InteractiveChartProps {
@@ -16,10 +17,11 @@ interface InteractiveChartProps {
 
 // ══════════════════════════════════════════════════════
 // FERIADOS NACIONAIS BRASILEIROS (fixos + móveis)
+// Cálculo dos feriados móveis usa Date internamente,
+// mas NÃO toca nos dados dos pedidos.
 // ══════════════════════════════════════════════════════
 
 function getEasterDate(year: number): Date {
-    // Algoritmo de Meeus/Jones/Butcher para calcular a Páscoa
     const a = year % 19;
     const b = Math.floor(year / 100);
     const c = year % 100;
@@ -45,7 +47,8 @@ function addDays(date: Date, days: number): Date {
 
 function getBrazilianHolidays(year: number): Map<string, string> {
     const holidays = new Map<string, string>();
-    const fmt = (d: Date) => `${year}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const fmt = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     // Feriados fixos nacionais
     holidays.set(`${year}-01-01`, 'Confraternização Universal');
@@ -59,8 +62,8 @@ function getBrazilianHolidays(year: number): Map<string, string> {
 
     // Feriados móveis baseados na Páscoa
     const easter = getEasterDate(year);
-    holidays.set(fmt(addDays(easter, -47)), 'Carnaval');      // Terça de Carnaval
-    holidays.set(fmt(addDays(easter, -48)), 'Carnaval');      // Segunda de Carnaval
+    holidays.set(fmt(addDays(easter, -47)), 'Carnaval');
+    holidays.set(fmt(addDays(easter, -48)), 'Carnaval');
     holidays.set(fmt(addDays(easter, -2)), 'Sexta-Feira Santa');
     holidays.set(fmt(easter), 'Páscoa');
     holidays.set(fmt(addDays(easter, 60)), 'Corpus Christi');
@@ -68,18 +71,23 @@ function getBrazilianHolidays(year: number): Map<string, string> {
     return holidays;
 }
 
-function getDayType(dateStr: string, holidays: Map<string, string>): { type: 'workday' | 'weekend' | 'holiday'; label?: string } {
-    const date = new Date(dateStr);
-    const day = date.getDay(); // 0 = Sunday, 6 = Saturday
-
-    // Check holiday first (takes priority)
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    if (holidays.has(key)) {
-        return { type: 'holiday', label: holidays.get(key) };
+// ══════════════════════════════════════════════════════
+// getDayType agora usa a STRING "YYYY-MM-DD" e o
+// dayOfWeek numérico que já veio do servidor via UTC.
+// PROIBIDO: new Date(dateStr) aqui dentro.
+// ══════════════════════════════════════════════════════
+function getDayType(
+    dateKey: string,
+    dayOfWeek: number,
+    holidays: Map<string, string>
+): { type: 'workday' | 'weekend' | 'holiday'; label?: string } {
+    // Checa feriado pela chave de texto puro
+    if (holidays.has(dateKey)) {
+        return { type: 'holiday', label: holidays.get(dateKey) };
     }
 
-    if (day === 0) return { type: 'weekend', label: 'Domingo' };
-    if (day === 6) return { type: 'weekend', label: 'Sábado' };
+    if (dayOfWeek === 0) return { type: 'weekend', label: 'Domingo' };
+    if (dayOfWeek === 6) return { type: 'weekend', label: 'Sábado' };
 
     return { type: 'workday' };
 }
@@ -90,19 +98,19 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName, view = 
     const displayValue = totalSales || 0;
     const activeDays = data.filter(d => (d.value || 0) > 0).length;
     let avgDivisor = activeDays > 0 ? activeDays : 1;
-    if (view === 'Anual') avgDivisor = 12; // Média mensal no ano
-    if (view === 'Global') avgDivisor = data.length || 1; // Média anual
+    if (view === 'Anual') avgDivisor = 12;
+    if (view === 'Global') avgDivisor = data.length || 1;
     const avgDaily = displayValue / avgDivisor;
 
     const isMensal = view === 'Mensal';
 
-    // Pre-compute holidays for the year of the first data point
-    const year = data.length > 0 ? new Date(data[0].date).getFullYear() : new Date().getFullYear();
+    // Extrai o ano da string YYYY-MM-DD (sem new Date!)
+    const year = data.length > 0 ? parseInt(data[0].date.split('-')[0], 10) : new Date().getFullYear();
     const holidays = isMensal ? getBrazilianHolidays(year) : new Map<string, string>();
 
-    // Count day types
-    const weekendCount = isMensal ? data.filter(d => getDayType(d.date, holidays).type === 'weekend').length : 0;
-    const holidayCount = isMensal ? data.filter(d => getDayType(d.date, holidays).type === 'holiday').length : 0;
+    // Count day types usando dados puros do servidor
+    const weekendCount = isMensal ? data.filter(d => getDayType(d.date, d.dayOfWeek || 0, holidays).type === 'weekend').length : 0;
+    const holidayCount = isMensal ? data.filter(d => getDayType(d.date, d.dayOfWeek || 0, holidays).type === 'holiday').length : 0;
 
     return (
         <div className="md:col-span-4 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-6 h-[420px] flex flex-col shadow-2xl shadow-black/40 relative overflow-hidden">
@@ -174,7 +182,10 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName, view = 
                         const hasValue = val > 0;
                         const showLabel = isMensal ? (i === 0 || i === data.length - 1 || i % 3 === 0) : true;
 
-                        const dayInfo = isMensal ? getDayType(item.date, holidays) : { type: 'workday', label: '' };
+                        // Usa a string YYYY-MM-DD e dayOfWeek do servidor — SEM new Date()
+                        const dayInfo = isMensal
+                            ? getDayType(item.date, item.dayOfWeek || 0, holidays)
+                            : { type: 'workday' as const, label: '' };
                         const isWeekend = isMensal && dayInfo.type === 'weekend';
                         const isHoliday = isMensal && dayInfo.type === 'holiday';
 
@@ -239,7 +250,7 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName, view = 
                                     style={{ height: hasValue ? `${heightPercentage}%` : '2%' }}
                                 />
 
-                                {/* Label */}
+                                {/* Label — texto puro do servidor, sem Date */}
                                 <span className={`text-[8px] mt-1.5 block h-3 text-center w-full tabular-nums ${labelClass}`}>
                                     {showLabel ? (
                                         <>
