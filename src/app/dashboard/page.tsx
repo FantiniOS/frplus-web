@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { Loader2, Phone } from "lucide-react";
 import { VisitasCalendar } from "@/components/dashboard/VisitasCalendar";
 import { getLembretesProspeccao } from "@/app/actions/prospects";
-import { getDashboardChartData, ChartDataResponse, ChartViewMode } from "@/app/actions/dashboard";
+import { getDashboardChartData, getAvailableYears, ChartDataResponse, ChartViewMode } from "@/app/actions/dashboard";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
@@ -29,6 +29,13 @@ export default function DashboardPage() {
   const [chartView, setChartView] = useState<ChartViewMode>('Mensal');
   const [chartData, setChartData] = useState<ChartDataResponse[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+
+  // Fetch available years for dropdown
+  useEffect(() => {
+    getAvailableYears().then(setAvailableYears).catch(console.error);
+  }, []);
 
   const [yearStr, monthStr] = selectedMonth.split('-');
   const filterYear = selectedMonth ? parseInt(yearStr) : null;
@@ -52,7 +59,12 @@ export default function DashboardPage() {
   useEffect(() => {
     let mounted = true;
     setChartLoading(true);
-    getDashboardChartData(chartView, filterYear, filterMonth)
+
+    // Determina qual ano/mês passar conforme a visão
+    const yearToSend = chartView === 'Anual' ? selectedYear : filterYear;
+    const monthToSend = chartView === 'Mensal' ? filterMonth : null;
+
+    getDashboardChartData(chartView, yearToSend, monthToSend)
       .then(data => {
         if (mounted) {
           setChartData(data);
@@ -64,7 +76,7 @@ export default function DashboardPage() {
         if (mounted) setChartLoading(false);
       });
     return () => { mounted = false; };
-  }, [chartView, filterYear, filterMonth]);
+  }, [chartView, filterYear, filterMonth, selectedYear]);
 
   const maxSale = Math.max(...chartData.map(d => d.value), 100);
   const chartTotalSales = chartData.reduce((acc, curr) => acc + curr.value, 0);
@@ -106,7 +118,7 @@ export default function DashboardPage() {
   const chartTitle = chartView === 'Mensal' 
     ? monthName
     : chartView === 'Anual' 
-      ? `Ano ${filterYear || new Date().getFullYear()}`
+      ? `Ano ${selectedYear}`
       : 'Todo o Histórico';
 
   // Ticket médio
@@ -322,8 +334,23 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
-          {chartView !== 'Global' && (
+          {chartView === 'Mensal' && (
             <MonthSelector value={selectedMonth} onChange={setSelectedMonth} />
+          )}
+          {chartView === 'Anual' && (
+            <select
+              value={selectedYear}
+              onChange={e => setSelectedYear(Number(e.target.value))}
+              className="bg-white/[0.04] border border-white/[0.08] text-white text-xs font-semibold rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500/50 appearance-none cursor-pointer"
+            >
+              {availableYears.length > 0 ? (
+                availableYears.map(y => (
+                  <option key={y} value={y} className="bg-[#0f1729] text-white">{y}</option>
+                ))
+              ) : (
+                <option value={now.getFullYear()} className="bg-[#0f1729] text-white">{now.getFullYear()}</option>
+              )}
+            </select>
           )}
         </div>
       </div>
