@@ -1,12 +1,13 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowLeft, Save, ShoppingCart, User, Plus, Trash2, Package, Search, DollarSign, Sparkles, Factory, Check, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Save, ShoppingCart, User, Plus, Trash2, Package, Search, DollarSign, Sparkles, Factory, Check, AlertTriangle, Send, Loader2 } from "lucide-react";
 import { useData, Order, OrderItem } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { enviarPedidoPorEmail } from "@/app/actions/email";
 
 // Extended OrderItem to support UI state for invalid items
 interface ExtendedOrderItem extends OrderItem {
@@ -40,6 +41,7 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
     // Carregar dados do pedido
     const [dataLoaded, setDataLoaded] = useState(false);
     const [loadingError, setLoadingError] = useState<string | null>(null);
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
 
     useEffect(() => {
         if (dataLoaded || loading) return;
@@ -254,6 +256,22 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
             }
         } catch (e: any) {
             setLastError(e.message || "Erro desconhecido");
+        }
+    };
+
+    const handleSendEmail = async () => {
+        setIsSendingEmail(true);
+        try {
+            const res = await enviarPedidoPorEmail(params.id as string);
+            if (res.success) {
+                showToast(res.message || "E-mail enviado com sucesso!", "success");
+            } else {
+                showToast(res.error || "Operação falhou", "error");
+            }
+        } catch (e: any) {
+            showToast(e.message || "Erro de conexão", "error");
+        } finally {
+            setIsSendingEmail(false);
         }
     };
 
@@ -628,6 +646,24 @@ export default function EditarPedidoPage({ params }: { params: { id: string } })
                             <>
                                 <Save className="h-4 w-4" />
                                 Salvar Alterações
+                            </>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={handleSendEmail}
+                        disabled={isSendingEmail || !dataLoaded || itens.some(i => i.invalid)}
+                        className="mt-3 w-full py-2 rounded-xl border border-white/10 text-white font-medium flex items-center justify-center gap-2 hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isSendingEmail ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Enviando...
+                            </>
+                        ) : (
+                            <>
+                                <Send className="h-4 w-4" />
+                                Enviar para Fábrica
                             </>
                         )}
                     </button>
