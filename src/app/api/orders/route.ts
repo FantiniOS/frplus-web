@@ -23,7 +23,10 @@ export async function GET() {
                 cliente: true,
                 itens: true
             },
-            orderBy: { data: 'desc' }
+            orderBy: [
+                { notaFiscal: 'desc' },
+                { data: 'desc' }
+            ]
         })
 
         // Fetch all products for name lookup (safe - won't crash if some are missing)
