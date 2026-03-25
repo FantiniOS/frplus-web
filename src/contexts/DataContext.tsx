@@ -132,6 +132,7 @@ interface DataContextType {
 
     // Refresh
     refreshData: () => Promise<void>;
+    refreshOrders: (fabricaId?: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -176,6 +177,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
             console.error('Error fetching data:', error);
             showToast('Erro ao carregar dados', 'error');
+        } finally {
+            setLoading(false);
+        }
+    }, [showToast]);
+
+    // Fetch only orders (useful for filtering by factory without reloading everything)
+    const refreshOrders = useCallback(async (fabricaId?: string) => {
+        setLoading(true);
+        try {
+            const url = fabricaId && fabricaId !== 'todas' ? `/api/orders?fabricaId=${fabricaId}` : '/api/orders';
+            const ordersRes = await fetch(url, { cache: 'no-store' });
+            if (ordersRes.ok) setOrders(await ordersRes.json());
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+            showToast('Erro ao atualizar pedidos', 'error');
         } finally {
             setLoading(false);
         }
@@ -462,7 +478,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 user,
                 login,
                 logout,
-                refreshData
+                refreshData,
+                refreshOrders
             }}
         >
             {children}

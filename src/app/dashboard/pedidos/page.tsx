@@ -5,16 +5,24 @@ import { Search, Plus, Pencil, Trash2, Calendar, DollarSign, FileText, Package, 
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MonthSelector } from "@/components/ui/MonthSelector";
 
 export default function PedidosPage() {
-    const { orders, clients, removeOrder } = useData();
+    const { orders, fabricas, removeOrder, refreshOrders } = useData();
     const { isIndustria } = useAuth();
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
     const [tipoFilter, setTipoFilter] = useState<string>('todos');
+
+    // State for Fabrica Filter
+    const [selectedFabrica, setSelectedFabrica] = useState<string>('todas');
+
+    // Fetch orders when selectedFabrica changes
+    useEffect(() => {
+        refreshOrders(selectedFabrica);
+    }, [selectedFabrica, refreshOrders]);
 
     // State for Month Filter
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -98,6 +106,35 @@ export default function PedidosPage() {
                     )}
                 </div>
             </div>
+
+            {/* ═══════════ FABRICA TABS (Representada) ═══════════ */}
+            {!isIndustria && fabricas.length > 0 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    <button
+                        onClick={() => setSelectedFabrica('todas')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                            selectedFabrica === 'todas'
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200'
+                        }`}
+                    >
+                        Todas as Representadas
+                    </button>
+                    {fabricas.map((fab) => (
+                        <button
+                            key={fab.id}
+                            onClick={() => setSelectedFabrica(fab.id)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                                selectedFabrica === fab.id
+                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200'
+                            }`}
+                        >
+                            {fab.nome}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* ═══════════ FILTER BAR ═══════════ */}
             <div className="relative z-50 flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06] backdrop-blur-sm">

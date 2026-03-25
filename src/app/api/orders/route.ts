@@ -5,17 +5,24 @@ import { getServerUser } from '@/lib/getServerUser'
 export const dynamic = 'force-dynamic'
 
 // GET /api/orders - List all orders
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const user = await getServerUser()
         if (!user) {
             return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
         }
 
+        const url = new URL(request.url)
+        const filterFabricaId = url.searchParams.get('fabricaId')
+
         // Se for indústria atrelada a uma fábrica, filtra pedidos
-        const whereClause = user.role === 'industria' && user.fabricaId
+        const whereClause: any = user.role === 'industria' && user.fabricaId
             ? { fabricaId: user.fabricaId }
             : {}
+            
+        if (filterFabricaId && filterFabricaId !== 'todas') {
+            whereClause.fabricaId = filterFabricaId
+        }
 
         const orders = await prisma.pedido.findMany({
             where: whereClause,
