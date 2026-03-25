@@ -10,14 +10,15 @@ datasource db {
 }
 
 model Fabrica {
-  id           String    @id @default(cuid())
-  nome         String
-  taxaComissao Float     @default(0)
-  produtos     Produto[]
-  pedidos      Pedido[]
-  usuarios     Usuario[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  nome             String
+  taxaComissao     Float     @default(0)
+  emailFaturamento String?
+  produtos         Produto[]
+  pedidos          Pedido[]
+  usuarios         Usuario[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model Produto {

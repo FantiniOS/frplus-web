@@ -10,10 +10,14 @@ export default function EditarFabricaPage({ params }: { params: { id: string } }
     const { fabricas, updateFabrica, showToast } = useData();
     const router = useRouter();
     const [nome, setNome] = useState("");
+    const [emailFaturamento, setEmailFaturamento] = useState("");
 
     useEffect(() => {
         const found = fabricas.find(f => f.id === params.id);
-        if (found) setNome(found.nome);
+        if (found) {
+            setNome(found.nome);
+            if (found.emailFaturamento) setEmailFaturamento(found.emailFaturamento);
+        }
     }, [fabricas, params.id]);
 
     const handleSave = () => {
@@ -21,7 +25,10 @@ export default function EditarFabricaPage({ params }: { params: { id: string } }
             showToast("Digite o nome da fábrica", "error");
             return;
         }
-        updateFabrica(params.id, { nome: nome.trim() });
+        updateFabrica(params.id, { 
+            nome: nome.trim(),
+            emailFaturamento: emailFaturamento.trim() || undefined
+        });
         router.push('/dashboard/fabricas');
     };
 
@@ -57,6 +64,17 @@ export default function EditarFabricaPage({ params }: { params: { id: string } }
                         onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                         className="input-compact"
                         autoFocus
+                    />
+                </div>
+                <div className="pt-2">
+                    <label className="label-compact">E-mail de Faturamento</label>
+                    <input
+                        type="email"
+                        value={emailFaturamento}
+                        onChange={(e) => setEmailFaturamento(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                        placeholder="Ex: faturamento@fabrica.com"
+                        className="input-compact"
                     />
                 </div>
             </div>

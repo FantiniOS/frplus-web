@@ -17,6 +17,7 @@ export async function GET() {
             id: f.id,
             nome: f.nome,
             taxaComissao: f.taxaComissao,
+            emailFaturamento: f.emailFaturamento,
             produtosCount: f._count.produtos
         }))
 
@@ -34,7 +35,8 @@ export async function POST(request: Request) {
 
         const fabrica = await prisma.fabrica.create({
             data: {
-                nome: body.nome
+                nome: body.nome,
+                emailFaturamento: body.emailFaturamento
             }
         })
 

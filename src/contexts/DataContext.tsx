@@ -36,6 +36,7 @@ export interface Fabrica {
     id: string;
     nome: string;
     taxaComissao: number;
+    emailFaturamento?: string;
     produtosCount?: number;
 }
 

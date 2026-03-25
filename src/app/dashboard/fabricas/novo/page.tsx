@@ -10,6 +10,7 @@ export default function NovaFabricaPage() {
     const { addFabrica, showToast } = useData();
     const router = useRouter();
     const [nome, setNome] = useState("");
+    const [emailFaturamento, setEmailFaturamento] = useState("");
     const [loading, setLoading] = useState(false);
 
     const handleSave = async () => {
@@ -23,6 +24,7 @@ export default function NovaFabricaPage() {
         const newFabrica: Fabrica = {
             id: Date.now().toString(),
             nome: nome.trim(),
+            emailFaturamento: emailFaturamento.trim() || undefined,
             taxaComissao: 0
         };
 
@@ -74,6 +76,18 @@ export default function NovaFabricaPage() {
                         placeholder="Ex: Coca-Cola, Nestlé..."
                         className="input-compact"
                         autoFocus
+                        disabled={loading}
+                    />
+                </div>
+                <div className="pt-2">
+                    <label className="label-compact">E-mail de Faturamento</label>
+                    <input
+                        type="email"
+                        value={emailFaturamento}
+                        onChange={(e) => setEmailFaturamento(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && !loading && handleSave()}
+                        placeholder="Ex: faturamento@fabrica.com"
+                        className="input-compact"
                         disabled={loading}
                     />
                 </div>

@@ -31,6 +31,7 @@ export async function PUT(request: Request, { params }: Params) {
 
         const data: Record<string, any> = {}
         if (body.nome !== undefined) data.nome = body.nome
+        if (body.emailFaturamento !== undefined) data.emailFaturamento = body.emailFaturamento
         if (body.taxaComissao !== undefined) {
             const parsed = parseFloat(body.taxaComissao)
             if (isNaN(parsed) || parsed < 0 || parsed > 100) {
