@@ -75,9 +75,8 @@ export function VisitasCalendar({ year, month, clientes = [] }: VisitasCalendarP
 
     setSubmitting(true);
     try {
-      const datePart = new Date(internalYear, internalMonth, selectedDate);
       const [hours, minutes] = hora.split(':').map(Number);
-      datePart.setHours(hours, minutes, 0, 0);
+      const datePart = new Date(Date.UTC(internalYear, internalMonth, selectedDate, hours, minutes, 0, 0));
 
       let res;
       if (editingVisitaId) {
