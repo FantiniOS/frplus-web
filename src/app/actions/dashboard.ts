@@ -30,7 +30,7 @@ export async function getDashboardChartData(
     const whereClause: any = {
         status: { notIn: ['Cancelado'] },
         OR: [
-            { tipo: { not: 'Bonificacao' } },
+            { tipo: { not: { contains: 'onifica', mode: 'insensitive' } } },
             { tipo: null }
         ]
     }
@@ -166,7 +166,7 @@ export async function getAvailableYears(): Promise<number[]> {
     const whereClause: any = {
         status: { notIn: ['Cancelado'] },
         OR: [
-            { tipo: { not: 'Bonificacao' } },
+            { tipo: { not: { contains: 'onifica', mode: 'insensitive' } } },
             { tipo: null }
         ]
     }
