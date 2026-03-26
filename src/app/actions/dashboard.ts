@@ -29,10 +29,7 @@ export async function getDashboardChartData(
 
     const whereClause: any = {
         status: { notIn: ['Cancelado'] },
-        OR: [
-            { tipo: { not: { contains: 'onifica', mode: 'insensitive' } } },
-            { tipo: null }
-        ]
+        tipo: { equals: 'Venda', mode: 'insensitive' }
     }
 
     if (user.role === 'industria' && user.fabricaId) {
@@ -60,6 +57,7 @@ export async function getDashboardChartData(
             where: whereClause,
             select: { data: true, valorTotal: true }
         })
+        console.log('Pedidos do Gráfico:', orders.length)
 
         const days = getDaysInMonth(year, month)
         const dailyMap = new Map<number, number>()
@@ -100,6 +98,7 @@ export async function getDashboardChartData(
             where: whereClause,
             select: { data: true, valorTotal: true }
         })
+        console.log('Pedidos do Gráfico:', orders.length)
 
         const monthlyMap = new Map<number, number>()
         orders.forEach(o => {
@@ -130,6 +129,7 @@ export async function getDashboardChartData(
             select: { data: true, valorTotal: true },
             orderBy: { data: 'asc' }
         })
+        console.log('Pedidos do Gráfico:', orders.length)
 
         const yearlyMap = new Map<number, number>()
         let minYear = nowYear
@@ -165,10 +165,7 @@ export async function getAvailableYears(): Promise<number[]> {
 
     const whereClause: any = {
         status: { notIn: ['Cancelado'] },
-        OR: [
-            { tipo: { not: { contains: 'onifica', mode: 'insensitive' } } },
-            { tipo: null }
-        ]
+        tipo: { equals: 'Venda', mode: 'insensitive' }
     }
     if (user.role === 'industria' && user.fabricaId) {
         whereClause.fabricaId = user.fabricaId
