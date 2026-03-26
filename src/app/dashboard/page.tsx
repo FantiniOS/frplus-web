@@ -49,9 +49,9 @@ export default function DashboardPage() {
 
   const stats = {
     totalSales: monthlyOrders
-      .filter(o => o.tipo !== 'Bonificacao')
+      .filter(o => o.tipo !== 'Bonificacao' && o.status !== 'Cancelado')
       .reduce((acc, o) => acc + o.valorTotal, 0),
-    totalOrders: monthlyOrders.length,
+    totalOrders: monthlyOrders.filter(o => o.status !== 'Cancelado').length,
     newClients: clients.length,
     totalProducts: products.length
   };
@@ -166,7 +166,7 @@ export default function DashboardPage() {
 
   const comissaoFaturada = useMemo(() =>
     monthlyOrders
-      .filter(o => o.tipo !== 'Bonificacao')
+      .filter(o => o.tipo !== 'Bonificacao' && o.status !== 'Cancelado')
       .reduce((acc, pedido) => {
         let fabId = pedido.fabricaId;
 

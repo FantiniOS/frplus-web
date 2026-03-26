@@ -28,7 +28,11 @@ export async function getDashboardChartData(
     }
 
     const whereClause: any = {
-        status: { notIn: ['Cancelado'] }
+        status: { notIn: ['Cancelado'] },
+        OR: [
+            { tipo: { not: 'Bonificacao' } },
+            { tipo: null }
+        ]
     }
 
     if (user.role === 'industria' && user.fabricaId) {
@@ -159,7 +163,13 @@ export async function getAvailableYears(): Promise<number[]> {
     const user = await getServerUser()
     if (!user) return []
 
-    const whereClause: any = { status: { notIn: ['Cancelado'] } }
+    const whereClause: any = {
+        status: { notIn: ['Cancelado'] },
+        OR: [
+            { tipo: { not: 'Bonificacao' } },
+            { tipo: null }
+        ]
+    }
     if (user.role === 'industria' && user.fabricaId) {
         whereClause.fabricaId = user.fabricaId
     }
