@@ -262,10 +262,7 @@ export default function TabelaPDFSection({ clienteId, clienteNome, clienteRazaoS
                 },
                 foot: [['', `${produtos.length} produto${produtos.length !== 1 ? 's' : ''}`, fabrica.nome, tabelaConfig.label]],
                 footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
-                margin: { left: margin.left, right: margin.right },
-                didDrawPage: (data: { pageNumber: number }) => {
-                    if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
-                }
+                margin: { top: 30, bottom: 20, left: margin.left, right: margin.right }
             });
 
             const pageCount = doc.getNumberOfPages();
