@@ -239,7 +239,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
 
             // 2. Dynamic import jsPDF (client-side only)
             const { default: jsPDF } = await import('jspdf');
-            const autoTable = (await import('jspdf-autotable')).default;
+            const { default: autoTable } = await import('jspdf-autotable');
 
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const pageWidth = doc.internal.pageSize.getWidth();
@@ -382,7 +382,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                 `R$ ${Number(p[priceField]).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             ]);
 
-            (doc as any).autoTable({
+            autoTable(doc, {
                 startY: yPos,
                 head: [['CÓDIGO', 'PRODUTO', 'CATEGORIA', 'PREÇO UNIT.']],
                 body: tableData,
@@ -428,7 +428,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
             });
 
             // Count summary after table
-            const finalY = (doc as any).lastAutoTable?.finalY || yPos + 20;
+            const finalY = (doc as any).previousAutoTable?.finalY || yPos + 20;
             if (finalY + 12 < pageHeight - 15) {
                 doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
                 doc.roundedRect(margin, finalY + 4, pageWidth - (margin * 2), 10, 2, 2, 'F');
