@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import TabelaPDFSection from "@/components/TabelaPDFSection";
 
 export default function ClientesPage() {
   const { removeClient } = useData();
@@ -280,6 +281,18 @@ export default function ClientesPage() {
                             <p className="text-white">{cliente.inscricaoEstadual || 'Isento'}</p>
                           </div>
                         </div>
+
+                        {/* Tabela de Preços PDF — Read-Only View Only */}
+                        {!isIndustria && (
+                          <div className="md:col-span-3">
+                            <TabelaPDFSection
+                              clienteId={cliente.id}
+                              clienteNome={cliente.nomeFantasia || ''}
+                              clienteRazaoSocial={cliente.razaoSocial || ''}
+                              tabelaPreco={cliente.tabelaPreco || '50a199'}
+                            />
+                          </div>
+                        )}
                       </motion.div>
                     </td>
                   </tr>
