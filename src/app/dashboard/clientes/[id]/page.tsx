@@ -1,16 +1,32 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowLeft, Save, Building2, MapPin, DollarSign, Search, Loader2, User, CalendarPlus, X } from "lucide-react";
+import { ArrowLeft, Save, Building2, MapPin, DollarSign, Search, Loader2, User, CalendarPlus, X, FileText, Download, Clock, Factory } from "lucide-react";
 import { useData, Client } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { agendarVisita } from "@/app/actions/visitas";
+import { getHistoricoTabela, registrarEnvioTabela } from "@/app/actions/tabelaPreco";
+
+// Price table mapping
+const TABELA_PRECO_MAP: Record<string, { field: string; label: string }> = {
+    '50a199': { field: 'preco50a199', label: '50 a 199 CX' },
+    '200a699': { field: 'preco200a699', label: '200 a 699 CX' },
+    'atacado': { field: 'precoAtacado', label: 'Atacado' },
+    'atacadoAVista': { field: 'precoAtacadoAVista', label: 'Atacado à Vista' },
+    'redes': { field: 'precoRedes', label: 'Redes' },
+};
+
+interface HistoricoItem {
+    representadaId: string;
+    representadaNome: string;
+    dataGeracao: Date | string;
+}
 
 export default function EditarClientePage({ params }: { params: { id: string } }) {
-    const { clients, updateClient, showToast } = useData();
+    const { clients, fabricas, updateClient, showToast } = useData();
     const { isIndustria } = useAuth();
     const router = useRouter();
     const [formData, setFormData] = useState<Partial<Client>>({});
@@ -24,6 +40,16 @@ export default function EditarClientePage({ params }: { params: { id: string } }
     const [obsVisita, setObsVisita] = useState('');
     const [loadingVisita, setLoadingVisita] = useState(false);
 
+    // Historico Tabela State
+    const [historico, setHistorico] = useState<HistoricoItem[]>([]);
+    const [loadingHistorico, setLoadingHistorico] = useState(true);
+
+    // Modal Gerar PDF State
+    const [showModalPDF, setShowModalPDF] = useState(false);
+    const [selectedFabricaId, setSelectedFabricaId] = useState('');
+    const [comunicado, setComunicado] = useState('');
+    const [loadingPDF, setLoadingPDF] = useState(false);
+
     useEffect(() => {
         if (isIndustria) {
             router.push('/dashboard/clientes');
@@ -34,6 +60,26 @@ export default function EditarClientePage({ params }: { params: { id: string } }
         const client = clients.find(c => c.id === params.id);
         if (client) setFormData(client);
     }, [clients, params.id]);
+
+    // Fetch historico
+    const fetchHistorico = useCallback(async () => {
+        if (!params.id) return;
+        setLoadingHistorico(true);
+        try {
+            const res = await getHistoricoTabela(params.id);
+            if (res.success && res.historicos) {
+                setHistorico(res.historicos);
+            }
+        } catch (err) {
+            console.error('Erro ao buscar histórico:', err);
+        } finally {
+            setLoadingHistorico(false);
+        }
+    }, [params.id]);
+
+    useEffect(() => {
+        fetchHistorico();
+    }, [fetchHistorico]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -156,6 +202,280 @@ export default function EditarClientePage({ params }: { params: { id: string } }
         } finally {
             setLoadingVisita(false);
         }
+    };
+
+    // ===== PDF GENERATION =====
+    const handleGerarPDF = async () => {
+        if (!selectedFabricaId) {
+            showToast("Selecione uma Representada", "error");
+            return;
+        }
+
+        const fabrica = fabricas.find(f => f.id === selectedFabricaId);
+        if (!fabrica) {
+            showToast("Representada não encontrada", "error");
+            return;
+        }
+
+        const tabelaPreco = formData.tabelaPreco || '50a199';
+        const tabelaConfig = TABELA_PRECO_MAP[tabelaPreco];
+        if (!tabelaConfig) {
+            showToast("Tabela de preço do cliente não configurada", "error");
+            return;
+        }
+
+        setLoadingPDF(true);
+        try {
+            // 1. Fetch products
+            const res = await fetch(`/api/products/by-fabrica?fabricaId=${selectedFabricaId}`, { cache: 'no-store' });
+            if (!res.ok) throw new Error('Erro ao buscar produtos');
+            const produtos = await res.json();
+
+            if (!produtos.length) {
+                showToast("Nenhum produto ativo encontrado para esta Representada", "error");
+                setLoadingPDF(false);
+                return;
+            }
+
+            // 2. Dynamic import jsPDF (client-side only)
+            const { default: jsPDF } = await import('jspdf');
+            const autoTable = (await import('jspdf-autotable')).default;
+
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 15;
+            let yPos = margin;
+
+            // ===== COLORS =====
+            const primaryBlue = [15, 23, 42];     // dark navy
+            const accentBlue = [59, 130, 246];     // bright blue
+            const lightGray = [248, 250, 252];     // very light bg
+            const darkText = [30, 41, 59];         // near black
+            const mutedText = [100, 116, 139];     // gray text
+            const greenAccent = [16, 185, 129];    // emerald
+
+            // ===== HEADER BAR =====
+            doc.setFillColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+            doc.rect(0, 0, pageWidth, 36, 'F');
+
+            // Gradient accent line
+            doc.setFillColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+            doc.rect(0, 36, pageWidth, 1.5, 'F');
+
+            // Logo
+            try {
+                const logoImg = new Image();
+                logoImg.src = '/logo.png';
+                await new Promise<void>((resolve, reject) => {
+                    logoImg.onload = () => resolve();
+                    logoImg.onerror = () => reject();
+                    setTimeout(() => resolve(), 2000);
+                });
+
+                const canvas = document.createElement('canvas');
+                canvas.width = logoImg.naturalWidth;
+                canvas.height = logoImg.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(logoImg, 0, 0);
+                    const logoBase64 = canvas.toDataURL('image/png');
+                    doc.addImage(logoBase64, 'PNG', margin, 6, 28, 24);
+                }
+            } catch {
+                // Fallback text if logo fails
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(20);
+                doc.setFont('helvetica', 'bold');
+                doc.text('FRPLUS', margin, 22);
+            }
+
+            // Header text
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text(fabrica.nome.toUpperCase(), margin + 35, 16);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(180, 200, 230);
+            doc.text('TABELA DE PREÇOS', margin + 35, 23);
+            
+            // Date on the right
+            const dataFormatada = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+            doc.setFontSize(8);
+            doc.setTextColor(150, 170, 200);
+            doc.text(dataFormatada, pageWidth - margin, 30, { align: 'right' });
+
+            yPos = 44;
+
+            // ===== COMUNICADO BOX (Conditional) =====
+            if (comunicado.trim()) {
+                const commPadding = 4;
+                // Blue highlight box
+                doc.setFillColor(239, 246, 255); // light blue bg
+                doc.setDrawColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+                
+                doc.setFontSize(9);
+                const commLines = doc.splitTextToSize(comunicado.trim(), pageWidth - (margin * 2) - (commPadding * 2) - 14);
+                const commBoxHeight = Math.max(16, (commLines.length * 4.5) + (commPadding * 2) + 4);
+                
+                doc.roundedRect(margin, yPos, pageWidth - (margin * 2), commBoxHeight, 2, 2, 'FD');
+                
+                // Icon indicator
+                doc.setFillColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+                doc.roundedRect(margin + 3, yPos + 3, 8, commBoxHeight - 6, 1, 1, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'bold');
+                doc.text('!', margin + 7, yPos + (commBoxHeight / 2) + 1, { align: 'center' });
+                
+                // Title
+                doc.setTextColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'bold');
+                doc.text('COMUNICADO', margin + 15, yPos + commPadding + 4);
+                
+                // Message
+                doc.setTextColor(darkText[0], darkText[1], darkText[2]);
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.text(commLines, margin + 15, yPos + commPadding + 10);
+                
+                yPos += commBoxHeight + 6;
+            }
+
+            // ===== DESTINATÁRIO =====
+            const clienteNome = formData.nomeFantasia || formData.razaoSocial || 'Cliente';
+            
+            doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+            doc.roundedRect(margin, yPos, pageWidth - (margin * 2), 18, 2, 2, 'F');
+            
+            doc.setFontSize(7);
+            doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+            doc.setFont('helvetica', 'normal');
+            doc.text('PREPARADO EXCLUSIVAMENTE PARA', margin + 5, yPos + 6);
+            
+            doc.setFontSize(13);
+            doc.setTextColor(darkText[0], darkText[1], darkText[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.text(clienteNome, margin + 5, yPos + 13.5);
+            
+            // Tabela badge on the right
+            doc.setFillColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+            const badgeText = `Tabela: ${tabelaConfig.label}`;
+            const badgeWidth = doc.getTextWidth(badgeText) + 8;
+            doc.roundedRect(pageWidth - margin - badgeWidth - 3, yPos + 4, badgeWidth + 2, 9, 2, 2, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.text(badgeText, pageWidth - margin - badgeWidth + 1, yPos + 10);
+            
+            yPos += 24;
+
+            // ===== TABELA DE PRODUTOS =====
+            const priceField = tabelaConfig.field as string;
+            
+            const tableData = produtos.map((p: any, idx: number) => [
+                p.codigo,
+                p.nome,
+                p.categoria || 'Geral',
+                `R$ ${Number(p[priceField]).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            ]);
+
+            (doc as any).autoTable({
+                startY: yPos,
+                head: [['CÓDIGO', 'PRODUTO', 'CATEGORIA', 'PREÇO UNIT.']],
+                body: tableData,
+                margin: { left: margin, right: margin },
+                theme: 'plain',
+                styles: {
+                    fontSize: 8.5,
+                    cellPadding: { top: 3, right: 4, bottom: 3, left: 4 },
+                    textColor: [darkText[0], darkText[1], darkText[2]],
+                    lineColor: [226, 232, 240],
+                    lineWidth: 0.1,
+                    font: 'helvetica',
+                },
+                headStyles: {
+                    fillColor: [primaryBlue[0], primaryBlue[1], primaryBlue[2]],
+                    textColor: [255, 255, 255],
+                    fontSize: 7.5,
+                    fontStyle: 'bold',
+                    cellPadding: { top: 4, right: 4, bottom: 4, left: 4 },
+                    halign: 'left',
+                },
+                columnStyles: {
+                    0: { cellWidth: 25, fontStyle: 'bold' },
+                    1: { cellWidth: 'auto' },
+                    2: { cellWidth: 30, textColor: [mutedText[0], mutedText[1], mutedText[2]], fontSize: 7.5 },
+                    3: { cellWidth: 30, halign: 'right', fontStyle: 'bold', textColor: [greenAccent[0], greenAccent[1], greenAccent[2]] },
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252],
+                },
+                didDrawPage: function (data: any) {
+                    // Footer on every page
+                    const footerY = pageHeight - 10;
+                    doc.setDrawColor(226, 232, 240);
+                    doc.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
+                    
+                    doc.setFontSize(7);
+                    doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Documento gerado por FRPlus — Sistema de Gestão Comercial', margin, footerY);
+                    doc.text(`Página ${doc.getCurrentPageInfo().pageNumber}`, pageWidth - margin, footerY, { align: 'right' });
+                }
+            });
+
+            // Count summary after table
+            const finalY = (doc as any).lastAutoTable?.finalY || yPos + 20;
+            if (finalY + 12 < pageHeight - 15) {
+                doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+                doc.roundedRect(margin, finalY + 4, pageWidth - (margin * 2), 10, 2, 2, 'F');
+                doc.setFontSize(8);
+                doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Total de ${produtos.length} produto${produtos.length !== 1 ? 's' : ''} • ${fabrica.nome} • ${tabelaConfig.label}`, margin + 5, finalY + 10.5);
+            }
+
+            // 3. Download
+            const nomeArquivo = `Tabela_${fabrica.nome.replace(/\s+/g, '_')}_${clienteNome.replace(/\s+/g, '_')}.pdf`;
+            doc.save(nomeArquivo);
+
+            showToast(`PDF "${nomeArquivo}" gerado com sucesso!`, "success");
+
+            // 4. Register in background (fire-and-forget + optimistic update)
+            const agora = new Date();
+            setHistorico(prev => {
+                const filtered = prev.filter(h => h.representadaId !== selectedFabricaId);
+                return [...filtered, {
+                    representadaId: selectedFabricaId,
+                    representadaNome: fabrica.nome,
+                    dataGeracao: agora
+                }];
+            });
+
+            registrarEnvioTabela(params.id, selectedFabricaId).catch(err => {
+                console.error('Erro ao registrar envio:', err);
+            });
+
+            // Close modal
+            setShowModalPDF(false);
+            setSelectedFabricaId('');
+            setComunicado('');
+
+        } catch (error) {
+            console.error('Erro ao gerar PDF:', error);
+            showToast("Erro ao gerar o PDF. Tente novamente.", "error");
+        } finally {
+            setLoadingPDF(false);
+        }
+    };
+
+    // Format date for badges
+    const formatDate = (d: Date | string) => {
+        const date = new Date(d);
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
     return (
@@ -335,6 +655,66 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                 </div>
             </form>
 
+            {/* ===== SEÇÃO: TABELA DE PREÇOS / ÚLTIMOS ENVIOS ===== */}
+            <div className="form-card">
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-cyan-400" />
+                        <span className="text-sm font-medium text-white">Tabela de Preços — Últimos Envios</span>
+                    </div>
+                    <button
+                        onClick={() => setShowModalPDF(true)}
+                        className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg shadow-cyan-900/30"
+                    >
+                        <Download className="h-4 w-4" /> Gerar Tabela PDF
+                    </button>
+                </div>
+
+                {/* Badges de histórico */}
+                {loadingHistorico ? (
+                    <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Carregando histórico...
+                    </div>
+                ) : (
+                    <div className="flex flex-wrap gap-2">
+                        {fabricas.map(fab => {
+                            const entry = historico.find(h => h.representadaId === fab.id);
+                            const hasEntry = !!entry;
+
+                            return (
+                                <div
+                                    key={fab.id}
+                                    className={`
+                                        flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
+                                        transition-all duration-200
+                                        ${hasEntry
+                                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                                            : 'bg-white/5 text-gray-500 border border-white/5'
+                                        }
+                                    `}
+                                >
+                                    <Factory className="h-3 w-3" />
+                                    <span className={hasEntry ? 'text-emerald-300' : 'text-gray-400'}>
+                                        {fab.nome}:
+                                    </span>
+                                    <span>
+                                        {hasEntry
+                                            ? formatDate(entry.dataGeracao)
+                                            : 'Nunca enviado'
+                                        }
+                                    </span>
+                                    {hasEntry && <Clock className="h-3 w-3 ml-0.5 opacity-50" />}
+                                </div>
+                            );
+                        })}
+
+                        {fabricas.length === 0 && (
+                            <span className="text-gray-500 text-xs">Nenhuma representada cadastrada</span>
+                        )}
+                    </div>
+                )}
+            </div>
+
             {/* ===== MODAL AGENDAR VISITA ===== */}
             {showModalVisita && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -410,6 +790,116 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* ===== MODAL GERAR TABELA DE PREÇO PDF ===== */}
+            {showModalPDF && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !loadingPDF && setShowModalPDF(false)} />
+                    
+                    <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] shadow-2xl shadow-black/50 animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20">
+                                    <FileText className="h-5 w-5 text-cyan-400" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-white">Gerar Tabela de Preço</h3>
+                                    <p className="text-xs text-gray-400">
+                                        {formData.nomeFantasia || formData.razaoSocial || 'Cliente'} — {TABELA_PRECO_MAP[formData.tabelaPreco || '50a199']?.label || '50 a 199 CX'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => !loadingPDF && setShowModalPDF(false)}
+                                className="p-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400 hover:text-white"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-5 space-y-4">
+                            {/* Select Representada */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-gray-300">Representada *</label>
+                                <select
+                                    value={selectedFabricaId}
+                                    onChange={(e) => setSelectedFabricaId(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                                >
+                                    <option value="">Selecione a representada...</option>
+                                    {fabricas.map(f => (
+                                        <option key={f.id} value={f.id} className="bg-[#0f1729] text-white">{f.nome}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Last send info */}
+                            {selectedFabricaId && (() => {
+                                const entry = historico.find(h => h.representadaId === selectedFabricaId);
+                                return (
+                                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${entry ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                                        <Clock className="h-3.5 w-3.5" />
+                                        {entry
+                                            ? `Último envio: ${formatDate(entry.dataGeracao)}`
+                                            : 'Nenhuma tabela enviada para esta representada'
+                                        }
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Comunicado */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-gray-300">Comunicado / Motivo <span className="text-gray-500">(Opcional)</span></label>
+                                <textarea
+                                    rows={3}
+                                    value={comunicado}
+                                    onChange={(e) => setComunicado(e.target.value)}
+                                    placeholder="Ex: Novos preços válidos a partir de abril/2026..."
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 resize-none placeholder:text-gray-600"
+                                />
+                                {comunicado.trim() && (
+                                    <p className="text-[10px] text-cyan-400/60 flex items-center gap-1">
+                                        ✦ O comunicado aparecerá em destaque no topo do PDF
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 p-5 border-t border-white/[0.06] bg-black/20 rounded-b-2xl">
+                            <button
+                                type="button"
+                                onClick={() => !loadingPDF && setShowModalPDF(false)}
+                                disabled={loadingPDF}
+                                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/5 transition-colors disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleGerarPDF}
+                                disabled={loadingPDF || !selectedFabricaId}
+                                className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-900/30"
+                            >
+                                {loadingPDF ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Gerando PDF...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Download className="h-4 w-4" />
+                                        Gerar e Baixar PDF
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>,
                 document.body

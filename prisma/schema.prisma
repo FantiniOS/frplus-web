@@ -16,6 +16,7 @@ model Fabrica {
   emailFaturamento String?
   produtos         Produto[]
   pedidos          Pedido[]
+  historicoTabelas HistoricoTabela[]
   usuarios         Usuario[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -62,6 +63,7 @@ model Cliente {
   observacoes       String?
   pedidos           Pedido[]
   verbas            Verba[]
+  historicoTabelas  HistoricoTabela[]
   visitas           Visita[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
@@ -160,4 +162,13 @@ model Visita {
   observacoes String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model HistoricoTabela {
+  id             String   @id @default(cuid())
+  clienteId      String
+  cliente        Cliente  @relation(fields: [clienteId], references: [id])
+  representadaId String
+  representada   Fabrica  @relation(fields: [representadaId], references: [id])
+  dataGeracao    DateTime @default(now())
 }
