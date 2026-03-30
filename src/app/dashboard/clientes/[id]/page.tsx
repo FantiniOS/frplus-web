@@ -204,7 +204,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
         }
     };
 
-    // ===== PDF GENERATION =====
+    // ===== PDF GENERATION (matching relatorios/verbas pattern) =====
     const handleGerarPDF = async () => {
         if (!selectedFabricaId) {
             showToast("Selecione uma Representada", "error");
@@ -237,206 +237,232 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                 return;
             }
 
-            // 2. Dynamic import jsPDF (client-side only)
-            const { default: jsPDF } = await import('jspdf');
-            // Side-effect import: patches jsPDF.prototype.autoTable
-            await import('jspdf-autotable');
+            // 2. Dynamic import jsPDF (same pattern as relatorios/verbas)
+            const jsPDF = (await import('jspdf')).default;
+            const autoTable = (await import('jspdf-autotable')).default;
 
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
-            const margin = 15;
-            let yPos = margin;
+            const margin = { left: 14, right: 14 };
+            const contentWidth = pageWidth - margin.left - margin.right;
 
-            // ===== COLORS =====
-            const primaryBlue = [15, 23, 42];     // dark navy
-            const accentBlue = [59, 130, 246];     // bright blue
-            const lightGray = [248, 250, 252];     // very light bg
-            const darkText = [30, 41, 59];         // near black
-            const mutedText = [100, 116, 139];     // gray text
-            const greenAccent = [16, 185, 129];    // emerald
+            // ===== PREMIUM COLOR PALETTE (same as relatorios) =====
+            const colors = {
+                headerDark: [10, 10, 14] as [number, number, number],
+                accentBlue: [37, 99, 235] as [number, number, number],
+                accentCyan: [6, 182, 212] as [number, number, number],
+                textDark: [20, 20, 30] as [number, number, number],
+                textMuted: [120, 120, 140] as [number, number, number],
+                textLight: [200, 200, 220] as [number, number, number],
+                white: [255, 255, 255] as [number, number, number],
+                rowEven: [250, 251, 254] as [number, number, number],
+                greenAccent: [16, 185, 129] as [number, number, number],
+                tableBorder: [226, 232, 240] as [number, number, number],
+                factoryBg: [235, 238, 248] as [number, number, number],
+                factoryAccent: [30, 64, 175] as [number, number, number],
+            };
 
-            // ===== HEADER BAR =====
-            doc.setFillColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
-            doc.rect(0, 0, pageWidth, 36, 'F');
-
-            // Gradient accent line
-            doc.setFillColor(accentBlue[0], accentBlue[1], accentBlue[2]);
-            doc.rect(0, 36, pageWidth, 1.5, 'F');
-
-            // Logo
-            try {
-                const logoImg = new Image();
-                logoImg.src = '/logo.png';
-                await new Promise<void>((resolve, reject) => {
-                    logoImg.onload = () => resolve();
-                    logoImg.onerror = () => reject();
-                    setTimeout(() => resolve(), 2000);
+            // ===== LOGO LOADER (same as relatorios) =====
+            const loadLogo = (): Promise<{ data: string; width: number; height: number } | null> => {
+                return new Promise((resolve) => {
+                    const logoImg = new Image();
+                    logoImg.crossOrigin = 'anonymous';
+                    logoImg.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = logoImg.width;
+                        canvas.height = logoImg.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx?.drawImage(logoImg, 0, 0);
+                        resolve({ data: canvas.toDataURL('image/png'), width: logoImg.width, height: logoImg.height });
+                    };
+                    logoImg.onerror = () => resolve(null);
+                    logoImg.src = '/logo.png';
                 });
+            };
 
-                const canvas = document.createElement('canvas');
-                canvas.width = logoImg.naturalWidth;
-                canvas.height = logoImg.naturalHeight;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    ctx.drawImage(logoImg, 0, 0);
-                    const logoBase64 = canvas.toDataURL('image/png');
-                    doc.addImage(logoBase64, 'PNG', margin, 6, 28, 24);
+            const logoResult = await loadLogo();
+            const logoData = logoResult?.data || null;
+
+            // ===== DRAW PREMIUM HEADER (same as relatorios) =====
+            const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
+                const headerHeight = 38;
+
+                pageDoc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
+                pageDoc.rect(0, 0, pageWidth, headerHeight, 'F');
+
+                pageDoc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                pageDoc.rect(0, headerHeight, pageWidth, 1.5, 'F');
+                pageDoc.setFillColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
+                pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.5, 'F');
+
+                // Logo with correct aspect ratio
+                if (logoData) {
+                    try {
+                        const logoH = 19.5;
+                        let logoW = 19.5;
+                        if (logoResult) {
+                            const aspect = logoResult.width / logoResult.height;
+                            logoW = logoH * aspect;
+                        }
+                        pageDoc.addImage(logoData, 'PNG', margin.left, 6, logoW, logoH);
+                    } catch { /* ignore logo errors */ }
                 }
-            } catch {
-                // Fallback text if logo fails
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(20);
-                doc.setFont('helvetica', 'bold');
-                doc.text('FRPLUS', margin, 22);
-            }
 
-            // Header text
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.text(fabrica.nome.toUpperCase(), margin + 35, 16);
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(180, 200, 230);
-            doc.text('TABELA DE PREÇOS', margin + 35, 23);
-            
-            // Date on the right
-            const dataFormatada = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-            doc.setFontSize(8);
-            doc.setTextColor(150, 170, 200);
-            doc.text(dataFormatada, pageWidth - margin, 30, { align: 'right' });
+                // Report title - right-aligned
+                pageDoc.setFontSize(13);
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.setTextColor(255, 255, 255);
+                pageDoc.text(`Tabela de Preços — ${fabrica.nome}`, pageWidth - margin.right, 14, { align: 'right' });
 
-            yPos = 44;
+                pageDoc.setFontSize(7);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+                const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                pageDoc.text(`Emitido em ${dateStr}`, pageWidth - margin.right, 20, { align: 'right' });
+
+                if (pageNum > 1) {
+                    pageDoc.setFontSize(7);
+                    pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                    pageDoc.text('(Continuação)', pageWidth - margin.right, 25, { align: 'right' });
+                }
+
+                return headerHeight + 5;
+            };
+
+            // ===== DRAW FOOTER (same as relatorios) =====
+            const drawFooter = (pageDoc: typeof doc, pageNum: number, totalPages: number) => {
+                const footerY = pageHeight - 12;
+                pageDoc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
+                pageDoc.setLineWidth(0.3);
+                pageDoc.line(margin.left, footerY - 3, pageWidth - margin.right, footerY - 3);
+                pageDoc.setFontSize(7);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                pageDoc.text('FRPlus — Gestão Comercial Inteligente', margin.left, footerY);
+                pageDoc.text('Documento confidencial • Preços sujeitos a alteração sem aviso prévio', pageWidth / 2, footerY, { align: 'center' });
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.text(`${pageNum} / ${totalPages}`, pageWidth - margin.right, footerY, { align: 'right' });
+            };
+
+            // ===== BUILD PDF =====
+            let startY = drawHeader(doc, 1);
 
             // ===== COMUNICADO BOX (Conditional) =====
             if (comunicado.trim()) {
-                const commPadding = 4;
-                // Blue highlight box
-                doc.setFillColor(239, 246, 255); // light blue bg
-                doc.setDrawColor(accentBlue[0], accentBlue[1], accentBlue[2]);
-                
+                startY += 2;
+                doc.setFillColor(colors.factoryBg[0], colors.factoryBg[1], colors.factoryBg[2]);
+                doc.setDrawColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+
                 doc.setFontSize(9);
-                const commLines = doc.splitTextToSize(comunicado.trim(), pageWidth - (margin * 2) - (commPadding * 2) - 14);
-                const commBoxHeight = Math.max(16, (commLines.length * 4.5) + (commPadding * 2) + 4);
-                
-                doc.roundedRect(margin, yPos, pageWidth - (margin * 2), commBoxHeight, 2, 2, 'FD');
-                
-                // Icon indicator
-                doc.setFillColor(accentBlue[0], accentBlue[1], accentBlue[2]);
-                doc.roundedRect(margin + 3, yPos + 3, 8, commBoxHeight - 6, 1, 1, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(8);
-                doc.setFont('helvetica', 'bold');
-                doc.text('!', margin + 7, yPos + (commBoxHeight / 2) + 1, { align: 'center' });
-                
+                const commLines = doc.splitTextToSize(comunicado.trim(), contentWidth - 20);
+                const commBoxHeight = Math.max(16, (commLines.length * 4.5) + 12);
+
+                doc.roundedRect(margin.left, startY, contentWidth, commBoxHeight, 2, 2, 'FD');
+
+                // Blue accent bar on left
+                doc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                doc.rect(margin.left, startY, 3, commBoxHeight, 'F');
+
                 // Title
-                doc.setTextColor(accentBlue[0], accentBlue[1], accentBlue[2]);
-                doc.setFontSize(8);
+                doc.setTextColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                doc.setFontSize(7);
                 doc.setFont('helvetica', 'bold');
-                doc.text('COMUNICADO', margin + 15, yPos + commPadding + 4);
-                
+                doc.text('COMUNICADO', margin.left + 7, startY + 5);
+
                 // Message
-                doc.setTextColor(darkText[0], darkText[1], darkText[2]);
+                doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'normal');
-                doc.text(commLines, margin + 15, yPos + commPadding + 10);
-                
-                yPos += commBoxHeight + 6;
+                doc.text(commLines, margin.left + 7, startY + 10.5);
+
+                startY += commBoxHeight + 4;
             }
 
             // ===== DESTINATÁRIO =====
+            startY += 1;
             const clienteNome = formData.nomeFantasia || formData.razaoSocial || 'Cliente';
-            
-            doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-            doc.roundedRect(margin, yPos, pageWidth - (margin * 2), 18, 2, 2, 'F');
-            
+
+            doc.setFillColor(colors.factoryBg[0], colors.factoryBg[1], colors.factoryBg[2]);
+            doc.roundedRect(margin.left, startY, contentWidth, 14, 1.5, 1.5, 'F');
+
             doc.setFontSize(7);
-            doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+            doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
             doc.setFont('helvetica', 'normal');
-            doc.text('PREPARADO EXCLUSIVAMENTE PARA', margin + 5, yPos + 6);
-            
-            doc.setFontSize(13);
-            doc.setTextColor(darkText[0], darkText[1], darkText[2]);
+            doc.text('PREPARADO EXCLUSIVAMENTE PARA', margin.left + 5, startY + 5);
+
+            doc.setFontSize(11);
+            doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
             doc.setFont('helvetica', 'bold');
-            doc.text(clienteNome, margin + 5, yPos + 13.5);
-            
+            doc.text(clienteNome, margin.left + 5, startY + 11);
+
             // Tabela badge on the right
-            doc.setFillColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+            doc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
             const badgeText = `Tabela: ${tabelaConfig.label}`;
-            const badgeWidth = doc.getTextWidth(badgeText) + 8;
-            doc.roundedRect(pageWidth - margin - badgeWidth - 3, yPos + 4, badgeWidth + 2, 9, 2, 2, 'F');
-            doc.setTextColor(255, 255, 255);
             doc.setFontSize(7);
+            const badgeWidth = doc.getTextWidth(badgeText) + 8;
+            doc.roundedRect(pageWidth - margin.right - badgeWidth - 2, startY + 3, badgeWidth + 1, 8, 1.5, 1.5, 'F');
+            doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
-            doc.text(badgeText, pageWidth - margin - badgeWidth + 1, yPos + 10);
-            
-            yPos += 24;
+            doc.text(badgeText, pageWidth - margin.right - badgeWidth + 2, startY + 8.5);
+
+            startY += 18;
 
             // ===== TABELA DE PRODUTOS =====
             const priceField = tabelaConfig.field as string;
-            
-            const tableData = produtos.map((p: any, idx: number) => [
+
+            const tableData = produtos.map((p: any) => [
                 p.codigo,
                 p.nome,
                 p.categoria || 'Geral',
                 `R$ ${Number(p[priceField]).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             ]);
 
-            (doc as any).autoTable({
-                startY: yPos,
+            autoTable(doc, {
+                startY,
                 head: [['CÓDIGO', 'PRODUTO', 'CATEGORIA', 'PREÇO UNIT.']],
                 body: tableData,
-                margin: { left: margin, right: margin },
-                theme: 'plain',
                 styles: {
-                    fontSize: 8.5,
-                    cellPadding: { top: 3, right: 4, bottom: 3, left: 4 },
-                    textColor: [darkText[0], darkText[1], darkText[2]],
-                    lineColor: [226, 232, 240],
-                    lineWidth: 0.1,
-                    font: 'helvetica',
+                    fontSize: 8,
+                    cellPadding: 3,
+                    halign: 'center',
+                    valign: 'middle',
+                    lineColor: colors.tableBorder,
+                    lineWidth: 0.2,
+                    textColor: colors.textDark,
                 },
                 headStyles: {
-                    fillColor: [primaryBlue[0], primaryBlue[1], primaryBlue[2]],
-                    textColor: [255, 255, 255],
-                    fontSize: 7.5,
+                    fillColor: colors.headerDark,
+                    textColor: 255,
                     fontStyle: 'bold',
-                    cellPadding: { top: 4, right: 4, bottom: 4, left: 4 },
-                    halign: 'left',
+                    cellPadding: 4,
                 },
+                alternateRowStyles: { fillColor: colors.rowEven },
                 columnStyles: {
-                    0: { cellWidth: 25, fontStyle: 'bold' },
-                    1: { cellWidth: 'auto' },
-                    2: { cellWidth: 30, textColor: [mutedText[0], mutedText[1], mutedText[2]], fontSize: 7.5 },
-                    3: { cellWidth: 30, halign: 'right', fontStyle: 'bold', textColor: [greenAccent[0], greenAccent[1], greenAccent[2]] },
+                    0: { cellWidth: 25, halign: 'center', fontStyle: 'bold', textColor: colors.textMuted },
+                    1: { halign: 'left' },
+                    2: { cellWidth: 30, halign: 'center', fontSize: 7, textColor: colors.textMuted },
+                    3: { cellWidth: 35, halign: 'right', fontStyle: 'bold', textColor: colors.factoryAccent },
                 },
-                alternateRowStyles: {
-                    fillColor: [248, 250, 252],
+                foot: [['', `${produtos.length} produto${produtos.length !== 1 ? 's' : ''}`, fabrica.nome, tabelaConfig.label]],
+                footStyles: {
+                    fillColor: colors.headerDark,
+                    textColor: colors.white,
+                    fontStyle: 'bold',
+                    halign: 'right',
+                    cellPadding: 4,
                 },
-                didDrawPage: function (data: any) {
-                    // Footer on every page
-                    const footerY = pageHeight - 10;
-                    doc.setDrawColor(226, 232, 240);
-                    doc.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
-                    
-                    doc.setFontSize(7);
-                    doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-                    doc.setFont('helvetica', 'normal');
-                    doc.text('Documento gerado por FRPlus — Sistema de Gestão Comercial', margin, footerY);
-                    doc.text(`Página ${doc.getCurrentPageInfo().pageNumber}`, pageWidth - margin, footerY, { align: 'right' });
+                margin: { left: margin.left, right: margin.right },
+                didDrawPage: (data: { pageNumber: number }) => {
+                    if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
                 }
             });
 
-            // Count summary after table
-            const finalY = (doc as any).previousAutoTable?.finalY || yPos + 20;
-            if (finalY + 12 < pageHeight - 15) {
-                doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-                doc.roundedRect(margin, finalY + 4, pageWidth - (margin * 2), 10, 2, 2, 'F');
-                doc.setFontSize(8);
-                doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-                doc.setFont('helvetica', 'normal');
-                doc.text(`Total de ${produtos.length} produto${produtos.length !== 1 ? 's' : ''} • ${fabrica.nome} • ${tabelaConfig.label}`, margin + 5, finalY + 10.5);
+            // ===== APPLY FOOTERS TO ALL PAGES =====
+            const pageCount = doc.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                drawFooter(doc, i, pageCount);
             }
 
             // 3. Download
