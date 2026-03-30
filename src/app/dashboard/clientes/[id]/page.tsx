@@ -239,7 +239,8 @@ export default function EditarClientePage({ params }: { params: { id: string } }
 
             // 2. Dynamic import jsPDF (client-side only)
             const { default: jsPDF } = await import('jspdf');
-            const { default: autoTable } = await import('jspdf-autotable');
+            // Side-effect import: patches jsPDF.prototype.autoTable
+            await import('jspdf-autotable');
 
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const pageWidth = doc.internal.pageSize.getWidth();
@@ -382,7 +383,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                 `R$ ${Number(p[priceField]).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             ]);
 
-            autoTable(doc, {
+            (doc as any).autoTable({
                 startY: yPos,
                 head: [['CÓDIGO', 'PRODUTO', 'CATEGORIA', 'PREÇO UNIT.']],
                 body: tableData,
