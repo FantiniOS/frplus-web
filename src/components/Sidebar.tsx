@@ -16,8 +16,7 @@ import {
   MessageCircle,
   Wallet,
   Filter,
-  UserPlus,
-  UserCheck
+  UserPlus
 } from "lucide-react";
 import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,7 +50,6 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       items: [
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
         { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
-        { icon: UserCheck, label: "Clientes Atendidos", href: "/dashboard/atendidos" },
         { icon: BarChart3, label: "Relatórios", href: "/dashboard/relatorios" },
         { icon: Filter, label: "Curva ABC", href: "/dashboard/curva-abc" },
       ]

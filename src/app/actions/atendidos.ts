@@ -49,11 +49,11 @@ export async function getClientesAtendidos(): Promise<ClienteAtendido[]> {
         cidade: true,
         pedidos: {
           orderBy: {
-            createdAt: 'asc' // Data do pedido mais antigo
+            data: 'asc' // Data do pedido mais antigo
           },
           take: 1,
           select: {
-            createdAt: true
+            data: true
           }
         }
       },
@@ -67,7 +67,7 @@ export async function getClientesAtendidos(): Promise<ClienteAtendido[]> {
       cliente: c.nomeFantasia || c.razaoSocial,
       cnpj: c.cnpj,
       cidade: c.cidade,
-      parceiroDesde: c.pedidos.length > 0 ? c.pedidos[0].createdAt : null,
+      parceiroDesde: c.pedidos.length > 0 ? c.pedidos[0].data : null,
     }));
 
     return resultado;

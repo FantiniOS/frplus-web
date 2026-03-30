@@ -8,6 +8,7 @@ import {
     DollarSign, BarChart3, PieChart, Filter, Printer, ChevronDown, Check, ChevronUp, FileDown, MessageCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { getClientesAtendidos, ClienteAtendido } from '@/app/actions/atendidos';
 
 export default function RelatoriosPage() {
     const { orders, clients, products, fabricas, refreshData } = useData();
@@ -17,8 +18,43 @@ export default function RelatoriosPage() {
         refreshData();
     }, [refreshData]);
 
-    const [tipoRelatorio, setTipoRelatorio] = useState<'vendas' | 'produtos' | 'clientes' | 'tabela'>('vendas');
+    const [tipoRelatorio, setTipoRelatorio] = useState<'vendas' | 'produtos' | 'clientes' | 'tabela' | 'atendidos'>('vendas');
     const [tabelaSelecionada, setTabelaSelecionada] = useState<string>('');
+    const [clientesAtendidos, setClientesAtendidos] = useState<ClienteAtendido[]>([]);
+    const [loadingAtendidos, setLoadingAtendidos] = useState(false);
+
+    useEffect(() => {
+        if (tipoRelatorio === 'atendidos' && clientesAtendidos.length === 0) {
+            setLoadingAtendidos(true);
+            getClientesAtendidos().then(data => {
+                setClientesAtendidos(data);
+                setLoadingAtendidos(false);
+            }).catch(err => {
+                console.error(err);
+                setLoadingAtendidos(false);
+            });
+        }
+    }, [tipoRelatorio, clientesAtendidos.length]);
+
+    const exportarCSVAtendidos = () => {
+        if (clientesAtendidos.length === 0) return;
+        const cabecalho = ['Cliente', 'CNPJ', 'Cidade', 'Parceiro Desde'];
+        const linhas = clientesAtendidos.map(c => [
+            `"${c.cliente.replace(/"/g, '""')}"`,
+            `"${c.cnpj}"`,
+            `"${c.cidade.replace(/"/g, '""')}"`,
+            `"${c.parceiroDesde ? new Intl.DateTimeFormat('pt-BR').format(new Date(c.parceiroDesde)) : '-'}"`
+        ]);
+        const csvContent = [cabecalho.join(';'), ...linhas.map(r => r.join(';'))].join('\n');
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Clientes_Atendidos_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     // Helpers for local date strings
     const getLocalDate = () => {
@@ -690,7 +726,8 @@ export default function RelatoriosPage() {
                                 { id: 'vendas', label: 'Vendas', icon: TrendingUp },
                                 { id: 'produtos', label: 'Produtos', icon: Package },
                                 { id: 'clientes', label: 'Relatório Clientes', icon: Users },
-                                { id: 'tabela', label: 'Tabela de Preços', icon: DollarSign }
+                                { id: 'tabela', label: 'Tabela de Preços', icon: DollarSign },
+                                { id: 'atendidos', label: 'Clientes Atendidos', icon: Check }
                             ].map(tipo => (
                                 <button
                                     key={tipo.id}
@@ -1296,6 +1333,67 @@ export default function RelatoriosPage() {
                                     );
                                 });
                             })()}
+                        </div>
+                    )
+                }
+
+                {
+                    tipoRelatorio === 'atendidos' && (
+                        <div className="form-card">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-white print:text-black">Clientes Atendidos</h3>
+                                    <p className="text-sm text-gray-400">Total de {clientesAtendidos.length} clientes com pedidos no sistema.</p>
+                                </div>
+                                <button 
+                                    onClick={exportarCSVAtendidos}
+                                    disabled={loadingAtendidos || clientesAtendidos.length === 0}
+                                    className="btn-modern text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 font-medium disabled:opacity-50 flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border print:hidden"
+                                >
+                                    <Download className="h-4 w-4" />
+                                    Exportar CSV
+                                </button>
+                            </div>
+                            
+                            {loadingAtendidos ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+                                    <p className="mt-4 animate-pulse">Carregando carteira de clientes...</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="border-b border-white/10 print:border-gray-300">
+                                            <tr>
+                                                <th className="text-left py-2 text-gray-400 print:text-gray-600">Cliente</th>
+                                                <th className="text-left py-2 text-gray-400 print:text-gray-600">CNPJ</th>
+                                                <th className="text-left py-2 text-gray-400 print:text-gray-600">Cidade</th>
+                                                <th className="text-right py-2 text-gray-400 print:text-gray-600">Parceiro Desde</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {clientesAtendidos.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={4} className="py-8 text-center text-gray-500">
+                                                        Nenhum cliente com pedidos encontrado.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                clientesAtendidos.map((c) => (
+                                                    <tr key={c.id} className="border-b border-white/5 print:border-gray-200 hover:bg-white/5 transition-colors">
+                                                        <td className="py-3 text-white font-medium print:text-black">{c.cliente}</td>
+                                                        <td className="py-3 text-gray-400 print:text-gray-600">{c.cnpj}</td>
+                                                        <td className="py-3 text-gray-400 print:text-gray-600">{c.cidade}</td>
+                                                        <td className="py-3 text-right text-green-400 print:text-green-600 font-medium">
+                                                            {c.parceiroDesde ? new Intl.DateTimeFormat('pt-BR').format(new Date(c.parceiroDesde)) : 'Sem pedidos'}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     )
                 }
