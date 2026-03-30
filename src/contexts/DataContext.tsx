@@ -236,7 +236,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             });
             if (res.ok) {
                 const updatedClient = await res.json();
-                setClients(prev => prev.map(c => c.id === id ? updatedClient : c));
+                setClients(prev => {
+                    const exists = prev.some(c => c.id === id);
+                    if (exists) {
+                        return prev.map(c => c.id === id ? updatedClient : c);
+                    } else if (updatedClient.status === 'Ativo') {
+                        return [...prev, updatedClient];
+                    }
+                    return prev;
+                });
                 showToast('Cliente atualizado com sucesso!', 'success');
             }
         } catch (error) {

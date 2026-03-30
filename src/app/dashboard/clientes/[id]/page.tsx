@@ -34,7 +34,23 @@ export default function EditarClientePage({ params }: { params: { id: string } }
 
     useEffect(() => {
         const client = clients.find(c => c.id === params.id);
-        if (client) setFormData(client);
+        if (client) {
+            setFormData(client);
+        } else {
+            // Se o cliente não estiver no contexto (ex: Inativo), busca da API
+            const fetchCliente = async () => {
+                try {
+                    const res = await fetch(`/api/clients/${params.id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setFormData(data);
+                    }
+                } catch (error) {
+                    console.error("Erro ao buscar cliente por ID:", error);
+                }
+            };
+            fetchCliente();
+        }
     }, [clients, params.id]);
 
 
