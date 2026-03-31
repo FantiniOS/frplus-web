@@ -237,7 +237,8 @@ export default function RelatoriosPage() {
                 clientes: tabelaSelecionada
                     ? `Relatório de Clientes — Tabela: ${tabelaSelecionada}`
                     : 'Relatório Geral de Clientes',
-                tabela: 'Tabela de Preços'
+                tabela: 'Tabela de Preços',
+                atendidos: 'RELATÓRIO DE CLIENTES ATENDIDOS'
             };
 
             // ====== LOGO LOADER (reusable) ======
@@ -668,6 +669,38 @@ export default function RelatoriosPage() {
                     // @ts-ignore
                     startY = doc.lastAutoTable.finalY + 8;
                 }
+            } else if (tipoRelatorio === 'atendidos') {
+                startY += 2;
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                const statusLabel = statusAtendidos === 'Todos' ? 'Todos os status' : `Status: ${statusAtendidos}`;
+                doc.text(`${clientesAtendidos.length} clientes encontrados · ${statusLabel}`, margin.left, startY);
+                startY += 6;
+
+                autoTable(doc, {
+                    startY,
+                    head: [['Cliente', 'CNPJ', 'Cidade', 'Parceiro Desde']],
+                    body: clientesAtendidos.map(c => [
+                        c.cliente,
+                        c.cnpj,
+                        c.cidade,
+                        c.parceiroDesde ? new Intl.DateTimeFormat('pt-BR').format(new Date(c.parceiroDesde)) : 'Sem pedidos'
+                    ]),
+                    styles: { fontSize: 8, cellPadding: 3, halign: 'left', lineColor: colors.tableBorder, lineWidth: 0.2 },
+                    headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4, halign: 'left' },
+                    alternateRowStyles: { fillColor: colors.rowEven },
+                    columnStyles: {
+                        0: { fontStyle: 'bold', textColor: colors.textDark, cellWidth: 'auto' },
+                        1: { textColor: colors.textMuted, cellWidth: 35 },
+                        2: { textColor: colors.textMuted, cellWidth: 'auto' },
+                        3: { halign: 'right', fontStyle: 'bold', textColor: colors.greenAccent, cellWidth: 30 }
+                    },
+                    margin: { top: 30, left: margin.left, right: margin.right },
+                    didDrawPage: (data: { pageNumber: number }) => {
+                        if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
+                    }
+                });
             }
 
             // ====== APPLY FOOTERS TO ALL PAGES ======
@@ -1363,10 +1396,18 @@ export default function RelatoriosPage() {
                                     <button 
                                         onClick={exportarCSVAtendidos}
                                         disabled={loadingAtendidos || clientesAtendidos.length === 0}
-                                        className="btn-modern text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 font-medium disabled:opacity-50 flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border print:hidden"
+                                        className="btn-modern text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 font-medium disabled:opacity-50 flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors border print:hidden"
                                     >
                                         <Download className="h-4 w-4" />
-                                        Exportar CSV
+                                        CSV
+                                    </button>
+                                    <button 
+                                        onClick={handleExportPDF}
+                                        disabled={loadingAtendidos || clientesAtendidos.length === 0 || exportando}
+                                        className="btn-modern text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30 font-medium disabled:opacity-50 flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors border print:hidden"
+                                    >
+                                        <FileDown className="h-4 w-4" />
+                                        PDF
                                     </button>
                                 </div>
                             </div>
