@@ -10,37 +10,25 @@ export interface ClienteAtendido {
   parceiroDesde: Date | null;
 }
 
-export async function getClientesAtendidos(): Promise<ClienteAtendido[]> {
+export async function getClientesAtendidos(statusFiltro: 'Todos' | 'Ativos' | 'Inativos' = 'Todos'): Promise<ClienteAtendido[]> {
   try {
-    // Busca clientes que possuem pelo menos 1 pedido
-    const clientes = await prisma.cliente.findMany({
-      where: {
-        pedidos: {
-          some: {}
-        }
-      },
-      select: {
-        id: true,
-        nomeFantasia: true,
-        razaoSocial: true,
-        cnpj: true,
-        cidade: true,
-      },
-      orderBy: {
-        nomeFantasia: 'asc'
+    // Montar a condição base: ter pelo menos 1 pedido
+    const whereCondition: any = {
+      pedidos: {
+        some: {}
       }
-    });
+    };
 
-    // Como prisma não suporta agregação direta de data mínima de relação facilmente com seleção mista em todos os BDs,
-    // faremos a busca do primeiro pedido individualmente ou através de um include ordenado.
-    // O include é mais performático que fazer N queries em loop se o bd estiver otimizado.
+    // Aplicar o filtro de status se não for "Todos"
+    if (statusFiltro === 'Ativos') {
+      whereCondition.status = 'Ativo';
+    } else if (statusFiltro === 'Inativos') {
+      whereCondition.status = 'Inativo';
+    }
 
+    // Busca clientes ordenados que possuem pelo menos 1 pedido (e filtro de status), trazendo o histórico formatado
     const clientesComPedidos = await prisma.cliente.findMany({
-      where: {
-        pedidos: {
-          some: {}
-        }
-      },
+      where: whereCondition,
       select: {
         id: true,
         nomeFantasia: true,

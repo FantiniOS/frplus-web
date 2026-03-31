@@ -22,11 +22,12 @@ export default function RelatoriosPage() {
     const [tabelaSelecionada, setTabelaSelecionada] = useState<string>('');
     const [clientesAtendidos, setClientesAtendidos] = useState<ClienteAtendido[]>([]);
     const [loadingAtendidos, setLoadingAtendidos] = useState(false);
+    const [statusAtendidos, setStatusAtendidos] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
 
     useEffect(() => {
-        if (tipoRelatorio === 'atendidos' && clientesAtendidos.length === 0) {
+        if (tipoRelatorio === 'atendidos') {
             setLoadingAtendidos(true);
-            getClientesAtendidos().then(data => {
+            getClientesAtendidos(statusAtendidos).then(data => {
                 setClientesAtendidos(data);
                 setLoadingAtendidos(false);
             }).catch(err => {
@@ -34,7 +35,7 @@ export default function RelatoriosPage() {
                 setLoadingAtendidos(false);
             });
         }
-    }, [tipoRelatorio, clientesAtendidos.length]);
+    }, [tipoRelatorio, statusAtendidos]);
 
     const exportarCSVAtendidos = () => {
         if (clientesAtendidos.length === 0) return;
@@ -1343,16 +1344,31 @@ export default function RelatoriosPage() {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                                 <div>
                                     <h3 className="text-lg font-semibold text-white print:text-black">Clientes Atendidos</h3>
-                                    <p className="text-sm text-gray-400">Total de {clientesAtendidos.length} clientes com pedidos no sistema.</p>
+                                    <p className="text-sm text-gray-400">Total de {clientesAtendidos.length} clientes listados abaixo.</p>
                                 </div>
-                                <button 
-                                    onClick={exportarCSVAtendidos}
-                                    disabled={loadingAtendidos || clientesAtendidos.length === 0}
-                                    className="btn-modern text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 font-medium disabled:opacity-50 flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border print:hidden"
-                                >
-                                    <Download className="h-4 w-4" />
-                                    Exportar CSV
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2 print:hidden">
+                                        <label className="text-xs text-gray-400 font-medium whitespace-nowrap">Status:</label>
+                                        <select
+                                            value={statusAtendidos}
+                                            onChange={(e) => setStatusAtendidos(e.target.value as any)}
+                                            className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none transition-all w-32"
+                                            disabled={loadingAtendidos}
+                                        >
+                                            <option value="Todos">Todos</option>
+                                            <option value="Ativos">Apenas Ativos</option>
+                                            <option value="Inativos">Apenas Inativos</option>
+                                        </select>
+                                    </div>
+                                    <button 
+                                        onClick={exportarCSVAtendidos}
+                                        disabled={loadingAtendidos || clientesAtendidos.length === 0}
+                                        className="btn-modern text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 font-medium disabled:opacity-50 flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border print:hidden"
+                                    >
+                                        <Download className="h-4 w-4" />
+                                        Exportar CSV
+                                    </button>
+                                </div>
                             </div>
                             
                             {loadingAtendidos ? (
