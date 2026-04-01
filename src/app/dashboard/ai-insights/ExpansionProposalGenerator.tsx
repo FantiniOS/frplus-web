@@ -84,23 +84,19 @@ export default function ExpansionProposalGenerator() {
     };
 
     const convertImageToBase64 = async (url: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = 'Anonymous';
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    ctx.drawImage(img, 0, 0);
-                    resolve(canvas.toDataURL('image/png'));
-                } else {
-                    reject(new Error('Canvas context null'));
-                }
-            };
-            img.onerror = (e) => reject(e);
-            img.src = url.startsWith('http') ? url : `/${url.replace(/^\//, '')}`;
+        return new Promise(async (resolve, reject) => {
+            try {
+                const fetchUrl = url.startsWith('http') ? url : `/${url.replace(/^\//, '')}`;
+                const res = await fetch(fetchUrl);
+                if (!res.ok) throw new Error('Fetch failed');
+                const blob = await res.blob();
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            } catch (error) {
+                reject(error);
+            }
         });
     };
 
@@ -206,8 +202,8 @@ export default function ExpansionProposalGenerator() {
             
             // Draw each product block
             for (const prod of selectedItems) {
-                // Check if we need a new page
-                if (yCursor > pageHeight - 75) {
+                // Check if we need a new page (Card height is smaller now)
+                if (yCursor > pageHeight - 45) {
                     doc.addPage();
                     await addPageHeader(false);
                 }
@@ -230,75 +226,76 @@ export default function ExpansionProposalGenerator() {
                     }
                 }
 
-                // Render Image or Placeholder
+                // Render Image (Left Column)
                 if (imgData) {
                     const type = imgData.includes('image/png') ? 'PNG' : 'JPEG';
                     try {
-                        doc.addImage(imgData, type, 15, yCursor, 30, 30);
+                        doc.addImage(imgData, type, 15, yCursor, 25, 25);
                     } catch (err) {
                         doc.setFillColor(240, 240, 240);
-                        doc.rect(15, yCursor, 30, 30, 'F');
+                        doc.rect(15, yCursor, 25, 25, 'F');
                     }
                 } else {
                     doc.setFillColor(240, 240, 240);
-                    doc.rect(15, yCursor, 30, 30, 'F');
+                    doc.rect(15, yCursor, 25, 25, 'F');
                 }
 
-                // Product Title
-                doc.setFontSize(12);
+                // Product Texts (Left Column near image)
+                doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor(30, 30, 40);
                 
                 let pName = prod.nome;
-                if (pName.length > 55) pName = pName.substring(0, 52) + '...';
-                doc.text(pName, 50, yCursor + 8);
+                if (pName.length > 40) pName = pName.substring(0, 38) + '...';
+                doc.text(pName, 45, yCursor + 5);
                 
                 // Embalagem e Preço Tabela
-                doc.setFontSize(10);
+                doc.setFontSize(9);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(80, 80, 80);
-                doc.text(`CÓD: ${prod.codigo}  |  EMBALAGEM: Cx c/ ${mult} un`, 50, yCursor + 13);
-                doc.text(`Preço Original Cx: R$ ${priceCx.toFixed(2).replace('.', ',')}  |  Unidade: R$ ${priceUn.toFixed(2).replace('.', ',')}`, 50, yCursor + 18);
+                doc.text(`CÓD: ${prod.codigo}  |  EMB: Cx c/ ${mult} un`, 45, yCursor + 11);
+                doc.text(`Tabela Cx: R$ ${priceCx.toFixed(2).replace('.', ',')}  |  Un: R$ ${priceUn.toFixed(2).replace('.', ',')}`, 45, yCursor + 16);
 
-                // Financial Box (Plano de Venda)
-                const finY = yCursor + 35;
-                const finW = pageWidth - 30; // ocupa a largura restante
-                const finH = 22;
+                // Financial Box (Plano de Venda) - Right Column parallel to image
+                const finX = 120;
+                const finY = yCursor;
+                const finW = pageWidth - finX - 15; // Width ate a margem direita
+                const finH = 25;
 
                 doc.setDrawColor(230, 230, 230);
                 doc.setFillColor(248, 250, 252);
-                doc.roundedRect(15, finY, finW, finH, 1, 1, 'FD');
+                doc.roundedRect(finX, finY, finW, finH, 1, 1, 'FD');
 
                 doc.setFontSize(8);
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor(50, 50, 60);
-                doc.text("PLANO DE VENDA E DESCONTOS", 19, finY + 6);
+                doc.text("PLANO DE VENDA E DESCONTOS", finX + 4, finY + 5);
                 
-                let dfY = finY + 11;
+                let dfY = finY + 10;
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(7);
                 doc.setTextColor(100, 100, 100);
                 
                 if (discount1Value > 0) {
-                    doc.text(`- ${discount1Name}: ${discount1Value}%`, 19, dfY);
+                    doc.text(`- ${discount1Name}: ${discount1Value}%`, finX + 4, dfY);
                     dfY += 4;
                 }
                 if (discount2Value > 0) {
-                    doc.text(`- ${discount2Name}: ${discount2Value}%`, 19, dfY);
+                    doc.text(`- ${discount2Name}: ${discount2Value}%`, finX + 4, dfY);
                     dfY += 4;
                 }
                 if (discount1Value === 0 && discount2Value === 0) {
-                     doc.text(`Sem Descontos Extras`, 19, dfY);
+                     doc.text(`Sem Descontos Extras`, finX + 4, dfY);
                      dfY += 4;
                 }
 
                 // Final Net Prices
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(10);
+                doc.setFontSize(9);
                 doc.setTextColor(0, 120, 50); // green
-                doc.text(`Preço caixa líquido: R$ ${netPriceCx.toFixed(2).replace('.', ',')}  |  Preço un líquido: R$ ${netPriceUn.toFixed(2).replace('.', ',')}`, 75, finY + 14);
+                doc.text(`Líq Cx: R$ ${netPriceCx.toFixed(2).replace('.', ',')} | Un: R$ ${netPriceUn.toFixed(2).replace('.', ',')}`, finX + 4, finY + 22);
 
-                yCursor += 65; // Move to next product
+                yCursor += 40; // Short jump since horizontally aligned
             }
 
             // Footer / Disclaimer
