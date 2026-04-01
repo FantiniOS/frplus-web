@@ -256,12 +256,12 @@ export default function ExpansionProposalGenerator() {
                 if (pName.length > 40) pName = pName.substring(0, 38) + '...';
                 doc.text(pName, 45, yCursor + 5);
                 
-                // Embalagem e Preço Tabela
+                // Embalagem e Preço Unitário Base
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(80, 80, 80);
                 doc.text(`CÓD: ${prod.codigo}  |  EMB: Cx c/ ${mult} un`, 45, yCursor + 11);
-                doc.text(`Tabela Cx: R$ ${priceCx.toFixed(2).replace('.', ',')}  |  Un: R$ ${priceUn.toFixed(2).replace('.', ',')}`, 45, yCursor + 16);
+                doc.text(`Preço Original un: R$ ${priceUn.toFixed(2).replace('.', ',')}`, 45, yCursor + 16);
 
                 // Financial Box (Plano de Venda) - Right Column parallel to image
                 const finX = 120;
@@ -296,13 +296,13 @@ export default function ExpansionProposalGenerator() {
                      dfY += 4;
                 }
 
-                // Final Net Prices
+                // Final Net Price (Unit only)
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(9);
+                doc.setFontSize(10);
                 doc.setTextColor(0, 120, 50); // green
-                doc.text(`Líq Cx: R$ ${netPriceCx.toFixed(2).replace('.', ',')} | Un: R$ ${netPriceUn.toFixed(2).replace('.', ',')}`, finX + 4, finY + 22);
+                doc.text(`Preço Líquido un: R$ ${netPriceUn.toFixed(2).replace('.', ',')}`, finX + 4, finY + 21);
 
-                yCursor += 40; // Short jump since horizontally aligned
+                yCursor += 35; // Tighter jump with less text
             }
 
             // Footer / Disclaimer
