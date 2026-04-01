@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { Target, Download, CheckCircle2, Search, Factory, Box, Percent, Calculator } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import { getBase64ImageServer } from '@/app/actions/imageActions';
 
 export default function ExpansionProposalGenerator() {
     const { clients, fabricas, products } = useData();
@@ -83,23 +84,6 @@ export default function ExpansionProposalGenerator() {
         return isNaN(priceNum) ? 0 : priceNum;
     };
 
-    const convertImageToBase64 = async (url: string): Promise<string> => {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const fetchUrl = url.startsWith('http') ? url : `/${url.replace(/^\//, '')}`;
-                const res = await fetch(fetchUrl);
-                if (!res.ok) throw new Error('Fetch failed');
-                const blob = await res.blob();
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            } catch (error) {
-                reject(error);
-            }
-        });
-    };
-
     const generatePDF = async () => {
         setIsGenerating(true);
         try {
@@ -124,20 +108,22 @@ export default function ExpansionProposalGenerator() {
                 
                 // Add Logo
                 try {
-                    const b64Logo = await convertImageToBase64('/logo.png');
-                    const img = new Image();
-                    img.src = b64Logo;
-                    await new Promise(resolve => {
-                        img.onload = () => {
-                            const targetWidth = 45;
-                            const ratio = img.height / img.width;
-                            const targetHeight = targetWidth * ratio;
-                            doc.addImage(b64Logo, 'PNG', 15, 12, targetWidth, targetHeight);
-                            resolve(true);
-                        }
-                    });
+                    const b64Logo = await getBase64ImageServer('/logo.png');
+                    if (b64Logo) {
+                        const img = new Image();
+                        img.src = b64Logo;
+                        await new Promise(resolve => {
+                            img.onload = () => {
+                                const targetWidth = 45;
+                                const ratio = img.height / img.width;
+                                const targetHeight = targetWidth * ratio;
+                                doc.addImage(b64Logo, 'PNG', 15, 12, targetWidth, targetHeight);
+                                resolve(true);
+                            }
+                        });
+                    }
                 } catch (e) {
-                    console.error("Erro ao carregar logo:", e);
+                    console.error("Erro ao carregar logo via server action:", e);
                 }
 
                 // Header Texts
@@ -220,7 +206,7 @@ export default function ExpansionProposalGenerator() {
                 const url = prod.imagem || prod.imagemUrl;
                 if (url) {
                     try {
-                        imgData = await convertImageToBase64(url);
+                        imgData = await getBase64ImageServer(url);
                     } catch (e) {
                         console.error('Failed to load image for', prod.id, e);
                     }
