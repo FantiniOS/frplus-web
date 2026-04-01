@@ -40,6 +40,7 @@ export async function GET(request: Request, { params }: Params) {
             fabricaNome: product.fabrica.nome,
             categoria: product.categoria || 'Geral',
             unidade: product.unidade || 'CX',
+            quantidadeEmbalagem: product.quantidadeEmbalagem ?? 1,
             ativo: product.ativo
         })
     } catch (error) {
@@ -72,6 +73,7 @@ export async function PUT(request: Request, { params }: Params) {
                 fabricaId: body.fabricaId,
                 categoria: body.categoria,
                 unidade: body.unidade || 'CX',
+                quantidadeEmbalagem: body.quantidadeEmbalagem !== undefined ? Number(body.quantidadeEmbalagem) || 1 : undefined,
                 ativo: body.ativo !== undefined ? body.ativo : undefined
             }
         })

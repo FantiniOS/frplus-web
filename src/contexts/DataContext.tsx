@@ -57,6 +57,7 @@ export interface Product {
     ativo?: boolean;
     // Backward compatibility
     unidade?: string;
+    quantidadeEmbalagem?: number;
     descricao?: string;
 }
 

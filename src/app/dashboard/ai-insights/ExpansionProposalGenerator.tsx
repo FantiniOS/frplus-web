@@ -208,6 +208,7 @@ export default function ExpansionProposalGenerator() {
 
             await addPageHeader(true);
 
+
             const selectedItems = products.filter((p: any) => selectedIds.includes(p.id));
             
             // Draw each product block
@@ -218,12 +219,16 @@ export default function ExpansionProposalGenerator() {
                     await addPageHeader(false);
                 }
 
-                const priceCx = getClientPrice(prod);
-                const mult = selectedProducts[prod.id] || 1;
-                const priceUn = priceCx / mult;
+                // === REGRA DE OURO: Preço Base = Preço da Embalagem Fechada (Unidade de Venda) ===
+                const precoEmbalagem = getClientPrice(prod);
+                const qtdEmbalagem = prod.quantidadeEmbalagem || 1;
 
-                const netPriceCx = priceCx * (1 - totalDiscountPercent / 100);
-                const netPriceUn = priceUn * (1 - totalDiscountPercent / 100);
+                // Descontos são calculados SOBRE a Embalagem Fechada, NUNCA sobre a fração
+                const precoLiquidoEmbalagem = precoEmbalagem * (1 - totalDiscountPercent / 100);
+
+                // Preço Unitário = APENAS vitrine/exibição, calculado por ÚLTIMO
+                const precoOriginalUnitario = precoEmbalagem / qtdEmbalagem;
+                const precoLiquidoUnitario = precoLiquidoEmbalagem / qtdEmbalagem;
 
                 // Fetch Image via client-side window.location.origin
                 const prodUrl = prod.imagem || prod.imagemUrl;
@@ -256,12 +261,12 @@ export default function ExpansionProposalGenerator() {
                 if (pName.length > 40) pName = pName.substring(0, 38) + '...';
                 doc.text(pName, 45, yCursor + 5);
                 
-                // Embalagem e Preço Unitário Base
+                // Embalagem dinâmica e Preço Original da Embalagem
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(80, 80, 80);
-                doc.text(`CÓD: ${prod.codigo}  |  EMB: ${prod.unidade || 'UN'} c/ ${mult} un`, 45, yCursor + 11);
-                doc.text(`Preço Original un: R$ ${priceUn.toFixed(2).replace('.', ',')}`, 45, yCursor + 16);
+                doc.text(`CÓD: ${prod.codigo}  |  EMB: ${prod.unidade || 'UN'} c/ ${qtdEmbalagem} un`, 45, yCursor + 11);
+                doc.text(`Preço Emb.: R$ ${precoEmbalagem.toFixed(2).replace('.', ',')}  |  un: R$ ${precoOriginalUnitario.toFixed(2).replace('.', ',')}`, 45, yCursor + 16);
 
                 // Financial Box (Plano de Venda) - Right Column parallel to image
                 const finX = 120;
@@ -296,11 +301,11 @@ export default function ExpansionProposalGenerator() {
                      dfY += 4;
                 }
 
-                // Final Net Price (Unit only)
+                // Final Net Price (Unit only - vitrine)
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(10);
                 doc.setTextColor(0, 120, 50); // green
-                doc.text(`Preço Líquido un: R$ ${netPriceUn.toFixed(2).replace('.', ',')}`, finX + 4, finY + 21);
+                doc.text(`Preço Líquido un: R$ ${precoLiquidoUnitario.toFixed(2).replace('.', ',')}`, finX + 4, finY + 21);
 
                 yCursor += 35; // Tighter jump with less text
             }

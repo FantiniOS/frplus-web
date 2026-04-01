@@ -47,6 +47,7 @@ export async function GET(request: Request) {
             fabricaNome: p.fabrica.nome,
             categoria: p.categoria || 'Geral',
             unidade: p.unidade || 'CX',
+            quantidadeEmbalagem: p.quantidadeEmbalagem ?? 1,
             ativo: p.ativo
         }))
 
@@ -79,7 +80,8 @@ export async function POST(request: Request) {
                 imagem: body.imagem,
                 fabricaId: body.fabricaId,
                 categoria: body.categoria,
-                unidade: body.unidade || 'CX'
+                unidade: body.unidade || 'CX',
+                quantidadeEmbalagem: Number(body.quantidadeEmbalagem) || 1
             }
         })
 
