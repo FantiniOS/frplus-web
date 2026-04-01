@@ -293,11 +293,12 @@ export default function ExpansionProposalGenerator() {
                      dfY += 4;
                 }
 
-                // Final Net Prices — Caixa + Unidade (vitrine)
+                // Final Net Prices — Caixa/Volume + Unidade (vitrine)
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(9);
                 doc.setTextColor(0, 100, 50);
-                doc.text(`Preço Caixa: R$ ${precoCaixaLiquido.toFixed(2).replace('.', ',')}`, finX + 4, finY + 21);
+                const labelVolume = prod.unidade ? `Preço ${prod.unidade}` : 'Preço Volume';
+                doc.text(`${labelVolume}: R$ ${precoCaixaLiquido.toFixed(2).replace('.', ',')}`, finX + 4, finY + 21);
                 doc.setFontSize(9);
                 doc.setTextColor(0, 120, 50);
                 doc.text(`Preço Unidade: R$ ${valorUnidadeLiquido.toFixed(2).replace('.', ',')}`, finX + 4, finY + 25);
