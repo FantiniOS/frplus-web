@@ -184,3 +184,38 @@ export async function getAvailableYears(): Promise<number[]> {
 
     return Array.from(years).sort((a, b) => b - a)
 }
+
+// Retorna dados estritos de FATURAMENTO (baseado na data que o pedido foi faturado e status=Faturado/Concluido)
+// Isso separa o "esforço comercial do mês" (pedidos criados) da "realidade financeira" (pedidos efetivamente faturados)
+export async function getFaturamentoData(year: number, month: number): Promise<{ total: number, count: number }> {
+    const user = await getServerUser()
+    if (!user) return { total: 0, count: 0 }
+
+    const whereClause: any = {
+        status: { in: ['Faturado', 'Concluido', 'FATURADO', 'CONCLUIDO', 'faturado', 'concluido'] },
+        tipo: { equals: 'Venda', mode: 'insensitive' }
+    }
+    
+    if (user.role === 'industria' && user.fabricaId) {
+        whereClause.fabricaId = user.fabricaId
+    }
+
+    // Datas salvas como meia-noite UTC → filtro direto em UTC usando a DATA FATURAMENTO
+    const startUTC = new Date(Date.UTC(year, month, 1, 0, 0, 0))
+    const endUTC = new Date(Date.UTC(year, month + 1, 1, 0, 0, 0))
+
+    whereClause.dataFaturamento = { gte: startUTC, lt: endUTC }
+
+    const orders = await prisma.pedido.findMany({
+        where: whereClause,
+        select: { valorTotal: true }
+    })
+
+    const total = orders.reduce((acc, o) => acc + Number(o.valorTotal), 0)
+    
+    return {
+        total,
+        count: orders.length
+    }
+}
+

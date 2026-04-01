@@ -48,6 +48,7 @@ export async function GET(request: Request) {
             nomeCliente: o.cliente?.nomeFantasia || o.cliente?.razaoSocial || 'Cliente Desconhecido',
             fabricaId: o.fabricaId,
             data: o.data.toISOString(),
+            dataFaturamento: o.dataFaturamento?.toISOString() || null,
             status: o.status,
             tipo: o.tipo,
             valorTotal: Number(o.valorTotal),

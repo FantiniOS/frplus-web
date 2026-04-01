@@ -70,6 +70,27 @@ export async function PUT(request: Request, { params }: Params) {
 
         console.log(`[API] PUT /api/orders/${params.id} - Received Payload:`, JSON.stringify(body, null, 2));
 
+        // Determine if status indicates billing (faturamento)
+        const statusFaturado = ['faturado', 'concluido'].includes((body.status || '').toLowerCase())
+
+        // Auto-set dataFaturamento when status changes to billed
+        // Clear it when reverting to non-billed status
+        let dataFaturamentoUpdate: Date | null | undefined = undefined
+        if (statusFaturado) {
+            // Check if already has dataFaturamento — if not, set it now
+            const existing = await prisma.pedido.findUnique({
+                where: { id: params.id },
+                select: { dataFaturamento: true, status: true }
+            })
+            const wasAlreadyFaturado = existing && ['faturado', 'concluido'].includes(existing.status.toLowerCase())
+            if (!wasAlreadyFaturado || !existing?.dataFaturamento) {
+                dataFaturamentoUpdate = new Date()
+            }
+        } else if (body.status) {
+            // Status is being changed to something non-billed — clear dataFaturamento
+            dataFaturamentoUpdate = null
+        }
+
         // Use transaction to ensure consistency: 
         // 1. Delete all existing items
         // 2. Update order details and create new items
@@ -88,6 +109,8 @@ export async function PUT(request: Request, { params }: Params) {
                     valorTotal: body.valorTotal,
                     tabelaPreco: body.tabelaPreco,
                     condicaoPagamento: body.condicaoPagamento,
+                    // Auto-manage dataFaturamento based on status
+                    ...(dataFaturamentoUpdate !== undefined && { dataFaturamento: dataFaturamentoUpdate }),
                     // Re-create items
                     itens: {
                         create: body.itens.map((item: any) => ({
