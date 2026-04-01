@@ -260,7 +260,7 @@ export default function ExpansionProposalGenerator() {
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(80, 80, 80);
-                doc.text(`CÓD: ${prod.codigo}  |  EMB: Cx c/ ${mult} un`, 45, yCursor + 11);
+                doc.text(`CÓD: ${prod.codigo}  |  EMB: ${prod.unidade || 'UN'} c/ ${mult} un`, 45, yCursor + 11);
                 doc.text(`Preço Original un: R$ ${priceUn.toFixed(2).replace('.', ',')}`, 45, yCursor + 16);
 
                 // Financial Box (Plano de Venda) - Right Column parallel to image
