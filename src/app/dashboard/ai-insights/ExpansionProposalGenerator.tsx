@@ -15,7 +15,7 @@ export default function ExpansionProposalGenerator() {
     const [selectedFabricaId, setSelectedFabricaId] = useState('');
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [message, setMessage] = useState('Baseado na nossa parceria, selecionamos a dedo os produtos de maior giro da marca para um teste de prateleira na sua loja, garantindo alta rentabilidade.');
+    const [message, setMessage] = useState('Analisando o volume da sua distribuição e nossa parceria consolidada, identifiquei uma oportunidade de margem na linha [Marca]. Separei exclusivamente as referências de maior liquidez e giro rápido para você rentabilizar a sua operação no atacado.');
     const [isGenerating, setIsGenerating] = useState(false);
 
     // Filtering logic for the product multiselect
@@ -77,12 +77,19 @@ export default function ExpansionProposalGenerator() {
                 const imgResult = await fetch('/logo.png');
                 if (imgResult.ok) {
                     const blob = await imgResult.blob();
-                    const reader = new FileReader();
                     await new Promise((resolve) => {
+                        const reader = new FileReader();
                         reader.onloadend = () => {
                             const base64data = reader.result as string;
-                            doc.addImage(base64data, 'PNG', 15, 8, 45, 24);
-                            resolve(true);
+                            const img = new Image();
+                            img.src = base64data;
+                            img.onload = () => {
+                                const targetWidth = 45;
+                                const ratio = img.height / img.width;
+                                const targetHeight = targetWidth * ratio;
+                                doc.addImage(base64data, 'PNG', 15, 8, targetWidth, targetHeight);
+                                resolve(true);
+                            };
                         }
                         reader.readAsDataURL(blob);
                     });
@@ -95,17 +102,17 @@ export default function ExpansionProposalGenerator() {
             // 3. Header Texts
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(255, 255, 255);
-            doc.setFontSize(20);
+            doc.setFontSize(14);
             const title = "PROJETO EXCLUSIVO DE EXPANSÃO DE MIX";
             const titleWidth = doc.getTextWidth(title);
-            doc.text(title, pageWidth - titleWidth - 15, 20);
+            doc.text(title, pageWidth - titleWidth - 15, 18);
             
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(156, 163, 175); // gray-400
             const subtitle = `Parceria Comercial: ${fabrica.nome}`;
             const subWidth = doc.getTextWidth(subtitle);
-            doc.text(subtitle, pageWidth - subWidth - 15, 28);
+            doc.text(subtitle, pageWidth - subWidth - 15, 24);
 
             // 4. Client Info
             doc.setTextColor(0, 0, 0);
@@ -128,11 +135,34 @@ export default function ExpansionProposalGenerator() {
             // 6. Generate Table Data
             const selectedItems = products.filter((p: any) => selectedProducts.includes(p.id));
             
+            // Pre-load images for the table
+            const base64Images: Record<string, string> = {};
+            for (const prod of selectedItems) {
+                const url = prod.imagem || prod.imagemUrl;
+                if (url) {
+                    try {
+                        const res = await fetch(url.startsWith('http') ? url : `/${url.replace(/^\//, '')}`);
+                        if (res.ok) {
+                            const blob = await res.blob();
+                            const b64 = await new Promise<string>((resolve) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result as string);
+                                reader.readAsDataURL(blob);
+                            });
+                            base64Images[prod.id] = b64;
+                        }
+                    } catch (e) {
+                        console.error('Failed to load image for', prod.id, e);
+                    }
+                }
+            }
+            
             // Resolve prices based on client's table
             const tableRows = selectedItems.map((prod: any) => {
                 const price = getClientPrice(client, prod);
                 return [
                     prod.codigo,
+                    '', // placeholder for image
                     prod.nome,
                     `R$ ${price.toFixed(2).replace('.', ',')}`
                 ];
@@ -141,7 +171,7 @@ export default function ExpansionProposalGenerator() {
             // 7. Render AutoTable
             autoTable(doc, {
                 startY: tableStartY,
-                head: [['CÓD.', 'PRODUTO', 'PREÇO UNITÁRIO']],
+                head: [['CÓD.', 'IMAGEM', 'PRODUTO', 'PREÇO UNITÁRIO']],
                 body: tableRows,
                 theme: 'grid',
                 headStyles: {
@@ -151,9 +181,13 @@ export default function ExpansionProposalGenerator() {
                     halign: 'center',
                 },
                 columnStyles: {
-                    0: { halign: 'center', cellWidth: 30 },
-                    1: { halign: 'left' },
-                    2: { halign: 'right', cellWidth: 40 },
+                    0: { halign: 'center', cellWidth: 20 },
+                    1: { halign: 'center', cellWidth: 35 },
+                    2: { halign: 'left' },
+                    3: { halign: 'right', cellWidth: 35 },
+                },
+                bodyStyles: {
+                    minCellHeight: 35
                 },
                 alternateRowStyles: {
                     fillColor: [243, 244, 246] // gray-100 zebrado
@@ -162,6 +196,28 @@ export default function ExpansionProposalGenerator() {
                 styles: {
                     fontSize: 10,
                     cellPadding: 4,
+                    valign: 'middle'
+                },
+                didDrawCell: function (data) {
+                    if (data.column.index === 1 && data.cell.section === 'body') {
+                        const rowIndex = data.row.index;
+                        const prod = selectedItems[rowIndex];
+                        const b64 = base64Images[prod.id];
+                        
+                        if (b64) {
+                            const dim = 28; // image size constrain
+                            const textPos = data.cell;
+                            const x = textPos.x + (textPos.width / 2) - (dim / 2);
+                            const y = textPos.y + (textPos.height / 2) - (dim / 2);
+                            
+                            const type = b64.includes('image/png') ? 'PNG' : 'JPEG';
+                            try {
+                                doc.addImage(b64, type, x, y, dim, dim);
+                            } catch (err) {
+                                console.error('Erro ao injetar imagem no PDF', err);
+                            }
+                        }
+                    }
                 }
             });
 
