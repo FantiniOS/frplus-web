@@ -39,6 +39,7 @@ export async function GET(request: Request, { params }: Params) {
             fabricaId: product.fabricaId,
             fabricaNome: product.fabrica.nome,
             categoria: product.categoria || 'Geral',
+            unidade: product.unidade || 'CX',
             ativo: product.ativo
         })
     } catch (error) {
@@ -70,6 +71,7 @@ export async function PUT(request: Request, { params }: Params) {
                 imagem: body.imagem,
                 fabricaId: body.fabricaId,
                 categoria: body.categoria,
+                unidade: body.unidade || 'CX',
                 ativo: body.ativo !== undefined ? body.ativo : undefined
             }
         })

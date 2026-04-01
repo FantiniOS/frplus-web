@@ -46,6 +46,7 @@ export async function GET(request: Request) {
             fabricaId: p.fabricaId,
             fabricaNome: p.fabrica.nome,
             categoria: p.categoria || 'Geral',
+            unidade: p.unidade || 'CX',
             ativo: p.ativo
         }))
 
@@ -77,7 +78,8 @@ export async function POST(request: Request) {
                 precoRedes: body.precoRedes,
                 imagem: body.imagem,
                 fabricaId: body.fabricaId,
-                categoria: body.categoria
+                categoria: body.categoria,
+                unidade: body.unidade || 'CX'
             }
         })
 
