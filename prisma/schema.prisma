@@ -34,7 +34,6 @@ model Produto {
   imagem             String?
   categoria          String?
   unidade            String?      @default("CX")
-  quantidadeEmbalagem Int         @default(1)
   ativo              Boolean      @default(true)
   fabricaId          String
   fabrica            Fabrica      @relation(fields: [fabricaId], references: [id])

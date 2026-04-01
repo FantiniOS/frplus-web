@@ -26,7 +26,7 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        const numFields = ['preco50a199', 'preco200a699', 'precoAtacado', 'precoAtacadoAVista', 'precoRedes', 'quantidadeEmbalagem'];
+        const numFields = ['preco50a199', 'preco200a699', 'precoAtacado', 'precoAtacadoAVista', 'precoRedes'];
         setFormData(prev => ({
             ...prev,
             [name]: numFields.includes(name) ? parseFloat(value) || 0 : value
@@ -164,10 +164,6 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
                                 <option value="PCT">Pacote (PCT)</option>
                                 <option value="FD">Fardo (FD)</option>
                             </select>
-                        </div>
-                        <div>
-                            <label className="label-compact">Qtd por Embalagem</label>
-                            <input name="quantidadeEmbalagem" type="number" min="1" value={formData.quantidadeEmbalagem || 1} onChange={handleChange} className="input-compact" />
                         </div>
                         <div className="col-span-2 flex items-center justify-between pt-2 border-t border-white/5">
                             <div>

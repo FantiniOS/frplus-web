@@ -44,20 +44,13 @@ export default function ExpansionProposalGenerator() {
         );
     }, [products, selectedFabricaId, searchTerm]);
 
-    // Regex to guess multiple
-    const guessMultiple = (name: string): number => {
-        if (!name) return 1;
-        const match = name.match(/[cC]\/\s*(\d+)/) || name.match(/com\s*(\d+)/i) || name.match(/cx\s*(\d+)/i) || name.match(/x\s*(\d+)/i);
-        return match ? parseInt(match[1], 10) : 1;
-    };
-
     const handleToggleProduct = (product: any) => {
         setSelectedProducts(prev => {
             const current = { ...prev };
             if (current[product.id]) {
                 delete current[product.id];
             } else {
-                current[product.id] = guessMultiple(product.nome);
+                current[product.id] = 1; // Fallback seguro: 1 item por caixa
             }
             return current;
         });
@@ -219,16 +212,15 @@ export default function ExpansionProposalGenerator() {
                     await addPageHeader(false);
                 }
 
-                // === REGRA DE OURO: Preço Base = Preço da Embalagem Fechada (Unidade de Venda) ===
-                const precoEmbalagem = getClientPrice(prod);
-                const qtdEmbalagem = prod.quantidadeEmbalagem || 1;
+                // === MOTOR DE PREÇOS: Base = Embalagem Fechada (Unidade de Venda) ===
+                const precoCaixa = getClientPrice(prod);
+                const itensPorCaixa = selectedProducts[prod.id] || 1; // Única fonte de verdade: input do usuário
 
-                // Descontos são calculados SOBRE a Embalagem Fechada, NUNCA sobre a fração
-                const precoLiquidoEmbalagem = precoEmbalagem * (1 - totalDiscountPercent / 100);
+                // Descontos são calculados SOBRE a Caixa Fechada, NUNCA sobre a fração
+                const precoCaixaLiquido = precoCaixa * (1 - totalDiscountPercent / 100);
 
                 // Preço Unitário = APENAS vitrine/exibição, calculado por ÚLTIMO
-                const precoOriginalUnitario = precoEmbalagem / qtdEmbalagem;
-                const precoLiquidoUnitario = precoLiquidoEmbalagem / qtdEmbalagem;
+                const valorUnidadeLiquido = precoCaixaLiquido / itensPorCaixa;
 
                 // Fetch Image via client-side window.location.origin
                 const prodUrl = prod.imagem || prod.imagemUrl;
@@ -261,18 +253,18 @@ export default function ExpansionProposalGenerator() {
                 if (pName.length > 40) pName = pName.substring(0, 38) + '...';
                 doc.text(pName, 45, yCursor + 5);
                 
-                // Embalagem dinâmica e Preço Original da Embalagem
+                // Código e Embalagem dinâmica
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(80, 80, 80);
-                doc.text(`CÓD: ${prod.codigo}  |  EMB: ${prod.unidade || 'UN'} c/ ${qtdEmbalagem} un`, 45, yCursor + 11);
-                doc.text(`Preço Emb.: R$ ${precoEmbalagem.toFixed(2).replace('.', ',')}  |  un: R$ ${precoOriginalUnitario.toFixed(2).replace('.', ',')}`, 45, yCursor + 16);
+                doc.text(`CÓD: ${prod.codigo}  |  EMB: ${prod.unidade || 'UN'} c/ ${itensPorCaixa} un`, 45, yCursor + 11);
+                doc.text(`Preço Tabela (${prod.unidade || 'UN'}): R$ ${precoCaixa.toFixed(2).replace('.', ',')}`, 45, yCursor + 16);
 
                 // Financial Box (Plano de Venda) - Right Column parallel to image
                 const finX = 120;
                 const finY = yCursor;
-                const finW = pageWidth - finX - 15; // Width ate a margem direita
-                const finH = 25;
+                const finW = pageWidth - finX - 15;
+                const finH = 28;
 
                 doc.setDrawColor(230, 230, 230);
                 doc.setFillColor(248, 250, 252);
@@ -301,13 +293,16 @@ export default function ExpansionProposalGenerator() {
                      dfY += 4;
                 }
 
-                // Final Net Price (Unit only - vitrine)
+                // Final Net Prices — Caixa + Unidade (vitrine)
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(10);
-                doc.setTextColor(0, 120, 50); // green
-                doc.text(`Preço Líquido un: R$ ${precoLiquidoUnitario.toFixed(2).replace('.', ',')}`, finX + 4, finY + 21);
+                doc.setFontSize(9);
+                doc.setTextColor(0, 100, 50);
+                doc.text(`Preço Caixa: R$ ${precoCaixaLiquido.toFixed(2).replace('.', ',')}`, finX + 4, finY + 21);
+                doc.setFontSize(9);
+                doc.setTextColor(0, 120, 50);
+                doc.text(`Preço Unidade: R$ ${valorUnidadeLiquido.toFixed(2).replace('.', ',')}`, finX + 4, finY + 25);
 
-                yCursor += 35; // Tighter jump with less text
+                yCursor += 38;
             }
 
             // Footer / Disclaimer
@@ -505,7 +500,7 @@ export default function ExpansionProposalGenerator() {
                                 ) : (
                                     availableProducts.map((p: any) => {
                                         const isSelected = !!selectedProducts[p.id];
-                                        const multiple = selectedProducts[p.id] || guessMultiple(p.nome);
+                                        const multiple = selectedProducts[p.id] || 1;
                                         
                                         return (
                                             <div 

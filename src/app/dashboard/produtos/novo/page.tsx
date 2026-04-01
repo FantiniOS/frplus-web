@@ -66,7 +66,6 @@ export default function NovoProdutoPage() {
             precoAtacadoAVista: Number(formData.precoAtacadoAVista) || 0,
             precoRedes: Number(formData.precoRedes) || 0,
             unidade: formData.unidade || 'CX',
-            quantidadeEmbalagem: Number(formData.quantidadeEmbalagem) || 1,
             descricao: formData.descricao,
             imagem: formData.imagemUrl // Ensure backend receives 'imagem'
         };
@@ -169,10 +168,6 @@ export default function NovoProdutoPage() {
                                 <option value="PCT">Pacote (PCT)</option>
                                 <option value="FD">Fardo (FD)</option>
                             </select>
-                        </div>
-                        <div>
-                            <label className="label-compact">Qtd por Embalagem</label>
-                            <input name="quantidadeEmbalagem" type="number" min="1" value={formData.quantidadeEmbalagem || 1} onChange={handleChange} placeholder="1" className="input-compact" />
                         </div>
                     </div>
                 </div>
