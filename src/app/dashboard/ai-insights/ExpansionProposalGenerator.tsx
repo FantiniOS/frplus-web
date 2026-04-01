@@ -12,6 +12,7 @@ export default function ExpansionProposalGenerator() {
 
     const [selectedClientId, setSelectedClientId] = useState('');
     const [selectedFabricaId, setSelectedFabricaId] = useState('');
+    const [selectedTabelaPreco, setSelectedTabelaPreco] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
 
@@ -66,9 +67,9 @@ export default function ExpansionProposalGenerator() {
         setSelectedProducts(prev => ({ ...prev, [productId]: Math.max(1, val) }));
     };
 
-    const getClientPrice = (client: any, product: any) => {
+    const getClientPrice = (product: any) => {
         let priceStr = product.preco50a199;
-        const tabela = client.tabelaPreco || '50a199';
+        const tabela = selectedTabelaPreco || '50a199';
         
         switch (tabela) {
             case '200a699': priceStr = product.preco200a699; break;
@@ -82,6 +83,27 @@ export default function ExpansionProposalGenerator() {
         return isNaN(priceNum) ? 0 : priceNum;
     };
 
+    const urlToBase64 = async (url: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                } else {
+                    reject(new Error('Canvas context null'));
+                }
+            };
+            img.onerror = (e) => reject(e);
+            img.src = url.startsWith('http') ? url : `/${url.replace(/^\//, '')}`;
+        });
+    };
+
     const generatePDF = async () => {
         setIsGenerating(true);
         try {
@@ -89,8 +111,8 @@ export default function ExpansionProposalGenerator() {
             const fabrica = fabricas.find((f: any) => f.id === selectedFabricaId);
             const selectedIds = Object.keys(selectedProducts);
             
-            if (!client || !fabrica || selectedIds.length === 0) {
-                alert('Preencha os campos obrigatórios e selecione ao menos um produto.');
+            if (!client || !fabrica || selectedIds.length === 0 || !selectedTabelaPreco) {
+                alert('Preencha os campos obrigatórios, escolha a tabela de preços e selecione ao menos um produto.');
                 setIsGenerating(false);
                 return;
             }
@@ -102,30 +124,22 @@ export default function ExpansionProposalGenerator() {
             
             const addPageHeader = async (isFirstPage: boolean) => {
                 doc.setFillColor(15, 23, 42); // slate-900 background
-                doc.rect(0, 0, pageWidth, 40, 'F');
+                doc.rect(0, 0, pageWidth, 45, 'F');
                 
                 // Add Logo
                 try {
-                    const imgResult = await fetch('/logo.png');
-                    if (imgResult.ok) {
-                        const blob = await imgResult.blob();
-                        await new Promise((resolve) => {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                                const base64data = reader.result as string;
-                                const img = new Image();
-                                img.src = base64data;
-                                img.onload = () => {
-                                    const targetWidth = 45;
-                                    const ratio = img.height / img.width;
-                                    const targetHeight = targetWidth * ratio;
-                                    doc.addImage(base64data, 'PNG', 15, 8, targetWidth, targetHeight);
-                                    resolve(true);
-                                };
-                            }
-                            reader.readAsDataURL(blob);
-                        });
-                    }
+                    const b64Logo = await urlToBase64('/logo.png');
+                    const img = new Image();
+                    img.src = b64Logo;
+                    await new Promise(resolve => {
+                        img.onload = () => {
+                            const targetWidth = 45;
+                            const ratio = img.height / img.width;
+                            const targetHeight = targetWidth * ratio;
+                            doc.addImage(b64Logo, 'PNG', 15, 12, targetWidth, targetHeight);
+                            resolve(true);
+                        }
+                    });
                 } catch (e) {
                     console.error("Erro ao carregar logo:", e);
                 }
@@ -134,18 +148,16 @@ export default function ExpansionProposalGenerator() {
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor(255, 255, 255);
                 doc.setFontSize(14);
-                const title = "PROPOSTA COMERCIAL";
-                const titleWidth = doc.getTextWidth(title);
-                doc.text(title, pageWidth - titleWidth - 15, 18);
+                const title = "PROJETO EXCLUSIVO DE EXPANSÃO DE MIX";
+                doc.text(title, pageWidth - 15, 22, { align: 'right' });
                 
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(156, 163, 175);
                 const subtitle = `Parceria Comercial: ${fabrica.nome}`;
-                const subWidth = doc.getTextWidth(subtitle);
-                doc.text(subtitle, pageWidth - subWidth - 15, 24);
+                doc.text(subtitle, pageWidth - 15, 28, { align: 'right' });
                 
-                yCursor = 55;
+                yCursor = 60;
 
                 if (isFirstPage) {
                     // Client Info
@@ -154,12 +166,14 @@ export default function ExpansionProposalGenerator() {
                     doc.setFont('helvetica', 'bold');
                     const razao = client.nomeFantasia || client.razaoSocial;
                     doc.text(`A/C: ${acName || 'Responsável por Compras'}`, 15, yCursor);
-                    yCursor += 6;
+                    yCursor += 7;
                     doc.setFontSize(11);
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(70, 70, 70);
-                    doc.text(`${razao}`, 15, yCursor);
-                    yCursor += 15;
+                    
+                    const splitRazao = doc.splitTextToSize(razao, pageWidth - 30);
+                    doc.text(splitRazao, 15, yCursor);
+                    yCursor += (splitRazao.length * 6) + 12;
 
                     // Message Argument
                     doc.setFontSize(11);
@@ -196,16 +210,8 @@ export default function ExpansionProposalGenerator() {
                 const url = prod.imagem || prod.imagemUrl;
                 if (url) {
                     try {
-                        const res = await fetch(url.startsWith('http') ? url : `/${url.replace(/^\//, '')}`);
-                        if (res.ok) {
-                            const blob = await res.blob();
-                            const b64 = await new Promise<string>((resolve) => {
-                                const reader = new FileReader();
-                                reader.onloadend = () => resolve(reader.result as string);
-                                reader.readAsDataURL(blob);
-                            });
-                            base64Images[prod.id] = b64;
-                        }
+                        const b64 = await urlToBase64(url);
+                        base64Images[prod.id] = b64;
                     } catch (e) {
                         console.error('Failed to load image for', prod.id, e);
                     }
@@ -220,7 +226,7 @@ export default function ExpansionProposalGenerator() {
                     await addPageHeader(false);
                 }
 
-                const priceCx = getClientPrice(client, prod);
+                const priceCx = getClientPrice(prod);
                 const mult = selectedProducts[prod.id] || 1;
                 const priceUn = priceCx / mult;
 
@@ -331,7 +337,13 @@ export default function ExpansionProposalGenerator() {
             doc.setFontSize(8);
             doc.setFont('helvetica', 'italic');
             doc.setTextColor(130, 130, 130);
-            doc.text(`* Cotação elaborada via tabela Base: ${client.tabelaPreco || 'Padrão'}. Sujeito à análise de crédito e estoque dinâmico.`, 15, yCursor + 15);
+            const tabelaDisplay = { 
+                '50a199': '50 a 199', 
+                '200a699': '200 a 699', 
+                'atacado': 'Atacado', 
+                'avista': 'À Vista', 
+                'redes': 'Redes' }[selectedTabelaPreco] || selectedTabelaPreco;
+            doc.text(`* Cotação elaborada via tabela Base: ${tabelaDisplay}. Sujeito à análise de crédito e estoque dinâmico.`, 15, yCursor + 15);
             
             // Save PDF
             const clientNameClean = (client.nomeFantasia || client.razaoSocial).replace(/[^a-zA-Z0-9]/g, '_');
@@ -391,6 +403,21 @@ export default function ExpansionProposalGenerator() {
                                 placeholder="Nome do Comprador"
                                 className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                             />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-blue-400 mb-1">Tabela de Preço Base *</label>
+                            <select 
+                                value={selectedTabelaPreco} 
+                                onChange={(e) => setSelectedTabelaPreco(e.target.value)}
+                                className="w-full bg-blue-900/20 border border-blue-500/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                            >
+                                <option value="" className="text-black">Selecione a Tabela...</option>
+                                <option value="50a199" className="text-black">50 a 199</option>
+                                <option value="200a699" className="text-black">200 a 699</option>
+                                <option value="atacado" className="text-black">Atacado</option>
+                                <option value="avista" className="text-black">À Vista</option>
+                                <option value="redes" className="text-black">Redes</option>
+                            </select>
                         </div>
                     </div>
 
@@ -549,7 +576,7 @@ export default function ExpansionProposalGenerator() {
             <div className="flex justify-end pt-4 border-t border-white/10">
                 <button
                     onClick={generatePDF}
-                    disabled={isGenerating || !selectedClientId || !selectedFabricaId || Object.keys(selectedProducts).length === 0}
+                    disabled={isGenerating || !selectedClientId || !selectedFabricaId || !selectedTabelaPreco || Object.keys(selectedProducts).length === 0}
                     className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Download className="w-5 h-5" />
