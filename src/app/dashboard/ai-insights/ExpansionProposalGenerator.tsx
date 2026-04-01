@@ -83,7 +83,7 @@ export default function ExpansionProposalGenerator() {
         return isNaN(priceNum) ? 0 : priceNum;
     };
 
-    async function getBase64Image(url: string): Promise<string | null> {
+    async function getBase64Image(url: string): Promise<{ data: string; width: number; height: number } | null> {
         return new Promise((resolve) => {
             if (!url) return resolve(null);
             let finalUrl = url;
@@ -100,14 +100,14 @@ export default function ExpansionProposalGenerator() {
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
                     ctx.drawImage(img, 0, 0);
-                    resolve(canvas.toDataURL('image/png'));
+                    resolve({ data: canvas.toDataURL('image/png'), width: img.width, height: img.height });
                 } else {
                     resolve(null);
                 }
             };
             img.onerror = (err) => {
                 console.error('Falha ao carregar imagem para o PDF:', finalUrl, err);
-                resolve(null); // Retorna null para não quebrar a geração do PDF
+                resolve(null);
             };
             img.src = finalUrl;
         });
@@ -136,20 +136,15 @@ export default function ExpansionProposalGenerator() {
                 doc.rect(0, 0, pageWidth, 45, 'F');
                 
                 // Add Logo
-                const logoData = await getBase64Image('/logo.png');
-                if (logoData) {
+                const logoResult = await getBase64Image('/logo.png');
+                if (logoResult) {
                     try {
-                        const tempImg = new Image();
-                        tempImg.src = logoData;
-                        await new Promise(resolve => {
-                            tempImg.onload = () => {
-                                const targetWidth = 45;
-                                const ratio = tempImg.height / tempImg.width;
-                                const targetHeight = targetWidth * ratio;
-                                doc.addImage(logoData, 'PNG', 15, 12, targetWidth, targetHeight);
-                                resolve(true);
-                            };
-                        });
+                        const maxLogoW = 45;
+                        const maxLogoH = 25;
+                        const logoRatio = Math.min(maxLogoW / logoResult.width, maxLogoH / logoResult.height);
+                        const logoW = logoResult.width * logoRatio;
+                        const logoH = logoResult.height * logoRatio;
+                        doc.addImage(logoResult.data, 'PNG', 15, 12, logoW, logoH);
                     } catch (e) {
                         console.error('Erro ao injetar logo no PDF:', e);
                     }
@@ -232,13 +227,17 @@ export default function ExpansionProposalGenerator() {
 
                 // Fetch Image via client-side window.location.origin
                 const prodUrl = prod.imagem || prod.imagemUrl;
-                const imgData = prodUrl ? await getBase64Image(prodUrl) : null;
+                const imgResult = prodUrl ? await getBase64Image(prodUrl) : null;
 
-                // Render Image (Left Column)
-                if (imgData) {
-                    const type = imgData.includes('image/png') ? 'PNG' : 'JPEG';
+                // Render Image (Left Column) with Aspect Ratio
+                if (imgResult) {
+                    const maxW = 25;
+                    const maxH = 25;
+                    const ratio = Math.min(maxW / imgResult.width, maxH / imgResult.height);
+                    const finalW = imgResult.width * ratio;
+                    const finalH = imgResult.height * ratio;
                     try {
-                        doc.addImage(imgData, type, 15, yCursor, 25, 25);
+                        doc.addImage(imgResult.data, 'PNG', 15, yCursor, finalW, finalH);
                     } catch (err) {
                         doc.setFillColor(240, 240, 240);
                         doc.rect(15, yCursor, 25, 25, 'F');
