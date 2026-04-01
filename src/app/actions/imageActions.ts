@@ -7,8 +7,13 @@ export async function getBase64ImageServer(url: string) {
         // Handle absolute vs relative URLs robustly
         let fetchUrl = url;
         if (!url.startsWith('http')) {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-            fetchUrl = `${baseUrl}/${url.replace(/^\//, '')}`;
+            let baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+            if (!baseUrl) {
+                // Se estiver na Vercel, usa a URL do deploy (precisa adicionar https://)
+                baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+            }
+            // Remove barras duplicadas na junção
+            fetchUrl = `${baseUrl.replace(/\/$/, '')}/${url.replace(/^\//, '')}`;
         }
 
         const response = await fetch(fetchUrl);
