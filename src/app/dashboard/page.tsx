@@ -82,6 +82,19 @@ export default function DashboardPage() {
   // ====== CÁLCULO DE FATURAMENTO ======
   // Sincronizado com os orders globais do DataContext (respeitando qualquer filtro de fábrica/representada)
   const faturamentoData = useMemo(() => {
+    let startOfPeriod: Date | null = null;
+    let endOfPeriod: Date | null = null;
+
+    if (chartView === 'Mensal' && filterYear !== null && filterMonth !== null) {
+        startOfPeriod = new Date(Date.UTC(filterYear, filterMonth, 1, 0, 0, 0));
+        endOfPeriod = new Date(Date.UTC(filterYear, filterMonth + 1, 1, 0, 0, 0));
+    } else if (chartView === 'Anual' && selectedYear !== null) {
+        startOfPeriod = new Date(Date.UTC(selectedYear, 0, 1, 0, 0, 0));
+        endOfPeriod = new Date(Date.UTC(selectedYear + 1, 0, 1, 0, 0, 0));
+    }
+
+    console.log(`[Segurança - Faturamento] Visão: ${chartView} | Start: ${startOfPeriod?.toISOString() || 'Global'} | End: ${endOfPeriod?.toISOString() || 'Global'}`);
+
     const faturamentoOrders = orders.filter(o => {
       if (o.tipo === 'Bonificacao' || (o.status || '').toLowerCase() === 'cancelado') return false;
       const status = (o.status || '').toLowerCase();
@@ -89,14 +102,13 @@ export default function DashboardPage() {
       if (!o.dataFaturamento) return false;
 
       const fDate = new Date(o.dataFaturamento);
-      if (chartView === 'Mensal') {
-        if (!selectedMonth) return true;
-        return fDate.getUTCMonth() === filterMonth && fDate.getUTCFullYear() === filterYear;
-      } else if (chartView === 'Anual') {
-        return fDate.getUTCFullYear() === selectedYear;
-      } else {
-        return true; // Global
+      
+      if (startOfPeriod && endOfPeriod) {
+          // Filtro rigoroso: gte start AND lt end (exclusive to not bleed into next month)
+          return fDate.getTime() >= startOfPeriod.getTime() && fDate.getTime() < endOfPeriod.getTime();
       }
+      
+      return true; // Global
     });
 
     return {
