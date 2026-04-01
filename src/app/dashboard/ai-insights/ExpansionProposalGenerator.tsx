@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { Target, Download, CheckCircle2, Search, Factory, Box, Percent, Calculator } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { getBase64ImageServer } from '@/app/actions/imageActions';
 
 export default function ExpansionProposalGenerator() {
     const { clients, fabricas, products } = useData();
@@ -84,6 +83,36 @@ export default function ExpansionProposalGenerator() {
         return isNaN(priceNum) ? 0 : priceNum;
     };
 
+    async function getBase64Image(url: string): Promise<string | null> {
+        return new Promise((resolve) => {
+            if (!url) return resolve(null);
+            let finalUrl = url;
+            // Se for um caminho relativo local (ex: /logo.png), usa a origem do navegador
+            if (url.startsWith('/')) {
+                finalUrl = window.location.origin + url;
+            }
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                } else {
+                    resolve(null);
+                }
+            };
+            img.onerror = (err) => {
+                console.error('Falha ao carregar imagem para o PDF:', finalUrl, err);
+                resolve(null); // Retorna null para não quebrar a geração do PDF
+            };
+            img.src = finalUrl;
+        });
+    }
+
     const generatePDF = async () => {
         setIsGenerating(true);
         try {
@@ -107,23 +136,23 @@ export default function ExpansionProposalGenerator() {
                 doc.rect(0, 0, pageWidth, 45, 'F');
                 
                 // Add Logo
-                try {
-                    const b64Logo = await getBase64ImageServer('/logo.png');
-                    if (b64Logo) {
-                        const img = new Image();
-                        img.src = b64Logo;
+                const logoData = await getBase64Image('/logo.png');
+                if (logoData) {
+                    try {
+                        const tempImg = new Image();
+                        tempImg.src = logoData;
                         await new Promise(resolve => {
-                            img.onload = () => {
+                            tempImg.onload = () => {
                                 const targetWidth = 45;
-                                const ratio = img.height / img.width;
+                                const ratio = tempImg.height / tempImg.width;
                                 const targetHeight = targetWidth * ratio;
-                                doc.addImage(b64Logo, 'PNG', 15, 12, targetWidth, targetHeight);
+                                doc.addImage(logoData, 'PNG', 15, 12, targetWidth, targetHeight);
                                 resolve(true);
-                            }
+                            };
                         });
+                    } catch (e) {
+                        console.error('Erro ao injetar logo no PDF:', e);
                     }
-                } catch (e) {
-                    console.error("Erro ao carregar logo via server action:", e);
                 }
 
                 // Header Texts
@@ -201,16 +230,9 @@ export default function ExpansionProposalGenerator() {
                 const netPriceCx = priceCx * (1 - totalDiscountPercent / 100);
                 const netPriceUn = priceUn * (1 - totalDiscountPercent / 100);
 
-                // Fetch Image
-                let imgData: string | null = null;
-                const url = prod.imagem || prod.imagemUrl;
-                if (url) {
-                    try {
-                        imgData = await getBase64ImageServer(url);
-                    } catch (e) {
-                        console.error('Failed to load image for', prod.id, e);
-                    }
-                }
+                // Fetch Image via client-side window.location.origin
+                const prodUrl = prod.imagem || prod.imagemUrl;
+                const imgData = prodUrl ? await getBase64Image(prodUrl) : null;
 
                 // Render Image (Left Column)
                 if (imgData) {
