@@ -52,6 +52,24 @@ const parseDate = (dateStr: string) => {
     }
 }
 
+// Parse date retornando null se string vazia (para campos opcionais como dataFaturamento)
+const parseDateOrNull = (dateStr: string | undefined | null): Date | null => {
+    if (!dateStr || !dateStr.trim()) return null;
+    try {
+        const parts = dateStr.trim().split('/');
+        if (parts.length === 3) {
+            const dia = parseInt(parts[0], 10);
+            const mes = parseInt(parts[1], 10);
+            const ano = parseInt(parts[2], 10);
+            if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return null;
+            return new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0));
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string) {
     const results: any[] = [];
     const stream = Readable.from(fileBuffer);
@@ -218,6 +236,9 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
 
                         // Factory is directly chosen by UI
 
+                        // Parsear data da NF da segunda coluna 'DT Emissao' (mapeada como DT_Emissao_Fat)
+                        const dataNotaFiscal = parseDateOrNull(firstRow['DT_Emissao_Fat']);
+
                         updatePromises.push(
                             prisma.pedido.update({
                                 where: { id: orderNum },
@@ -226,6 +247,7 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                                     condicaoPagamento: condPagto,
                                     tipo: tipoPedido,
                                     data: parseDate(firstRow['DT_Emissao']),
+                                    ...(dataNotaFiscal ? { dataFaturamento: dataNotaFiscal } : {}),
                                     fabricaId: targetFabricaId,
                                 }
                             }).then(() => { stats.ordersUpdated++; })
@@ -285,6 +307,9 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                             }
                         }
 
+                        // Parsear data da NF da segunda coluna 'DT Emissao' (mapeada como DT_Emissao_Fat)
+                        const dataNotaFiscalCreate = parseDateOrNull(firstRow['DT_Emissao_Fat']);
+
                         if (itemsData.length > 0) {
                             try {
                                 await prisma.pedido.create({
@@ -300,6 +325,7 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                                         notaFiscal: notaFiscal,
                                         observacoes: `Importado em ${new Date().toLocaleDateString()}`,
                                         data: parseDate(firstRow['DT_Emissao']),
+                                        ...(dataNotaFiscalCreate ? { dataFaturamento: dataNotaFiscalCreate } : {}),
                                         itens: { create: itemsData }
                                     }
                                 });
