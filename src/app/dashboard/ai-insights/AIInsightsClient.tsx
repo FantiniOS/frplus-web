@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users } from 'lucide-react';
 import { MessageModal } from '@/components/dashboard/MessageModal';
 import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
+import ExpansionProposalGenerator from './ExpansionProposalGenerator';
 
 interface PrestesAComprarClient {
     id: string;
@@ -61,7 +62,7 @@ export default function AIInsightsClient() {
     const { usuario } = useAuth();
     const nomeRepresentante = usuario?.nome || 'Representante';
     const nomeEmpresa = usuario?.empresa || 'Fantini Representações';
-    const [activeTab, setActiveTab] = useState<'prestesAComprar' | 'opportunities' | 'campaigns'>('prestesAComprar');
+    const [activeTab, setActiveTab] = useState<'prestesAComprar' | 'opportunities' | 'campaigns' | 'expansion'>('prestesAComprar');
     const [daysFilter, setDaysFilter] = useState(15);
     const [selectedProduct, setSelectedProduct] = useState<string>('');
     const [generatedScripts, setGeneratedScripts] = useState<{ launch: string; reactivation: string; prospecting: string } | null>(null);
@@ -225,7 +226,8 @@ export default function AIInsightsClient() {
     const tabs = [
         { id: 'prestesAComprar' as const, label: 'Prestes a Comprar', icon: Sparkles, color: 'text-green-400', count: summaries.prestesAComprar.total },
         { id: 'opportunities' as const, label: 'Oportunidades', icon: Lightbulb, color: 'text-yellow-400', count: summaries.opportunities.total },
-        { id: 'campaigns' as const, label: 'Campanhas', icon: Megaphone, color: 'text-purple-400', count: 0 }
+        { id: 'campaigns' as const, label: 'Campanhas', icon: Megaphone, color: 'text-purple-400', count: 0 },
+        { id: 'expansion' as const, label: 'Propostas VIP', icon: Target, color: 'text-blue-400', count: 0 }
     ];
 
     const [activeInsight, setActiveInsight] = useState<SalesInsight | null>(null);
@@ -928,6 +930,11 @@ export default function AIInsightsClient() {
                                     </div>
                                 )}
                             </div>
+                        )}
+
+                        {/* Expansion Proposals Tab */}
+                        {activeTab === 'expansion' && (
+                            <ExpansionProposalGenerator />
                         )}
                     </>
                 )}
