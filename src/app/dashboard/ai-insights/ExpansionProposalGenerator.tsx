@@ -83,7 +83,7 @@ export default function ExpansionProposalGenerator() {
         return isNaN(priceNum) ? 0 : priceNum;
     };
 
-    const urlToBase64 = async (url: string): Promise<string> => {
+    const convertImageToBase64 = async (url: string): Promise<string> => {
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.crossOrigin = 'Anonymous';
@@ -128,7 +128,7 @@ export default function ExpansionProposalGenerator() {
                 
                 // Add Logo
                 try {
-                    const b64Logo = await urlToBase64('/logo.png');
+                    const b64Logo = await convertImageToBase64('/logo.png');
                     const img = new Image();
                     img.src = b64Logo;
                     await new Promise(resolve => {
@@ -204,24 +204,10 @@ export default function ExpansionProposalGenerator() {
 
             const selectedItems = products.filter((p: any) => selectedIds.includes(p.id));
             
-            // Pre-load images
-            const base64Images: Record<string, string> = {};
-            for (const prod of selectedItems) {
-                const url = prod.imagem || prod.imagemUrl;
-                if (url) {
-                    try {
-                        const b64 = await urlToBase64(url);
-                        base64Images[prod.id] = b64;
-                    } catch (e) {
-                        console.error('Failed to load image for', prod.id, e);
-                    }
-                }
-            }
-
             // Draw each product block
             for (const prod of selectedItems) {
-                // Check if we need a new page (Card height approx 45mm + margin)
-                if (yCursor > pageHeight - 55) {
+                // Check if we need a new page
+                if (yCursor > pageHeight - 75) {
                     doc.addPage();
                     await addPageHeader(false);
                 }
@@ -233,69 +219,60 @@ export default function ExpansionProposalGenerator() {
                 const netPriceCx = priceCx * (1 - totalDiscountPercent / 100);
                 const netPriceUn = priceUn * (1 - totalDiscountPercent / 100);
 
-                const cardX = 15;
-                const cardW = pageWidth - 30;
-                const cardH = 42;
-
-                // Card Border
-                doc.setDrawColor(220, 220, 230);
-                doc.setFillColor(252, 252, 254);
-                doc.roundedRect(cardX, yCursor, cardW, cardH, 2, 2, 'FD');
-
-                // Image
-                const b64 = base64Images[prod.id];
-                if (b64) {
-                    const type = b64.includes('image/png') ? 'PNG' : 'JPEG';
+                // Fetch Image
+                let imgData: string | null = null;
+                const url = prod.imagem || prod.imagemUrl;
+                if (url) {
                     try {
-                        doc.addImage(b64, type, cardX + 5, yCursor + 6, 28, 28);
-                    } catch (err) {}
-                } else {
-                    doc.setFillColor(240, 240, 240);
-                    doc.rect(cardX + 5, yCursor + 6, 28, 28, 'F');
+                        imgData = await convertImageToBase64(url);
+                    } catch (e) {
+                        console.error('Failed to load image for', prod.id, e);
+                    }
                 }
 
-                // Product details
-                let currentTX = cardX + 38;
-                let currentTY = yCursor + 10;
-                
-                doc.setFontSize(11);
+                // Render Image or Placeholder
+                if (imgData) {
+                    const type = imgData.includes('image/png') ? 'PNG' : 'JPEG';
+                    try {
+                        doc.addImage(imgData, type, 15, yCursor, 30, 30);
+                    } catch (err) {
+                        doc.setFillColor(240, 240, 240);
+                        doc.rect(15, yCursor, 30, 30, 'F');
+                    }
+                } else {
+                    doc.setFillColor(240, 240, 240);
+                    doc.rect(15, yCursor, 30, 30, 'F');
+                }
+
+                // Product Title
+                doc.setFontSize(12);
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor(30, 30, 40);
                 
-                // Truncate name if too long
                 let pName = prod.nome;
                 if (pName.length > 55) pName = pName.substring(0, 52) + '...';
-                doc.text(pName, currentTX, currentTY);
+                doc.text(pName, 50, yCursor + 8);
                 
-                currentTY += 5;
-                doc.setFontSize(8);
+                // Embalagem e Preço Tabela
+                doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
-                doc.setTextColor(100, 100, 110);
-                doc.text(`CÓD: ${prod.codigo}  |  EMBALAGEM: Cx c/ ${mult} un`, currentTX, currentTY);
-                
-                currentTY += 8;
-                // Base prices
-                doc.setFontSize(9);
                 doc.setTextColor(80, 80, 80);
-                doc.text(`Preço Tabela (Cx): R$ ${priceCx.toFixed(2).replace('.', ',')}`, currentTX, currentTY);
-                
-                currentTY += 5;
-                doc.text(`Preço Tabela (Un): R$ ${priceUn.toFixed(2).replace('.', ',')}`, currentTX, currentTY);
+                doc.text(`CÓD: ${prod.codigo}  |  EMBALAGEM: Cx c/ ${mult} un`, 50, yCursor + 13);
+                doc.text(`Preço Original Cx: R$ ${priceCx.toFixed(2).replace('.', ',')}  |  Unidade: R$ ${priceUn.toFixed(2).replace('.', ',')}`, 50, yCursor + 18);
 
                 // Financial Box (Plano de Venda)
-                const finX = cardX + 105;
-                const finY = yCursor + 6;
-                const finW = cardW - 110;
-                const finH = 30;
+                const finY = yCursor + 35;
+                const finW = pageWidth - 30; // ocupa a largura restante
+                const finH = 22;
 
                 doc.setDrawColor(230, 230, 230);
-                doc.setFillColor(248, 250, 252); // slate-50
-                doc.roundedRect(finX, finY, finW, finH, 1, 1, 'FD');
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(15, finY, finW, finH, 1, 1, 'FD');
 
                 doc.setFontSize(8);
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor(50, 50, 60);
-                doc.text("PLANO DE VENDA E DESCONTOS", finX + 4, finY + 6);
+                doc.text("PLANO DE VENDA E DESCONTOS", 19, finY + 6);
                 
                 let dfY = finY + 11;
                 doc.setFont('helvetica', 'normal');
@@ -303,29 +280,25 @@ export default function ExpansionProposalGenerator() {
                 doc.setTextColor(100, 100, 100);
                 
                 if (discount1Value > 0) {
-                    doc.text(`- ${discount1Name}: ${discount1Value}%`, finX + 4, dfY);
+                    doc.text(`- ${discount1Name}: ${discount1Value}%`, 19, dfY);
                     dfY += 4;
                 }
                 if (discount2Value > 0) {
-                    doc.text(`- ${discount2Name}: ${discount2Value}%`, finX + 4, dfY);
+                    doc.text(`- ${discount2Name}: ${discount2Value}%`, 19, dfY);
                     dfY += 4;
                 }
                 if (discount1Value === 0 && discount2Value === 0) {
-                     doc.text(`(Tabela Cheia / Sem Descontos extras)`, finX + 4, dfY);
+                     doc.text(`Sem Descontos Extras`, 19, dfY);
                      dfY += 4;
                 }
 
                 // Final Net Prices
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(9);
+                doc.setFontSize(10);
                 doc.setTextColor(0, 120, 50); // green
-                
-                // Align left inside the fin box below
-                doc.text(`Líquido Cx: R$ ${netPriceCx.toFixed(2).replace('.', ',')}`, finX + 4, finY + 23);
-                doc.text(`Líquido Un: R$ ${netPriceUn.toFixed(2).replace('.', ',')}`, finX + 4, finY + 28);
+                doc.text(`Preço caixa líquido: R$ ${netPriceCx.toFixed(2).replace('.', ',')}  |  Preço un líquido: R$ ${netPriceUn.toFixed(2).replace('.', ',')}`, 75, finY + 14);
 
-
-                yCursor += cardH + 4; // Move to next product
+                yCursor += 65; // Move to next product
             }
 
             // Footer / Disclaimer
