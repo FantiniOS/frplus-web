@@ -29,14 +29,33 @@ export default function PedidosPage() {
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
     // Filter orders
+    // Helper: data segura com fallback (dataPedido → data → createdAt)
+    const getDataPedido = (order: typeof orders[0]): string | null => {
+        return order.dataPedido || order.data || order.createdAt || null;
+    };
+
+    const formatDate = (dateStr: string | null | undefined): string => {
+        if (!dateStr) return 'Sem data';
+        try {
+            return new Date(dateStr).toLocaleDateString('pt-BR');
+        } catch {
+            return 'Sem data';
+        }
+    };
+
     const filteredOrders = useMemo(() => {
         return orders.filter(order => {
             const matchesSearch = (order.nomeCliente || '').toLowerCase().includes(searchTerm.toLowerCase()) || order.id.includes(searchTerm);
 
             let matchesMonth = true;
             if (selectedMonth) {
-                const orderDate = new Date(order.data).toISOString().slice(0, 7);
-                matchesMonth = orderDate === selectedMonth;
+                const rawDate = getDataPedido(order);
+                if (rawDate) {
+                    const orderDate = new Date(rawDate).toISOString().slice(0, 7);
+                    matchesMonth = orderDate === selectedMonth;
+                } else {
+                    matchesMonth = false;
+                }
             }
 
             let matchesTipo = true;
@@ -201,7 +220,8 @@ export default function PedidosPage() {
                     <table className="w-full text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-[#0c1220] border-b border-white/[0.08]">
-                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Data</th>
+                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Data Pedido</th>
+                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden lg:table-cell">Data NF</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Nota Fiscal</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Tipo</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Cliente</th>
@@ -236,11 +256,22 @@ export default function PedidosPage() {
                                                 }
                                             `}
                                         >
-                                            {/* Data */}
+                                            {/* Data Pedido */}
                                             <td className="px-3 py-2.5">
                                                 <span className={`text-xs font-mono ${isSelected ? 'text-blue-300' : 'text-gray-400'}`}>
-                                                    {new Date(order.data).toLocaleDateString('pt-BR')}
+                                                    {formatDate(getDataPedido(order))}
                                                 </span>
+                                            </td>
+
+                                            {/* Data NF (Nota Fiscal / Faturamento) */}
+                                            <td className="px-3 py-2.5 hidden lg:table-cell">
+                                                {(order.dataNotaFiscal || order.dataFaturamento) ? (
+                                                    <span className="text-xs font-mono text-cyan-400">
+                                                        {formatDate(order.dataNotaFiscal || order.dataFaturamento)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs text-gray-600">—</span>
+                                                )}
                                             </td>
 
                                             {/* Nota Fiscal */}
@@ -337,9 +368,15 @@ export default function PedidosPage() {
                                 <span className="text-white font-medium">{selectedOrder.nomeCliente}</span>
                             </div>
                             <div className="hidden md:flex items-center gap-2 text-xs">
-                                <span className="text-gray-500">Data:</span>
-                                <span className="text-gray-300">{new Date(selectedOrder.data).toLocaleDateString('pt-BR')}</span>
+                                <span className="text-gray-500">Data Pedido:</span>
+                                <span className="text-gray-300">{formatDate(getDataPedido(selectedOrder))}</span>
                             </div>
+                            {(selectedOrder.dataNotaFiscal || selectedOrder.dataFaturamento) && (
+                                <div className="hidden md:flex items-center gap-2 text-xs">
+                                    <span className="text-gray-500">Data NF:</span>
+                                    <span className="text-cyan-400">{formatDate(selectedOrder.dataNotaFiscal || selectedOrder.dataFaturamento)}</span>
+                                </div>
+                            )}
 
                             {selectedOrder.observacoes && (
                                 <div className="hidden lg:flex items-center gap-2 text-xs">

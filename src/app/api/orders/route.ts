@@ -48,7 +48,9 @@ export async function GET(request: Request) {
             nomeCliente: o.cliente?.nomeFantasia || o.cliente?.razaoSocial || 'Cliente Desconhecido',
             fabricaId: o.fabricaId,
             data: o.data.toISOString(),
+            dataPedido: o.data.toISOString(),
             dataFaturamento: o.dataFaturamento?.toISOString() || null,
+            dataNotaFiscal: o.dataFaturamento?.toISOString() || null,
             status: o.status,
             tipo: o.tipo,
             valorTotal: Number(o.valorTotal),
@@ -56,6 +58,7 @@ export async function GET(request: Request) {
             condicaoPagamento: o.condicaoPagamento,
             observacoes: o.observacoes,
             notaFiscal: o.notaFiscal,
+            createdAt: o.createdAt.toISOString(),
             itens: o.itens.map(item => ({
                 id: item.id,
                 produtoId: item.produtoId,

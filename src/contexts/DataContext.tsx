@@ -75,7 +75,10 @@ export interface Order {
     nomeCliente: string;
     fabricaId?: string;
     data: string;
+    dataPedido?: string;
     dataFaturamento?: string;
+    dataNotaFiscal?: string;
+    createdAt?: string;
     status: string;
     tipo?: 'Venda' | 'Bonificacao';
     valorTotal: number;
