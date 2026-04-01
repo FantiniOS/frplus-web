@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { Loader2, Phone } from "lucide-react";
 import { VisitasCalendar } from "@/components/dashboard/VisitasCalendar";
 import { getLembretesProspeccao } from "@/app/actions/prospects";
-import { getDashboardChartData, getAvailableYears, ChartDataResponse, ChartViewMode, getFaturamentoData } from "@/app/actions/dashboard";
+import { getDashboardChartData, getAvailableYears, ChartDataResponse, ChartViewMode } from "@/app/actions/dashboard";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
@@ -33,13 +33,6 @@ export default function DashboardPage() {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 
   // Fetch available years for dropdown
-  useEffect(() => {
-    getAvailableYears().then(setAvailableYears).catch(console.error);
-  }, []);
-
-  // ====== FATURAMENTO REAL ======
-  const [faturamentoData, setFaturamentoData] = useState<{ total: number, count: number }>({ total: 0, count: 0 });
-  const [faturamentoLoading, setFaturamentoLoading] = useState(false);
   useEffect(() => {
     getAvailableYears().then(setAvailableYears).catch(console.error);
   }, []);
@@ -83,26 +76,34 @@ export default function DashboardPage() {
         if (mounted) setChartLoading(false);
       });
 
-    // Buscar Faturamento Estrito (apenas para Mensal e Anual)
-    if (yearToSend !== null && monthToSend !== null) {
-      setFaturamentoLoading(true);
-      getFaturamentoData(yearToSend, monthToSend)
-        .then(data => {
-          if (mounted) {
-            setFaturamentoData(data);
-            setFaturamentoLoading(false);
-          }
-        })
-        .catch(err => {
-          console.error("Erro ao buscar faturamento", err);
-          if (mounted) setFaturamentoLoading(false);
-        });
-    } else {
-      setFaturamentoData({ total: 0, count: 0 });
-    }
-
     return () => { mounted = false; };
   }, [chartView, filterYear, filterMonth, selectedYear]);
+
+  // ====== CÁLCULO DE FATURAMENTO ======
+  // Sincronizado com os orders globais do DataContext (respeitando qualquer filtro de fábrica/representada)
+  const faturamentoData = useMemo(() => {
+    const faturamentoOrders = orders.filter(o => {
+      if (o.tipo === 'Bonificacao' || (o.status || '').toLowerCase() === 'cancelado') return false;
+      const status = (o.status || '').toLowerCase();
+      if (status !== 'faturado' && status !== 'concluido') return false;
+      if (!o.dataFaturamento) return false;
+
+      const fDate = new Date(o.dataFaturamento);
+      if (chartView === 'Mensal') {
+        if (!selectedMonth) return true;
+        return fDate.getUTCMonth() === filterMonth && fDate.getUTCFullYear() === filterYear;
+      } else if (chartView === 'Anual') {
+        return fDate.getUTCFullYear() === selectedYear;
+      } else {
+        return true; // Global
+      }
+    });
+
+    return {
+      total: faturamentoOrders.reduce((acc, o) => acc + Number(o.valorTotal), 0),
+      count: faturamentoOrders.length
+    };
+  }, [orders, chartView, filterMonth, filterYear, selectedYear, selectedMonth]);
 
   const maxSale = Math.max(...chartData.map(d => d.value), 100);
   const chartTotalSales = chartData.reduce((acc, curr) => acc + curr.value, 0);
@@ -277,7 +278,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Faturamento',
-      value: faturamentoLoading ? 'Carregando...' : `R$ ${faturamentoData.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      value: `R$ ${faturamentoData.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       sub: `${faturamentoData.count} pedidos faturados`,
       icon: DollarSign,
       gradient: 'from-emerald-500/20 to-emerald-500/[0.02]',
