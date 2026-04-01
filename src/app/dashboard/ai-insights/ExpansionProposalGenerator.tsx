@@ -179,7 +179,7 @@ export default function ExpansionProposalGenerator() {
                     
                     const splitRazao = doc.splitTextToSize(razao, pageWidth - 30);
                     doc.text(splitRazao, 15, yCursor);
-                    yCursor += (splitRazao.length * 6) + 12;
+                    yCursor += (splitRazao.length * 6) + 4;
 
                     // Message Argument
                     doc.setFontSize(11);
