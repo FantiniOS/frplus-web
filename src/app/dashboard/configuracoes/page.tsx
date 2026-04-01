@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import Papa from "papaparse";
 
 export default function ConfiguracoesPage() {
     const { logout, showToast, fabricas, refreshData } = useData();
@@ -45,38 +46,108 @@ export default function ConfiguracoesPage() {
     const [selectedFabricaId, setSelectedFabricaId] = useState<string>("");
     const [isImporting, setIsImporting] = useState(false);
     const [importStats, setImportStats] = useState<any>(null);
+    const [importProgress, setImportProgress] = useState<string>("");
 
     const handleImport = async () => {
         if (!importFile || !selectedFabricaId) return;
 
         setIsImporting(true);
         setImportStats(null);
+        setImportProgress("Lendo arquivo...");
 
-        const formData = new FormData();
-        formData.append('file', importFile);
-        formData.append('fabricaId', selectedFabricaId);
+        Papa.parse(importFile, {
+            header: false,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                try {
+                    // results.data is array of arrays
+                    // Skip 'Consulta' and Header (2 lines)
+                    const rawRows = results.data.slice(2) as string[][];
+                    
+                    if (rawRows.length === 0) {
+                        showToast("Arquivo vazio ou sem dados após cabecalho.", "error");
+                        setIsImporting(false);
+                        return;
+                    }
 
-        try {
-            const res = await fetch('/api/import/csv', {
-                method: 'POST',
-                body: formData
-            });
+                    const headersMap = [
+                        'Filial', 'Numero', 'DT_Emissao', 'Cliente', 'Loja', 'Nome_Cliente',
+                        'Tipo_Pedido', 'Nota_Fiscal', 'Serie', 'Vendedor_1', 'Nome_Vendedor',
+                        'Cond_Pagto', 'Descricao_Pagto', 'Desconto_1', 'DT_Emissao_Fat', 'Status',
+                        'Produto', 'Descricao_Produto', 'Unidade', 'Quantidade', 'Prc_Unitario', 'Vlr_Total'
+                    ];
 
-            const data = await res.json();
+                    const mappedRows = rawRows.map(row => {
+                        const obj: any = {};
+                        headersMap.forEach((header, index) => {
+                            obj[header] = row[index];
+                        });
+                        return obj;
+                    });
 
-            if (data.success) {
-                setImportStats(data.stats);
-                showToast("Importação concluída com sucesso!", "success");
-                setImportFile(null);
-            } else {
-                showToast(data.error + (data.details ? ': ' + data.details : ''), "error");
+                    // Chunk process
+                    const CHUNK_SIZE = 250;
+                    const chunks = [];
+                    for (let i = 0; i < mappedRows.length; i += CHUNK_SIZE) {
+                        chunks.push(mappedRows.slice(i, i + CHUNK_SIZE));
+                    }
+
+                    let cumulativeStats = {
+                        clientsNew: 0,
+                        clientsUpdated: 0,
+                        productsNew: 0,
+                        productsUpdated: 0,
+                        ordersCreated: 0,
+                        ordersUpdated: 0,
+                        ordersSkipped: 0,
+                        errors: [] as string[]
+                    };
+
+                    for (let i = 0; i < chunks.length; i++) {
+                        setImportProgress(`Processando lote ${i + 1} de ${chunks.length}...`);
+                        
+                        const res = await fetch('/api/import/batch', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                rows: chunks[i],
+                                fabricaId: selectedFabricaId
+                            })
+                        });
+
+                        const data = await res.json();
+                        if (data.success) {
+                            cumulativeStats.clientsNew += data.stats.clientsNew || 0;
+                            cumulativeStats.clientsUpdated += data.stats.clientsUpdated || 0;
+                            cumulativeStats.productsNew += data.stats.productsNew || 0;
+                            cumulativeStats.productsUpdated += data.stats.productsUpdated || 0;
+                            cumulativeStats.ordersCreated += data.stats.ordersCreated || 0;
+                            cumulativeStats.ordersUpdated += data.stats.ordersUpdated || 0;
+                            cumulativeStats.ordersSkipped += data.stats.ordersSkipped || 0;
+                            if (data.stats.errors) cumulativeStats.errors.push(...data.stats.errors);
+                        } else {
+                            throw new Error(data.error || "Erro no servidor ao processar lote");
+                        }
+                    }
+
+                    setImportStats(cumulativeStats);
+                    showToast("Importação concluída com sucesso!", "success");
+                    setImportFile(null);
+                    setImportProgress("");
+                } catch (error: any) {
+                    console.error(error);
+                    showToast("Erro durante a importação: " + error.message, "error");
+                    setImportProgress("");
+                } finally {
+                    setIsImporting(false);
+                }
+            },
+            error: (error) => {
+                showToast("Erro ao processar CSV localmente: " + error.message, "error");
+                setIsImporting(false);
+                setImportProgress("");
             }
-        } catch (error) {
-            console.error(error);
-            showToast("Erro de conexão ao importar.", "error");
-        } finally {
-            setIsImporting(false);
-        }
+        });
     };
 
     const handleReset = async () => {
@@ -337,7 +408,7 @@ export default function ConfiguracoesPage() {
                             ) : (
                                 <Upload className="mr-2 h-4 w-4" />
                             )}
-                            {isImporting ? 'Importando...' : 'Iniciar Importação'}
+                            {isImporting ? (importProgress || 'Importando...') : 'Iniciar Importação'}
                         </button>
                     </div>
 
