@@ -1,16 +1,18 @@
 'use client';
 
-import { Settings, Save, RefreshCw, LogOut, Trash2, Upload, CheckCircle, AlertCircle, Factory } from "lucide-react";
+import { Settings, Save, RefreshCw, LogOut, Trash2, Upload, CheckCircle, AlertCircle, Factory, Shield, ChevronRight } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Papa from "papaparse";
+import { getPerfilEmpresa, savePerfilEmpresa } from "@/app/actions/perfilEmpresa";
 
 export default function ConfiguracoesPage() {
     const { logout, showToast, fabricas, refreshData } = useData();
-    const { isIndustria, usuario, refreshSession } = useAuth() as any;
+    const { isIndustria, usuario, isAdmin, refreshSession } = useAuth() as any;
     const router = useRouter();
     const [companyName, setCompanyName] = useState("Minha Empresa");
     const [isSaving, setIsSaving] = useState(false);
@@ -31,6 +33,39 @@ export default function ConfiguracoesPage() {
             setCompanyName(usuario.empresa);
         }
     }, [usuario]);
+
+    // Perfil Global FRPlus
+    const [perfilGlobLoading, setPerfilGlobLoading] = useState(true);
+    const [perfilGlobSaving, setPerfilGlobSaving] = useState(false);
+    const [perfilGlob, setPerfilGlob] = useState({nomeEmpresa: '', email: '', telefone: ''});
+
+    useEffect(() => {
+        getPerfilEmpresa().then(data => {
+            setPerfilGlob({
+                nomeEmpresa: data.nomeEmpresa || '',
+                email: data.email || '',
+                telefone: data.telefone || ''
+            });
+            setPerfilGlobLoading(false);
+        });
+    }, []);
+
+    const handleSavePerfilGlob = async () => {
+        setPerfilGlobSaving(true);
+        try {
+            const res = await savePerfilEmpresa(perfilGlob);
+            if (res.sucesso) {
+                 showToast("Assinatura FRPlus salva com sucesso!", "success");
+                 router.refresh();
+            } else {
+                 showToast(res.mensagem || "Erro ao salvar perfil global.", "error");
+            }
+        } catch(e) {
+            showToast("Erro interno ao salvar perfil global.", "error");
+        } finally {
+            setPerfilGlobSaving(false);
+        }
+    };
 
     // Sync commission rates when fabricas load
     useEffect(() => {
@@ -258,7 +293,95 @@ export default function ConfiguracoesPage() {
                 </div>
                 <div>
                     <h1 className="text-3xl font-bold text-white">Configurações</h1>
-                    <p className="text-gray-400">Gerencie sua conta e as preferências do sistema.</p>
+                    <p className="text-gray-400">Gerencie sua conta, equipe e preferências do sistema.</p>
+                </div>
+            </div>
+
+            {/* Painel Administrativo (Acesso Restrito) */}
+            {isAdmin && (
+                <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-6 backdrop-blur-sm">
+                    <h2 className="text-xl font-semibold text-blue-400 mb-6 flex items-center gap-2">
+                        <Shield className="w-5 h-5" />
+                        Portal Administrativo
+                    </h2>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <Link href="/dashboard/fabricas" className="group p-5 rounded-xl border border-white/10 bg-black/40 hover:bg-white/5 transition-all flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                                    <Factory className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-white">Gerenciar Fábricas</h3>
+                                    <p className="text-xs text-gray-400">Cadastros e parametrizações</p>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-blue-400 transition-colors" />
+                        </Link>
+
+                        <Link href="/dashboard/usuarios" className="group p-5 rounded-xl border border-white/10 bg-black/40 hover:bg-white/5 transition-all flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                                    <Shield className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-white">Gestão de Usuários</h3>
+                                    <p className="text-xs text-gray-400">Acessos e permissões de equipe</p>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-emerald-400 transition-colors" />
+                        </Link>
+                    </div>
+                </div>
+            )}
+
+            {/* Identidade Global (Assinatura FRPlus) */}
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6 backdrop-blur-sm">
+                <h2 className="text-xl font-semibold text-emerald-400 mb-6 flex items-center gap-2">
+                    <Factory className="w-5 h-5" />
+                    Assinatura Global (FRPlus)
+                </h2>
+                {perfilGlobLoading ? (
+                    <p className="text-gray-400 animate-pulse text-sm">Carregando perfil...</p>
+                ) : (
+                    <div className="grid gap-6 md:grid-cols-3">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-300">Nome Mestre (Empresa)</label>
+                            <input
+                                value={perfilGlob.nomeEmpresa}
+                                onChange={(e) => setPerfilGlob({ ...perfilGlob, nomeEmpresa: e.target.value })}
+                                placeholder="Fantini Representações"
+                                className="w-full rounded-lg bg-black/40 border border-white/10 p-2.5 text-white focus:border-emerald-500 focus:outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-300">E-mail Comercial</label>
+                            <input
+                                value={perfilGlob.email}
+                                onChange={(e) => setPerfilGlob({ ...perfilGlob, email: e.target.value })}
+                                placeholder="contato@fantini.com.br"
+                                className="w-full rounded-lg bg-black/40 border border-white/10 p-2.5 text-white focus:border-emerald-500 focus:outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-300">WhatsApp / Telefone</label>
+                            <input
+                                value={perfilGlob.telefone}
+                                onChange={(e) => setPerfilGlob({ ...perfilGlob, telefone: e.target.value })}
+                                placeholder="(31) 99694-4540"
+                                className="w-full rounded-lg bg-black/40 border border-white/10 p-2.5 text-white focus:border-emerald-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+                )}
+                <div className="mt-6 flex justify-end">
+                    <button
+                        onClick={handleSavePerfilGlob}
+                        disabled={perfilGlobSaving || perfilGlobLoading}
+                        className="flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {perfilGlobSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {perfilGlobSaving ? 'Salvando...' : 'Salvar Assinatura'}
+                    </button>
                 </div>
             </div>
 

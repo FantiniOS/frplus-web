@@ -2,6 +2,8 @@
 'use client';
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { getPerfilEmpresa } from "@/app/actions/perfilEmpresa";
 import {
   LayoutDashboard,
   Users,
@@ -28,6 +30,11 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { usuario, logout, isAdmin, isIndustria } = useAuth();
+  const [nomeEmpresa, setNomeEmpresa] = useState<string>("");
+
+  useEffect(() => {
+    getPerfilEmpresa().then(data => setNomeEmpresa(data.nomeEmpresa));
+  }, []);
 
   const menuGroups = [
     {
@@ -56,16 +63,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     },
   ];
 
-  // Add admin-only menu
-  if (isAdmin) {
-    menuGroups.push({
-      title: "Administração",
-      items: [
-        { icon: Factory, label: "Fábricas", href: "/dashboard/fabricas" },
-        { icon: Shield, label: "Usuários", href: "/dashboard/usuarios" },
-      ]
-    });
-  }
+
 
   return (
     <>
@@ -80,7 +78,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       <aside className={`fixed left-0 top-0 z-50 h-screen w-64 border-r border-white/10 bg-black text-white transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="flex h-full flex-col px-3 py-4">
           {/* Logo */}
-          <div className="mb-8 flex items-center px-4 justify-center">
+          <div className="mb-8 flex flex-col items-center px-4 justify-center">
             <NextImage
               src="/logo.png"
               alt="Logo"
@@ -89,6 +87,13 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               className="w-auto h-auto max-w-[180px] max-h-24 object-contain"
               unoptimized
             />
+            {nomeEmpresa && (
+              <div className="text-center mt-[-6px]">
+                <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">
+                  {nomeEmpresa}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Menu Principal */}

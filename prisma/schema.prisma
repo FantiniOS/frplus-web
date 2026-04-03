@@ -174,3 +174,11 @@ model HistoricoTabela {
   representada   Fabrica  @relation(fields: [representadaId], references: [id])
   dataGeracao    DateTime @default(now())
 }
+
+model PerfilEmpresa {
+  id          String   @id @default("fixo")
+  nomeEmpresa String
+  email       String
+  telefone    String
+  updatedAt   DateTime @updatedAt
+}

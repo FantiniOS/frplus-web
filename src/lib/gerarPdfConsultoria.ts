@@ -1,22 +1,16 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Re-declare jsPDF autotable interface so typescript doesn't complain
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface jsPDFCustom extends jsPDF {
     lastAutoTable: { finalY: number };
 }
 
-// === Image helper para PDF ===
 async function getBase64Image(url: string): Promise<{ data: string; width: number; height: number } | null> {
     return new Promise((resolve) => {
         if (!url) return resolve(null);
         let finalUrl = url;
-        if (url.startsWith('/')) {
-            // Em client-side
-            if (typeof window !== 'undefined') {
-                finalUrl = window.location.origin + url;
-            }
+        if (url.startsWith('/') && typeof window !== 'undefined') {
+            finalUrl = window.location.origin + url;
         }
         const img = new Image();
         img.crossOrigin = 'Anonymous';
@@ -28,9 +22,7 @@ async function getBase64Image(url: string): Promise<{ data: string; width: numbe
             if (ctx) {
                 ctx.drawImage(img, 0, 0);
                 resolve({ data: canvas.toDataURL('image/png'), width: img.width, height: img.height });
-            } else {
-                resolve(null);
-            }
+            } else resolve(null);
         };
         img.onerror = () => resolve(null);
         img.src = finalUrl;
@@ -54,6 +46,7 @@ export interface PayloadConsultoria {
         quantidade: number;
         subtotal: number;
         coberturaDias: number;
+        lucroEstimado?: number;
     }>;
     itemBonificado: {
         nome: string;
@@ -63,150 +56,226 @@ export interface PayloadConsultoria {
     totalPedido: number;
     verbaGerada: number;
     lucroImediato: number;
+    lucroEstimadoRevenda?: number;
+    clienteNovo?: string;
+    comprador?: string;
 }
 
 export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
-    const doc = new jsPDF('p', 'mm', 'a4') as jsPDFCustom;
-    const pageWidth = doc.internal.pageSize.getWidth();
+    try {
+        console.log('[PDF Consultoria] Iniciando geração...', {
+            fabrica: payload.fabrica, perfil: payload.perfil,
+            itens: payload.itensPagos.length, temBonificado: !!payload.itemBonificado,
+        });
 
-    // 1. Cabeçalho de Autoridade Corporativo (Preto Absoluto)
-    doc.setFillColor(0, 0, 0); // Preto Absoluto
-    doc.rect(0, 0, pageWidth, 40, 'F');
+        const doc = new jsPDF('p', 'mm', 'a4') as jsPDFCustom;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = { left: 14, right: 14 };
 
-    // Logo
-    const logoResult = await getBase64Image('/logo.png');
-    if (logoResult) {
-        try {
-            const maxLogoW = 40;
-            const maxLogoH = 20;
-            const logoRatio = Math.min(maxLogoW / logoResult.width, maxLogoH / logoResult.height);
-            doc.addImage(logoResult.data, 'PNG', 15, 10, logoResult.width * logoRatio, logoResult.height * logoRatio);
-        } catch (e) { /* ignore */ }
-    }
+        const colors = {
+            headerDark: [10, 10, 14] as [number, number, number],
+            accentBlue: [37, 99, 235] as [number, number, number],
+            accentCyan: [6, 182, 212] as [number, number, number],
+            textDark: [20, 20, 30] as [number, number, number],
+            textMuted: [120, 120, 140] as [number, number, number],
+            textLight: [200, 200, 220] as [number, number, number],
+            white: [255, 255, 255] as [number, number, number],
+            rowEven: [250, 251, 254] as [number, number, number],
+            tableBorder: [226, 232, 240] as [number, number, number],
+            greenAccent: [16, 185, 129] as [number, number, number],
+        };
 
-    // Título Frontal
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14);
-    doc.text("PLANO DE ABASTECIMENTO ESTRATÉGICO", pageWidth - 15, 18, { align: 'right' });
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    // Para contrastar perfeitamente sobre o fundo preto, os textos secundários ficam branco ou cinza bem claro
-    doc.setTextColor(230, 240, 250); 
-    doc.text(`Parceria Comercial: ${payload.fabrica}`, pageWidth - 15, 25, { align: 'right' });
-    
-    doc.setFontSize(9);
-    doc.text(`Perfil do Negócio: ${payload.perfil}`, pageWidth - 15, 30, { align: 'right' });
-    doc.text(`Data da Simulação: ${payload.data}`, pageWidth - 15, 35, { align: 'right' });
+        const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
+            const headerHeight = 38;
+            const extraHeader = (payload.clienteNovo ? 5 : 0) + (payload.comprador ? 5 : 0);
 
-    // 2. Subtítulo Seção Curva A
-    let yCursor = 55;
-    doc.setTextColor(30, 30, 30);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text("Mapeamento do Mix Ideal (Curva A de Curto a Médio Prazo)", 15, yCursor);
-    
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.5);
-    doc.line(15, yCursor + 3, pageWidth - 15, yCursor + 3);
-    yCursor += 10;
+            pageDoc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
+            pageDoc.rect(0, 0, pageWidth, headerHeight + extraHeader, 'F');
 
-    // 3. Tabela AutoTable Zebrada Oficial
-    const tableBody = payload.itensPagos.map((item) => [
-        item.nome,
-        `${item.quantidade}`,
-        item.unidade,
-        formatBRL(item.precoUnitario),
-        formatBRL(item.subtotal),
-        item.coberturaDias > 0 ? `${item.coberturaDias} dias` : 'S/ Ref.'
-    ]);
+            pageDoc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+            pageDoc.rect(0, headerHeight + extraHeader, pageWidth, 1.5, 'F');
+            pageDoc.setFillColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
+            pageDoc.rect(pageWidth * 0.4, headerHeight + extraHeader, pageWidth * 0.6, 1.5, 'F');
 
-    autoTable(doc, {
-        startY: yCursor,
-        head: [['Produto', 'Qtd Sugerida', 'Embalagem', 'Preço Unit.', 'Subtotal', 'Cobertura Estimada']],
-        body: tableBody,
-        theme: 'striped',
-        headStyles: { fillColor: [0, 0, 0], textColor: 255, fontStyle: 'bold' },
-        bodyStyles: { textColor: 50, fontSize: 9 },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        columnStyles: {
-            0: { cellWidth: 70 }, // Produto
-            1: { halign: 'center' }, // Qtd
-            2: { halign: 'center' }, // Emb
-            3: { halign: 'right' }, // Preco Unit
-            4: { halign: 'right' }, // Subtotal
-            5: { halign: 'center' }, // Cobertura
-        },
-        margin: { left: 15, right: 15 }
-    });
+            // Title
+            pageDoc.setFontSize(13);
+            pageDoc.setFont('helvetica', 'bold');
+            pageDoc.setTextColor(255, 255, 255);
+            pageDoc.text("CONSULTORIA DE PRIMEIRO PEDIDO", pageWidth - margin.right, 14, { align: 'right' });
 
-    yCursor = (doc as any).lastAutoTable.finalY + 15;
+            // Date
+            pageDoc.setFontSize(7);
+            pageDoc.setFont('helvetica', 'normal');
+            pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+            const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+            pageDoc.text(`Emitido em ${dateStr}`, pageWidth - margin.right, 20, { align: 'right' });
 
-    if (yCursor > 220) {
-        doc.addPage();
-        yCursor = 20;
-    }
+            // Metadata
+            let currentHeaderY = 25;
+            if (payload.clienteNovo) {
+                pageDoc.text(`Cliente: ${payload.clienteNovo}`, pageWidth - margin.right, currentHeaderY, { align: 'right' });
+                currentHeaderY += 5;
+            }
+            if (payload.comprador) {
+                pageDoc.text(`A/C: ${payload.comprador}`, pageWidth - margin.right, currentHeaderY, { align: 'right' });
+            }
 
-    // 4. Destaque de Bonificação (O 'Cheque' do Cliente) - CÓDIGO DA DIRETRIZ
-    doc.setFillColor(245, 247, 250); // Fundo Cinza Geral
-    doc.setDrawColor(220, 226, 230);
-    doc.roundedRect(15, yCursor, pageWidth - 30, 45, 2, 2, 'FD');
+            if (pageNum > 1) {
+                pageDoc.setFontSize(7);
+                pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                pageDoc.text(`(Continuação)`, pageWidth - margin.right, currentHeaderY + 5, { align: 'right' });
+            }
 
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(41, 128, 185); 
-    doc.setFontSize(12);
-    doc.text("RESUMO DO INVESTIMENTO", 20, yCursor + 8);
+            return headerHeight + extraHeader + 5;
+        };
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(71, 85, 105); 
-    
-    // Totais
-    doc.text(`Valor Total em Produtos:`, 20, yCursor + 16);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 41, 59); 
-    doc.text(formatBRL(payload.totalPedido), 80, yCursor + 16);
+        const drawFooter = (pageDoc: typeof doc, pageNum: number, totalPages: number) => {
+            const footerY = pageHeight - 12;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Verba de Introdução (${payload.bonusPorcentagem}%):`, 20, yCursor + 23);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(41, 128, 185); 
-    doc.text(formatBRL(payload.verbaGerada), 80, yCursor + 23);
+            pageDoc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
+            pageDoc.setLineWidth(0.3);
+            pageDoc.line(margin.left, footerY - 3, pageWidth - margin.right, footerY - 3);
 
-    // Bloco Superior de Destaque da DIRETRIZ EXATA
-    if (payload.itemBonificado) {
-        doc.setFillColor(240, 240, 240); // Fundo cinza claro da DIRETRIZ
-        doc.setDrawColor(200, 200, 200);
-        doc.rect(20, yCursor + 28, pageWidth - 40, 12, 'FD');
-        
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.setTextColor(30, 30, 30);
-        
-        const iscaName = payload.itemBonificado.nome.replace('[BONIFICAÇÃO] ', '');
-        const fraseQtde = `${payload.itemBonificado.quantidade} Caixas de ${iscaName}`;
-        
-        // Separa impacto e grito em duas fontes ou concatena
-        doc.text(fraseQtde, 25, yCursor + 35.5);
-        
-        doc.setTextColor(41, 128, 185);
+            pageDoc.setFontSize(7);
+            pageDoc.setFont('helvetica', 'normal');
+            pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+            pageDoc.text('FRPlus — Gestão Comercial Inteligente', margin.left, footerY);
+            pageDoc.text('Documento confidencial • Preços sujeitos a alteração sem aviso prévio', pageWidth / 2, footerY, { align: 'center' });
+
+            pageDoc.setFont('helvetica', 'bold');
+            pageDoc.text(`${pageNum} / ${totalPages}`, pageWidth - margin.right, footerY, { align: 'right' });
+        };
+
+        const logoResult = await getBase64Image('/logo.png');
+
+        let startY = drawHeader(doc, 1);
+
+        if (logoResult) {
+            try {
+                const logoH = 19.5; 
+                const logoRatio = logoH / logoResult.height;
+                const logoW = logoResult.width * logoRatio;
+                doc.addImage(logoResult.data, 'PNG', margin.left, 6, logoW, logoH);
+            } catch (logoErr) {}
+        }
+
+        startY += 2;
+
+        const tableBody = payload.itensPagos.map((item) => [
+            `${item.nome} (${item.unidade})`,
+            `${item.quantidade}`,
+            formatBRL(item.precoUnitario),
+            formatBRL(item.subtotal),
+            item.coberturaDias > 0 ? `${item.coberturaDias} dias` : 'S/ Ref.',
+            item.lucroEstimado ? formatBRL(item.lucroEstimado) : '-',
+        ]);
+
+        if (payload.itemBonificado && payload.itemBonificado.quantidade > 0) {
+            tableBody.push([
+                payload.itemBonificado.nome,
+                `${payload.itemBonificado.quantidade}`,
+                'R$ 0,00',
+                'R$ 0,00',
+                'Verba Inteira',
+                '-'
+            ]);
+        }
+
+        autoTable(doc, {
+            startY,
+            head: [['Produto', 'Quantidade', 'Preço Unitário', 'Total Item', 'Cobertura', 'Lucro Previsto']],
+            body: tableBody,
+            theme: 'striped',
+            styles: { fontSize: 8, cellPadding: 3, halign: 'left', lineColor: colors.tableBorder, lineWidth: 0.2 },
+            headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4, halign: 'left' },
+            alternateRowStyles: { fillColor: colors.rowEven },
+            columnStyles: {
+                0: { fontStyle: 'bold', textColor: colors.textDark, cellWidth: 'auto' },
+                1: { halign: 'center', textColor: colors.textMuted },
+                2: { halign: 'right', textColor: colors.textMuted },
+                3: { halign: 'right', fontStyle: 'bold', textColor: colors.textDark },
+                4: { halign: 'center', textColor: colors.textMuted },
+                5: { halign: 'right', textColor: colors.greenAccent }
+            },
+            margin: { left: margin.left, right: margin.right },
+            didDrawPage: (data: { pageNumber: number }) => {
+                if (data.pageNumber > 1) {
+                    drawHeader(doc, data.pageNumber);
+                    if (logoResult) {
+                        try {
+                            const logoH = 19.5; 
+                            const logoRatio = logoH / logoResult.height;
+                            const logoW = logoResult.width * logoRatio;
+                            doc.addImage(logoResult.data, 'PNG', margin.left, 6, logoW, logoH);
+                        } catch (logoErr) {}
+                    }
+                }
+            },
+            didParseCell: (data: any) => {
+                if (payload.itemBonificado && data.row.index === tableBody.length - 1 && data.section === 'body') {
+                    data.cell.styles.textColor = colors.greenAccent;
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            }
+        });
+
+        startY = doc.lastAutoTable.finalY + 15;
+
+        // Financial Summary Block
+        if (startY > pageHeight - 50) {
+            doc.addPage();
+            startY = drawHeader(doc, doc.getNumberOfPages());
+        }
+
+        doc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
+        doc.roundedRect(margin.left, startY, pageWidth - margin.left - margin.right, 30, 1.5, 1.5, 'F');
+        doc.setFillColor(colors.greenAccent[0], colors.greenAccent[1], colors.greenAccent[2]);
+        doc.rect(margin.left, startY, 3, 30, 'F');
+
         doc.setFontSize(10);
-        const custoZeroLabel = "(CUSTO ZERO PARA O CLIENTE)";
-        doc.text(custoZeroLabel, pageWidth - 25 - doc.getTextWidth(custoZeroLabel), yCursor + 35.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+        
+        let blockY = startY + 8;
+        doc.text("Investimento Total:", margin.left + 8, blockY);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text(formatBRL(payload.totalPedido), margin.left + 45, blockY);
+
+        blockY += 7;
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+        doc.text("Lucro Estimado Total:", margin.left + 8, blockY);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(colors.greenAccent[0], colors.greenAccent[1], colors.greenAccent[2]);
+        const lucroTotal = payload.lucroEstimadoRevenda || 0;
+        doc.text(formatBRL(lucroTotal), margin.left + 48, blockY);
+
+        blockY += 7;
+        if (payload.verbaGerada > 0) {
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+            doc.text("Verba Gerada:", margin.left + 8, blockY);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(colors.greenAccent[0], colors.greenAccent[1], colors.greenAccent[2]);
+            doc.text(formatBRL(payload.verbaGerada), margin.left + 35, blockY);
+        }
+
+        const pageCount = doc.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            drawFooter(doc, i, pageCount);
+        }
+
+        const dataClean = payload.data.replace(/\//g, '-');
+        const fabricaClean = payload.fabrica.replace(/[^a-zA-Z0-9]/g, '_');
+        doc.save(`Consultoria_Primeiro_Pedido_${fabricaClean}_${dataClean}.pdf`);
+
+        console.log('[PDF Consultoria] Gerado com sucesso.');
+
+    } catch (error) {
+        console.error('[PDF Consultoria] ERRO FATAL:', error);
+        throw error;
     }
-
-    // Disclaimer
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(150, 150, 150);
-    const disclaimer = `* A métrica de cobertura de dias é uma estimativa estatística de probabilidade preditiva baseada nos últimos 180 dias de histórico da tabela do cliente alvo. Valores finais sujeitos a análise da indústria e disponibilidade de estoque.`;
-    const splitDisclaimer = doc.splitTextToSize(disclaimer, pageWidth - 30);
-    doc.text(splitDisclaimer, 15, yCursor + 60);
-
-    // Save PDF
-    const dataClean = payload.data.replace(/\//g, '-');
-    const fabricaClean = payload.fabrica.replace(/[^a-zA-Z0-9]/g, '_');
-    doc.save(`Plano_Estrategico_${fabricaClean}_${dataClean}.pdf`);
 }

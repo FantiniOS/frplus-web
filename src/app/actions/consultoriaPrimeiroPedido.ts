@@ -5,20 +5,17 @@ import { getServerUser } from '@/lib/getServerUser'
 
 /**
  * ============================================================
- * SERVER ACTION 100% ISOLADA — Consultoria de 1º Pedido
+ * SERVER ACTION — Consultoria de 1º Pedido (Motor Preditivo)
  * ============================================================
  * 
- * REGRA DE OURO: Este arquivo é exclusivo da tela de 1º Pedido.
- * Nenhuma outra tela do ERP usa ou importa esta função.
+ * Modos:
+ * 1. SNIPER (clienteEspelhoId): Busca vendas do cliente-espelho.
+ *    Calcula ticket médio e escala por numLojasNovo.
+ * 2. PERFIL (tabelaPreco): Dupla Checagem Prisma.
+ *    Ticket médio do perfil inteiro, escalado por numLojasNovo.
  * 
- * Lógica:
- * 1. Busca TODO o histórico de vendas (sem limite de data)
- *    para uma fábrica + perfil de tabela de preço.
- * 2. Usa pedido.tabelaPreco (contains/insensitive) paraMatch flexível.
- * 3. Calculo de Giro Diário:
- *    -> totalQtdVendida / diasHistorico / clientesUnicos
- *    -> diasHistorico = diferença entre o pedido mais antigo e hoje
- * 4. Retorna TOP 5 produtos (Curva A) com giro e preços.
+ * Janela: 180 dias.
+ * Ticket Médio = totalQtdVendida / pedidosUnicos.
  * ============================================================
  */
 
@@ -37,7 +34,12 @@ export interface CurvaAResult {
     totalFaturado: number
     clientesUnicos: number
     giroDiarioCliente: number
+    ticketMedioCaixas: number
+    sugestaoCaixas: number
+    isLimitadoTeto: boolean
+    precoSugeridoVenda: number
     diasHistorico: number
+    isManual?: boolean
 }
 
 export interface ConsultoriaResponse {
@@ -45,13 +47,16 @@ export interface ConsultoriaResponse {
     fonte: 'historico' | 'fallback_empty'
     alerta?: string
     diasHistoricoTotal?: number
+    modoEspelho?: boolean
 }
 
 export async function calcularGiroConsultoria(
     fabricaId: string,
-    tabelaPreco: string
+    tabelaPreco: string,
+    clienteEspelhoId?: string,
+    numLojasNovo: number = 1,
+    palletSize: number = 60
 ): Promise<ConsultoriaResponse> {
-    // Auth guard
     const user = await getServerUser()
     if (!user) {
         return { curvaA: [], fonte: 'fallback_empty', alerta: 'Não autorizado.' }
@@ -62,33 +67,71 @@ export async function calcularGiroConsultoria(
     }
 
     try {
-        // --- Tradutor Prisma (Missão 2) ---
-        const tabelaMap = tabelaPreco.toLowerCase().replace(/\s+/g, '');
-        let pedidoWhere: any = {
-            tipo: { contains: 'Venda', mode: 'insensitive' },
-            tabelaPreco: { contains: tabelaPreco, mode: 'insensitive' }
-        };
+        // === Janela de 180 dias ===
+        const dataCorte = new Date()
+        dataCorte.setDate(dataCorte.getDate() - 180)
 
-        if (tabelaMap === 'avista') {
-            pedidoWhere.tabelaPreco = { contains: 'vista', mode: 'insensitive' };
-        } else if (tabelaMap === '50a199') {
-            pedidoWhere.tabelaPreco = { contains: '199', mode: 'insensitive' };
-        } else if (tabelaMap === 'redes') {
-            pedidoWhere.tabelaPreco = { contains: 'rede', mode: 'insensitive' };
-        } else if (tabelaMap === 'atacado') {
-            pedidoWhere.tabelaPreco = { contains: 'atacado', mode: 'insensitive' };
-        } else if (tabelaMap === '200a699') {
-            delete pedidoWhere.tabelaPreco;
-            pedidoWhere.OR = [
-                { tabelaPreco: { contains: '200', mode: 'insensitive' } },
-                { tabelaPreco: { contains: '699', mode: 'insensitive' } }
-            ];
+        let pedidoWhere: any;
+
+        if (clienteEspelhoId) {
+            // MODO SNIPER
+            pedidoWhere = {
+                clienteId: clienteEspelhoId,
+                data: { gte: dataCorte },
+                tipo: { contains: 'Venda', mode: 'insensitive' },
+            }
+            console.log(`[Consultoria SNIPER] Cliente ${clienteEspelhoId} | Fábrica ${fabricaId} | Lojas novo: ${numLojasNovo}`)
+        } else {
+            // MODO PERFIL (Dupla Checagem)
+            const tabelaMap = tabelaPreco.toLowerCase().replace(/\s+/g, '');
+            let tabelaFiltros: any[] = [];
+
+            if (tabelaMap === 'atacado') {
+                tabelaFiltros = [
+                    { tabelaPreco: { equals: 'atacado' } },
+                    { tabelaPreco: { equals: 'Atacado' } },
+                    { cliente: { tabelaPreco: { equals: 'atacado' } } },
+                    { cliente: { tabelaPreco: { equals: 'Atacado' } } },
+                ];
+            } else if (tabelaMap === 'avista') {
+                tabelaFiltros = [
+                    { tabelaPreco: { contains: 'vista', mode: 'insensitive' } },
+                    { cliente: { tabelaPreco: { contains: 'vista', mode: 'insensitive' } } },
+                ];
+            } else if (tabelaMap === '50a199') {
+                tabelaFiltros = [
+                    { tabelaPreco: { contains: '199', mode: 'insensitive' } },
+                    { cliente: { tabelaPreco: { contains: '199', mode: 'insensitive' } } },
+                ];
+            } else if (tabelaMap === '200a699') {
+                tabelaFiltros = [
+                    { tabelaPreco: { contains: '200', mode: 'insensitive' } },
+                    { tabelaPreco: { contains: '699', mode: 'insensitive' } },
+                    { cliente: { tabelaPreco: { contains: '200', mode: 'insensitive' } } },
+                    { cliente: { tabelaPreco: { contains: '699', mode: 'insensitive' } } },
+                ];
+            } else if (tabelaMap === 'redes') {
+                tabelaFiltros = [
+                    { tabelaPreco: { contains: 'rede', mode: 'insensitive' } },
+                    { cliente: { tabelaPreco: { contains: 'rede', mode: 'insensitive' } } },
+                ];
+            } else {
+                tabelaFiltros = [
+                    { tabelaPreco: { contains: tabelaPreco, mode: 'insensitive' } },
+                    { cliente: { tabelaPreco: { contains: tabelaPreco, mode: 'insensitive' } } },
+                ];
+            }
+
+            pedidoWhere = {
+                tipo: { contains: 'Venda', mode: 'insensitive' },
+                data: { gte: dataCorte },
+                OR: tabelaFiltros,
+            };
+
+            console.log(`[Consultoria PERFIL] Tabela: "${tabelaPreco}" | OR: ${tabelaFiltros.length} | Lojas: ${numLojasNovo}`)
         }
 
-        // =========================================================
-        // 1. Buscar TODOS os itens de pedidos de VENDA — SEM filtro de data
-        //    Filtro flexível no pedido.tabelaPreco (contains/insensitive)
-        // =========================================================
+        // === Buscar itens ===
         const items = await prisma.itemPedido.findMany({
             where: {
                 produto: { fabricaId },
@@ -100,6 +143,7 @@ export async function calcularGiroConsultoria(
                 total: true,
                 pedido: {
                     select: {
+                        id: true,
                         clienteId: true,
                         data: true,
                     }
@@ -121,18 +165,20 @@ export async function calcularGiroConsultoria(
             }
         })
 
-        // Se não houver dados, retorna cedo sem erro duro
+        console.log(`[Consultoria] Itens encontrados: ${items.length}`)
+
         if (items.length === 0) {
             return {
                 curvaA: [],
                 fonte: 'fallback_empty',
-                alerta: `Nenhuma venda encontrada para esta fábrica com o perfil "${tabelaPreco}". Verifique se existem pedidos de Venda cadastrados com essa tabela de preço.`
+                modoEspelho: !!clienteEspelhoId,
+                alerta: clienteEspelhoId
+                    ? `Nenhuma venda encontrada para o cliente espelho nos últimos 180 dias nesta fábrica.`
+                    : `Nenhuma venda encontrada para esta fábrica com o perfil "${tabelaPreco}" nos últimos 180 dias.`
             }
         }
 
-        // =========================================================
-        // 2. Descobrir o SPAN real do histórico (pedido mais antigo → hoje)
-        // =========================================================
+        // === Span do histórico ===
         let dataMaisAntiga: Date = new Date()
         for (const item of items) {
             const d = new Date(item.pedido.data)
@@ -142,9 +188,7 @@ export async function calcularGiroConsultoria(
         const diffMs = hoje.getTime() - dataMaisAntiga.getTime()
         const diasHistoricoTotal = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
 
-        // =========================================================
-        // 3. Agrupar por produto
-        // =========================================================
+        // === Agrupar por produto ===
         const grouped: Record<string, {
             produtoId: string
             nome: string
@@ -159,6 +203,7 @@ export async function calcularGiroConsultoria(
             totalQtdVendida: number
             totalFaturado: number
             clientesUnicosSet: Set<string>
+            pedidosUnicosSet: Set<string>
         }> = {}
 
         for (const item of items) {
@@ -177,7 +222,8 @@ export async function calcularGiroConsultoria(
                     precoRedes: Number(item.produto.precoRedes),
                     totalQtdVendida: 0,
                     totalFaturado: 0,
-                    clientesUnicosSet: new Set()
+                    clientesUnicosSet: new Set(),
+                    pedidosUnicosSet: new Set(),
                 }
             }
             grouped[pid].totalQtdVendida += item.quantidade
@@ -185,19 +231,57 @@ export async function calcularGiroConsultoria(
             if (item.pedido.clienteId) {
                 grouped[pid].clientesUnicosSet.add(item.pedido.clienteId)
             }
+            if (item.pedido.id) {
+                grouped[pid].pedidosUnicosSet.add(item.pedido.id)
+            }
         }
 
-        // =========================================================
-        // 4. Calcular giro e montar TOP 5
-        //    Giro Diário por Cliente = totalQtdVendida / diasHistorico / clientesUnicos
-        // =========================================================
+        // === TOP 5 com ticket médio ===
         const topProducts: CurvaAResult[] = Object.values(grouped)
             .filter(p => p.ativo && p.totalQtdVendida > 0)
             .sort((a, b) => b.totalQtdVendida - a.totalQtdVendida)
             .slice(0, 5)
             .map(p => {
                 const numClientes = p.clientesUnicosSet.size || 1
+                const numPedidos = p.pedidosUnicosSet.size || 1
                 const giroDiarioPorCliente = p.totalQtdVendida / diasHistoricoTotal / Math.max(1, numClientes)
+                const ticketMedioCaixas = p.totalQtdVendida / Math.max(1, numPedidos)
+
+                // Função de Escala Logística Progressiva
+                let multiplicadorEscalado = numLojasNovo
+                if (numLojasNovo > 10 && numLojasNovo <= 50) {
+                    multiplicadorEscalado = 10 + ((numLojasNovo - 10) * 0.6)
+                } else if (numLojasNovo > 50) {
+                    multiplicadorEscalado = 34 + ((numLojasNovo - 50) * 0.3)
+                }
+
+                let sugestaoBase = ticketMedioCaixas * multiplicadorEscalado
+
+                // Trava 1: Limite Logístico (Max 4 pallets)
+                const tetoLogistico = Math.max(1, palletSize) * 4
+                let isLimitadoTeto = false
+                if (sugestaoBase > tetoLogistico) {
+                    sugestaoBase = tetoLogistico
+                    isLimitadoTeto = true
+                }
+
+                // Trava 2: Controle de Cobertura (Max 40 dias)
+                const giroProjetado = giroDiarioPorCliente * multiplicadorEscalado
+                const tetoCobertura = giroProjetado * 40 // 40 dias max
+                if (giroProjetado > 0 && sugestaoBase > tetoCobertura) {
+                    sugestaoBase = Math.max(giroProjetado * 20, tetoCobertura) // Mantém entre 20 e 40
+                    isLimitadoTeto = true
+                }
+
+                // Prioriza preenchimento do pallet para Atacado/Redes
+                let sugestaoCaixas = Math.max(1, Math.round(sugestaoBase))
+                const isAtacado = tabelaPreco === 'atacado' || tabelaPreco === 'redes' || tabelaPreco === 'avista';
+                if (isAtacado && palletSize > 0 && sugestaoCaixas >= palletSize / 2) {
+                    sugestaoCaixas = Math.max(palletSize, Math.round(sugestaoCaixas / palletSize) * palletSize)
+                }
+
+                // Preço de gôndola estimado (40% de margem sobre a tabela varejo)
+                const precoSugeridoVenda = Number(p.preco50a199) * 1.4
 
                 return {
                     produtoId: p.produtoId,
@@ -214,17 +298,21 @@ export async function calcularGiroConsultoria(
                     totalFaturado: p.totalFaturado,
                     clientesUnicos: numClientes,
                     giroDiarioCliente: giroDiarioPorCliente,
+                    ticketMedioCaixas: ticketMedioCaixas,
+                    sugestaoCaixas,
+                    isLimitadoTeto,
+                    precoSugeridoVenda,
                     diasHistorico: diasHistoricoTotal,
                 }
             })
 
-        // Sem mínimo de 3 produtos — mostra o que tiver
         return {
             curvaA: topProducts,
             fonte: topProducts.length > 0 ? 'historico' : 'fallback_empty',
             diasHistoricoTotal,
+            modoEspelho: !!clienteEspelhoId,
             ...(topProducts.length === 0 ? {
-                alerta: `Nenhum produto ativo com vendas encontrado para fábrica + perfil "${tabelaPreco}".`
+                alerta: `Nenhum produto ativo com vendas para "${tabelaPreco}" nos últimos 180 dias.`
             } : {})
         }
 
