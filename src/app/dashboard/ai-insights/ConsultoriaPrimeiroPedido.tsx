@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useData } from '@/contexts/DataContext';
+import { useData, Fabrica, Product } from '@/contexts/DataContext';
 import { gerarPdfConsultoria, PayloadConsultoria } from '@/lib/gerarPdfConsultoria';
-import { calcularGiroConsultoria } from '@/app/actions/consultoriaPrimeiroPedido';
+import { calcularGiroConsultoria, CurvaAResult, ConsultoriaResponse } from '@/app/actions/consultoriaPrimeiroPedido';
 import {
     ShoppingCart,
     Factory,
@@ -38,24 +38,7 @@ const TABELAS_PRECO = [
     { value: 'redes', label: 'Redes' },
 ];
 
-interface CurvaAProduct {
-    produtoId: string;
-    nome: string;
-    codigo: string;
-    unidade: string;
-    ativo: boolean;
-    preco50a199: number;
-    preco200a699: number;
-    precoAtacado: number;
-    precoAtacadoAVista: number;
-    precoRedes: number;
-    totalQtdVendida: number;
-    totalFaturado: number;
-    clientesUnicos?: number;
-    giroDiarioCliente?: number;
-}
-
-function getPrecoByTabela(product: CurvaAProduct | any, tabela: string): number {
+function getPrecoByTabela(product: CurvaAResult | Product, tabela: string): number {
     switch (tabela) {
         case '200a699': return Number(product.preco200a699) || 0;
         case 'atacado': return Number(product.precoAtacado) || 0;
@@ -110,7 +93,7 @@ export default function ConsultoriaPrimeiroPedido() {
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
     // Curva A from API
-    const [curvaA, setCurvaA] = useState<CurvaAProduct[]>([]);
+    const [curvaA, setCurvaA] = useState<CurvaAResult[]>([]);
     const [curvaALoading, setCurvaALoading] = useState(false);
     const [curvaAFonte, setCurvaAFonte] = useState<'historico' | 'fallback_empty' | ''>('');
     const [curvaAAlerta, setCurvaAAlerta] = useState<string | null>(null);
@@ -120,17 +103,17 @@ export default function ConsultoriaPrimeiroPedido() {
     const produtosDaFabrica = useMemo(() => {
         if (!selectedFabricaId) return [];
         return products.filter(
-            (p: any) => p.fabricaId === selectedFabricaId && p.ativo !== false
+            (p: Product) => p.fabricaId === selectedFabricaId && p.ativo !== false
         );
     }, [products, selectedFabricaId]);
 
     const produtoIsca = useMemo(() => {
         if (!selectedProdutoIscaId) return null;
-        return products.find((p: any) => p.id === selectedProdutoIscaId) || null;
+        return products.find((p: Product) => p.id === selectedProdutoIscaId) || null;
     }, [products, selectedProdutoIscaId]);
 
     const fabricaSelecionada = useMemo(() => {
-        return fabricas.find((f: any) => f.id === selectedFabricaId) || null;
+        return fabricas.find((f: Fabrica) => f.id === selectedFabricaId) || null;
     }, [fabricas, selectedFabricaId]);
 
     // Fetch Curva A via Server Action ISOLADA (não usa /api/inteligencia/curva-a)
@@ -155,7 +138,7 @@ export default function ConsultoriaPrimeiroPedido() {
                 const isAtacado = tabelaPreco === 'atacado' || tabelaPreco === 'redes';
                 const multiplicadores = [2, 2, 1, 1, 1];
 
-                data.curvaA.forEach((p: CurvaAProduct, idx: number) => {
+                data.curvaA.forEach((p: CurvaAResult, idx: number) => {
                     if (isAtacado) {
                         const m = multiplicadores[idx] || 1;
                         initQtds[p.produtoId] = fallbackPallet * m;
@@ -167,8 +150,12 @@ export default function ConsultoriaPrimeiroPedido() {
                 setQuantidades(initQtds);
             }
 
-        } catch (err: any) {
-            setCurvaAAlerta(err.message || 'Erro desconhecido');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setCurvaAAlerta(err.message || 'Erro desconhecido');
+            } else {
+                setCurvaAAlerta('Erro desconhecido');
+            }
         } finally {
             setCurvaALoading(false);
         }
@@ -392,7 +379,7 @@ export default function ConsultoriaPrimeiroPedido() {
                             className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors text-sm disabled:opacity-50"
                         >
                             <option value="" className="text-black">Selecione a Fábrica...</option>
-                            {fabricas.map((f: any) => (
+                            {fabricas.map((f: Fabrica) => (
                                 <option key={f.id} value={f.id} className="text-black">{f.nome}</option>
                             ))}
                         </select>
@@ -415,7 +402,7 @@ export default function ConsultoriaPrimeiroPedido() {
                             className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-pink-500 transition-colors text-sm disabled:opacity-50"
                         >
                             <option value="" className="text-black">Selecione o Produto Isca...</option>
-                            {produtosDaFabrica.map((p: any) => (
+                            {produtosDaFabrica.map((p: Product) => (
                                 <option key={p.id} value={p.id} className="text-black">
                                     {p.nome} ({p.codigo})
                                 </option>
