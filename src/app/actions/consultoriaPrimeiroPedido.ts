@@ -62,6 +62,29 @@ export async function calcularGiroConsultoria(
     }
 
     try {
+        // --- Tradutor Prisma (Missão 2) ---
+        const tabelaMap = tabelaPreco.toLowerCase().replace(/\s+/g, '');
+        let pedidoWhere: any = {
+            tipo: { contains: 'Venda', mode: 'insensitive' },
+            tabelaPreco: { contains: tabelaPreco, mode: 'insensitive' }
+        };
+
+        if (tabelaMap === 'avista') {
+            pedidoWhere.tabelaPreco = { contains: 'vista', mode: 'insensitive' };
+        } else if (tabelaMap === '50a199') {
+            pedidoWhere.tabelaPreco = { contains: '199', mode: 'insensitive' };
+        } else if (tabelaMap === 'redes') {
+            pedidoWhere.tabelaPreco = { contains: 'rede', mode: 'insensitive' };
+        } else if (tabelaMap === 'atacado') {
+            pedidoWhere.tabelaPreco = { contains: 'atacado', mode: 'insensitive' };
+        } else if (tabelaMap === '200a699') {
+            delete pedidoWhere.tabelaPreco;
+            pedidoWhere.OR = [
+                { tabelaPreco: { contains: '200', mode: 'insensitive' } },
+                { tabelaPreco: { contains: '699', mode: 'insensitive' } }
+            ];
+        }
+
         // =========================================================
         // 1. Buscar TODOS os itens de pedidos de VENDA — SEM filtro de data
         //    Filtro flexível no pedido.tabelaPreco (contains/insensitive)
@@ -69,13 +92,7 @@ export async function calcularGiroConsultoria(
         const items = await prisma.itemPedido.findMany({
             where: {
                 produto: { fabricaId },
-                pedido: {
-                    tipo: { contains: 'Venda', mode: 'insensitive' },
-                    tabelaPreco: {
-                        contains: tabelaPreco,
-                        mode: 'insensitive'
-                    }
-                }
+                pedido: pedidoWhere
             },
             select: {
                 produtoId: true,

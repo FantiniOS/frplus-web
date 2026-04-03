@@ -1,0 +1,47 @@
+commit 7e74c0bfa56f85458942ba9b9b662845fa081f5c
+Author: FRPlus Admin <admin@frplus.com>
+Date:   Wed Apr 1 15:39:27 2026 -0300
+
+    fix: corrige listagem de pedidos - datas separadas com fallback
+
+diff --git a/src/app/api/orders/route.ts b/src/app/api/orders/route.ts
+index aa60954..5ff19d8 100644
+--- a/src/app/api/orders/route.ts
++++ b/src/app/api/orders/route.ts
+@@ -48,7 +48,9 @@ export async function GET(request: Request) {
+             nomeCliente: o.cliente?.nomeFantasia || o.cliente?.razaoSocial || 'Cliente Desconhecido',
+             fabricaId: o.fabricaId,
+             data: o.data.toISOString(),
++            dataPedido: o.data.toISOString(),
+             dataFaturamento: o.dataFaturamento?.toISOString() || null,
++            dataNotaFiscal: o.dataFaturamento?.toISOString() || null,
+             status: o.status,
+             tipo: o.tipo,
+             valorTotal: Number(o.valorTotal),
+@@ -56,6 +58,7 @@ export async function GET(request: Request) {
+             condicaoPagamento: o.condicaoPagamento,
+             observacoes: o.observacoes,
+             notaFiscal: o.notaFiscal,
++            createdAt: o.createdAt.toISOString(),
+             itens: o.itens.map(item => ({
+                 id: item.id,
+                 produtoId: item.produtoId,
+
+commit 0d3fedb1769dae89bd832e6ee6e494ce81d31df6
+Author: FRPlus Admin <admin@frplus.com>
+Date:   Wed Apr 1 09:23:24 2026 -0300
+
+    feat: Separate sales vs faturamento in dashboard and schema
+
+diff --git a/src/app/api/orders/route.ts b/src/app/api/orders/route.ts
+index ee42ea4..aa60954 100644
+--- a/src/app/api/orders/route.ts
++++ b/src/app/api/orders/route.ts
+@@ -48,6 +48,7 @@ export async function GET(request: Request) {
+             nomeCliente: o.cliente?.nomeFantasia || o.cliente?.razaoSocial || 'Cliente Desconhecido',
+             fabricaId: o.fabricaId,
+             data: o.data.toISOString(),
++            dataFaturamento: o.dataFaturamento?.toISOString() || null,
+             status: o.status,
+             tipo: o.tipo,
+             valorTotal: Number(o.valorTotal),

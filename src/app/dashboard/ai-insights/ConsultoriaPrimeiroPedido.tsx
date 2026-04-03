@@ -91,6 +91,7 @@ export default function ConsultoriaPrimeiroPedido() {
     const [caixasPorPallet, setCaixasPorPallet] = useState<number>(60);
     const [quantidades, setQuantidades] = useState<Record<string, number>>({});
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const [aplicarEstrategia, setAplicarEstrategia] = useState(true);
 
     // Curva A from API
     const [curvaA, setCurvaA] = useState<CurvaAResult[]>([]);
@@ -228,14 +229,14 @@ export default function ConsultoriaPrimeiroPedido() {
         }).filter(item => item.quantidade > 0); // No final filtramos o que ta zerado
 
         const totalPedido = itens.reduce((acc, item) => acc + item.subtotal, 0);
-        const verbaGerada = totalPedido * (percentagemBonus / 100);
+        const verbaGerada = aplicarEstrategia ? (totalPedido * (percentagemBonus / 100)) : 0;
 
         let caixasIsca = 0;
         let precoCaixaIsca = 0;
         let nomeIsca = '';
         let codigoIsca = '';
         let unidadeIsca = 'CX';
-        if (produtoIsca && selectedTabela) {
+        if (aplicarEstrategia && produtoIsca && selectedTabela) {
             precoCaixaIsca = getPrecoByTabela(produtoIsca, selectedTabela);
             nomeIsca = produtoIsca.nome;
             codigoIsca = produtoIsca.codigo || '';
@@ -274,9 +275,9 @@ export default function ConsultoriaPrimeiroPedido() {
             unidadeIsca,
             valorBonificacaoReal,
         };
-    }, [curvaA, selectedTabela, percentagemBonus, produtoIsca, quantidades, selectedProdutoIscaId]);
+    }, [curvaA, selectedTabela, percentagemBonus, produtoIsca, quantidades, selectedProdutoIscaId, aplicarEstrategia]);
 
-    const isReady = selectedFabricaId && selectedTabela && selectedProdutoIscaId && curvaA.length > 0;
+    const isReady = selectedFabricaId && selectedTabela && curvaA.length > 0 && (!aplicarEstrategia || selectedProdutoIscaId !== '');
     const tabelaDisplay: Record<string, string> = { '50a199': '50 a 199', '200a699': '200 a 699', 'atacado': 'Atacado', 'avista': 'À Vista', 'redes': 'Redes' };
 
     // === PDF EXPORT ===
@@ -288,13 +289,13 @@ export default function ConsultoriaPrimeiroPedido() {
             const payload: PayloadConsultoria = {
                 fabrica: fabricaSelecionada.nome,
                 perfil: tabelaDisplay[selectedTabela] || selectedTabela,
-                bonusPorcentagem: percentagemBonus,
+                bonusPorcentagem: aplicarEstrategia ? percentagemBonus : 0,
                 data: new Date().toLocaleDateString('pt-BR'),
                 itensPagos: calculo.itens,
-                itemBonificado: calculo.itemBonificado,
+                itemBonificado: aplicarEstrategia ? calculo.itemBonificado : null,
                 totalPedido: calculo.totalPedido,
-                verbaGerada: calculo.verbaGerada,
-                lucroImediato: calculo.valorBonificacaoReal
+                verbaGerada: aplicarEstrategia ? calculo.verbaGerada : 0,
+                lucroImediato: aplicarEstrategia ? calculo.valorBonificacaoReal : 0
             };
 
             await gerarPdfConsultoria(payload);
@@ -388,43 +389,58 @@ export default function ConsultoriaPrimeiroPedido() {
 
                 {/* Painel 2: Bonificação */}
                 <div className="bg-white/5 p-6 rounded-xl border border-white/10 space-y-5">
-                    <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2">
-                        <Gift className="w-4 h-4 text-pink-400" />
-                        2. Estratégia de Bonificação
-                    </h4>
-
-                    <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Produto Isca (Bonificação)</label>
-                        <select
-                            value={selectedProdutoIscaId}
-                            onChange={(e) => setSelectedProdutoIscaId(e.target.value)}
-                            disabled={!selectedFabricaId}
-                            className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-pink-500 transition-colors text-sm disabled:opacity-50"
-                        >
-                            <option value="" className="text-black">Selecione o Produto Isca...</option>
-                            {produtosDaFabrica.map((p: Product) => (
-                                <option key={p.id} value={p.id} className="text-black">
-                                    {p.nome} ({p.codigo})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Percentagem de Bonificação (%)</label>
-                        <div className="relative">
+                    <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2">
+                            <Gift className="w-4 h-4 text-pink-400" />
+                            2. Estratégia de Bonificação
+                        </h4>
+                        <label className="relative inline-flex items-center cursor-pointer">
                             <input
-                                type="number"
-                                min={0}
-                                max={100}
-                                step={0.5}
-                                value={percentagemBonus}
-                                onChange={(e) => setPercentagemBonus(Number(e.target.value))}
-                                className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 pr-10 text-white focus:outline-none focus:border-emerald-500 transition-colors text-sm font-bold"
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={aplicarEstrategia}
+                                onChange={(e) => setAplicarEstrategia(e.target.checked)}
                             />
-                            <Percent className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
-                        </div>
+                            <div className="w-11 h-6 bg-white/20 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                        </label>
                     </div>
+
+                    {aplicarEstrategia && (
+                        <div className="space-y-5 animate-in fade-in duration-300">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1.5">Produto Isca (Bonificação)</label>
+                                <select
+                                    value={selectedProdutoIscaId}
+                                    onChange={(e) => setSelectedProdutoIscaId(e.target.value)}
+                                    disabled={!selectedFabricaId}
+                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-pink-500 transition-colors text-sm disabled:opacity-50"
+                                >
+                                    <option value="" className="text-black">Selecione o Produto Isca...</option>
+                                    {produtosDaFabrica.map((p: Product) => (
+                                        <option key={p.id} value={p.id} className="text-black">
+                                            {p.nome} ({p.codigo})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1.5">Percentagem de Bonificação (%)</label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={100}
+                                        step={0.5}
+                                        value={percentagemBonus}
+                                        onChange={(e) => setPercentagemBonus(Number(e.target.value))}
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 pr-10 text-white focus:outline-none focus:border-emerald-500 transition-colors text-sm font-bold"
+                                    />
+                                    <Percent className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -583,30 +599,34 @@ export default function ConsultoriaPrimeiroPedido() {
                                 <p className="text-2xl font-bold text-white">{formatBRL(calculo.totalPedido)}</p>
                             </div>
 
-                            <div className="bg-black/20 border border-emerald-500/10 rounded-xl p-5 space-y-2">
-                                <div className="flex items-center gap-2 text-emerald-400">
-                                    <TrendingUp className="w-4 h-4" />
-                                    <span className="text-xs font-medium uppercase tracking-wider">Verba Gerada ({percentagemBonus}%)</span>
+                            {aplicarEstrategia && (
+                                <div className="bg-black/20 border border-emerald-500/10 rounded-xl p-5 space-y-2">
+                                    <div className="flex items-center gap-2 text-emerald-400">
+                                        <TrendingUp className="w-4 h-4" />
+                                        <span className="text-xs font-medium uppercase tracking-wider">Verba Gerada ({percentagemBonus}%)</span>
+                                    </div>
+                                    <p className="text-2xl font-bold text-emerald-400">{formatBRL(calculo.verbaGerada)}</p>
                                 </div>
-                                <p className="text-2xl font-bold text-emerald-400">{formatBRL(calculo.verbaGerada)}</p>
-                            </div>
+                            )}
                         </div>
 
-                        {/* Highlight de Custo Zero */}
-                        <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-6 shadow-inner">
-                            <div className="flex items-center justify-between gap-4 flex-wrap">
-                                <div className="space-y-1">
-                                    <p className="text-sm font-semibold text-emerald-100 uppercase tracking-wide">Conversão Física em Mercadoria</p>
-                                    <p className="text-xl sm:text-2xl font-black text-emerald-400">
-                                        {calculo.caixasIsca} Caixas de {calculo.nomeIsca.replace('[BONIFICAÇÃO] ', '')} <span className="text-white">(Custo Zero)</span>
-                                    </p>
-                                </div>
-                                <div className="bg-emerald-950/50 border border-emerald-500/20 px-4 py-2 rounded-lg text-center">
-                                    <p className="text-[10px] text-emerald-300 uppercase">Preço Ref. Isca</p>
-                                    <p className="text-sm font-mono text-white">{formatBRL(calculo.precoCaixaIsca)} / CX</p>
+                        {/* Highlight de Custo Zero (Condicional) */}
+                        {aplicarEstrategia && (
+                            <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-6 shadow-inner">
+                                <div className="flex items-center justify-between gap-4 flex-wrap">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-semibold text-emerald-100 uppercase tracking-wide">Conversão Física em Mercadoria</p>
+                                        <p className="text-xl sm:text-2xl font-black text-emerald-400">
+                                            {calculo.caixasIsca} Caixas de {calculo.nomeIsca.replace('[BONIFICAÇÃO] ', '')} <span className="text-white">(Custo Zero)</span>
+                                        </p>
+                                    </div>
+                                    <div className="bg-emerald-950/50 border border-emerald-500/20 px-4 py-2 rounded-lg text-center">
+                                        <p className="text-[10px] text-emerald-300 uppercase">Preço Ref. Isca</p>
+                                        <p className="text-sm font-mono text-white">{formatBRL(calculo.precoCaixaIsca)} / CX</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="flex justify-end pt-4 border-t border-emerald-500/10 gap-3">
                             <button

@@ -1,0 +1,58 @@
+commit 8d905ffd5c7083599feaf4fb91d3dfbc018ae469
+Author: FRPlus Admin <admin@frplus.com>
+Date:   Wed Apr 1 18:10:26 2026 -0300
+
+    fix(pdf): usar label de unidade dinamica no preco da embalagem fechada no lugar de Preco Caixa fixo
+
+ src/app/dashboard/ai-insights/ExpansionProposalGenerator.tsx | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+commit 2147b860c893e04f6e6c870b8dd06778258d1b92
+Author: FRPlus Admin <admin@frplus.com>
+Date:   Wed Apr 1 18:04:50 2026 -0300
+
+    refactor: rollback quantidadeEmbalagem do BD e ajustar PDF para refletir preco da caixa e unidade baseados apenas no input dinamico
+
+ prisma/schema.prisma                               |  1 -
+ src/app/api/products/[id]/route.ts                 |  2 -
+ src/app/api/products/route.ts                      |  4 +-
+ .../ai-insights/ExpansionProposalGenerator.tsx     | 47 ++++++++++------------
+ src/app/dashboard/produtos/[id]/page.tsx           |  6 +--
+ src/app/dashboard/produtos/novo/page.tsx           |  5 ---
+ src/contexts/DataContext.tsx                       |  1 -
+ 7 files changed, 23 insertions(+), 43 deletions(-)
+
+commit 3742bb07595600f96fda4d8ee83dff9536c4ab95
+Author: FRPlus Admin <admin@frplus.com>
+Date:   Wed Apr 1 17:20:32 2026 -0300
+
+    feat: add quantidadeEmbalagem field + refactor pricing engine to use embalagem fechada as base
+
+ prisma/schema.prisma                               |  1 +
+ src/app/api/products/[id]/route.ts                 |  2 ++
+ src/app/api/products/route.ts                      |  4 +++-
+ .../ai-insights/ExpansionProposalGenerator.tsx     | 25 +++++++++++++---------
+ src/app/dashboard/produtos/[id]/page.tsx           |  7 +++++-
+ src/app/dashboard/produtos/novo/page.tsx           |  6 ++++++
+ src/contexts/DataContext.tsx                       |  1 +
+ 7 files changed, 34 insertions(+), 12 deletions(-)
+
+commit 8f4e40ac91106404a947f33359e43d977b90e732
+Author: FRPlus Admin <admin@frplus.com>
+Date:   Wed Apr 1 17:09:12 2026 -0300
+
+    fix: usar campo unidade dinamico no PDF da proposta comercial ao inves de Cx hardcoded
+
+ src/app/dashboard/ai-insights/ExpansionProposalGenerator.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit d879684a1c81476c895688218b39008b9590c15e
+Author: FRPlus Admin <admin@frplus.com>
+Date:   Wed Apr 1 17:02:13 2026 -0300
+
+    fix: adiciona coluna unidade no bd e garante o trafego do form nas apis
+
+ prisma/schema.prisma               | 1 +
+ src/app/api/products/[id]/route.ts | 2 ++
+ src/app/api/products/route.ts      | 4 +++-
+ 3 files changed, 6 insertions(+), 1 deletion(-)

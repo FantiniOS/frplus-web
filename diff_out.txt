@@ -1,0 +1,65 @@
+diff --git a/.gitignore b/.gitignore
+index 2b12c70..2267581 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -5,4 +5,6 @@ node_modules
+ /src/generated/prisma
+ .next/
+ /dist/
+-/build/
+\ No newline at end of file
++/build/
++.vercel
++.env*.local
+diff --git a/src/app/dashboard/ai-insights/AIInsightsClient.tsx b/src/app/dashboard/ai-insights/AIInsightsClient.tsx
+index 85890ed..8675659 100644
+--- a/src/app/dashboard/ai-insights/AIInsightsClient.tsx
++++ b/src/app/dashboard/ai-insights/AIInsightsClient.tsx
+@@ -8,6 +8,7 @@ import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCi
+ import { MessageModal } from '@/components/dashboard/MessageModal';
+ import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
+ import ExpansionProposalGenerator from './ExpansionProposalGenerator';
++import ConsultoriaPrimeiroPedido from './ConsultoriaPrimeiroPedido';
+ 
+ interface PrestesAComprarClient {
+     id: string;
+@@ -62,7 +63,7 @@ export default function AIInsightsClient() {
+     const { usuario } = useAuth();
+     const nomeRepresentante = usuario?.nome || 'Representante';
+     const nomeEmpresa = usuario?.empresa || 'Fantini Representações';
+-    const [activeTab, setActiveTab] = useState<'prestesAComprar' | 'opportunities' | 'campaigns' | 'expansion'>('prestesAComprar');
++    const [activeTab, setActiveTab] = useState<'prestesAComprar' | 'opportunities' | 'campaigns' | 'expansion' | 'primeiroPedido'>('prestesAComprar');
+     const [daysFilter, setDaysFilter] = useState(15);
+     const [selectedProduct, setSelectedProduct] = useState<string>('');
+     const [generatedScripts, setGeneratedScripts] = useState<{ launch: string; reactivation: string; prospecting: string } | null>(null);
+@@ -227,7 +228,8 @@ export default function AIInsightsClient() {
+         { id: 'prestesAComprar' as const, label: 'Prestes a Comprar', icon: Sparkles, color: 'text-green-400', count: summaries.prestesAComprar.total },
+         { id: 'opportunities' as const, label: 'Oportunidades', icon: Lightbulb, color: 'text-yellow-400', count: summaries.opportunities.total },
+         { id: 'campaigns' as const, label: 'Campanhas', icon: Megaphone, color: 'text-purple-400', count: 0 },
+-        { id: 'expansion' as const, label: 'Propostas VIP', icon: Target, color: 'text-blue-400', count: 0 }
++        { id: 'expansion' as const, label: 'Propostas VIP', icon: Target, color: 'text-blue-400', count: 0 },
++        { id: 'primeiroPedido' as const, label: '1º Pedido', icon: Users, color: 'text-emerald-400', count: 0 }
+     ];
+ 
+     const [activeInsight, setActiveInsight] = useState<SalesInsight | null>(null);
+@@ -422,7 +424,7 @@ export default function AIInsightsClient() {
+             </div>
+ 
+             {/* Tabs */}
+-            <div className="grid grid-cols-3 gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
++            <div className="grid grid-cols-3 md:grid-cols-5 gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
+                 {tabs.map(tab => (
+                     <button
+                         key={tab.id}
+@@ -936,6 +938,11 @@ export default function AIInsightsClient() {
+                         {activeTab === 'expansion' && (
+                             <ExpansionProposalGenerator />
+                         )}
++
++                        {/* 1º Pedido - Consultoria Mix Ideal */}
++                        {activeTab === 'primeiroPedido' && (
++                            <ConsultoriaPrimeiroPedido />
++                        )}
+                     </>
+                 )}
+                 {/* ... existing content inside the relative div ... */}

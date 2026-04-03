@@ -1,0 +1,135 @@
+diff --git a/src/app/dashboard/ai-insights/ExpansionProposalGenerator.tsx b/src/app/dashboard/ai-insights/ExpansionProposalGenerator.tsx
+index f61cda3..31430a1 100644
+--- a/src/app/dashboard/ai-insights/ExpansionProposalGenerator.tsx
++++ b/src/app/dashboard/ai-insights/ExpansionProposalGenerator.tsx
+@@ -44,20 +44,13 @@ export default function ExpansionProposalGenerator() {
+         );
+     }, [products, selectedFabricaId, searchTerm]);
+ 
+-    // Regex to guess multiple
+-    const guessMultiple = (name: string): number => {
+-        if (!name) return 1;
+-        const match = name.match(/[cC]\/\s*(\d+)/) || name.match(/com\s*(\d+)/i) || name.match(/cx\s*(\d+)/i) || name.match(/x\s*(\d+)/i);
+-        return match ? parseInt(match[1], 10) : 1;
+-    };
+-
+     const handleToggleProduct = (product: any) => {
+         setSelectedProducts(prev => {
+             const current = { ...prev };
+             if (current[product.id]) {
+                 delete current[product.id];
+             } else {
+-                current[product.id] = guessMultiple(product.nome);
++                current[product.id] = 1; // Fallback seguro: 1 item por caixa
+             }
+             return current;
+         });
+@@ -208,6 +201,7 @@ export default function ExpansionProposalGenerator() {
+ 
+             await addPageHeader(true);
+ 
++
+             const selectedItems = products.filter((p: any) => selectedIds.includes(p.id));
+             
+             // Draw each product block
+@@ -218,12 +212,15 @@ export default function ExpansionProposalGenerator() {
+                     await addPageHeader(false);
+                 }
+ 
+-                const priceCx = getClientPrice(prod);
+-                const mult = selectedProducts[prod.id] || 1;
+-                const priceUn = priceCx / mult;
++                // === MOTOR DE PREÇOS: Base = Embalagem Fechada (Unidade de Venda) ===
++                const precoCaixa = getClientPrice(prod);
++                const itensPorCaixa = selectedProducts[prod.id] || 1; // Única fonte de verdade: input do usuário
++
++                // Descontos são calculados SOBRE a Caixa Fechada, NUNCA sobre a fração
++                const precoCaixaLiquido = precoCaixa * (1 - totalDiscountPercent / 100);
+ 
+-                const netPriceCx = priceCx * (1 - totalDiscountPercent / 100);
+-                const netPriceUn = priceUn * (1 - totalDiscountPercent / 100);
++                // Preço Unitário = APENAS vitrine/exibição, calculado por ÚLTIMO
++                const valorUnidadeLiquido = precoCaixaLiquido / itensPorCaixa;
+ 
+                 // Fetch Image via client-side window.location.origin
+                 const prodUrl = prod.imagem || prod.imagemUrl;
+@@ -256,18 +253,18 @@ export default function ExpansionProposalGenerator() {
+                 if (pName.length > 40) pName = pName.substring(0, 38) + '...';
+                 doc.text(pName, 45, yCursor + 5);
+                 
+-                // Embalagem e Preço Unitário Base
++                // Código e Embalagem dinâmica
+                 doc.setFontSize(9);
+                 doc.setFont('helvetica', 'normal');
+                 doc.setTextColor(80, 80, 80);
+-                doc.text(`CÓD: ${prod.codigo}  |  EMB: ${prod.unidade || 'UN'} c/ ${mult} un`, 45, yCursor + 11);
+-                doc.text(`Preço Original un: R$ ${priceUn.toFixed(2).replace('.', ',')}`, 45, yCursor + 16);
++                doc.text(`CÓD: ${prod.codigo}  |  EMB: ${prod.unidade || 'UN'} c/ ${itensPorCaixa} un`, 45, yCursor + 11);
++                doc.text(`Preço Tabela (${prod.unidade || 'UN'}): R$ ${precoCaixa.toFixed(2).replace('.', ',')}`, 45, yCursor + 16);
+ 
+                 // Financial Box (Plano de Venda) - Right Column parallel to image
+                 const finX = 120;
+                 const finY = yCursor;
+-                const finW = pageWidth - finX - 15; // Width ate a margem direita
+-                const finH = 25;
++                const finW = pageWidth - finX - 15;
++                const finH = 28;
+ 
+                 doc.setDrawColor(230, 230, 230);
+                 doc.setFillColor(248, 250, 252);
+@@ -296,13 +293,17 @@ export default function ExpansionProposalGenerator() {
+                      dfY += 4;
+                 }
+ 
+-                // Final Net Price (Unit only)
++                // Final Net Prices — Caixa/Volume + Unidade (vitrine)
+                 doc.setFont('helvetica', 'bold');
+-                doc.setFontSize(10);
+-                doc.setTextColor(0, 120, 50); // green
+-                doc.text(`Preço Líquido un: R$ ${netPriceUn.toFixed(2).replace('.', ',')}`, finX + 4, finY + 21);
++                doc.setFontSize(9);
++                doc.setTextColor(0, 100, 50);
++                const labelVolume = prod.unidade ? `Preço ${prod.unidade}` : 'Preço Volume';
++                doc.text(`${labelVolume}: R$ ${precoCaixaLiquido.toFixed(2).replace('.', ',')}`, finX + 4, finY + 21);
++                doc.setFontSize(9);
++                doc.setTextColor(0, 120, 50);
++                doc.text(`Preço Unidade: R$ ${valorUnidadeLiquido.toFixed(2).replace('.', ',')}`, finX + 4, finY + 25);
+ 
+-                yCursor += 35; // Tighter jump with less text
++                yCursor += 38;
+             }
+ 
+             // Footer / Disclaimer
+@@ -500,7 +501,7 @@ export default function ExpansionProposalGenerator() {
+                                 ) : (
+                                     availableProducts.map((p: any) => {
+                                         const isSelected = !!selectedProducts[p.id];
+-                                        const multiple = selectedProducts[p.id] || guessMultiple(p.nome);
++                                        const multiple = selectedProducts[p.id] || 1;
+                                         
+                                         return (
+                                             <div 
+diff --git a/src/app/dashboard/produtos/[id]/page.tsx b/src/app/dashboard/produtos/[id]/page.tsx
+index 2336b5a..a10beb3 100644
+--- a/src/app/dashboard/produtos/[id]/page.tsx
++++ b/src/app/dashboard/produtos/[id]/page.tsx
+@@ -162,6 +162,7 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
+                                 <option value="KG">Quilo (KG)</option>
+                                 <option value="LT">Litro (LT)</option>
+                                 <option value="PCT">Pacote (PCT)</option>
++                                <option value="FD">Fardo (FD)</option>
+                             </select>
+                         </div>
+                         <div className="col-span-2 flex items-center justify-between pt-2 border-t border-white/5">
+diff --git a/src/app/dashboard/produtos/novo/page.tsx b/src/app/dashboard/produtos/novo/page.tsx
+index fc8c159..83d1259 100644
+--- a/src/app/dashboard/produtos/novo/page.tsx
++++ b/src/app/dashboard/produtos/novo/page.tsx
+@@ -166,6 +166,7 @@ export default function NovoProdutoPage() {
+                                 <option value="KG">Quilo (KG)</option>
+                                 <option value="LT">Litro (LT)</option>
+                                 <option value="PCT">Pacote (PCT)</option>
++                                <option value="FD">Fardo (FD)</option>
+                             </select>
+                         </div>
+                     </div>

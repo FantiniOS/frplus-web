@@ -176,11 +176,11 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
     doc.text(formatBRL(payload.verbaGerada), 80, yCursor + 23);
 
     // Bloco Superior de Destaque da DIRETRIZ EXATA
-    doc.setFillColor(240, 240, 240); // Fundo cinza claro da DIRETRIZ
-    doc.setDrawColor(200, 200, 200);
-    doc.rect(20, yCursor + 28, pageWidth - 40, 12, 'FD');
-    
     if (payload.itemBonificado) {
+        doc.setFillColor(240, 240, 240); // Fundo cinza claro da DIRETRIZ
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(20, yCursor + 28, pageWidth - 40, 12, 'FD');
+        
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(11);
         doc.setTextColor(30, 30, 30);
@@ -195,11 +195,6 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         doc.setFontSize(10);
         const custoZeroLabel = "(CUSTO ZERO PARA O CLIENTE)";
         doc.text(custoZeroLabel, pageWidth - 25 - doc.getTextWidth(custoZeroLabel), yCursor + 35.5);
-    } else {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.setTextColor(71, 85, 105);
-        doc.text(`Nenhuma bonificação configurada.`, 25, yCursor + 35.5);
     }
 
     // Disclaimer
