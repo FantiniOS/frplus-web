@@ -22,7 +22,7 @@ import { getServerUser } from '@/lib/getServerUser'
  * ============================================================
  */
 
-interface CurvaAResult {
+export interface CurvaAResult {
     produtoId: string
     nome: string
     codigo: string
@@ -40,7 +40,7 @@ interface CurvaAResult {
     diasHistorico: number
 }
 
-interface ConsultoriaResponse {
+export interface ConsultoriaResponse {
     curvaA: CurvaAResult[]
     fonte: 'historico' | 'fallback_empty'
     alerta?: string
