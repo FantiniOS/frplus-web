@@ -8,6 +8,7 @@ import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCi
 import { MessageModal } from '@/components/dashboard/MessageModal';
 import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
 import ExpansionProposalGenerator from './ExpansionProposalGenerator';
+import ConsultoriaPrimeiroPedido from './ConsultoriaPrimeiroPedido';
 
 interface PrestesAComprarClient {
     id: string;
@@ -62,7 +63,7 @@ export default function AIInsightsClient() {
     const { usuario } = useAuth();
     const nomeRepresentante = usuario?.nome || 'Representante';
     const nomeEmpresa = usuario?.empresa || 'Fantini Representações';
-    const [activeTab, setActiveTab] = useState<'prestesAComprar' | 'opportunities' | 'campaigns' | 'expansion'>('prestesAComprar');
+    const [activeTab, setActiveTab] = useState<'prestesAComprar' | 'opportunities' | 'campaigns' | 'expansion' | 'primeiroPedido'>('prestesAComprar');
     const [daysFilter, setDaysFilter] = useState(15);
     const [selectedProduct, setSelectedProduct] = useState<string>('');
     const [generatedScripts, setGeneratedScripts] = useState<{ launch: string; reactivation: string; prospecting: string } | null>(null);
@@ -227,7 +228,8 @@ export default function AIInsightsClient() {
         { id: 'prestesAComprar' as const, label: 'Prestes a Comprar', icon: Sparkles, color: 'text-green-400', count: summaries.prestesAComprar.total },
         { id: 'opportunities' as const, label: 'Oportunidades', icon: Lightbulb, color: 'text-yellow-400', count: summaries.opportunities.total },
         { id: 'campaigns' as const, label: 'Campanhas', icon: Megaphone, color: 'text-purple-400', count: 0 },
-        { id: 'expansion' as const, label: 'Propostas VIP', icon: Target, color: 'text-blue-400', count: 0 }
+        { id: 'expansion' as const, label: 'Propostas VIP', icon: Target, color: 'text-blue-400', count: 0 },
+        { id: 'primeiroPedido' as const, label: '1º Pedido', icon: Users, color: 'text-emerald-400', count: 0 }
     ];
 
     const [activeInsight, setActiveInsight] = useState<SalesInsight | null>(null);
@@ -422,7 +424,7 @@ export default function AIInsightsClient() {
             </div>
 
             {/* Tabs */}
-            <div className="grid grid-cols-3 gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
+            <div className="grid grid-cols-3 md:grid-cols-5 gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
@@ -935,6 +937,11 @@ export default function AIInsightsClient() {
                         {/* Expansion Proposals Tab */}
                         {activeTab === 'expansion' && (
                             <ExpansionProposalGenerator />
+                        )}
+
+                        {/* 1º Pedido - Consultoria Mix Ideal */}
+                        {activeTab === 'primeiroPedido' && (
+                            <ConsultoriaPrimeiroPedido />
                         )}
                     </>
                 )}
