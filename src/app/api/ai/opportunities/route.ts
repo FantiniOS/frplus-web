@@ -134,28 +134,58 @@ export async function GET() {
             recentSales.filter(s => (s._sum.quantidade || 0) > 0).map(s => s.produtoId)
         );
 
-        // 4. Mapeando produtos por cliente (Curva A do cliente)
+        // 4. Mapeando produtos por cliente (Curva A) e Frequência por Tabela
         const clientProductMap = new Map<string, Map<string, number>>();
         const clientProductLastDate = new Map<string, Map<string, Date>>();
+        const tableProductFrequency = new Map<string, Map<string, number>>();
 
         for (const client of clients) {
+            const tabelaBase = (client.tabelaPreco || 'PADRAO').toUpperCase().trim();
+            if (!tableProductFrequency.has(tabelaBase)) {
+                tableProductFrequency.set(tabelaBase, new Map<string, number>());
+            }
+            const freqMap = tableProductFrequency.get(tabelaBase)!;
+
             const prodQtdMap = new Map<string, number>();
             const prodDateMap = new Map<string, Date>();
             for (const pedido of client.pedidos) {
+                const produtosNestePedido = new Set<string>();
                 for (const item of pedido.itens) {
                     prodQtdMap.set(item.produtoId, (prodQtdMap.get(item.produtoId) || 0) + item.quantidade);
+                    produtosNestePedido.add(item.produtoId);
                     
                     const existingDate = prodDateMap.get(item.produtoId);
                     if (!existingDate || pedido.data > existingDate) {
                         prodDateMap.set(item.produtoId, pedido.data);
                     }
                 }
+                produtosNestePedido.forEach(prodId => {
+                    freqMap.set(prodId, (freqMap.get(prodId) || 0) + 1);
+                });
             }
             if (prodQtdMap.size > 0) {
                 clientProductMap.set(client.id, prodQtdMap);
                 clientProductLastDate.set(client.id, prodDateMap);
             }
         }
+
+        // Pre-calcular os Top 3 Produtos por Tabela (Baseado em Frequência de Pedidos)
+        const top3ByTable = new Map<string, string[]>();
+        tableProductFrequency.forEach((freqMap, tabela) => {
+            const freqEntries: [string, number][] = [];
+            freqMap.forEach((freq, prodId) => freqEntries.push([prodId, freq]));
+
+            const sortedProducts = freqEntries
+                .filter(([prodId]) => {
+                    const pRec = productMap.get(prodId);
+                    return pRec?.ativo && !(pRec.categoria || '').toLowerCase().includes('molho') && activeProductIds.has(prodId);
+                })
+                .sort((a, b) => b[1] - a[1]) // Ordena pela frequência (decrescente)
+                .slice(0, 3)
+                .map(entry => entry[0] as string);
+            
+            top3ByTable.set(tabela, sortedProducts);
+        });
 
         // ============================================================
         // OPPORTUNITY GENERATION (3 LAYERS)
@@ -220,7 +250,10 @@ export async function GET() {
 
             // --- PRIORIDADE 1: O RESGATE ---
             if (!targetProdId) {
-                for (const [prodId, lastDate] of Array.from(myDates.entries())) {
+                const myDatesEntries: [string, Date][] = [];
+                myDates.forEach((lastDate, prodId) => myDatesEntries.push([prodId, lastDate]));
+                
+                for (const [prodId, lastDate] of myDatesEntries) {
                     if (lastDate < data60 && !ultimoPedidoItems.has(prodId) && activeProductIds.has(prodId)) {
                         const pRec = productMap.get(prodId);
                         if (pRec && pRec.ativo && !(pRec.categoria || '').toLowerCase().includes('molho')) {
@@ -276,7 +309,23 @@ export async function GET() {
                 }
             }
 
-            if (!targetProdId) continue; // Pula cliente se não se encaixar em nenhuma das 3
+            // --- PRIORIDADE 4: EFEITO ESPELHO (PROVA SOCIAL MÍMICA) ---
+            if (!targetProdId) {
+                const tabelaBase = (client.tabelaPreco || 'PADRAO').toUpperCase().trim();
+                const top3 = top3ByTable.get(tabelaBase) || [];
+                
+                for (const topProdId of top3) {
+                    if (!myProducts.has(topProdId)) {
+                        targetProdId = topProdId;
+                        const nomeTarget = formatarNomeComercial(productMap.get(targetProdId)!.nome);
+                        strategyContext = `ESTRATÉGIA [EFEITO ESPELHO]: O cliente tem o perfil da tabela ${client.tabelaPreco || 'Padrão'}, e o produto ${nomeTarget} é um dos campeões absolutos de giro neste segmento. O cliente ainda não consome. Mande uma mensagem oferecendo esse item e use incisivamente o argumento de PROVA SOCIAL comprovada, afirmando que 'empresas com o mesmo perfil comercial e volume de operação que a sua estão tendo excelentes resultados com a introdução deste produto'.`;
+                        triggerPreview = `${nomeTarget} [Espelho]`;
+                        break;
+                    }
+                }
+            }
+
+            if (!targetProdId) continue; // Pula cliente se não se encaixar em nenhuma das 4
 
             const nomeProdutoAlvo = formatarNomeComercial(productMap.get(targetProdId)!.nome);
 
