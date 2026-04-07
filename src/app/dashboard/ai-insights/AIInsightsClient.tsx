@@ -597,21 +597,55 @@ export default function AIInsightsClient() {
                                             const messageText = opp.messageSuggestion || `Olá ${opp.clienteNome}, vi uma oportunidade para você: ${opp.description}`;
                                             const whatsappLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(messageText)}` : '#';
 
+                                            // Parse the strategy tag from description (e.g. "o vinagre de maçã da Belmont [Resgate]")
+                                            const tagMatch = opp.description?.match(/\[([^\]]+)\]\s*$/);
+                                            const strategyTag = tagMatch ? tagMatch[1] : null;
+                                            const productName = tagMatch ? opp.description.replace(tagMatch[0], '').trim() : opp.description;
+
+                                            // Color map for each strategy tag
+                                            const tagStyles: Record<string, string> = {
+                                                'Resgate': 'bg-red-500/15 text-red-400 border-red-500/30',
+                                                'Cross-Sell': 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+                                                'Pulo Tab.': 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
+                                                'Espelho': 'bg-violet-500/15 text-violet-400 border-violet-500/30',
+                                            };
+                                            const tagEmoji: Record<string, string> = {
+                                                'Resgate': '🔁',
+                                                'Cross-Sell': '🛒',
+                                                'Pulo Tab.': '📈',
+                                                'Espelho': '🪞',
+                                            };
+                                            const tagStyle = strategyTag ? (tagStyles[strategyTag] || 'bg-gray-500/15 text-gray-400 border-gray-500/30') : '';
+                                            const tagIcon = strategyTag ? (tagEmoji[strategyTag] || '💡') : '';
+
                                             return (
                                                 <div key={idx} className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-lg">
-                                                                {opp.type === 'upgrade' ? '⬆️' : opp.type === 'crossSell' ? '🛒' : opp.type === 'seasonal' ? '📅' : '🔄'}
+                                                    <div className="flex items-start justify-between mb-2">
+                                                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                            <span className="text-lg mt-0.5 shrink-0">
+                                                                {strategyTag ? tagIcon : (opp.type === 'upgrade' ? '⬆️' : opp.type === 'crossSell' ? '🛒' : opp.type === 'seasonal' ? '📅' : '🔄')}
                                                             </span>
-                                                            <p className="font-medium text-white">{opp.clienteNome}</p>
+                                                            <div className="min-w-0">
+                                                                <p className="font-medium text-white">{opp.clienteNome}</p>
+                                                                {/* Product name subtitle */}
+                                                                {productName && (
+                                                                    <p className="text-sm text-gray-400 mt-0.5 truncate" title={productName}>
+                                                                        🎯 {productName}
+                                                                    </p>
+                                                                )}
+                                                                {/* Strategy tag badge */}
+                                                                {strategyTag && (
+                                                                    <span className={`inline-flex items-center gap-1 mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide border ${tagStyle}`}>
+                                                                        {strategyTag}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                        <span className={`px-2 py-1 rounded-full text-xs border ${(priorityColors[opp.priority] || priorityColors.baixa)}`}>
+                                                        <span className={`px-2 py-1 rounded-full text-xs border shrink-0 ml-2 ${(priorityColors[opp.priority] || priorityColors.baixa)}`}>
                                                             {opp.priority}
                                                         </span>
                                                     </div>
-                                                    <p className="text-sm text-gray-400 mb-3">{opp.description}</p>
-                                                    <div className="flex items-center justify-between">
+                                                    <div className="flex items-center justify-between mt-3">
                                                         <span className="text-xs text-purple-400 uppercase font-semibold">{typeLabel}</span>
                                                         <div className="flex items-center gap-2">
                                                             <button
