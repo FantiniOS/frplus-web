@@ -248,13 +248,41 @@ export async function GET() {
             let targetProdId = '';
             let triggerPreview = '';
 
-            // --- PRIORIDADE 1: O RESGATE ---
+            // --- PRIORIDADE 1 (TESTE): EFEITO ESPELHO (PROVA SOCIAL MÍMICA) ---
+            // Movido temporariamente para P1 para validar cálculo de prova social por tabela
             if (!targetProdId) {
+                const tabelaBase = (client.tabelaPreco || 'PADRAO').toUpperCase().trim();
+                const top3 = top3ByTable.get(tabelaBase) || [];
+                
+                for (const topProdId of top3) {
+                    if (!myProducts.has(topProdId)) {
+                        targetProdId = topProdId;
+                        const nomeTarget = formatarNomeComercial(productMap.get(targetProdId)!.nome);
+                        strategyContext = `ESTRATÉGIA [EFEITO ESPELHO]: O cliente tem o perfil da tabela ${client.tabelaPreco || 'Padrão'}, e o produto ${nomeTarget} é um dos campeões absolutos de giro neste segmento. O cliente ainda não consome. Mande uma mensagem oferecendo esse item e use incisivamente o argumento de PROVA SOCIAL comprovada, afirmando que 'empresas com o mesmo perfil comercial e volume de operação que a sua estão tendo excelentes resultados com a introdução deste produto'.`;
+                        triggerPreview = `${nomeTarget} [Espelho]`;
+                        break;
+                    }
+                }
+            }
+
+            // --- PRIORIDADE 2: O RESGATE (RESTRITO AOS TOP 3 DO CLIENTE) ---
+            if (!targetProdId) {
+                // Calcular os top 3 produtos do PRÓPRIO cliente por volume
+                const clientProductEntries: [string, number][] = [];
+                myProducts.forEach((qtd, prodId) => clientProductEntries.push([prodId, qtd]));
+                const clientTop3Ids = new Set(
+                    clientProductEntries
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 3)
+                        .map(entry => entry[0])
+                );
+
                 const myDatesEntries: [string, Date][] = [];
                 myDates.forEach((lastDate, prodId) => myDatesEntries.push([prodId, lastDate]));
                 
                 for (const [prodId, lastDate] of myDatesEntries) {
-                    if (lastDate < data60 && !ultimoPedidoItems.has(prodId) && activeProductIds.has(prodId)) {
+                    // Só aciona Resgate se o produto está no top 3 do cliente
+                    if (clientTop3Ids.has(prodId) && lastDate < data60 && !ultimoPedidoItems.has(prodId) && activeProductIds.has(prodId)) {
                         const pRec = productMap.get(prodId);
                         if (pRec && pRec.ativo && !(pRec.categoria || '').toLowerCase().includes('molho')) {
                             targetProdId = prodId;
@@ -269,7 +297,7 @@ export async function GET() {
                 }
             }
 
-            // --- PRIORIDADE 2: O CROSS-SELL DE OURO (Álcool -> Maçã) ---
+            // --- PRIORIDADE 3: O CROSS-SELL DE OURO (Álcool -> Maçã) ---
             if (!targetProdId) {
                 const isConsumingAlcool = alcoolIds.some(id => myProducts.has(id));
                 const isConsumingMaca = macaIds.some(id => myProducts.has(id));
@@ -282,7 +310,7 @@ export async function GET() {
                 }
             }
 
-            // --- PRIORIDADE 3: O PULO DE TABELA ---
+            // --- PRIORIDADE 4: O PULO DE TABELA ---
             if (!targetProdId) {
                 const tabelaLower = (client.tabelaPreco || '').toLowerCase();
                 let puloVolumeFaltante = 0;
@@ -305,22 +333,6 @@ export async function GET() {
                         const nomeTarget = formatarNomeComercial(productMap.get(targetProdId)!.nome);
                         strategyContext = `ESTRATÉGIA [PULO DE TABELA]: O último pedido bateu na trave para a próxima tabela (${nextTableName})! Faltam apenas ${Math.ceil(puloVolumeFaltante)} caixas. Sugira o ${nomeTarget} no pedido atual como a "cereja do bolo" para ele atingir esse volume extra e GANHAR O DESCONTO DA NOVA TABELA em tudo.`;
                         triggerPreview = `${nomeTarget} [Pulo Tab.]`;
-                    }
-                }
-            }
-
-            // --- PRIORIDADE 4: EFEITO ESPELHO (PROVA SOCIAL MÍMICA) ---
-            if (!targetProdId) {
-                const tabelaBase = (client.tabelaPreco || 'PADRAO').toUpperCase().trim();
-                const top3 = top3ByTable.get(tabelaBase) || [];
-                
-                for (const topProdId of top3) {
-                    if (!myProducts.has(topProdId)) {
-                        targetProdId = topProdId;
-                        const nomeTarget = formatarNomeComercial(productMap.get(targetProdId)!.nome);
-                        strategyContext = `ESTRATÉGIA [EFEITO ESPELHO]: O cliente tem o perfil da tabela ${client.tabelaPreco || 'Padrão'}, e o produto ${nomeTarget} é um dos campeões absolutos de giro neste segmento. O cliente ainda não consome. Mande uma mensagem oferecendo esse item e use incisivamente o argumento de PROVA SOCIAL comprovada, afirmando que 'empresas com o mesmo perfil comercial e volume de operação que a sua estão tendo excelentes resultados com a introdução deste produto'.`;
-                        triggerPreview = `${nomeTarget} [Espelho]`;
-                        break;
                     }
                 }
             }
