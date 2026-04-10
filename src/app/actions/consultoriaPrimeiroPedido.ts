@@ -24,6 +24,7 @@ export interface CurvaAResult {
     nome: string
     codigo: string
     unidade: string
+    categoria: string
     ativo: boolean
     preco50a199: number
     preco200a699: number
@@ -154,6 +155,7 @@ export async function calcularGiroConsultoria(
                         nome: true,
                         codigo: true,
                         unidade: true,
+                        categoria: true,
                         ativo: true,
                         preco50a199: true,
                         preco200a699: true,
@@ -194,6 +196,7 @@ export async function calcularGiroConsultoria(
             nome: string
             codigo: string
             unidade: string
+            categoria: string
             ativo: boolean
             preco50a199: number
             preco200a699: number
@@ -214,6 +217,7 @@ export async function calcularGiroConsultoria(
                     nome: item.produto.nome,
                     codigo: item.produto.codigo,
                     unidade: item.produto.unidade || 'CX',
+                    categoria: item.produto.categoria || 'Geral',
                     ativo: item.produto.ativo,
                     preco50a199: Number(item.produto.preco50a199),
                     preco200a699: Number(item.produto.preco200a699),
@@ -288,6 +292,7 @@ export async function calcularGiroConsultoria(
                     nome: p.nome,
                     codigo: p.codigo,
                     unidade: p.unidade,
+                    categoria: p.categoria,
                     ativo: p.ativo,
                     preco50a199: p.preco50a199,
                     preco200a699: p.preco200a699,

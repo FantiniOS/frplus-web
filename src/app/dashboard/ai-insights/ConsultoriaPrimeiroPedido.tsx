@@ -48,6 +48,7 @@ export default function ConsultoriaPrimeiroPedido() {
     const [nomeComprador, setNomeComprador] = useState('');
     const [numLojasNovo, setNumLojasNovo] = useState<number>(1);
     const [percentagemBonus, setPercentagemBonus] = useState<number>(5);
+    const [percentualImposto, setPercentualImposto] = useState<number>(12);
     const [caixasPorPallet, setCaixasPorPallet] = useState<number>(60);
     const [quantidades, setQuantidades] = useState<Record<string, number>>({});
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -194,6 +195,20 @@ export default function ConsultoriaPrimeiroPedido() {
         setQuantidades(prev => ({ ...prev, [produtoId]: Math.max(0, qtd) }));
     };
 
+    // === CLASSIFICAÇÃO DE MARGEM POR CATEGORIA ===
+    const getMargemByCategoria = useCallback((nome: string, categoria: string): number => {
+        const nomeLower = (nome || '').toLowerCase();
+        const catLower = (categoria || '').toLowerCase();
+        // Álcool / Gel = Curva A (alto giro, margem apertada)
+        if (nomeLower.includes('álcool') || nomeLower.includes('alcool') || nomeLower.includes('alcohol') ||
+            nomeLower.includes('gel') || catLower.includes('álcool') || catLower.includes('alcool') ||
+            catLower.includes('gel')) {
+            return 10;
+        }
+        // Compostos / Limão / Premium = Curva B/C (rentabilidade)
+        return 15;
+    }, []);
+
     const handleAddProdutoManual = () => {
         if (!produtoManualSelecionado) return;
         const p = products.find((x: Product) => x.id === produtoManualSelecionado);
@@ -203,6 +218,7 @@ export default function ConsultoriaPrimeiroPedido() {
                 nome: p.nome,
                 codigo: p.codigo || '',
                 unidade: p.unidade || 'CX',
+                categoria: (p as any).categoria || 'Geral',
                 ativo: p.ativo !== false,
                 preco50a199: Number(p.preco50a199) || 0,
                 preco200a699: Number(p.preco200a699) || 0,
@@ -239,27 +255,38 @@ export default function ConsultoriaPrimeiroPedido() {
         return [...curvaA, ...produtosManuais];
     }, [curvaA, produtosManuais]);
 
-    // === MOTOR DE CÁLCULO ===
+    // === MOTOR DE CÁLCULO B2B ===
     const calculo = useMemo(() => {
         if (!selectedTabela || combinedProdutos.length === 0) return null;
 
+        const fatorImposto = 1 + (percentualImposto / 100);
+
         const itens = combinedProdutos.map((p) => {
-            const preco = getPrecoByTabela(p, selectedTabela);
+            const custoNF = getPrecoByTabela(p, selectedTabela);
+            const custoReal = custoNF * fatorImposto;
             const qtd = quantidades[p.produtoId] || 0;
             const giroD = p.giroDiarioCliente || 0;
-            // Limitando cobertura max sugerida a 40 dias no relatório
             const coberturaDias = (giroD > 0 && qtd > 0) ? Math.round(qtd / giroD) : 0;
             const isLimitado = p.isLimitadoTeto || false;
+
+            // Margem segmentada por categoria
+            const margemPercent = getMargemByCategoria(p.nome, p.categoria || 'Geral');
+            const sugestaoRevenda = custoReal / (1 - margemPercent / 100);
+            const lucroProjetado = (sugestaoRevenda - custoReal) * qtd;
 
             return {
                 id: p.produtoId,
                 nome: p.nome,
                 codigo: p.codigo,
                 unidade: p.unidade || 'CX',
-                precoUnitario: preco,
+                categoria: p.categoria || 'Geral',
+                precoUnitario: custoNF,
+                custoReal,
                 quantidade: qtd,
-                subtotal: preco * qtd,
-                lucroEstimado: ((p.precoSugeridoVenda || 0) - preco) * qtd,
+                subtotal: custoNF * qtd,
+                sugestaoRevenda,
+                margemPercent,
+                lucroProjetado,
                 totalQtdVendida: p.totalQtdVendida,
                 giroDiarioCliente: giroD,
                 ticketMedioCaixas: p.ticketMedioCaixas || 0,
@@ -271,7 +298,7 @@ export default function ConsultoriaPrimeiroPedido() {
         }).filter(item => item.quantidade > 0);
 
         const totalPedido = itens.reduce((acc, item) => acc + item.subtotal, 0);
-        const lucroBrutoTotal = itens.reduce((acc, item) => acc + item.lucroEstimado, 0);
+        const lucroProjetadoTotal = itens.reduce((acc, item) => acc + item.lucroProjetado, 0);
         const verbaGerada = aplicarEstrategia ? (totalPedido * (percentagemBonus / 100)) : 0;
 
         let caixasIsca = 0, precoCaixaIsca = 0, nomeIsca = '', codigoIsca = '', unidadeIsca = 'CX';
@@ -292,8 +319,30 @@ export default function ConsultoriaPrimeiroPedido() {
             giroDiarioCliente: 0, ticketMedioCaixas: 0, coberturaDias: 0, isBonificacao: true,
         } : null;
 
-        return { itens, itemBonificado, totalPedido, lucroBrutoTotal, verbaGerada, caixasIsca, precoCaixaIsca, nomeIsca, codigoIsca, unidadeIsca, valorBonificacaoReal };
-    }, [combinedProdutos, selectedTabela, percentagemBonus, produtoIsca, quantidades, selectedProdutoIscaId, aplicarEstrategia]);
+        // === DILUIÇÃO DE BONIFICAÇÃO ===
+        const totalCaixasPagas = itens.reduce((acc, item) => acc + item.quantidade, 0);
+        const totalCaixasBonificadas = caixasIsca;
+        const custoRealTotalCarga = itens.reduce((acc, item) => acc + (item.custoReal * item.quantidade), 0);
+        const custoMedioCargaSemVerba = totalCaixasPagas > 0 ? custoRealTotalCarga / totalCaixasPagas : 0;
+        const custoMedioCargaComVerba = (totalCaixasPagas + totalCaixasBonificadas) > 0
+            ? custoRealTotalCarga / (totalCaixasPagas + totalCaixasBonificadas) : 0;
+
+        // === RESUMO EXECUTIVO ===
+        const investimentoBruto = totalPedido;
+        const impostoEstimado = totalPedido * (percentualImposto / 100);
+        const faturamentoPonta = itens.reduce((acc, item) => acc + (item.sugestaoRevenda * item.quantidade), 0)
+            + (caixasIsca > 0 ? caixasIsca * (itens.length > 0 ? itens[0].sugestaoRevenda : 0) : 0);
+        const lucroLiquidoEsperado = faturamentoPonta - (investimentoBruto + impostoEstimado);
+
+        return {
+            itens, itemBonificado, totalPedido, lucroProjetadoTotal, verbaGerada,
+            caixasIsca, precoCaixaIsca, nomeIsca, codigoIsca, unidadeIsca, valorBonificacaoReal,
+            // Diluição
+            custoMedioCargaSemVerba, custoMedioCargaComVerba, totalCaixasPagas, totalCaixasBonificadas,
+            // Resumo Executivo
+            investimentoBruto, impostoEstimado, faturamentoPonta, lucroLiquidoEsperado,
+        };
+    }, [combinedProdutos, selectedTabela, percentagemBonus, percentualImposto, produtoIsca, quantidades, selectedProdutoIscaId, aplicarEstrategia, getMargemByCategoria]);
 
     const isReady = selectedFabricaId && selectedTabela && combinedProdutos.length > 0 && (!aplicarEstrategia || selectedProdutoIscaId !== '');
 
@@ -327,9 +376,19 @@ export default function ConsultoriaPrimeiroPedido() {
                 totalPedido: calculo.totalPedido,
                 verbaGerada: aplicarEstrategia ? calculo.verbaGerada : 0,
                 lucroImediato: aplicarEstrategia ? calculo.valorBonificacaoReal : 0,
-                lucroEstimadoRevenda: calculo.lucroBrutoTotal,
+                lucroEstimadoRevenda: calculo.lucroProjetadoTotal,
                 clienteNovo: nomeClienteNovo,
                 comprador: nomeComprador,
+                // B2B Fields
+                percentualImposto,
+                custoMedioCargaSemVerba: calculo.custoMedioCargaSemVerba,
+                custoMedioCargaComVerba: calculo.custoMedioCargaComVerba,
+                totalCaixasPagas: calculo.totalCaixasPagas,
+                totalCaixasBonificadas: calculo.totalCaixasBonificadas,
+                investimentoBruto: calculo.investimentoBruto,
+                impostoEstimado: calculo.impostoEstimado,
+                faturamentoPonta: calculo.faturamentoPonta,
+                lucroLiquidoEsperado: calculo.lucroLiquidoEsperado,
             };
             console.log('[PDF] Payload:', JSON.stringify(payload, null, 2));
             await gerarPdfConsultoria(payload);
@@ -452,7 +511,7 @@ export default function ConsultoriaPrimeiroPedido() {
                     </div>
                 </div>
 
-                {/* Painel 2: Bonificação */}
+                {/* Painel 2: Bonificação + Custo Variavel */}
                 <div className="bg-white/5 p-6 rounded-xl border border-white/10 space-y-5">
                     <div className="flex items-center justify-between">
                         <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2">
@@ -488,6 +547,27 @@ export default function ConsultoriaPrimeiroPedido() {
                             </div>
                         </div>
                     )}
+
+                    {/* Custo Variável / Imposto */}
+                    <div className="border-t border-white/5 pt-5">
+                        <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2 mb-4">
+                            <TrendingUp className="w-4 h-4 text-orange-400" /> 3. Custo Tributário Estimado
+                        </h4>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1.5">
+                                <Percent className="w-3.5 h-3.5 text-orange-400" /> % Imposto / Frete Estimado (SP→MG)
+                            </label>
+                            <div className="relative">
+                                <input type="number" min={0} max={50} step={0.5} value={percentualImposto}
+                                    onChange={(e) => setPercentualImposto(Math.max(0, Number(e.target.value)))}
+                                    className="w-full bg-black/20 border border-orange-500/20 rounded-lg px-4 py-2.5 pr-10 text-white focus:outline-none focus:border-orange-500 transition-colors text-sm font-bold" />
+                                <Percent className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-400" />
+                            </div>
+                            <p className="text-[10px] text-gray-500 mt-1.5">
+                                ICMS interestadual + ST/FCP. Altera o <span className="text-orange-400 font-medium">Custo Real</span> da mercadoria no PDF.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -651,7 +731,7 @@ export default function ConsultoriaPrimeiroPedido() {
                 </div>
             )}
 
-            {/* === RESUMO DO INVESTIMENTO === */}
+            {/* === RESUMO EXECUTIVO === */}
             {isReady && calculo && calculo.itens.length > 0 && (
                 <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 animate-in slide-in-from-bottom-4 duration-500">
                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/10 via-teal-600/5 to-cyan-600/10" />
@@ -661,52 +741,68 @@ export default function ConsultoriaPrimeiroPedido() {
                                 <Award className="w-5 h-5 text-emerald-400" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-white uppercase tracking-wider">Resumo do Investimento</h3>
-                                <p className="text-xs text-gray-400">Aprovação visual antes da exportação</p>
+                                <h3 className="text-lg font-bold text-white uppercase tracking-wider">Resumo do Fechamento</h3>
+                                <p className="text-xs text-gray-400">Análise financeira completa antes da exportação</p>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div className="bg-black/20 border border-white/5 rounded-xl p-5 space-y-2">
                                 <div className="flex items-center gap-2 text-gray-400">
                                     <DollarSign className="w-4 h-4" />
-                                    <span className="text-xs font-medium uppercase tracking-wider">Total Pedido</span>
+                                    <span className="text-xs font-medium uppercase tracking-wider">Investimento Bruto (NF)</span>
                                 </div>
-                                <p className="text-2xl font-bold text-white">{formatBRL(calculo.totalPedido)}</p>
-                            </div>
-                            
-                            <div className="bg-black/20 border border-indigo-500/10 rounded-xl p-5 space-y-2">
-                                <div className="flex items-center gap-2 text-indigo-400">
-                                    <TrendingUp className="w-4 h-4" />
-                                    <span className="text-xs font-medium uppercase tracking-wider">Lucro Estimado</span>
-                                </div>
-                                <p className="text-2xl font-bold text-indigo-400">{formatBRL(calculo.lucroBrutoTotal)}</p>
-                                <p className="text-[10px] text-indigo-500/70">Base 40% margem Revenda</p>
+                                <p className="text-2xl font-bold text-white">{formatBRL(calculo.investimentoBruto)}</p>
                             </div>
 
-                            {aplicarEstrategia && (
-                                <div className="bg-black/20 border border-emerald-500/10 rounded-xl p-5 space-y-2">
-                                    <div className="flex items-center gap-2 text-emerald-400">
-                                        <Gift className="w-4 h-4" />
-                                        <span className="text-xs font-medium uppercase tracking-wider">Verba ({percentagemBonus}%)</span>
-                                    </div>
-                                    <p className="text-2xl font-bold text-emerald-400">{formatBRL(calculo.verbaGerada)}</p>
+                            <div className="bg-black/20 border border-orange-500/10 rounded-xl p-5 space-y-2">
+                                <div className="flex items-center gap-2 text-orange-400">
+                                    <TrendingUp className="w-4 h-4" />
+                                    <span className="text-xs font-medium uppercase tracking-wider">Impacto Tributário ({percentualImposto}%)</span>
                                 </div>
-                            )}
+                                <p className="text-2xl font-bold text-orange-400">{formatBRL(calculo.impostoEstimado)}</p>
+                                <p className="text-[10px] text-orange-500/70">ICMS SP→MG estimado</p>
+                            </div>
+
+                            <div className="bg-black/20 border border-cyan-500/10 rounded-xl p-5 space-y-2">
+                                <div className="flex items-center gap-2 text-cyan-400">
+                                    <BarChart3 className="w-4 h-4" />
+                                    <span className="text-xs font-medium uppercase tracking-wider">Faturamento Ponta</span>
+                                </div>
+                                <p className="text-2xl font-bold text-cyan-400">{formatBRL(calculo.faturamentoPonta)}</p>
+                                <p className="text-[10px] text-cyan-500/70">Revenda com margem sugerida</p>
+                            </div>
+
+                            <div className="bg-black/20 border border-emerald-500/10 rounded-xl p-5 space-y-2">
+                                <div className="flex items-center gap-2 text-emerald-400">
+                                    <Award className="w-4 h-4" />
+                                    <span className="text-xs font-medium uppercase tracking-wider">Lucro Líquido Esperado</span>
+                                </div>
+                                <p className="text-2xl font-bold text-emerald-400">{formatBRL(calculo.lucroLiquidoEsperado)}</p>
+                            </div>
                         </div>
 
                         {aplicarEstrategia && calculo.caixasIsca > 0 && (
                             <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-6 shadow-inner">
                                 <div className="flex items-center justify-between gap-4 flex-wrap">
                                     <div className="space-y-1">
-                                        <p className="text-sm font-semibold text-emerald-100 uppercase tracking-wide">Conversão Física em Mercadoria</p>
+                                        <p className="text-sm font-semibold text-emerald-100 uppercase tracking-wide">Efeito da Verba — Diluição na Carga</p>
                                         <p className="text-xl sm:text-2xl font-black text-emerald-400">
-                                            {calculo.caixasIsca} Caixas de {calculo.nomeIsca} <span className="text-white">(Custo Zero)</span>
+                                            {calculo.caixasIsca} CX de {calculo.nomeIsca} <span className="text-white">(Custo Zero)</span>
+                                        </p>
+                                        <p className="text-xs text-emerald-300/70 mt-1">
+                                            Custo médio da carga: <span className="text-white font-bold">{formatBRL(calculo.custoMedioCargaSemVerba)}</span> → <span className="text-emerald-400 font-bold">{formatBRL(calculo.custoMedioCargaComVerba)}</span> por CX
                                         </p>
                                     </div>
-                                    <div className="bg-emerald-950/50 border border-emerald-500/20 px-4 py-2 rounded-lg text-center">
-                                        <p className="text-[10px] text-emerald-300 uppercase">Preço Ref. Isca</p>
-                                        <p className="text-sm font-mono text-white">{formatBRL(calculo.precoCaixaIsca)} / CX</p>
+                                    <div className="flex gap-3">
+                                        <div className="bg-emerald-950/50 border border-emerald-500/20 px-4 py-2 rounded-lg text-center">
+                                            <p className="text-[10px] text-emerald-300 uppercase">Verba ({percentagemBonus}%)</p>
+                                            <p className="text-sm font-mono text-emerald-400 font-bold">{formatBRL(calculo.verbaGerada)}</p>
+                                        </div>
+                                        <div className="bg-emerald-950/50 border border-emerald-500/20 px-4 py-2 rounded-lg text-center">
+                                            <p className="text-[10px] text-emerald-300 uppercase">Economia/CX</p>
+                                            <p className="text-sm font-mono text-white font-bold">{formatBRL(calculo.custoMedioCargaSemVerba - calculo.custoMedioCargaComVerba)}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
