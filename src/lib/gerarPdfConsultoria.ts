@@ -191,6 +191,7 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         const tableBody = payload.itensPagos.map((item) => [
             `${item.nome}`,
             `${item.quantidade}`,
+            item.coberturaDias > 0 ? `${item.coberturaDias} dias` : 'S/ Ref.',
             formatBRL(item.precoUnitario),
             formatBRL(item.custoReal),
             formatBRL(item.sugestaoRevenda),
@@ -200,7 +201,7 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
 
         autoTable(doc, {
             startY,
-            head: [['Produto', 'Vol. (CX)', 'Custo NF', 'Custo Real', colunaPrecoLabel, 'Margem', 'Lucro Projetado']],
+            head: [['Produto', 'Vol. (CX)', 'Cobertura', 'Custo NF', 'Custo Real', colunaPrecoLabel, 'Margem', 'Lucro Projetado']],
             body: tableBody,
             theme: 'striped',
             styles: { fontSize: 7.5, cellPadding: 2.5, halign: 'left', lineColor: colors.tableBorder, lineWidth: 0.2 },
@@ -208,12 +209,13 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
             alternateRowStyles: { fillColor: colors.rowEven },
             columnStyles: {
                 0: { fontStyle: 'bold', textColor: colors.textDark, cellWidth: 'auto' },
-                1: { halign: 'center', textColor: colors.textMuted, cellWidth: 22 },
-                2: { halign: 'right', textColor: colors.textMuted, cellWidth: 30 },
-                3: { halign: 'right', textColor: colors.orangeAccent, fontStyle: 'bold', cellWidth: 30 },
-                4: { halign: 'right', textColor: colors.accentBlue, fontStyle: 'bold', cellWidth: 30 },
-                5: { halign: 'center', textColor: colors.textMuted, cellWidth: 20 },
-                6: { halign: 'right', textColor: colors.greenAccent, fontStyle: 'bold', cellWidth: 32 }
+                1: { halign: 'center', textColor: colors.textMuted, cellWidth: 20 },
+                2: { halign: 'center', textColor: colors.textMuted, cellWidth: 22 },
+                3: { halign: 'right', textColor: colors.textMuted, cellWidth: 28 },
+                4: { halign: 'right', textColor: colors.orangeAccent, fontStyle: 'bold', cellWidth: 28 },
+                5: { halign: 'right', textColor: colors.accentBlue, fontStyle: 'bold', cellWidth: 30 },
+                6: { halign: 'center', textColor: colors.textMuted, cellWidth: 18 },
+                7: { halign: 'right', textColor: colors.greenAccent, fontStyle: 'bold', cellWidth: 30 }
             },
             margin: { left: margin.left, right: margin.right },
             didDrawPage: (data: { pageNumber: number }) => {
