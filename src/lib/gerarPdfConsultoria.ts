@@ -153,7 +153,7 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         };
 
         const drawFooter = (pageDoc: typeof doc, pageNum: number, totalPages: number) => {
-            const footerY = pageHeight - 10;
+            const footerY = pageHeight - 7;
 
             pageDoc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
             pageDoc.setLineWidth(0.3);
@@ -390,20 +390,36 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         // Disclaimer
         startY += summaryBlockHeight + 5;
 
+        // Page-break safety: disclaimer + strategy block need ~35mm
+        if (startY > pageHeight - 40) {
+            doc.addPage();
+            startY = drawHeader(doc, doc.getNumberOfPages());
+            if (logoResult) {
+                try {
+                    const logoH = 17;
+                    const logoRatio = logoH / logoResult.height;
+                    const logoW = logoResult.width * logoRatio;
+                    doc.addImage(logoResult.data, 'PNG', margin.left, 5, logoW, logoH);
+                } catch { /* silently fail */ }
+            }
+            startY += 2;
+        }
+
         const margensTexto = isAtacado
             ? '10% Álcool/Gel, 15% Compostos — Cenário Atacado/Distribuidor'
             : '22% Álcool/Gel, 32% Compostos — Cenário Varejo/Redes';
 
-        doc.setFontSize(5.5);
+        const disclaimerMaxWidth = pageWidth - margin.left - margin.right;
+        doc.setFontSize(5);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
         doc.text(
             `* Valores estimados com base em margem sugerida (${margensTexto}). Imposto de ${payload.percentualImposto}% (ICMS SP→MG) aplicado sobre custo NF. Consulte seu contador para apuração fiscal oficial.`,
-            margin.left, startY
+            margin.left, startY, { maxWidth: disclaimerMaxWidth }
         );
 
         // === BLOCO ESTRATÉGIA DE RENTABILIDADE ===
-        startY += 8;
+        startY += 10;
         if (startY > pageHeight - 30) {
             doc.addPage();
             startY = drawHeader(doc, doc.getNumberOfPages());
