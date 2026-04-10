@@ -162,8 +162,8 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
             pageDoc.setFontSize(6.5);
             pageDoc.setFont('helvetica', 'normal');
             pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
-            pageDoc.text('FRPlus — Gestão Comercial Inteligente', margin.left, footerY);
-            pageDoc.text(`Valores estimados. Imposto de ${payload.percentualImposto}% (ICMS SP→MG) sobre Custo NF. Preços sujeitos a alteração.`, pageWidth / 2, footerY, { align: 'center' });
+            pageDoc.text('FRPlus - Gestao Comercial Inteligente', margin.left, footerY);
+            pageDoc.text(`Valores estimados. Imposto de ${payload.percentualImposto}% (ICMS SP/MG) sobre Custo NF. Precos sujeitos a alteracao.`, pageWidth / 2, footerY, { align: 'center' });
 
             pageDoc.setFont('helvetica', 'bold');
             pageDoc.text(`${pageNum} / ${totalPages}`, pageWidth - margin.right, footerY, { align: 'right' });
@@ -383,15 +383,15 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         const col4X = margin.left + colWidth * 3 + 8;
 
         drawMetric(col1X, 'INVESTIMENTO BRUTO (NF)', formatBRL(payload.investimentoBruto), colors.white, 'Preço seco de fábrica');
-        drawMetric(col2X, `IMPACTO TRIBUTÁRIO (${payload.percentualImposto}%)`, formatBRL(payload.impostoEstimado), colors.orangeAccent, 'ICMS SP→MG estimado');
+        drawMetric(col2X, `IMPACTO TRIBUTARIO (${payload.percentualImposto}%)`, formatBRL(payload.impostoEstimado), colors.orangeAccent, 'ICMS SP/MG estimado');
         drawMetric(col3X, 'FATURAMENTO PROJETADO PONTA', formatBRL(payload.faturamentoPonta), colors.accentCyan, 'Com margem sugerida');
         drawMetric(col4X, 'LUCRO LÍQUIDO ESPERADO', formatBRL(payload.lucroLiquidoEsperado), colors.greenAccent, 'Faturamento - (NF + Imposto)');
 
         // Disclaimer
         startY += summaryBlockHeight + 5;
 
-        // Page-break safety: disclaimer + strategy block need ~35mm
-        if (startY > pageHeight - 40) {
+        // Page-break safety: disclaimer + strategy block need ~45mm
+        if (startY > pageHeight - 45) {
             doc.addPage();
             startY = drawHeader(doc, doc.getNumberOfPages());
             if (logoResult) {
@@ -414,7 +414,7 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
         doc.text(
-            `* Valores estimados com base em margem sugerida (${margensTexto}). Imposto de ${payload.percentualImposto}% (ICMS SP→MG) aplicado sobre custo NF. Consulte seu contador para apuração fiscal oficial.`,
+            `* Valores estimados com base em margem sugerida (${margensTexto}). Imposto de ${payload.percentualImposto}% (ICMS SP/MG) aplicado sobre custo NF. Consulte seu contador para apuracao fiscal oficial.`,
             margin.left, startY, { maxWidth: disclaimerMaxWidth }
         );
 
