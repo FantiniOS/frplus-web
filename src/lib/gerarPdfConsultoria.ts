@@ -387,8 +387,8 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         drawMetric(col3X, 'FATURAMENTO PROJETADO PONTA', formatBRL(payload.faturamentoPonta), colors.accentCyan, 'Com margem sugerida');
         drawMetric(col4X, 'LUCRO LÍQUIDO ESPERADO', formatBRL(payload.lucroLiquidoEsperado), colors.greenAccent, 'Faturamento - (NF + Imposto)');
 
-        // Disclaimer
-        startY += summaryBlockHeight + 5;
+        // Disclaimer — with breathing room above and below
+        startY += summaryBlockHeight + 8;
 
         // Page-break safety: disclaimer + strategy block need ~45mm
         if (startY > pageHeight - 45) {
@@ -406,8 +406,8 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         }
 
         const margensTexto = isAtacado
-            ? '10% Álcool/Gel, 15% Compostos — Cenário Atacado/Distribuidor'
-            : '22% Álcool/Gel, 32% Compostos — Cenário Varejo/Redes';
+            ? '10% Alcool/Gel, 15% Compostos - Cenario Atacado/Distribuidor'
+            : '22% Alcool/Gel, 32% Compostos - Cenario Varejo/Redes';
 
         const disclaimerMaxWidth = pageWidth - margin.left - margin.right;
         doc.setFontSize(5);
@@ -419,7 +419,7 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         );
 
         // === BLOCO ESTRATÉGIA DE RENTABILIDADE ===
-        startY += 10;
+        startY += 12;
         if (startY > pageHeight - 30) {
             doc.addPage();
             startY = drawHeader(doc, doc.getNumberOfPages());
