@@ -234,7 +234,7 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
             },
         });
 
-        startY = doc.lastAutoTable.finalY + 10;
+        startY = doc.lastAutoTable.finalY + 4;
 
         // === SEÇÃO "EFEITO DA VERBA" (DILUIÇÃO DE BONIFICAÇÃO) ===
         if (payload.itemBonificado && payload.itemBonificado.quantidade > 0) {
@@ -320,7 +320,7 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
                 margin.left + 8, summaryY
             );
 
-            startY += verbaBlockHeight + 10;
+            startY += verbaBlockHeight + 4;
         }
 
         // === RESUMO DO FECHAMENTO (EXECUTIVE SUMMARY) ===
@@ -387,11 +387,11 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         drawMetric(col3X, 'FATURAMENTO PROJETADO PONTA', formatBRL(payload.faturamentoPonta), colors.accentCyan, 'Com margem sugerida');
         drawMetric(col4X, 'LUCRO LÍQUIDO ESPERADO', formatBRL(payload.lucroLiquidoEsperado), colors.greenAccent, 'Faturamento - (NF + Imposto)');
 
-        // Disclaimer — with breathing room above and below
-        startY += summaryBlockHeight + 8;
+        // Disclaimer — spacer above
+        startY += summaryBlockHeight + 6;
 
-        // Page-break safety: disclaimer + strategy block need ~45mm
-        if (startY > pageHeight - 45) {
+        // Page-break safety: disclaimer needs ~15mm
+        if (startY > pageHeight - 20) {
             doc.addPage();
             startY = drawHeader(doc, doc.getNumberOfPages());
             if (logoResult) {
@@ -413,53 +413,10 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         doc.setFontSize(5);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
-        doc.text(
-            `* Valores estimados com base em margem sugerida (${margensTexto}). Imposto de ${payload.percentualImposto}% (ICMS SP/MG) aplicado sobre custo NF. Consulte seu contador para apuracao fiscal oficial.`,
-            margin.left, startY, { maxWidth: disclaimerMaxWidth }
-        );
-
-        // === BLOCO ESTRATÉGIA DE RENTABILIDADE ===
-        startY += 12;
-        if (startY > pageHeight - 30) {
-            doc.addPage();
-            startY = drawHeader(doc, doc.getNumberOfPages());
-            if (logoResult) {
-                try {
-                    const logoH = 17;
-                    const logoRatio = logoH / logoResult.height;
-                    const logoW = logoResult.width * logoRatio;
-                    doc.addImage(logoResult.data, 'PNG', margin.left, 5, logoW, logoH);
-                } catch { /* silently fail */ }
-            }
-            startY += 2;
-        }
-
-        const stratBlockWidth = pageWidth - margin.left - margin.right;
-        const stratBlockHeight = 18;
-
-        // Background
-        const stratColor: [number, number, number] = isAtacado
-            ? [37, 99, 235]   // blue for atacado
-            : [139, 92, 246]; // purple for redes/varejo
-
-        doc.setFillColor(stratColor[0], stratColor[1], stratColor[2]);
-        doc.roundedRect(margin.left, startY, stratBlockWidth, stratBlockHeight, 2, 2, 'F');
-
-        // Title
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(255, 255, 255);
-        const stratTitle = isAtacado ? 'ESTRATÉGIA: CENÁRIO ATACADO / DISTRIBUIDOR' : 'ESTRATÉGIA: CENÁRIO VAREJO / REDES';
-        doc.text(stratTitle, margin.left + 8, startY + 7);
-
-        // Body text
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(255, 255, 255);
-        const stratBody = isAtacado
-            ? 'Projeção focada em alto giro e competitividade de repasse para a sua equipe de vendas.'
-            : 'Projeção focada em otimização de margem por metro quadrado e rentabilidade de gôndola.';
-        doc.text(stratBody, margin.left + 8, startY + 13);
+        
+        const disclaimerText = `* Valores estimados com base em margem sugerida (${margensTexto}). Imposto de ${payload.percentualImposto}% (ICMS SP/MG) aplicado sobre custo NF. Consulte seu contador para apuracao fiscal oficial.`;
+        const disclaimerLines = doc.splitTextToSize(disclaimerText, disclaimerMaxWidth);
+        doc.text(disclaimerLines, margin.left, startY);
 
         // Draw footers
         const pageCount = doc.getNumberOfPages();
