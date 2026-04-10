@@ -195,19 +195,26 @@ export default function ConsultoriaPrimeiroPedido() {
         setQuantidades(prev => ({ ...prev, [produtoId]: Math.max(0, qtd) }));
     };
 
-    // === CLASSIFICAÇÃO DE MARGEM POR CATEGORIA ===
-    const getMargemByCategoria = useCallback((nome: string, categoria: string): number => {
+    // === CLASSIFICAÇÃO DE MARGEM POR CATEGORIA + PERFIL ===
+    const isPerfilAtacado = useCallback((tabela: string): boolean => {
+        return tabela === 'atacado' || tabela === 'avista';
+    }, []);
+
+    const getMargemByCategoria = useCallback((nome: string, categoria: string, tabela: string): number => {
         const nomeLower = (nome || '').toLowerCase();
         const catLower = (categoria || '').toLowerCase();
-        // Álcool / Gel = Curva A (alto giro, margem apertada)
-        if (nomeLower.includes('álcool') || nomeLower.includes('alcool') || nomeLower.includes('alcohol') ||
+        const isAlcool = nomeLower.includes('álcool') || nomeLower.includes('alcool') || nomeLower.includes('alcohol') ||
             nomeLower.includes('gel') || catLower.includes('álcool') || catLower.includes('alcool') ||
-            catLower.includes('gel')) {
-            return 10;
+            catLower.includes('gel');
+
+        if (isPerfilAtacado(tabela)) {
+            // ATACADO/DISTRIBUIDOR: giro agressivo
+            return isAlcool ? 10 : 15;
+        } else {
+            // VAREJO/REDES: rentabilidade de gôndola
+            return isAlcool ? 22 : 32;
         }
-        // Compostos / Limão / Premium = Curva B/C (rentabilidade)
-        return 15;
-    }, []);
+    }, [isPerfilAtacado]);
 
     const handleAddProdutoManual = () => {
         if (!produtoManualSelecionado) return;
@@ -269,8 +276,8 @@ export default function ConsultoriaPrimeiroPedido() {
             const coberturaDias = (giroD > 0 && qtd > 0) ? Math.round(qtd / giroD) : 0;
             const isLimitado = p.isLimitadoTeto || false;
 
-            // Margem segmentada por categoria
-            const margemPercent = getMargemByCategoria(p.nome, p.categoria || 'Geral');
+            // Margem segmentada por categoria + perfil
+            const margemPercent = getMargemByCategoria(p.nome, p.categoria || 'Geral', selectedTabela);
             const sugestaoRevenda = custoReal / (1 - margemPercent / 100);
             const lucroProjetado = (sugestaoRevenda - custoReal) * qtd;
 
@@ -389,6 +396,8 @@ export default function ConsultoriaPrimeiroPedido() {
                 impostoEstimado: calculo.impostoEstimado,
                 faturamentoPonta: calculo.faturamentoPonta,
                 lucroLiquidoEsperado: calculo.lucroLiquidoEsperado,
+                // Segmento
+                segmentoPerfil: isPerfilAtacado(selectedTabela) ? 'atacado' : 'varejo',
             };
             console.log('[PDF] Payload:', JSON.stringify(payload, null, 2));
             await gerarPdfConsultoria(payload);

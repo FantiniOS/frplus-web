@@ -73,6 +73,8 @@ export interface PayloadConsultoria {
     impostoEstimado: number;
     faturamentoPonta: number;
     lucroLiquidoEsperado: number;
+    // Segmento
+    segmentoPerfil: 'atacado' | 'varejo';
 }
 
 export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
@@ -183,6 +185,9 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
         startY += 2;
 
         // === TABELA PRINCIPAL — 7 COLUNAS ===
+        const isAtacado = payload.segmentoPerfil === 'atacado';
+        const colunaPrecoLabel = isAtacado ? 'Preço Repasse Sug.' : 'Preço Gôndola Sug.';
+
         const tableBody = payload.itensPagos.map((item) => [
             `${item.nome}`,
             `${item.quantidade}`,
@@ -195,7 +200,7 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
 
         autoTable(doc, {
             startY,
-            head: [['Produto', 'Vol. (CX)', 'Custo NF', 'Custo Real', 'Sug. Revenda', 'Margem', 'Lucro Projetado']],
+            head: [['Produto', 'Vol. (CX)', 'Custo NF', 'Custo Real', colunaPrecoLabel, 'Margem', 'Lucro Projetado']],
             body: tableBody,
             theme: 'striped',
             styles: { fontSize: 7.5, cellPadding: 2.5, halign: 'left', lineColor: colors.tableBorder, lineWidth: 0.2 },
@@ -381,13 +386,61 @@ export async function gerarPdfConsultoria(payload: PayloadConsultoria) {
 
         // Disclaimer
         startY += summaryBlockHeight + 5;
+
+        const margensTexto = isAtacado
+            ? '10% Álcool/Gel, 15% Compostos — Cenário Atacado/Distribuidor'
+            : '22% Álcool/Gel, 32% Compostos — Cenário Varejo/Redes';
+
         doc.setFontSize(5.5);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
         doc.text(
-            `* Valores estimados com base em margem sugerida (10% Álcool/Gel, 15% Compostos). Imposto de ${payload.percentualImposto}% (ICMS SP→MG) aplicado sobre custo NF. Consulte seu contador para apuração fiscal oficial.`,
+            `* Valores estimados com base em margem sugerida (${margensTexto}). Imposto de ${payload.percentualImposto}% (ICMS SP→MG) aplicado sobre custo NF. Consulte seu contador para apuração fiscal oficial.`,
             margin.left, startY
         );
+
+        // === BLOCO ESTRATÉGIA DE RENTABILIDADE ===
+        startY += 8;
+        if (startY > pageHeight - 30) {
+            doc.addPage();
+            startY = drawHeader(doc, doc.getNumberOfPages());
+            if (logoResult) {
+                try {
+                    const logoH = 17;
+                    const logoRatio = logoH / logoResult.height;
+                    const logoW = logoResult.width * logoRatio;
+                    doc.addImage(logoResult.data, 'PNG', margin.left, 5, logoW, logoH);
+                } catch { /* silently fail */ }
+            }
+            startY += 2;
+        }
+
+        const stratBlockWidth = pageWidth - margin.left - margin.right;
+        const stratBlockHeight = 18;
+
+        // Background
+        const stratColor: [number, number, number] = isAtacado
+            ? [37, 99, 235]   // blue for atacado
+            : [139, 92, 246]; // purple for redes/varejo
+
+        doc.setFillColor(stratColor[0], stratColor[1], stratColor[2]);
+        doc.roundedRect(margin.left, startY, stratBlockWidth, stratBlockHeight, 2, 2, 'F');
+
+        // Title
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        const stratTitle = isAtacado ? 'ESTRATÉGIA: CENÁRIO ATACADO / DISTRIBUIDOR' : 'ESTRATÉGIA: CENÁRIO VAREJO / REDES';
+        doc.text(stratTitle, margin.left + 8, startY + 7);
+
+        // Body text
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(255, 255, 255);
+        const stratBody = isAtacado
+            ? 'Projeção focada em alto giro e competitividade de repasse para a sua equipe de vendas.'
+            : 'Projeção focada em otimização de margem por metro quadrado e rentabilidade de gôndola.';
+        doc.text(stratBody, margin.left + 8, startY + 13);
 
         // Draw footers
         const pageCount = doc.getNumberOfPages();
