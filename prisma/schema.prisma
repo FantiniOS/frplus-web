@@ -130,15 +130,16 @@ model Usuario {
 }
 
 model Verba {
-  id         String   @id @default(cuid())
-  clienteId  String
-  cliente    Cliente  @relation(fields: [clienteId], references: [id])
-  titulo     String
-  valorTotal Decimal  @db.Decimal(10, 2)
-  status     String   @default("ATIVA") // ATIVA, ESGOTADA, CANCELADA
-  pedidos    Pedido[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  clienteId   String
+  cliente     Cliente  @relation(fields: [clienteId], references: [id])
+  titulo      String
+  valorTotal  Decimal  @db.Decimal(10, 2)
+  status      String   @default("ATIVA") // ATIVA, ESGOTADA, CANCELADA
+  observacoes String?  @db.Text
+  pedidos     Pedido[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Prospect {

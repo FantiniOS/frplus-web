@@ -30,6 +30,7 @@ export async function GET() {
                 clienteNome: v.cliente.nomeFantasia || v.cliente.razaoSocial,
                 titulo: v.titulo,
                 valorTotal: Number(v.valorTotal),
+                observacoes: v.observacoes,
                 consumido,
                 saldo,
                 status: v.status,
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json()
-        const { clienteId, titulo, valorTotal } = body
+        const { clienteId, titulo, valorTotal, observacoes } = body
 
         if (!clienteId || !titulo || !valorTotal) {
             return NextResponse.json({ error: 'clienteId, titulo e valorTotal são obrigatórios' }, { status: 400 })
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
                 clienteId,
                 titulo,
                 valorTotal: Number(valorTotal),
+                observacoes,
                 status: 'ATIVA'
             }
         })

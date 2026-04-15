@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Wallet, X, Eye, Trash2, Pencil, Package, ChevronRight } from 'lucide-react';
+import { Search, Plus, Wallet, X, Eye, Trash2, Pencil, Package, ChevronRight, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,6 +25,7 @@ interface VerbaItem {
     consumido: number;
     saldo: number;
     status: string;
+    observacoes?: string;
     createdAt: string;
     totalPedidos: number;
 }
@@ -55,12 +56,14 @@ export default function VerbaListPage() {
     const [editTitulo, setEditTitulo] = useState('');
     const [editValor, setEditValor] = useState('');
     const [editStatus, setEditStatus] = useState('');
+    const [editObservacoes, setEditObservacoes] = useState('');
     const [savingEdit, setSavingEdit] = useState(false);
 
     // Create form state
     const [formClienteId, setFormClienteId] = useState('');
     const [formTitulo, setFormTitulo] = useState('');
     const [formValor, setFormValor] = useState('');
+    const [formObservacoes, setFormObservacoes] = useState('');
     const [saving, setSaving] = useState(false);
 
     const fetchVerbas = async () => {
@@ -137,7 +140,8 @@ export default function VerbaListPage() {
                 body: JSON.stringify({
                     clienteId: formClienteId,
                     titulo: formTitulo,
-                    valorTotal: parseFloat(formValor)
+                    valorTotal: parseFloat(formValor),
+                    observacoes: formObservacoes
                 })
             });
             if (res.ok) {
@@ -145,6 +149,7 @@ export default function VerbaListPage() {
                 setFormClienteId('');
                 setFormTitulo('');
                 setFormValor('');
+                setFormObservacoes('');
                 fetchVerbas();
             }
         } catch (e) {
@@ -171,6 +176,7 @@ export default function VerbaListPage() {
         setEditTitulo(verba.titulo);
         setEditValor(String(verba.valorTotal));
         setEditStatus(verba.status);
+        setEditObservacoes(verba.observacoes || '');
     };
 
     const handleEdit = async () => {
@@ -184,7 +190,8 @@ export default function VerbaListPage() {
                 body: JSON.stringify({
                     titulo: editTitulo,
                     valorTotal: parseFloat(editValor),
-                    status: editStatus
+                    status: editStatus,
+                    observacoes: editObservacoes
                 })
             });
             setEditVerba(null);
@@ -291,6 +298,7 @@ export default function VerbaListPage() {
                             <tr className="bg-[#0c1220] border-b border-white/[0.08]">
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Cliente</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Título</th>
+                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 w-12 hidden md:table-cell">Obs.</th>
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Valor Total</th>
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Consumido</th>
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Saldo</th>
@@ -301,7 +309,7 @@ export default function VerbaListPage() {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={7} className="text-center py-12 text-gray-600">
+                                    <td colSpan={8} className="text-center py-12 text-gray-600">
                                         <div className="flex items-center justify-center gap-2">
                                             <div className="h-4 w-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
                                             Carregando...
@@ -310,7 +318,7 @@ export default function VerbaListPage() {
                                 </tr>
                             ) : filteredVerbas.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="text-center py-12 text-gray-600">
+                                    <td colSpan={8} className="text-center py-12 text-gray-600">
                                         <Wallet className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                         <p className="text-sm">Nenhuma verba encontrada</p>
                                     </td>
@@ -343,6 +351,17 @@ export default function VerbaListPage() {
                                             {/* Título */}
                                             <td className="px-3 py-2.5 hidden md:table-cell">
                                                 <span className="text-sm text-gray-300">{verba.titulo}</span>
+                                            </td>
+
+                                            {/* Observações */}
+                                            <td className="px-3 py-2.5 text-center hidden md:table-cell">
+                                                {verba.observacoes ? (
+                                                    <div className="inline-flex justify-center" title={verba.observacoes}>
+                                                        <FileText className="h-4 w-4 text-blue-400 hover:text-blue-300 transition-colors cursor-help" />
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-600">-</span>
+                                                )}
                                             </td>
 
                                             {/* Valor Total */}
@@ -633,6 +652,16 @@ export default function VerbaListPage() {
                                         className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Observações / Condições do Acordo</label>
+                                    <textarea
+                                        value={formObservacoes}
+                                        onChange={(e) => setFormObservacoes(e.target.value)}
+                                        placeholder="Digite prazos, regras ou condições da verba..."
+                                        rows={3}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                                    />
+                                </div>
                             </div>
 
                             <div className="flex justify-end gap-3 mt-6">
@@ -719,6 +748,16 @@ export default function VerbaListPage() {
                                         <option value="ESGOTADA">Esgotada</option>
                                         <option value="CANCELADA">Cancelada</option>
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Observações / Condições do Acordo</label>
+                                    <textarea
+                                        value={editObservacoes}
+                                        onChange={(e) => setEditObservacoes(e.target.value)}
+                                        placeholder="Digite prazos, regras ou condições da verba..."
+                                        rows={3}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                                    />
                                 </div>
                             </div>
 
