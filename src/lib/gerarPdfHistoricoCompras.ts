@@ -50,7 +50,8 @@ export interface PayloadHistoricoCompras {
     pedidos: PedidoHistorico[];
     totais: {
         totalPedidos: number;
-        volumeTotalCaixas: number;
+        volumeFaturadoCaixas: number;
+        volumeBonificadoCaixas: number;
         valorTotalFaturado: number;
     };
 }
@@ -80,6 +81,7 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
             tableBorder: [226, 232, 240] as [number, number, number],
             greenAccent: [16, 185, 129] as [number, number, number],
             orangeAccent: [249, 115, 22] as [number, number, number],
+            amberPastel: [251, 191, 36] as [number, number, number],
         };
 
         // Format period for display
@@ -281,29 +283,31 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
         doc.setTextColor(255, 255, 255);
         doc.text('RESUMO DO FECHAMENTO', margin.left + contentWidth / 2, startY + 7, { align: 'center' });
 
-        // 3 Metrics in columns
+        // 4 Metrics in columns
         const metricStartY = startY + 15;
-        const colWidth = contentWidth / 3;
+        const colWidth = contentWidth / 4;
 
-        const drawMetric = (x: number, label: string, value: string, valueColor: [number, number, number]) => {
-            doc.setFontSize(6.5);
+        const drawMetric = (x: number, label: string, value: string, valueColor: [number, number, number], fontStyle: 'bold' | 'bolditalic' = 'bold', valueFontSize = 13) => {
+            doc.setFontSize(6);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
             doc.text(label, x, metricStartY);
 
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(valueFontSize);
+            doc.setFont('helvetica', fontStyle);
             doc.setTextColor(valueColor[0], valueColor[1], valueColor[2]);
             doc.text(value, x, metricStartY + 9);
         };
 
-        const col1X = margin.left + 10;
-        const col2X = margin.left + colWidth + 10;
-        const col3X = margin.left + colWidth * 2 + 10;
+        const col1X = margin.left + 6;
+        const col2X = margin.left + colWidth + 4;
+        const col3X = margin.left + colWidth * 2 + 4;
+        const col4X = margin.left + colWidth * 3 + 4;
 
         drawMetric(col1X, 'TOTAL DE PEDIDOS', `${payload.totais.totalPedidos}`, colors.white);
-        drawMetric(col2X, 'VOLUME REAL FATURADO (CX)', `${payload.totais.volumeTotalCaixas}`, colors.accentCyan);
-        drawMetric(col3X, 'INVESTIMENTO TOTAL', formatBRL(payload.totais.valorTotalFaturado), colors.greenAccent);
+        drawMetric(col2X, 'VOLUME FATURADO (CX)', `${payload.totais.volumeFaturadoCaixas}`, colors.accentCyan);
+        drawMetric(col3X, 'VOLUME BONIFICADO (CX)', `${payload.totais.volumeBonificadoCaixas}`, colors.amberPastel, 'bolditalic');
+        drawMetric(col4X, 'INVESTIMENTO TOTAL (R$)', formatBRL(payload.totais.valorTotalFaturado), colors.greenAccent);
 
         // ====== DRAW FOOTERS ON ALL PAGES ======
         const pageCount = doc.getNumberOfPages();
