@@ -408,7 +408,7 @@ export default function AIInsightsClient() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-white mb-1">Inteligência Artificial</h1>
+                    <h1 className="text-2xl font-bold text-white mb-1">Radar Comercial</h1>
                     <p className="text-gray-400 text-sm">Insights e oportunidades gerados pelo FRP AI</p>
                 </div>
                 <div className="flex items-center gap-2">
