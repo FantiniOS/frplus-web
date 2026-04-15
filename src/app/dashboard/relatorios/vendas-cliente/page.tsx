@@ -3,12 +3,36 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
-import { gerarPdfHistoricoCompras } from '@/lib/gerarPdfHistoricoCompras';
+import { gerarPdfHistoricoCompras, type PedidoHistorico } from '@/lib/gerarPdfHistoricoCompras';
 import {
-    FileText, Calendar, Download, Search, Users, Loader2, X, ChevronLeft
+    FileText, Calendar, Download, Search, Users, Loader2, X, ChevronLeft,
+    Package, DollarSign, Gift, TrendingUp, BarChart3
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+
+interface ResultadoBusca {
+    clienteNome: string;
+    periodoInicio: string;
+    periodoFim: string;
+    pedidos: PedidoHistorico[];
+    totais: {
+        totalPedidos: number;
+        volumeFaturadoCaixas: number;
+        volumeBonificadoCaixas: number;
+        valorTotalFaturado: number;
+        valorTotalBonificado: number;
+    };
+}
+
+function formatBRL(value: number): string {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatDateBR(isoStr: string): string {
+    const d = new Date(isoStr);
+    return d.toLocaleDateString('pt-BR');
+}
 
 export default function VendasClientePage() {
     const { clients, refreshData } = useData();
@@ -31,9 +55,12 @@ export default function VendasClientePage() {
         return new Date().toISOString().split('T')[0];
     });
 
-    const [gerando, setGerando] = useState(false);
+    const [buscando, setBuscando] = useState(false);
+    const [gerandoPdf, setGerandoPdf] = useState(false);
     const [erro, setErro] = useState('');
+    const [resultado, setResultado] = useState<ResultadoBusca | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const resultadoRef = useRef<HTMLDivElement>(null);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -72,13 +99,14 @@ export default function VendasClientePage() {
         setClienteNome('');
         setSearchTerm('');
         setErro('');
+        setResultado(null);
     };
 
-    const handleGerarPDF = async () => {
+    const handleBuscar = async () => {
         setErro('');
 
         if (!clienteId) {
-            setErro('Selecione um cliente para gerar o relatório.');
+            setErro('Selecione um cliente para buscar o histórico.');
             return;
         }
         if (!dataInicial || !dataFinal) {
@@ -90,7 +118,8 @@ export default function VendasClientePage() {
             return;
         }
 
-        setGerando(true);
+        setBuscando(true);
+        setResultado(null);
         try {
             const params = new URLSearchParams({
                 clienteId,
@@ -111,11 +140,11 @@ export default function VendasClientePage() {
 
             if (data.pedidos.length === 0) {
                 setErro('Nenhum pedido faturado encontrado para este cliente no período selecionado.');
-                setGerando(false);
+                setBuscando(false);
                 return;
             }
 
-            await gerarPdfHistoricoCompras({
+            setResultado({
                 clienteNome: data.cliente.nome,
                 periodoInicio: data.periodo.inicio,
                 periodoFim: data.periodo.fim,
@@ -123,11 +152,35 @@ export default function VendasClientePage() {
                 totais: data.totais,
             });
 
+            // Scroll to results after render
+            setTimeout(() => {
+                resultadoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 200);
+
         } catch (error: any) {
             console.error('[VendasCliente] Erro:', error);
-            setErro(error.message || 'Erro inesperado ao gerar o relatório.');
+            setErro(error.message || 'Erro inesperado ao buscar dados.');
         } finally {
-            setGerando(false);
+            setBuscando(false);
+        }
+    };
+
+    const handleExportarPDF = async () => {
+        if (!resultado) return;
+        setGerandoPdf(true);
+        try {
+            await gerarPdfHistoricoCompras({
+                clienteNome: resultado.clienteNome,
+                periodoInicio: resultado.periodoInicio,
+                periodoFim: resultado.periodoFim,
+                pedidos: resultado.pedidos,
+                totais: resultado.totais,
+            });
+        } catch (error: any) {
+            console.error('[VendasCliente] Erro PDF:', error);
+            setErro(error.message || 'Erro ao gerar o PDF.');
+        } finally {
+            setGerandoPdf(false);
         }
     };
 
@@ -145,10 +198,37 @@ export default function VendasClientePage() {
                     <div>
                         <h1 className="text-2xl font-bold text-white">Vendas por Cliente</h1>
                         <p className="text-sm text-gray-400">
-                            Gere o histórico de compras de um cliente em PDF
+                            Consulte o histórico de compras e exporte em PDF
                         </p>
                     </div>
                 </div>
+
+                {/* Export PDF button — top-level, only when data is loaded */}
+                <AnimatePresence>
+                    {resultado && (
+                        <motion.button
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            id="exportar-pdf-btn"
+                            onClick={handleExportarPDF}
+                            disabled={gerandoPdf}
+                            className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/30"
+                        >
+                            {gerandoPdf ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Gerando PDF...
+                                </>
+                            ) : (
+                                <>
+                                    <FileText className="h-4 w-4" />
+                                    📄 Exportar para PDF
+                                </>
+                            )}
+                        </motion.button>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Form Card */}
@@ -161,11 +241,11 @@ export default function VendasClientePage() {
                 {/* Card Header */}
                 <div className="flex items-center gap-3 p-5 border-b border-white/[0.06]">
                     <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
-                        <FileText className="h-5 w-5 text-blue-400" />
+                        <Search className="h-5 w-5 text-blue-400" />
                     </div>
                     <div>
-                        <h2 className="font-semibold text-white">Relatório — Histórico de Compras</h2>
-                        <p className="text-xs text-gray-400">Selecione o cliente e o período para gerar o PDF</p>
+                        <h2 className="font-semibold text-white">Filtros de Busca</h2>
+                        <p className="text-xs text-gray-400">Selecione o cliente e o período para consultar</p>
                     </div>
                 </div>
 
@@ -289,48 +369,215 @@ export default function VendasClientePage() {
                 {/* Card Footer */}
                 <div className="flex items-center justify-end gap-3 p-5 border-t border-white/[0.06] bg-black/20">
                     <button
-                        id="gerar-relatorio-btn"
-                        onClick={handleGerarPDF}
-                        disabled={gerando}
+                        id="buscar-historico-btn"
+                        onClick={handleBuscar}
+                        disabled={buscando}
                         className="flex items-center gap-2.5 px-6 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-900/30"
                     >
-                        {gerando ? (
+                        {buscando ? (
                             <>
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Gerando PDF...
+                                Buscando...
                             </>
                         ) : (
                             <>
-                                <Download className="h-4 w-4" />
-                                Gerar Relatório PDF
+                                <Search className="h-4 w-4" />
+                                Buscar Histórico
                             </>
                         )}
                     </button>
                 </div>
             </motion.div>
 
-            {/* Info card */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
-            >
-                <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-cyan-500/10 mt-0.5">
-                        <FileText className="h-4 w-4 text-cyan-400" />
+            {/* ====== RESULTS SECTION ====== */}
+            <AnimatePresence>
+                {resultado && (
+                    <motion.div
+                        ref={resultadoRef}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        transition={{ duration: 0.4, ease: 'easeOut' }}
+                        className="space-y-5"
+                    >
+                        {/* Period label */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                                <BarChart3 className="h-4 w-4 text-cyan-400" />
+                                <span>
+                                    Resultados para <span className="text-white font-semibold">{resultado.clienteNome}</span>
+                                    {' · '}
+                                    <span className="text-gray-500">
+                                        {formatDateBR(resultado.periodoInicio)} — {formatDateBR(resultado.periodoFim)}
+                                    </span>
+                                </span>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                                {resultado.pedidos.length} pedido{resultado.pedidos.length !== 1 ? 's' : ''}
+                            </span>
+                        </div>
+
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                            {/* Total Pedidos */}
+                            <div className="rounded-xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 rounded-lg bg-blue-500/10">
+                                        <Package className="h-3.5 w-3.5 text-blue-400" />
+                                    </div>
+                                    <span className="text-[11px] text-gray-400 font-medium">Total de Pedidos</span>
+                                </div>
+                                <p className="text-xl font-bold text-white">{resultado.totais.totalPedidos}</p>
+                            </div>
+
+                            {/* Volume Faturado */}
+                            <div className="rounded-xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 rounded-lg bg-cyan-500/10">
+                                        <TrendingUp className="h-3.5 w-3.5 text-cyan-400" />
+                                    </div>
+                                    <span className="text-[11px] text-gray-400 font-medium">Volume Faturado (CX)</span>
+                                </div>
+                                <p className="text-xl font-bold text-cyan-400">{resultado.totais.volumeFaturadoCaixas}</p>
+                            </div>
+
+                            {/* Investimento Total */}
+                            <div className="rounded-xl border border-emerald-500/10 bg-gradient-to-br from-emerald-950/30 to-[#0a0f1a] p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                                        <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
+                                    </div>
+                                    <span className="text-[11px] text-gray-400 font-medium">Investimento Total (R$)</span>
+                                </div>
+                                <p className="text-xl font-bold text-emerald-400">{formatBRL(resultado.totais.valorTotalFaturado)}</p>
+                            </div>
+
+                            {/* Volume Bonificado */}
+                            <div className="rounded-xl border border-amber-500/10 bg-gradient-to-br from-amber-950/20 to-[#0a0f1a] p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 rounded-lg bg-amber-500/10">
+                                        <Gift className="h-3.5 w-3.5 text-amber-400" />
+                                    </div>
+                                    <span className="text-[11px] text-gray-400 font-medium">Vol. Bonificado (CX)</span>
+                                </div>
+                                <p className="text-xl font-bold text-amber-400 italic">{resultado.totais.volumeBonificadoCaixas}</p>
+                            </div>
+
+                            {/* Valor Bonificado */}
+                            <div className="rounded-xl border border-amber-500/10 bg-gradient-to-br from-amber-950/20 to-[#0a0f1a] p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 rounded-lg bg-amber-500/10">
+                                        <Gift className="h-3.5 w-3.5 text-amber-400" />
+                                    </div>
+                                    <span className="text-[11px] text-gray-400 font-medium">Verba Injetada (R$)</span>
+                                </div>
+                                <p className="text-xl font-bold text-amber-400 italic">{formatBRL(resultado.totais.valorTotalBonificado)}</p>
+                            </div>
+                        </div>
+
+                        {/* Data Table */}
+                        <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] shadow-2xl shadow-black/50 overflow-hidden">
+                            <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
+                                        <FileText className="h-4 w-4 text-blue-400" />
+                                    </div>
+                                    <h3 className="font-semibold text-white text-sm">Pedidos Faturados</h3>
+                                </div>
+
+                                {/* Inline export button */}
+                                <button
+                                    id="exportar-pdf-inline-btn"
+                                    onClick={handleExportarPDF}
+                                    disabled={gerandoPdf}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600/80 to-teal-600/80 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                                >
+                                    {gerandoPdf ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <Download className="h-3.5 w-3.5" />
+                                    )}
+                                    Exportar PDF
+                                </button>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-white/[0.06]">
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Data</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Nº Pedido</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Nº NF</th>
+                                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Vol. (CX)</th>
+                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/[0.04]">
+                                        {resultado.pedidos.map((p, idx) => (
+                                            <tr
+                                                key={p.id}
+                                                className={`transition-colors hover:bg-white/[0.03] ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'}`}
+                                            >
+                                                <td className="px-4 py-2.5 text-gray-400 text-xs whitespace-nowrap">
+                                                    {formatDateBR(p.data)}
+                                                </td>
+                                                <td className="px-4 py-2.5 whitespace-nowrap">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`font-semibold ${p.isBonificacao ? 'text-amber-400' : 'text-white'}`}>
+                                                            {p.numeroPedido}
+                                                        </span>
+                                                        {p.isBonificacao && (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold uppercase tracking-wider">
+                                                                <Gift className="h-2.5 w-2.5" />
+                                                                Bonif.
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
+                                                    {p.notaFiscal || '-'}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center text-gray-300 text-xs whitespace-nowrap">
+                                                    {p.volumeCaixas}
+                                                </td>
+                                                <td className={`px-4 py-2.5 text-right font-semibold text-xs whitespace-nowrap ${p.isBonificacao ? 'text-amber-400/70 italic' : 'text-emerald-400'}`}>
+                                                    {formatBRL(p.valorFaturado)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Info card — show when no results yet */}
+            {!resultado && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
+                >
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-lg bg-cyan-500/10 mt-0.5">
+                            <FileText className="h-4 w-4 text-cyan-400" />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-sm font-medium text-gray-300">Sobre este relatório</p>
+                            <p className="text-xs text-gray-500 leading-relaxed">
+                                Busque o histórico de compras faturadas do cliente no período selecionado.
+                                Os dados serão exibidos em tela para conferência antes da exportação em PDF.
+                                Apenas pedidos com status
+                                <span className="text-emerald-400 font-medium"> Faturado</span> ou
+                                <span className="text-emerald-400 font-medium"> Concluído</span> são incluídos.
+                            </p>
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <p className="text-sm font-medium text-gray-300">Sobre este relatório</p>
-                        <p className="text-xs text-gray-500 leading-relaxed">
-                            O PDF gerado exibe o histórico de compras faturadas do cliente no período selecionado,
-                            com volume total em caixas e investimento financeiro. Apenas pedidos com status
-                            <span className="text-emerald-400 font-medium"> Faturado</span> ou
-                            <span className="text-emerald-400 font-medium"> Concluído</span> são incluídos.
-                        </p>
-                    </div>
-                </div>
-            </motion.div>
+                </motion.div>
+            )}
         </div>
     );
 }
