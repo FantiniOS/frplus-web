@@ -64,16 +64,22 @@ export async function GET(request: Request) {
             orderBy: { data: 'asc' },
         })
 
-        // Calculate aggregates
-        let volumeTotalCaixas = 0
-        let valorTotalFaturado = 0
+        // Calculate aggregates — EXCLUDING bonificação from totals
+        let volumeRealCaixas = 0
+        let valorRealFaturado = 0
+        let totalPedidosReais = 0
 
         const pedidosFormatados = pedidos.map(p => {
             const volCaixas = p.itens.reduce((acc, item) => acc + item.quantidade, 0)
             const valor = Number(p.valorTotal)
+            const isBonificacao = p.tipo === 'Bonificacao' || valor === 0
 
-            volumeTotalCaixas += volCaixas
-            valorTotalFaturado += valor
+            // Only count real sales in totals
+            if (!isBonificacao) {
+                volumeRealCaixas += volCaixas
+                valorRealFaturado += valor
+                totalPedidosReais++
+            }
 
             return {
                 id: p.id,
@@ -81,6 +87,7 @@ export async function GET(request: Request) {
                 numeroPedido: p.notaFiscal || p.id.slice(-6).toUpperCase(),
                 volumeCaixas: volCaixas,
                 valorFaturado: valor,
+                isBonificacao,
             }
         })
 
@@ -94,9 +101,9 @@ export async function GET(request: Request) {
             },
             pedidos: pedidosFormatados,
             totais: {
-                totalPedidos: pedidos.length,
-                volumeTotalCaixas,
-                valorTotalFaturado,
+                totalPedidos: totalPedidosReais,
+                volumeTotalCaixas: volumeRealCaixas,
+                valorTotalFaturado: valorRealFaturado,
             },
             periodo: {
                 inicio: startDate.toISOString(),

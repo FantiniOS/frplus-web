@@ -39,6 +39,7 @@ export interface PedidoHistorico {
     numeroPedido: string;
     volumeCaixas: number;
     valorFaturado: number;
+    isBonificacao: boolean;
 }
 
 export interface PayloadHistoricoCompras {
@@ -77,6 +78,7 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
             rowEven: [250, 251, 254] as [number, number, number],
             tableBorder: [226, 232, 240] as [number, number, number],
             greenAccent: [16, 185, 129] as [number, number, number],
+            orangeAccent: [249, 115, 22] as [number, number, number],
         };
 
         // Format period for display
@@ -182,14 +184,14 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
 
         const tableBody = payload.pedidos.map((p) => [
             formatDateBR(p.data),
-            p.numeroPedido,
-            `${p.volumeCaixas}`,
-            formatBRL(p.valorFaturado),
+            p.isBonificacao ? `${p.numeroPedido}  [BONIFICAÇÃO]` : p.numeroPedido,
+            p.isBonificacao ? `${p.volumeCaixas}` : `${p.volumeCaixas}`,
+            p.isBonificacao ? 'R$ 0,00' : formatBRL(p.valorFaturado),
         ]);
 
         autoTable(doc, {
             startY,
-            head: [['Data do Pedido', 'Nº do Pedido', 'Vol. Total (CX)', 'Valor Faturado']],
+            head: [['Data', 'Nº do Pedido', 'Vol. Faturado (CX)', 'Valor Faturado']],
             body: tableBody,
             theme: 'striped',
             styles: {
@@ -212,12 +214,23 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
             },
             alternateRowStyles: { fillColor: colors.rowEven },
             columnStyles: {
-                0: { cellWidth: 35, halign: 'center', textColor: colors.textMuted },
-                1: { cellWidth: 40, halign: 'center', fontStyle: 'bold', textColor: colors.textDark },
+                0: { cellWidth: 30, halign: 'center', textColor: colors.textMuted },
+                1: { cellWidth: 55, halign: 'center', fontStyle: 'bold', textColor: colors.textDark },
                 2: { cellWidth: 35, halign: 'center', textColor: colors.textMuted },
                 3: { halign: 'right', fontStyle: 'bold', textColor: colors.greenAccent },
             },
             margin: { left: margin.left, right: margin.right },
+            didParseCell: (data: any) => {
+                // Style bonificação rows with orange text
+                if (data.section === 'body') {
+                    const rowIndex = data.row.index;
+                    const pedido = payload.pedidos[rowIndex];
+                    if (pedido && pedido.isBonificacao) {
+                        data.cell.styles.textColor = colors.orangeAccent;
+                        data.cell.styles.fontStyle = 'italic';
+                    }
+                }
+            },
             didDrawPage: (data: { pageNumber: number }) => {
                 if (data.pageNumber > 1) {
                     drawHeader(doc, data.pageNumber);
@@ -286,7 +299,7 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
         const col3X = margin.left + colWidth * 2 + 10;
 
         drawMetric(col1X, 'TOTAL DE PEDIDOS', `${payload.totais.totalPedidos}`, colors.white);
-        drawMetric(col2X, 'VOLUME TOTAL (CX)', `${payload.totais.volumeTotalCaixas}`, colors.accentCyan);
+        drawMetric(col2X, 'VOLUME REAL FATURADO (CX)', `${payload.totais.volumeTotalCaixas}`, colors.accentCyan);
         drawMetric(col3X, 'INVESTIMENTO TOTAL', formatBRL(payload.totais.valorTotalFaturado), colors.greenAccent);
 
         // ====== DRAW FOOTERS ON ALL PAGES ======
