@@ -59,7 +59,13 @@ export async function GET(request: Request) {
                 },
             },
             include: {
-                itens: true,
+                itens: {
+                    include: {
+                        produto: {
+                            select: { id: true, nome: true, codigo: true, unidade: true },
+                        },
+                    },
+                },
             },
             orderBy: { data: 'asc' },
         })
@@ -93,6 +99,15 @@ export async function GET(request: Request) {
                 volumeCaixas: volCaixas,
                 valorFaturado: valor,
                 isBonificacao,
+                itens: p.itens.map(item => ({
+                    id: item.id,
+                    produtoNome: item.produto?.nome || 'Produto',
+                    produtoCodigo: item.produto?.codigo || '',
+                    unidade: item.produto?.unidade || 'CX',
+                    quantidade: item.quantidade,
+                    precoUnitario: Number(item.precoUnitario),
+                    total: Number(item.total),
+                })),
             }
         })
 

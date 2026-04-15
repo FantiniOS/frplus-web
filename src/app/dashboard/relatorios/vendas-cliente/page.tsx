@@ -6,16 +6,30 @@ import { useData } from '@/contexts/DataContext';
 import { gerarPdfHistoricoCompras, type PedidoHistorico } from '@/lib/gerarPdfHistoricoCompras';
 import {
     FileText, Calendar, Download, Search, Users, Loader2, X, ChevronLeft,
-    Package, DollarSign, Gift, TrendingUp, BarChart3
+    Package, DollarSign, Gift, TrendingUp, BarChart3, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+
+interface ItemPedidoDetalhe {
+    id: string;
+    produtoNome: string;
+    produtoCodigo: string;
+    unidade: string;
+    quantidade: number;
+    precoUnitario: number;
+    total: number;
+}
+
+interface PedidoComItens extends PedidoHistorico {
+    itens?: ItemPedidoDetalhe[];
+}
 
 interface ResultadoBusca {
     clienteNome: string;
     periodoInicio: string;
     periodoFim: string;
-    pedidos: PedidoHistorico[];
+    pedidos: PedidoComItens[];
     totais: {
         totalPedidos: number;
         volumeFaturadoCaixas: number;
@@ -59,6 +73,7 @@ export default function VendasClientePage() {
     const [gerandoPdf, setGerandoPdf] = useState(false);
     const [erro, setErro] = useState('');
     const [resultado, setResultado] = useState<ResultadoBusca | null>(null);
+    const [selectedPedido, setSelectedPedido] = useState<PedidoComItens | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const resultadoRef = useRef<HTMLDivElement>(null);
 
@@ -510,13 +525,15 @@ export default function VendasClientePage() {
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Nº NF</th>
                                             <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Vol. (CX)</th>
                                             <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Valor</th>
+                                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider w-12"></th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/[0.04]">
                                         {resultado.pedidos.map((p, idx) => (
                                             <tr
                                                 key={p.id}
-                                                className={`transition-colors hover:bg-white/[0.03] ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'}`}
+                                                onClick={() => setSelectedPedido(p)}
+                                                className={`transition-colors hover:bg-white/[0.06] cursor-pointer ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'}`}
                                             >
                                                 <td className="px-4 py-2.5 text-gray-400 text-xs whitespace-nowrap">
                                                     {formatDateBR(p.data)}
@@ -542,6 +559,15 @@ export default function VendasClientePage() {
                                                 </td>
                                                 <td className={`px-4 py-2.5 text-right font-semibold text-xs whitespace-nowrap ${p.isBonificacao ? 'text-amber-400/70 italic' : 'text-emerald-400'}`}>
                                                     {formatBRL(p.valorFaturado)}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedPedido(p); }}
+                                                        className="p-1.5 rounded-lg text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                                                        title="Ver detalhes do pedido"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -578,6 +604,137 @@ export default function VendasClientePage() {
                     </div>
                 </motion.div>
             )}
+            {/* ====== MODAL DE DETALHES DO PEDIDO ====== */}
+            <AnimatePresence>
+                {selectedPedido && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                        onClick={() => setSelectedPedido(null)}
+                    >
+                        {/* Backdrop */}
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+                        {/* Modal Panel */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            transition={{ duration: 0.25, ease: 'easeOut' }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="relative w-full max-w-2xl max-h-[85vh] rounded-2xl border border-white/[0.1] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] shadow-2xl shadow-black/70 flex flex-col overflow-hidden"
+                        >
+                            {/* Modal Header */}
+                            <div className="flex items-center justify-between p-5 border-b border-white/[0.08]">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2.5 rounded-xl ${selectedPedido.isBonificacao ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20' : 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20'}`}>
+                                        <Package className={`h-5 w-5 ${selectedPedido.isBonificacao ? 'text-amber-400' : 'text-blue-400'}`} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-white text-sm">
+                                            Itens do Pedido Nº {selectedPedido.numeroPedido}
+                                            {selectedPedido.isBonificacao && (
+                                                <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold uppercase tracking-wider">
+                                                    <Gift className="h-2.5 w-2.5" />
+                                                    Bonificação
+                                                </span>
+                                            )}
+                                        </h3>
+                                        <p className="text-xs text-gray-400">
+                                            {formatDateBR(selectedPedido.data)}
+                                            {selectedPedido.notaFiscal && selectedPedido.notaFiscal !== '-' && (
+                                                <span className="text-gray-600"> · NF {selectedPedido.notaFiscal}</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedPedido(null)}
+                                    className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 transition-all"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            {/* Modal Body */}
+                            <div className="flex-1 overflow-y-auto p-5">
+                                {selectedPedido.itens && selectedPedido.itens.length > 0 ? (
+                                    <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-white/[0.08] bg-white/[0.02]">
+                                                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Produto</th>
+                                                    <th className="px-4 py-2.5 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Qtd (CX)</th>
+                                                    <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Vlr. Unitário</th>
+                                                    <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Subtotal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/[0.04]">
+                                                {selectedPedido.itens.map((item, idx) => {
+                                                    const isBonifItem = selectedPedido.isBonificacao || item.precoUnitario === 0;
+                                                    return (
+                                                        <tr
+                                                            key={item.id}
+                                                            className={`transition-colors hover:bg-white/[0.03] ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'}`}
+                                                        >
+                                                            <td className="px-4 py-2.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-white text-xs font-medium">{item.produtoNome}</span>
+                                                                    {isBonifItem && (
+                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-semibold uppercase tracking-wider">
+                                                                            Bonificação
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {item.produtoCodigo && (
+                                                                    <span className="text-[10px] text-gray-600">Cód: {item.produtoCodigo}</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-2.5 text-center text-gray-300 text-xs">
+                                                                {item.quantidade}
+                                                            </td>
+                                                            <td className={`px-4 py-2.5 text-right text-xs ${isBonifItem ? 'text-amber-400/70 italic' : 'text-gray-300'}`}>
+                                                                {isBonifItem ? 'R$ 0,00' : formatBRL(item.precoUnitario)}
+                                                            </td>
+                                                            <td className={`px-4 py-2.5 text-right font-semibold text-xs ${isBonifItem ? 'text-amber-400/70 italic' : 'text-emerald-400'}`}>
+                                                                {isBonifItem ? 'R$ 0,00' : formatBRL(item.total)}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-10 text-gray-500">
+                                        <Package className="h-10 w-10 mb-3 opacity-30" />
+                                        <p className="text-sm">Nenhum item detalhado disponível para este pedido.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="flex items-center justify-between p-5 border-t border-white/[0.08] bg-black/20">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs text-gray-400">Total do Pedido:</span>
+                                    <span className={`text-lg font-bold ${selectedPedido.isBonificacao ? 'text-amber-400 italic' : 'text-emerald-400'}`}>
+                                        {formatBRL(selectedPedido.valorFaturado)}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedPedido(null)}
+                                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm font-medium transition-all"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

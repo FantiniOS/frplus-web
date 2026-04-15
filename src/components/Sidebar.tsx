@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { getPerfilEmpresa } from "@/app/actions/perfilEmpresa";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -11,11 +12,8 @@ import {
   FileText,
   Settings,
   LogOut,
-  Factory,
   BarChart3,
-  Shield,
   Lightbulb,
-  MessageCircle,
   Wallet,
   Filter,
   UserPlus,
@@ -33,16 +31,26 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { usuario, logout, isAdmin, isIndustria } = useAuth();
   const [nomeEmpresa, setNomeEmpresa] = useState<string>("");
   const [relatoriosOpen, setRelatoriosOpen] = useState(false);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTipo = searchParams.get('tipo');
 
   useEffect(() => {
     getPerfilEmpresa().then(data => setNomeEmpresa(data.nomeEmpresa));
   }, []);
 
+  // Auto expand on load
+  useEffect(() => {
+    if (pathname?.includes('/dashboard/relatorios')) {
+      setRelatoriosOpen(true);
+    }
+  }, [pathname]);
+
   const menuGroups = [
     {
       title: "Principal",
       items: [
-        { icon: LayoutDashboard, label: "Visão Geral", href: "/dashboard" },
+        { icon: LayoutDashboard, label: "Visão Geral", href: "/dashboard", exact: true },
         { icon: Lightbulb, label: "Inteligência", href: "/dashboard/ai-insights" },
       ]
     },
@@ -65,9 +73,33 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   ];
 
   const relatoriosSubItems = [
-    { label: "Relatórios Gerais", href: "/dashboard/relatorios" },
+    { label: "Vendas", href: "/dashboard/relatorios" }, // Defualt tab on /dashboard/relatorios is 'vendas'
+    { label: "Produtos", href: "/dashboard/relatorios?tipo=produtos" },
+    { label: "Relatório Clientes", href: "/dashboard/relatorios?tipo=clientes" },
+    { label: "Tabela de Preços", href: "/dashboard/relatorios?tipo=tabela" },
+    { label: "Clientes Atendidos", href: "/dashboard/relatorios?tipo=atendidos" },
     { label: "Vendas por Cliente", href: "/dashboard/relatorios/vendas-cliente" },
   ];
+
+  const isItemActive = (href: string, exact?: boolean) => {
+    // If exact, simple match
+    if (exact) return pathname === href;
+    
+    // Check if it's a search param link
+    if (href.includes('?tipo=')) {
+      const tipo = href.split('?tipo=')[1];
+      return pathname === '/dashboard/relatorios' && currentTipo === tipo;
+    }
+    
+    // Check main relatorios link (defaults to vendas without specific ?tipo)
+    if (href === '/dashboard/relatorios') {
+      return pathname === '/dashboard/relatorios' && (!currentTipo || currentTipo === 'vendas');
+    }
+
+    return pathname?.includes(href);
+  };
+
+  const isRelatoriosParentActive = pathname?.includes('/dashboard/relatorios');
 
   return (
     <>
@@ -108,56 +140,84 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   {group.title}
                 </h3>
                 <div className="space-y-1">
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={onClose}
-                      className="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
-                    >
-                      <item.icon className="mr-3 h-5 w-5 text-gray-400" />
-                      {item.label}
-                    </Link>
-                  ))}
-
-                  {/* Relatórios Submenu — only in Gestão group */}
-                  {group.title === "Gestão" && (
-                    <div>
-                      <button
-                        onClick={() => setRelatoriosOpen(!relatoriosOpen)}
-                        className="flex items-center justify-between w-full rounded-lg px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
+                  {group.items.map((item) => {
+                    const active = isItemActive(item.href, item.exact);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={onClose}
+                        className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                          active 
+                            ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
+                            : "text-gray-300 hover:bg-white/5 hover:text-white"
+                        }`}
                       >
-                        <span className="flex items-center">
-                          <BarChart3 className="mr-3 h-5 w-5 text-gray-400" />
-                          Relatórios
-                        </span>
-                        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${relatoriosOpen ? 'rotate-180' : ''}`} />
-                      </button>
-                      {relatoriosOpen && (
-                        <div className="ml-8 mt-0.5 space-y-0.5 border-l border-white/[0.06] pl-3">
-                          {relatoriosSubItems.map((sub) => (
-                            <Link
-                              key={sub.href}
-                              href={sub.href}
-                              onClick={onClose}
-                              className="block rounded-md px-3 py-1.5 text-xs font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
-                            >
-                              {sub.label}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        <item.icon className={`mr-3 h-5 w-5 ${active ? "text-white" : "text-gray-400"}`} />
+                        {item.label}
+                      </Link>
+                    )
+                  })}
                 </div>
               </div>
             ))}
+
+            {/* Relatórios (Menu Expansível Principal) */}
+            <div>
+              <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                Relatórios e Análises
+              </h3>
+              <div className="space-y-1">
+                <button
+                  onClick={() => setRelatoriosOpen(!relatoriosOpen)}
+                  className={`flex items-center justify-between w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    isRelatoriosParentActive 
+                      ? "bg-white/5 text-white" 
+                      : "text-gray-300 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center">
+                    <BarChart3 className={`mr-3 h-5 w-5 ${isRelatoriosParentActive ? "text-white" : "text-gray-400"}`} />
+                    Relatórios
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${relatoriosOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                <div 
+                  className={`grid transition-all duration-300 ease-in-out ${
+                    relatoriosOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="ml-8 mt-1 mb-1 space-y-1 border-l border-white/[0.06] pl-3 py-0.5">
+                      {relatoriosSubItems.map((sub) => {
+                        const active = isItemActive(sub.href);
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            onClick={onClose}
+                            className={`block rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                              active 
+                                ? "bg-blue-600/20 text-blue-400 border border-blue-500/10" 
+                                : "text-gray-400 hover:bg-white/5 hover:text-white"
+                            }`}
+                          >
+                            {sub.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </nav>
 
           {/* User Info & Footer */}
-          <div className="border-t border-white/10 pt-4 space-y-2">
+          <div className="border-t border-white/10 pt-4 mt-6 space-y-2">
             {usuario && (
-              <div className="px-3 py-2 rounded-lg bg-white/5">
+              <div className="px-3 py-2 rounded-lg bg-white/5 mb-2">
                 <p className="text-sm font-medium text-white truncate">{usuario.nome}</p>
                 <p className="text-xs text-gray-500">{usuario.role === 'admin' ? 'Administrador' : 'Vendedor'}</p>
               </div>
@@ -166,9 +226,13 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             <Link
               href="/dashboard/configuracoes"
               onClick={onClose}
-              className="flex items-center rounded-lg px-3 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white"
+              className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                isItemActive("/dashboard/configuracoes", true)
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                  : "text-gray-300 hover:bg-white/5 hover:text-white"
+              }`}
             >
-              <Settings className="mr-3 h-5 w-5 text-gray-400" />
+              <Settings className={`mr-3 h-5 w-5 ${isItemActive("/dashboard/configuracoes", true) ? "text-white" : "text-gray-400"}`} />
               Configurações
             </Link>
             <button
@@ -176,7 +240,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 logout();
                 if (onClose) onClose();
               }}
-              className="mt-1 flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10"
+              className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
             >
               <LogOut className="mr-3 h-5 w-5" />
               Sair
