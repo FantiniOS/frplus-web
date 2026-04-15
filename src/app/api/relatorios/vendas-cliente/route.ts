@@ -85,6 +85,7 @@ export async function GET(request: Request) {
                 id: p.id,
                 data: p.data.toISOString(),
                 numeroPedido: p.notaFiscal || p.id.slice(-6).toUpperCase(),
+                notaFiscal: p.notaFiscal || '-',
                 volumeCaixas: volCaixas,
                 valorFaturado: valor,
                 isBonificacao,

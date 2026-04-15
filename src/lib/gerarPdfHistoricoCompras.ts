@@ -37,6 +37,7 @@ export interface PedidoHistorico {
     id: string;
     data: string;
     numeroPedido: string;
+    notaFiscal: string;
     volumeCaixas: number;
     valorFaturado: number;
     isBonificacao: boolean;
@@ -184,14 +185,15 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
 
         const tableBody = payload.pedidos.map((p) => [
             formatDateBR(p.data),
-            p.isBonificacao ? `${p.numeroPedido}  [BONIFICAÇÃO]` : p.numeroPedido,
-            p.isBonificacao ? `${p.volumeCaixas}` : `${p.volumeCaixas}`,
-            p.isBonificacao ? 'R$ 0,00' : formatBRL(p.valorFaturado),
+            p.isBonificacao ? `${p.numeroPedido}  [BONIF.]` : p.numeroPedido,
+            p.notaFiscal || '-',
+            `${p.volumeCaixas}`,
+            formatBRL(p.valorFaturado),
         ]);
 
         autoTable(doc, {
             startY,
-            head: [['Data', 'Nº do Pedido', 'Vol. Faturado (CX)', 'Valor Faturado']],
+            head: [['Data', 'Nº Pedido', 'Nº NF', 'Vol. (CX)', 'Valor']],
             body: tableBody,
             theme: 'striped',
             styles: {
@@ -214,14 +216,15 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
             },
             alternateRowStyles: { fillColor: colors.rowEven },
             columnStyles: {
-                0: { cellWidth: 30, halign: 'center', textColor: colors.textMuted },
-                1: { cellWidth: 55, halign: 'center', fontStyle: 'bold', textColor: colors.textDark },
-                2: { cellWidth: 35, halign: 'center', textColor: colors.textMuted },
-                3: { halign: 'right', fontStyle: 'bold', textColor: colors.greenAccent },
+                0: { cellWidth: 28, halign: 'center', textColor: colors.textMuted },
+                1: { cellWidth: 42, halign: 'center', fontStyle: 'bold', textColor: colors.textDark },
+                2: { cellWidth: 28, halign: 'center', textColor: colors.textMuted },
+                3: { cellWidth: 25, halign: 'center', textColor: colors.textMuted },
+                4: { halign: 'right', fontStyle: 'bold', textColor: colors.greenAccent },
             },
             margin: { left: margin.left, right: margin.right },
             didParseCell: (data: any) => {
-                // Style bonificação rows with orange text
+                // Style bonificação rows with discrete orange italic
                 if (data.section === 'body') {
                     const rowIndex = data.row.index;
                     const pedido = payload.pedidos[rowIndex];
