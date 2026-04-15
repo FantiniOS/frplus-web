@@ -53,6 +53,7 @@ export interface PayloadHistoricoCompras {
         volumeFaturadoCaixas: number;
         volumeBonificadoCaixas: number;
         valorTotalFaturado: number;
+        valorTotalBonificado: number;
     };
 }
 
@@ -255,7 +256,8 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
 
         // ====== RESUMO DO FECHAMENTO (BLACK BOX) ======
         // Page-break safety
-        if (startY > pageHeight - 55) {
+        const summaryBlockHeight = 52;
+        if (startY > pageHeight - (summaryBlockHeight + 20)) {
             doc.addPage();
             startY = drawHeader(doc, doc.getNumberOfPages());
             if (logoResult) {
@@ -269,8 +271,6 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
             startY += 2;
         }
 
-        const summaryBlockHeight = 38;
-
         // Background
         doc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
         doc.roundedRect(margin.left, startY, contentWidth, summaryBlockHeight, 2, 2, 'F');
@@ -283,31 +283,44 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
         doc.setTextColor(255, 255, 255);
         doc.text('RESUMO DO FECHAMENTO', margin.left + contentWidth / 2, startY + 7, { align: 'center' });
 
-        // 4 Metrics in columns
-        const metricStartY = startY + 15;
-        const colWidth = contentWidth / 4;
-
-        const drawMetric = (x: number, label: string, value: string, valueColor: [number, number, number], fontStyle: 'bold' | 'bolditalic' = 'bold', valueFontSize = 13) => {
-            doc.setFontSize(6);
+        // Draw metric helper — supports custom Y offset
+        const drawMetric = (x: number, y: number, label: string, value: string, valueColor: [number, number, number], fontStyle: 'bold' | 'bolditalic' = 'bold', valueFontSize = 13) => {
+            doc.setFontSize(5.5);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
-            doc.text(label, x, metricStartY);
+            doc.text(label, x, y);
 
             doc.setFontSize(valueFontSize);
             doc.setFont('helvetica', fontStyle);
             doc.setTextColor(valueColor[0], valueColor[1], valueColor[2]);
-            doc.text(value, x, metricStartY + 9);
+            doc.text(value, x, y + 8);
         };
 
-        const col1X = margin.left + 6;
-        const col2X = margin.left + colWidth + 4;
-        const col3X = margin.left + colWidth * 2 + 4;
-        const col4X = margin.left + colWidth * 3 + 4;
+        // Row 1: 3 main metrics (Pedidos | Vol. Faturado | Investimento)
+        const row1Y = startY + 15;
+        const col3Width = contentWidth / 3;
+        const r1col1X = margin.left + 8;
+        const r1col2X = margin.left + col3Width + 6;
+        const r1col3X = margin.left + col3Width * 2 + 6;
 
-        drawMetric(col1X, 'TOTAL DE PEDIDOS', `${payload.totais.totalPedidos}`, colors.white);
-        drawMetric(col2X, 'VOLUME FATURADO (CX)', `${payload.totais.volumeFaturadoCaixas}`, colors.accentCyan);
-        drawMetric(col3X, 'VOLUME BONIFICADO (CX)', `${payload.totais.volumeBonificadoCaixas}`, colors.amberPastel, 'bolditalic');
-        drawMetric(col4X, 'INVESTIMENTO TOTAL (R$)', formatBRL(payload.totais.valorTotalFaturado), colors.greenAccent);
+        drawMetric(r1col1X, row1Y, 'TOTAL DE PEDIDOS', `${payload.totais.totalPedidos}`, colors.white);
+        drawMetric(r1col2X, row1Y, 'VOLUME FATURADO (CX)', `${payload.totais.volumeFaturadoCaixas}`, colors.accentCyan);
+        drawMetric(r1col3X, row1Y, 'INVESTIMENTO TOTAL (R$)', formatBRL(payload.totais.valorTotalFaturado), colors.greenAccent);
+
+        // Separator line between rows
+        const sepY = row1Y + 13;
+        doc.setDrawColor(60, 60, 80);
+        doc.setLineWidth(0.2);
+        doc.line(margin.left + 6, sepY, margin.left + contentWidth - 6, sepY);
+
+        // Row 2: 2 bonificação metrics (Vol. Bonificado | Verba Injetada)
+        const row2Y = sepY + 5;
+        const col2Width = contentWidth / 2;
+        const r2col1X = margin.left + 8;
+        const r2col2X = margin.left + col2Width + 6;
+
+        drawMetric(r2col1X, row2Y, 'VOLUME BONIFICADO (CX)', `${payload.totais.volumeBonificadoCaixas}`, colors.amberPastel, 'bolditalic', 11);
+        drawMetric(r2col2X, row2Y, 'VERBA INJETADA (R$)', formatBRL(payload.totais.valorTotalBonificado), colors.amberPastel, 'bolditalic', 11);
 
         // ====== DRAW FOOTERS ON ALL PAGES ======
         const pageCount = doc.getNumberOfPages();

@@ -68,6 +68,7 @@ export async function GET(request: Request) {
         let volumeFaturadoCaixas = 0
         let volumeBonificadoCaixas = 0
         let valorRealFaturado = 0
+        let valorTotalBonificado = 0
 
         const pedidosFormatados = pedidos.map(p => {
             const volCaixas = p.itens.reduce((acc, item) => acc + item.quantidade, 0)
@@ -76,6 +77,9 @@ export async function GET(request: Request) {
 
             if (isBonificacao) {
                 volumeBonificadoCaixas += volCaixas
+                // Sum table price from items to capture the real value of bonificação
+                const valorTabelaBonif = p.itens.reduce((acc, item) => acc + Number(item.total), 0)
+                valorTotalBonificado += valorTabelaBonif
             } else {
                 volumeFaturadoCaixas += volCaixas
                 valorRealFaturado += valor
@@ -106,6 +110,7 @@ export async function GET(request: Request) {
                 volumeFaturadoCaixas,
                 volumeBonificadoCaixas,
                 valorTotalFaturado: valorRealFaturado,
+                valorTotalBonificado,
             },
             periodo: {
                 inicio: startDate.toISOString(),
