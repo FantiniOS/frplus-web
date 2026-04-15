@@ -320,7 +320,7 @@ export default function VerbaListPage() {
                 </div>
 
                 {/* Scrollable Table */}
-                <div className="overflow-auto flex-1" style={{ maxHeight: selectedVerba ? '280px' : '500px' }}>
+                <div className={`overflow-auto flex-1 min-h-0 ${selectedVerbaId ? 'max-h-[40vh]' : 'max-h-[70vh]'}`}>
                     <table className="w-full text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-[#0c1220] border-b border-white/[0.08]">
@@ -524,7 +524,7 @@ export default function VerbaListPage() {
                     </div>
 
                     {/* Detail Table */}
-                    <div className="overflow-auto" style={{ maxHeight: '220px' }}>
+                    <div className="overflow-auto" style={{ maxHeight: '35vh' }}>
                         {loadingDetail ? (
                             <div className="flex items-center justify-center py-8">
                                 <div className="h-4 w-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
