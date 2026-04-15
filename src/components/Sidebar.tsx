@@ -18,7 +18,8 @@ import {
   MessageCircle,
   Wallet,
   Filter,
-  UserPlus
+  UserPlus,
+  ChevronDown
 } from "lucide-react";
 import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +32,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { usuario, logout, isAdmin, isIndustria } = useAuth();
   const [nomeEmpresa, setNomeEmpresa] = useState<string>("");
+  const [relatoriosOpen, setRelatoriosOpen] = useState(false);
 
   useEffect(() => {
     getPerfilEmpresa().then(data => setNomeEmpresa(data.nomeEmpresa));
@@ -57,13 +59,15 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       items: [
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
         { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
-        { icon: BarChart3, label: "Relatórios", href: "/dashboard/relatorios" },
         { icon: Filter, label: "Curva ABC", href: "/dashboard/curva-abc" },
       ]
     },
   ];
 
-
+  const relatoriosSubItems = [
+    { label: "Relatórios Gerais", href: "/dashboard/relatorios" },
+    { label: "Vendas por Cliente", href: "/dashboard/relatorios/vendas-cliente" },
+  ];
 
   return (
     <>
@@ -115,6 +119,36 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                       {item.label}
                     </Link>
                   ))}
+
+                  {/* Relatórios Submenu — only in Gestão group */}
+                  {group.title === "Gestão" && (
+                    <div>
+                      <button
+                        onClick={() => setRelatoriosOpen(!relatoriosOpen)}
+                        className="flex items-center justify-between w-full rounded-lg px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
+                      >
+                        <span className="flex items-center">
+                          <BarChart3 className="mr-3 h-5 w-5 text-gray-400" />
+                          Relatórios
+                        </span>
+                        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${relatoriosOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {relatoriosOpen && (
+                        <div className="ml-8 mt-0.5 space-y-0.5 border-l border-white/[0.06] pl-3">
+                          {relatoriosSubItems.map((sub) => (
+                            <Link
+                              key={sub.href}
+                              href={sub.href}
+                              onClick={onClose}
+                              className="block rounded-md px-3 py-1.5 text-xs font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+                            >
+                              {sub.label}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
