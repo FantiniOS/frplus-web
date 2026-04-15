@@ -94,7 +94,7 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
 
         // ====== HEADER ======
         const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
-            const headerHeight = 38;
+            const headerHeight = 32;
 
             // Dark background
             pageDoc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
@@ -102,49 +102,49 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
 
             // Accent bars at bottom of header
             pageDoc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
-            pageDoc.rect(0, headerHeight, pageWidth, 1.5, 'F');
+            pageDoc.rect(0, headerHeight, pageWidth, 1, 'F');
             pageDoc.setFillColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
-            pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.5, 'F');
+            pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1, 'F');
 
             // Title — right aligned
-            pageDoc.setFontSize(13);
+            pageDoc.setFontSize(12);
             pageDoc.setFont('helvetica', 'bold');
             pageDoc.setTextColor(255, 255, 255);
-            pageDoc.text('HISTÓRICO DE COMPRAS', pageWidth - margin.right, 14, { align: 'right' });
+            pageDoc.text('HISTÓRICO DE COMPRAS', pageWidth - margin.right, 11, { align: 'right' });
 
             // Client name
-            pageDoc.setFontSize(8);
+            pageDoc.setFontSize(7);
             pageDoc.setFont('helvetica', 'normal');
             pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
-            pageDoc.text(`Cliente: ${payload.clienteNome}`, pageWidth - margin.right, 20, { align: 'right' });
+            pageDoc.text(`Cliente: ${payload.clienteNome}`, pageWidth - margin.right, 16.5, { align: 'right' });
 
             // Period
-            pageDoc.setFontSize(7);
-            pageDoc.text(`Período: ${periodoLabel}`, pageWidth - margin.right, 25, { align: 'right' });
+            pageDoc.setFontSize(6.5);
+            pageDoc.text(`Período: ${periodoLabel}`, pageWidth - margin.right, 21, { align: 'right' });
 
             // Emission date
             const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-            pageDoc.text(`Emitido em ${dateStr}`, pageWidth - margin.right, 30, { align: 'right' });
+            pageDoc.text(`Emitido em ${dateStr}`, pageWidth - margin.right, 25.5, { align: 'right' });
 
             if (pageNum > 1) {
-                pageDoc.setFontSize(7);
+                pageDoc.setFontSize(6.5);
                 pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
-                pageDoc.text('(Continuação)', pageWidth - margin.right, 35, { align: 'right' });
+                pageDoc.text('(Continuação)', pageWidth - margin.right, 30, { align: 'right' });
             }
 
-            return headerHeight + 5;
+            return headerHeight + 2;
         };
 
         // ====== FOOTER ======
         const drawFooter = (pageDoc: typeof doc, pageNum: number, totalPages: number) => {
-            const footerY = pageHeight - 12;
+            const footerY = pageHeight - 6;
 
             // Separator line
             pageDoc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
-            pageDoc.setLineWidth(0.3);
-            pageDoc.line(margin.left, footerY - 3, pageWidth - margin.right, footerY - 3);
+            pageDoc.setLineWidth(0.2);
+            pageDoc.line(margin.left, footerY - 2.5, pageWidth - margin.right, footerY - 2.5);
 
-            pageDoc.setFontSize(7);
+            pageDoc.setFontSize(6);
             pageDoc.setFont('helvetica', 'normal');
             pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
             pageDoc.text('FRPlus — Gestão Comercial Inteligente', margin.left, footerY);
@@ -160,30 +160,31 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
 
         if (logoResult) {
             try {
-                const logoH = 19.5;
+                const logoH = 16;
                 const logoRatio = logoH / logoResult.height;
                 const logoW = logoResult.width * logoRatio;
-                doc.addImage(logoResult.data, 'PNG', margin.left, 6, logoW, logoH);
+                doc.addImage(logoResult.data, 'PNG', margin.left, 5, logoW, logoH);
             } catch { /* silently fail */ }
         }
-
-        startY += 2;
 
         // ====== MAIN TABLE ======
         // Dynamically adjust font size based on number of rows to fit on 1 page
         const rowCount = payload.pedidos.length;
-        let fontSize = 8;
-        let cellPadding = 3;
+        let fontSize = 7;
+        let cellPadding = 1.8;
 
-        if (rowCount > 25) {
+        if (rowCount > 30) {
+            fontSize = 5.5;
+            cellPadding = 0.8;
+        } else if (rowCount > 25) {
             fontSize = 6;
-            cellPadding = 1.5;
+            cellPadding = 1;
         } else if (rowCount > 18) {
-            fontSize = 6.5;
-            cellPadding = 2;
+            fontSize = 6;
+            cellPadding = 1.2;
         } else if (rowCount > 12) {
-            fontSize = 7;
-            cellPadding = 2.5;
+            fontSize = 6.5;
+            cellPadding = 1.5;
         }
 
         const tableBody = payload.pedidos.map((p) => [
@@ -213,9 +214,9 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
                 fillColor: colors.headerDark,
                 textColor: 255,
                 fontStyle: 'bold',
-                cellPadding: 3,
+                cellPadding: 1.5,
                 halign: 'center',
-                fontSize: 7,
+                fontSize: 6.5,
             },
             alternateRowStyles: { fillColor: colors.rowEven },
             columnStyles: {
@@ -242,50 +243,49 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
                     drawHeader(doc, data.pageNumber);
                     if (logoResult) {
                         try {
-                            const logoH = 19.5;
+                            const logoH = 16;
                             const logoRatio = logoH / logoResult.height;
                             const logoW = logoResult.width * logoRatio;
-                            doc.addImage(logoResult.data, 'PNG', margin.left, 6, logoW, logoH);
+                            doc.addImage(logoResult.data, 'PNG', margin.left, 5, logoW, logoH);
                         } catch { /* silently fail */ }
                     }
                 }
             },
         });
 
-        startY = doc.lastAutoTable.finalY + 6;
+        startY = doc.lastAutoTable.finalY + 3;
 
         // ====== RESUMO DO FECHAMENTO (BLACK BOX) ======
+        const summaryBlockHeight = 38;
         // Page-break safety
-        const summaryBlockHeight = 52;
-        if (startY > pageHeight - (summaryBlockHeight + 20)) {
+        if (startY > pageHeight - (summaryBlockHeight + 12)) {
             doc.addPage();
             startY = drawHeader(doc, doc.getNumberOfPages());
             if (logoResult) {
                 try {
-                    const logoH = 19.5;
+                    const logoH = 16;
                     const logoRatio = logoH / logoResult.height;
                     const logoW = logoResult.width * logoRatio;
-                    doc.addImage(logoResult.data, 'PNG', margin.left, 6, logoW, logoH);
+                    doc.addImage(logoResult.data, 'PNG', margin.left, 5, logoW, logoH);
                 } catch { /* silently fail */ }
             }
-            startY += 2;
         }
 
         // Background
         doc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
         doc.roundedRect(margin.left, startY, contentWidth, summaryBlockHeight, 2, 2, 'F');
 
-        // Blue title bar
+        // Blue title bar (compressed)
         doc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
-        doc.rect(margin.left, startY, contentWidth, 10, 'F');
-        doc.setFontSize(9);
+        doc.rect(margin.left, startY, contentWidth, 7, 'F');
+        doc.setFontSize(7.5);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(255, 255, 255);
-        doc.text('RESUMO DO FECHAMENTO', margin.left + contentWidth / 2, startY + 7, { align: 'center' });
+        doc.text('RESUMO DO FECHAMENTO', margin.left + contentWidth / 2, startY + 5, { align: 'center' });
 
-        // Draw metric helper — supports custom Y offset
-        const drawMetric = (x: number, y: number, label: string, value: string, valueColor: [number, number, number], fontStyle: 'bold' | 'bolditalic' = 'bold', valueFontSize = 13) => {
-            doc.setFontSize(5.5);
+        // Draw metric helper — compact version
+        const drawMetric = (x: number, y: number, label: string, value: string, valueColor: [number, number, number], fontStyle: 'bold' | 'bolditalic' = 'bold', valueFontSize = 11) => {
+            doc.setFontSize(5);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
             doc.text(label, x, y);
@@ -293,34 +293,34 @@ export async function gerarPdfHistoricoCompras(payload: PayloadHistoricoCompras)
             doc.setFontSize(valueFontSize);
             doc.setFont('helvetica', fontStyle);
             doc.setTextColor(valueColor[0], valueColor[1], valueColor[2]);
-            doc.text(value, x, y + 8);
+            doc.text(value, x, y + 6);
         };
 
         // Row 1: 3 main metrics (Pedidos | Vol. Faturado | Investimento)
-        const row1Y = startY + 15;
+        const row1Y = startY + 11;
         const col3Width = contentWidth / 3;
-        const r1col1X = margin.left + 8;
-        const r1col2X = margin.left + col3Width + 6;
-        const r1col3X = margin.left + col3Width * 2 + 6;
+        const r1col1X = margin.left + 6;
+        const r1col2X = margin.left + col3Width + 4;
+        const r1col3X = margin.left + col3Width * 2 + 4;
 
         drawMetric(r1col1X, row1Y, 'TOTAL DE PEDIDOS', `${payload.totais.totalPedidos}`, colors.white);
         drawMetric(r1col2X, row1Y, 'VOLUME FATURADO (CX)', `${payload.totais.volumeFaturadoCaixas}`, colors.accentCyan);
         drawMetric(r1col3X, row1Y, 'INVESTIMENTO TOTAL (R$)', formatBRL(payload.totais.valorTotalFaturado), colors.greenAccent);
 
         // Separator line between rows
-        const sepY = row1Y + 13;
+        const sepY = row1Y + 10;
         doc.setDrawColor(60, 60, 80);
-        doc.setLineWidth(0.2);
-        doc.line(margin.left + 6, sepY, margin.left + contentWidth - 6, sepY);
+        doc.setLineWidth(0.15);
+        doc.line(margin.left + 4, sepY, margin.left + contentWidth - 4, sepY);
 
         // Row 2: 2 bonificação metrics (Vol. Bonificado | Verba Injetada)
-        const row2Y = sepY + 5;
+        const row2Y = sepY + 3;
         const col2Width = contentWidth / 2;
-        const r2col1X = margin.left + 8;
-        const r2col2X = margin.left + col2Width + 6;
+        const r2col1X = margin.left + 6;
+        const r2col2X = margin.left + col2Width + 4;
 
-        drawMetric(r2col1X, row2Y, 'VOLUME BONIFICADO (CX)', `${payload.totais.volumeBonificadoCaixas}`, colors.amberPastel, 'bolditalic', 11);
-        drawMetric(r2col2X, row2Y, 'VERBA INJETADA (R$)', formatBRL(payload.totais.valorTotalBonificado), colors.amberPastel, 'bolditalic', 11);
+        drawMetric(r2col1X, row2Y, 'VOLUME BONIFICADO (CX)', `${payload.totais.volumeBonificadoCaixas}`, colors.amberPastel, 'bolditalic', 9);
+        drawMetric(r2col2X, row2Y, 'VERBA INJETADA (R$)', formatBRL(payload.totais.valorTotalBonificado), colors.amberPastel, 'bolditalic', 9);
 
         // ====== DRAW FOOTERS ON ALL PAGES ======
         const pageCount = doc.getNumberOfPages();
