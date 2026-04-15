@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect, Fragment } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useData, Order, Client } from '@/contexts/DataContext';
 import {
     FileText, Calendar, Download, TrendingUp, Users, Package,
@@ -12,17 +13,27 @@ import { getClientesAtendidos, ClienteAtendido } from '@/app/actions/atendidos';
 
 export default function RelatoriosPage() {
     const { orders, clients, products, fabricas, refreshData } = useData();
+    const searchParams = useSearchParams();
+    const tipoQuery = searchParams.get('tipo');
 
     // Force refresh on mount to ensure up-to-date data
     useEffect(() => {
         refreshData();
     }, [refreshData]);
 
-    const [tipoRelatorio, setTipoRelatorio] = useState<'vendas' | 'produtos' | 'clientes' | 'tabela' | 'atendidos'>('vendas');
+    const [tipoRelatorio, setTipoRelatorio] = useState<'vendas' | 'produtos' | 'clientes' | 'tabela' | 'atendidos'>((tipoQuery as any) || 'vendas');
     const [tabelaSelecionada, setTabelaSelecionada] = useState<string>('');
     const [clientesAtendidos, setClientesAtendidos] = useState<ClienteAtendido[]>([]);
     const [loadingAtendidos, setLoadingAtendidos] = useState(false);
     const [statusAtendidos, setStatusAtendidos] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
+
+    useEffect(() => {
+        if (tipoQuery) {
+            setTipoRelatorio(tipoQuery as any);
+        } else if (!tipoQuery && window.location.pathname === '/dashboard/relatorios') {
+            setTipoRelatorio('vendas');
+        }
+    }, [tipoQuery]);
 
     useEffect(() => {
         if (tipoRelatorio === 'atendidos') {

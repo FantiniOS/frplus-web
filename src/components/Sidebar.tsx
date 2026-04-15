@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { getPerfilEmpresa } from "@/app/actions/perfilEmpresa";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -33,6 +33,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const [relatoriosOpen, setRelatoriosOpen] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const currentTipo = searchParams.get('tipo');
 
   useEffect(() => {
@@ -193,18 +194,22 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                       {relatoriosSubItems.map((sub) => {
                         const active = isItemActive(sub.href);
                         return (
-                          <Link
+                          <button
                             key={sub.href}
-                            href={sub.href}
-                            onClick={onClose}
-                            className={`block rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              router.push(sub.href);
+                              if (onClose) onClose();
+                            }}
+                            className={`w-full text-left block rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                               active 
                                 ? "bg-blue-600/20 text-blue-400 border border-blue-500/10" 
                                 : "text-gray-400 hover:bg-white/5 hover:text-white"
                             }`}
                           >
                             {sub.label}
-                          </Link>
+                          </button>
                         );
                       })}
                     </div>
