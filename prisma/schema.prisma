@@ -136,8 +136,9 @@ model Verba {
   titulo      String
   valorTotal  Decimal  @db.Decimal(10, 2)
   status      String   @default("ATIVA") // ATIVA, ESGOTADA, CANCELADA
-  observacoes String?  @db.Text
-  pedidos     Pedido[]
+  observacoes  String?   @db.Text
+  dataValidade DateTime?
+  pedidos      Pedido[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

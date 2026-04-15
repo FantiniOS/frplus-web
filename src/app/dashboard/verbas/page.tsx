@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Wallet, X, Eye, Trash2, Pencil, Package, ChevronRight, FileText } from 'lucide-react';
+import { Search, Plus, Wallet, X, Eye, Trash2, Pencil, Package, ChevronRight, FileText, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,6 +26,7 @@ interface VerbaItem {
     saldo: number;
     status: string;
     observacoes?: string;
+    dataValidade?: string | null;
     createdAt: string;
     totalPedidos: number;
 }
@@ -57,13 +58,18 @@ export default function VerbaListPage() {
     const [editValor, setEditValor] = useState('');
     const [editStatus, setEditStatus] = useState('');
     const [editObservacoes, setEditObservacoes] = useState('');
+    const [editDataValidade, setEditDataValidade] = useState('');
     const [savingEdit, setSavingEdit] = useState(false);
+
+    // Observações popover
+    const [obsPopoverId, setObsPopoverId] = useState<string | null>(null);
 
     // Create form state
     const [formClienteId, setFormClienteId] = useState('');
     const [formTitulo, setFormTitulo] = useState('');
     const [formValor, setFormValor] = useState('');
     const [formObservacoes, setFormObservacoes] = useState('');
+    const [formDataValidade, setFormDataValidade] = useState('');
     const [saving, setSaving] = useState(false);
 
     const fetchVerbas = async () => {
@@ -141,7 +147,8 @@ export default function VerbaListPage() {
                     clienteId: formClienteId,
                     titulo: formTitulo,
                     valorTotal: parseFloat(formValor),
-                    observacoes: formObservacoes
+                    observacoes: formObservacoes,
+                    dataValidade: formDataValidade || null
                 })
             });
             if (res.ok) {
@@ -150,6 +157,7 @@ export default function VerbaListPage() {
                 setFormTitulo('');
                 setFormValor('');
                 setFormObservacoes('');
+                setFormDataValidade('');
                 fetchVerbas();
             }
         } catch (e) {
@@ -177,6 +185,7 @@ export default function VerbaListPage() {
         setEditValor(String(verba.valorTotal));
         setEditStatus(verba.status);
         setEditObservacoes(verba.observacoes || '');
+        setEditDataValidade(verba.dataValidade ? verba.dataValidade.slice(0, 10) : '');
     };
 
     const handleEdit = async () => {
@@ -191,7 +200,8 @@ export default function VerbaListPage() {
                     titulo: editTitulo,
                     valorTotal: parseFloat(editValor),
                     status: editStatus,
-                    observacoes: editObservacoes
+                    observacoes: editObservacoes,
+                    dataValidade: editDataValidade || null
                 })
             });
             setEditVerba(null);
@@ -213,6 +223,24 @@ export default function VerbaListPage() {
                 return 'bg-red-500/10 text-red-400 border-red-500/20';
             default:
                 return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+        }
+    };
+
+    const getValidadeSemaforo = (dataValidade?: string | null) => {
+        if (!dataValidade) return null;
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const validade = new Date(dataValidade);
+        validade.setHours(0, 0, 0, 0);
+        const diffMs = validade.getTime() - hoje.getTime();
+        const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffDias < 0) {
+            return { label: 'Vencida', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', icon: '🔴' };
+        } else if (diffDias <= 15) {
+            return { label: `${diffDias}d`, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', icon: '🟡' };
+        } else {
+            return { label: `${diffDias}d`, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: '🟢' };
         }
     };
 
@@ -298,7 +326,8 @@ export default function VerbaListPage() {
                             <tr className="bg-[#0c1220] border-b border-white/[0.08]">
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Cliente</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Título</th>
-                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 w-12 hidden md:table-cell">Obs.</th>
+                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 w-10 hidden md:table-cell">Obs.</th>
+                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Prazo</th>
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Valor Total</th>
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Consumido</th>
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Saldo</th>
@@ -309,7 +338,7 @@ export default function VerbaListPage() {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={8} className="text-center py-12 text-gray-600">
+                                    <td colSpan={9} className="text-center py-12 text-gray-600">
                                         <div className="flex items-center justify-center gap-2">
                                             <div className="h-4 w-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
                                             Carregando...
@@ -318,7 +347,7 @@ export default function VerbaListPage() {
                                 </tr>
                             ) : filteredVerbas.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="text-center py-12 text-gray-600">
+                                    <td colSpan={9} className="text-center py-12 text-gray-600">
                                         <Wallet className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                         <p className="text-sm">Nenhuma verba encontrada</p>
                                     </td>
@@ -354,14 +383,43 @@ export default function VerbaListPage() {
                                             </td>
 
                                             {/* Observações */}
-                                            <td className="px-3 py-2.5 text-center hidden md:table-cell">
+                                            <td className="px-3 py-2.5 text-center hidden md:table-cell relative">
                                                 {verba.observacoes ? (
-                                                    <div className="inline-flex justify-center" title={verba.observacoes}>
-                                                        <FileText className="h-4 w-4 text-blue-400 hover:text-blue-300 transition-colors cursor-help" />
+                                                    <div className="inline-flex justify-center">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setObsPopoverId(obsPopoverId === verba.id ? null : verba.id); }}
+                                                            className="p-1 rounded-md text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all"
+                                                            title="Ver observações"
+                                                        >
+                                                            <FileText className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        {obsPopoverId === verba.id && (
+                                                            <div className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 w-72 max-h-48 overflow-auto rounded-lg border border-white/10 bg-[#1a1f2e] p-3 shadow-2xl text-left">
+                                                                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Observações</p>
+                                                                <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">{verba.observacoes}</p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-gray-600">-</span>
+                                                    <span className="text-gray-600 text-xs">-</span>
                                                 )}
+                                            </td>
+
+                                            {/* Prazo / Validade */}
+                                            <td className="px-3 py-2.5 text-center hidden md:table-cell">
+                                                {(() => {
+                                                    const semaforo = getValidadeSemaforo(verba.dataValidade);
+                                                    if (!semaforo) return <span className="text-gray-600 text-xs">-</span>;
+                                                    const dataFormatada = new Date(verba.dataValidade!).toLocaleDateString('pt-BR');
+                                                    return (
+                                                        <div className="flex flex-col items-center gap-0.5">
+                                                            <span className={`text-[11px] font-mono font-medium ${semaforo.color}`}>{dataFormatada}</span>
+                                                            <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${semaforo.bg} ${semaforo.color}`}>
+                                                                {semaforo.label}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </td>
 
                                             {/* Valor Total */}
@@ -653,6 +711,15 @@ export default function VerbaListPage() {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Prazo / Validade da Verba</label>
+                                    <input
+                                        type="date"
+                                        value={formDataValidade}
+                                        onChange={(e) => setFormDataValidade(e.target.value)}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 [color-scheme:dark]"
+                                    />
+                                </div>
+                                <div>
                                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Observações / Condições do Acordo</label>
                                     <textarea
                                         value={formObservacoes}
@@ -748,6 +815,15 @@ export default function VerbaListPage() {
                                         <option value="ESGOTADA">Esgotada</option>
                                         <option value="CANCELADA">Cancelada</option>
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Prazo / Validade da Verba</label>
+                                    <input
+                                        type="date"
+                                        value={editDataValidade}
+                                        onChange={(e) => setEditDataValidade(e.target.value)}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 [color-scheme:dark]"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Observações / Condições do Acordo</label>

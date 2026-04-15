@@ -42,6 +42,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             titulo: verba.titulo,
             valorTotal: Number(verba.valorTotal),
             observacoes: verba.observacoes,
+            dataValidade: verba.dataValidade ? verba.dataValidade.toISOString() : null,
             consumido,
             saldo,
             status: verba.status,
@@ -71,7 +72,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         }
 
         const body = await request.json()
-        const { status, titulo, valorTotal, observacoes } = body
+        const { status, titulo, valorTotal, observacoes, dataValidade } = body
 
         const updateData: Record<string, unknown> = {}
 
@@ -85,6 +86,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         if (titulo) updateData.titulo = titulo
         if (valorTotal !== undefined && valorTotal !== null) updateData.valorTotal = Number(valorTotal)
         if (observacoes !== undefined) updateData.observacoes = observacoes
+        if (dataValidade !== undefined) updateData.dataValidade = dataValidade ? new Date(dataValidade) : null
 
         if (Object.keys(updateData).length === 0) {
             return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 })

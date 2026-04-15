@@ -31,6 +31,7 @@ export async function GET() {
                 titulo: v.titulo,
                 valorTotal: Number(v.valorTotal),
                 observacoes: v.observacoes,
+                dataValidade: v.dataValidade ? v.dataValidade.toISOString() : null,
                 consumido,
                 saldo,
                 status: v.status,
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json()
-        const { clienteId, titulo, valorTotal, observacoes } = body
+        const { clienteId, titulo, valorTotal, observacoes, dataValidade } = body
 
         if (!clienteId || !titulo || !valorTotal) {
             return NextResponse.json({ error: 'clienteId, titulo e valorTotal são obrigatórios' }, { status: 400 })
@@ -76,6 +77,7 @@ export async function POST(request: Request) {
                 titulo,
                 valorTotal: Number(valorTotal),
                 observacoes,
+                dataValidade: dataValidade ? new Date(dataValidade) : null,
                 status: 'ATIVA'
             }
         })
