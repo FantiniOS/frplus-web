@@ -45,6 +45,7 @@ export interface CurvaAResult {
 
 export interface ConsultoriaResponse {
     curvaA: CurvaAResult[]
+    catalogoCompleto?: CurvaAResult[]
     fonte: 'historico' | 'fallback_empty'
     alerta?: string
     diasHistoricoTotal?: number
@@ -60,11 +61,11 @@ export async function calcularGiroConsultoria(
 ): Promise<ConsultoriaResponse> {
     const user = await getServerUser()
     if (!user) {
-        return { curvaA: [], fonte: 'fallback_empty', alerta: 'Não autorizado.' }
+        return { curvaA: [], catalogoCompleto: [], fonte: 'fallback_empty', alerta: 'Não autorizado.' }
     }
 
     if (!fabricaId || !tabelaPreco) {
-        return { curvaA: [], fonte: 'fallback_empty', alerta: 'Fábrica e Perfil são obrigatórios.' }
+        return { curvaA: [], catalogoCompleto: [], fonte: 'fallback_empty', alerta: 'Fábrica e Perfil são obrigatórios.' }
     }
 
     try {
@@ -169,9 +170,37 @@ export async function calcularGiroConsultoria(
 
         console.log(`[Consultoria] Itens encontrados: ${items.length}`)
 
+        // Buscar todos os produtos da fábrica para o catálogo completo
+        const allProducts = await prisma.produto.findMany({
+            where: { fabricaId, ativo: true },
+            select: {
+                id: true,
+                nome: true,
+                codigo: true,
+                unidade: true,
+                categoria: true,
+                ativo: true,
+                preco50a199: true,
+                preco200a699: true,
+                precoAtacado: true,
+                precoAtacadoAVista: true,
+                precoRedes: true,
+            }
+        })
+
         if (items.length === 0) {
+            // Retorna catalogo completo com zeros se nao tiver vendas
+            const catalogoVazio: CurvaAResult[] = allProducts.map(p => ({
+                produtoId: p.id, nome: p.nome, codigo: p.codigo, unidade: p.unidade || 'CX', categoria: p.categoria || 'Geral',
+                ativo: p.ativo, preco50a199: Number(p.preco50a199), preco200a699: Number(p.preco200a699), precoAtacado: Number(p.precoAtacado),
+                precoAtacadoAVista: Number(p.precoAtacadoAVista), precoRedes: Number(p.precoRedes),
+                totalQtdVendida: 0, totalFaturado: 0, clientesUnicos: 0, giroDiarioCliente: 0, ticketMedioCaixas: 0, sugestaoCaixas: 1,
+                isLimitadoTeto: false, precoSugeridoVenda: Number(p.preco50a199) * 1.4, diasHistorico: 0
+            }));
+            
             return {
                 curvaA: [],
+                catalogoCompleto: catalogoVazio,
                 fonte: 'fallback_empty',
                 modoEspelho: !!clienteEspelhoId,
                 alerta: clienteEspelhoId
@@ -240,79 +269,81 @@ export async function calcularGiroConsultoria(
             }
         }
 
-        // === TOP 5 com ticket médio ===
-        const topProducts: CurvaAResult[] = Object.values(grouped)
-            .filter(p => p.ativo && p.totalQtdVendida > 0)
+        // === Construir Cátalogo Completo e mapear métricas ===
+        const catalogoCompleto: CurvaAResult[] = allProducts.map(p => {
+            const history = grouped[p.id];
+            const numClientes = history ? (history.clientesUnicosSet.size || 1) : 1;
+            const numPedidos = history ? (history.pedidosUnicosSet.size || 1) : 1;
+            const totalQtdVendida = history ? history.totalQtdVendida : 0;
+            const totalFaturado = history ? history.totalFaturado : 0;
+
+            const giroDiarioPorCliente = totalQtdVendida > 0 ? (totalQtdVendida / diasHistoricoTotal / Math.max(1, numClientes)) : 0;
+            const ticketMedioCaixas = totalQtdVendida > 0 ? (totalQtdVendida / Math.max(1, numPedidos)) : 0;
+
+            let multiplicadorEscalado = numLojasNovo
+            if (numLojasNovo > 10 && numLojasNovo <= 50) {
+                multiplicadorEscalado = 10 + ((numLojasNovo - 10) * 0.6)
+            } else if (numLojasNovo > 50) {
+                multiplicadorEscalado = 34 + ((numLojasNovo - 50) * 0.3)
+            }
+
+            let sugestaoBase = (ticketMedioCaixas > 0 ? ticketMedioCaixas : 1) * multiplicadorEscalado;
+
+            const tetoLogistico = Math.max(1, palletSize) * 4
+            let isLimitadoTeto = false
+            if (sugestaoBase > tetoLogistico) {
+                sugestaoBase = tetoLogistico
+                isLimitadoTeto = true
+            }
+
+            const giroProjetado = giroDiarioPorCliente * multiplicadorEscalado
+            const tetoCobertura = giroProjetado * 40
+            if (giroProjetado > 0 && sugestaoBase > tetoCobertura) {
+                sugestaoBase = Math.max(giroProjetado * 20, tetoCobertura)
+                isLimitadoTeto = true
+            }
+
+            let sugestaoCaixas = Math.max(1, Math.round(sugestaoBase))
+            const isAtacado = tabelaPreco === 'atacado' || tabelaPreco === 'redes' || tabelaPreco === 'avista'
+            if (isAtacado && palletSize > 0 && sugestaoCaixas >= palletSize / 2) {
+                sugestaoCaixas = Math.max(palletSize, Math.round(sugestaoCaixas / palletSize) * palletSize)
+            }
+
+            const precoSugeridoVenda = Number(p.preco50a199) * 1.4
+
+            return {
+                produtoId: p.id,
+                nome: p.nome,
+                codigo: p.codigo,
+                unidade: p.unidade || 'CX',
+                categoria: p.categoria || 'Geral',
+                ativo: p.ativo,
+                preco50a199: Number(p.preco50a199),
+                preco200a699: Number(p.preco200a699),
+                precoAtacado: Number(p.precoAtacado),
+                precoAtacadoAVista: Number(p.precoAtacadoAVista),
+                precoRedes: Number(p.precoRedes),
+                totalQtdVendida,
+                totalFaturado,
+                clientesUnicos: numClientes,
+                giroDiarioCliente: giroDiarioPorCliente,
+                ticketMedioCaixas,
+                sugestaoCaixas,
+                isLimitadoTeto,
+                precoSugeridoVenda,
+                diasHistorico: diasHistoricoTotal,
+            }
+        });
+
+        // Curva A é basicamente os Top 5 que tem volume vendido
+        const topProducts: CurvaAResult[] = catalogoCompleto
+            .filter(p => p.totalQtdVendida > 0)
             .sort((a, b) => b.totalQtdVendida - a.totalQtdVendida)
-            .slice(0, 5)
-            .map(p => {
-                const numClientes = p.clientesUnicosSet.size || 1
-                const numPedidos = p.pedidosUnicosSet.size || 1
-                const giroDiarioPorCliente = p.totalQtdVendida / diasHistoricoTotal / Math.max(1, numClientes)
-                const ticketMedioCaixas = p.totalQtdVendida / Math.max(1, numPedidos)
-
-                // Função de Escala Logística Progressiva
-                let multiplicadorEscalado = numLojasNovo
-                if (numLojasNovo > 10 && numLojasNovo <= 50) {
-                    multiplicadorEscalado = 10 + ((numLojasNovo - 10) * 0.6)
-                } else if (numLojasNovo > 50) {
-                    multiplicadorEscalado = 34 + ((numLojasNovo - 50) * 0.3)
-                }
-
-                let sugestaoBase = ticketMedioCaixas * multiplicadorEscalado
-
-                // Trava 1: Limite Logístico (Max 4 pallets)
-                const tetoLogistico = Math.max(1, palletSize) * 4
-                let isLimitadoTeto = false
-                if (sugestaoBase > tetoLogistico) {
-                    sugestaoBase = tetoLogistico
-                    isLimitadoTeto = true
-                }
-
-                // Trava 2: Controle de Cobertura (Max 40 dias)
-                const giroProjetado = giroDiarioPorCliente * multiplicadorEscalado
-                const tetoCobertura = giroProjetado * 40 // 40 dias max
-                if (giroProjetado > 0 && sugestaoBase > tetoCobertura) {
-                    sugestaoBase = Math.max(giroProjetado * 20, tetoCobertura) // Mantém entre 20 e 40
-                    isLimitadoTeto = true
-                }
-
-                // Prioriza preenchimento do pallet para Atacado/Redes
-                let sugestaoCaixas = Math.max(1, Math.round(sugestaoBase))
-                const isAtacado = tabelaPreco === 'atacado' || tabelaPreco === 'redes' || tabelaPreco === 'avista';
-                if (isAtacado && palletSize > 0 && sugestaoCaixas >= palletSize / 2) {
-                    sugestaoCaixas = Math.max(palletSize, Math.round(sugestaoCaixas / palletSize) * palletSize)
-                }
-
-                // Preço de gôndola estimado (40% de margem sobre a tabela varejo)
-                const precoSugeridoVenda = Number(p.preco50a199) * 1.4
-
-                return {
-                    produtoId: p.produtoId,
-                    nome: p.nome,
-                    codigo: p.codigo,
-                    unidade: p.unidade,
-                    categoria: p.categoria,
-                    ativo: p.ativo,
-                    preco50a199: p.preco50a199,
-                    preco200a699: p.preco200a699,
-                    precoAtacado: p.precoAtacado,
-                    precoAtacadoAVista: p.precoAtacadoAVista,
-                    precoRedes: p.precoRedes,
-                    totalQtdVendida: p.totalQtdVendida,
-                    totalFaturado: p.totalFaturado,
-                    clientesUnicos: numClientes,
-                    giroDiarioCliente: giroDiarioPorCliente,
-                    ticketMedioCaixas: ticketMedioCaixas,
-                    sugestaoCaixas,
-                    isLimitadoTeto,
-                    precoSugeridoVenda,
-                    diasHistorico: diasHistoricoTotal,
-                }
-            })
+            .slice(0, 5);
 
         return {
             curvaA: topProducts,
+            catalogoCompleto: catalogoCompleto.sort((a, b) => a.nome.localeCompare(b.nome)),
             fonte: topProducts.length > 0 ? 'historico' : 'fallback_empty',
             diasHistoricoTotal,
             modoEspelho: !!clienteEspelhoId,
@@ -325,6 +356,7 @@ export async function calcularGiroConsultoria(
         console.error('[Consultoria 1º Pedido] Erro:', error?.message || error)
         return {
             curvaA: [],
+            catalogoCompleto: [],
             fonte: 'fallback_empty',
             alerta: `Erro interno: ${error?.message || 'desconhecido'}`
         }

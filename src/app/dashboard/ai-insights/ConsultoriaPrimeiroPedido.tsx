@@ -64,6 +64,9 @@ export default function ConsultoriaPrimeiroPedido() {
     // Injeção Manual
     const [produtosManuais, setProdutosManuais] = useState<CurvaAResult[]>([]);
     const [produtoManualSelecionado, setProdutoManualSelecionado] = useState('');
+    const [catalogoCompleto, setCatalogoCompleto] = useState<CurvaAResult[]>([]);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Clientes filtrados pela tabela selecionada
     const clientesFiltrados = useMemo(() => {
@@ -103,6 +106,7 @@ export default function ConsultoriaPrimeiroPedido() {
         setCurvaALoading(true);
         setCurvaAAlerta(null);
         setCurvaA([]);
+        setCatalogoCompleto([]);
         setCurvaAFonte('');
         setDiasHistoricoTotal(0);
         setProdutosManuais([]);
@@ -111,6 +115,7 @@ export default function ConsultoriaPrimeiroPedido() {
         try {
             const data = await calcularGiroConsultoria(fabricaId, tabelaPreco, espelhoId || undefined, lojas);
             setCurvaA(data.curvaA || []);
+            setCatalogoCompleto(data.catalogoCompleto || []);
             setCurvaAFonte(data.fonte || '');
             if (data.alerta) setCurvaAAlerta(data.alerta);
             if (data.diasHistoricoTotal) setDiasHistoricoTotal(data.diasHistoricoTotal);
@@ -218,34 +223,17 @@ export default function ConsultoriaPrimeiroPedido() {
 
     const handleAddProdutoManual = () => {
         if (!produtoManualSelecionado) return;
-        const p = products.find((x: Product) => x.id === produtoManualSelecionado);
+        const p = catalogoCompleto.find((x) => x.produtoId === produtoManualSelecionado);
         if (p) {
             const newP: CurvaAResult = {
-                produtoId: p.id,
-                nome: p.nome,
-                codigo: p.codigo || '',
-                unidade: p.unidade || 'CX',
-                categoria: (p as any).categoria || 'Geral',
-                ativo: p.ativo !== false,
-                preco50a199: Number(p.preco50a199) || 0,
-                preco200a699: Number(p.preco200a699) || 0,
-                precoAtacado: Number(p.precoAtacado) || 0,
-                precoAtacadoAVista: Number(p.precoAtacadoAVista) || 0,
-                precoRedes: Number(p.precoRedes) || 0,
-                totalQtdVendida: 0,
-                totalFaturado: 0,
-                clientesUnicos: 0,
-                giroDiarioCliente: 0,
-                ticketMedioCaixas: 0,
-                sugestaoCaixas: 1,
-                isLimitadoTeto: false,
-                precoSugeridoVenda: Number(p.preco50a199) * 1.4,
-                diasHistorico: 0,
+                ...p,
                 isManual: true,
             };
             setProdutosManuais(prev => [...prev, newP]);
-            setQuantidades(prev => ({ ...prev, [p.id]: 1 }));
+            setQuantidades(prev => ({ ...prev, [p.produtoId]: Math.max(1, p.sugestaoCaixas || 1) }));
             setProdutoManualSelecionado('');
+            setIsDropdownOpen(false);
+            setSearchTerm('');
         }
     };
 
@@ -608,20 +596,86 @@ export default function ConsultoriaPrimeiroPedido() {
                                 <Plus className="w-4 h-4 text-emerald-400" /> Injeção Manual de Produto
                             </h4>
                             <div className="flex w-full md:w-auto items-center gap-2">
-                                <select
-                                    value={produtoManualSelecionado}
-                                    onChange={(e) => setProdutoManualSelecionado(e.target.value)}
-                                    className="w-full md:w-72 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors text-sm"
-                                >
-                                    <option value="" className="text-black">Adicionar item fora da Curva A...</option>
-                                    {produtosDaFabrica
-                                        .filter(p => !combinedProdutos.find(c => c.produtoId === p.id))
-                                        .map(p => (
-                                            <option key={p.id} value={p.id} className="text-black">
-                                                {p.nome}
-                                            </option>
-                                        ))}
-                                </select>
+                                <div className="relative w-full md:w-[400px]">
+                                    <div 
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white flex justify-between items-center text-sm cursor-pointer hover:border-emerald-500/50 transition-colors"
+                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                    >
+                                        <span className="truncate">
+                                            {produtoManualSelecionado 
+                                                ? catalogoCompleto.find(c => c.produtoId === produtoManualSelecionado)?.nome 
+                                                : "Buscar no catálogo da fábrica..."}
+                                        </span>
+                                    </div>
+
+                                    {isDropdownOpen && (
+                                        <div className="absolute top-full z-50 mt-2 w-full max-h-80 overflow-y-auto bg-gray-900 border border-white/10 rounded-xl shadow-2xl flex flex-col">
+                                            <div className="p-2 sticky top-0 bg-gray-900 border-b border-white/5 z-10">
+                                                <input 
+                                                    type="text" 
+                                                    autoFocus
+                                                    placeholder="Buscar produto..."
+                                                    value={searchTerm}
+                                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors text-sm"
+                                                />
+                                            </div>
+                                            <div className="p-1 flex flex-col gap-1">
+                                                {catalogoCompleto
+                                                    .filter(p => !combinedProdutos.find(c => c.produtoId === p.produtoId))
+                                                    .filter(p => p.nome.toLowerCase().includes(searchTerm.toLowerCase()) || p.codigo?.toLowerCase().includes(searchTerm.toLowerCase()))
+                                                    .map(p => {
+                                                        const covDias = p.giroDiarioCliente > 0 ? Math.round(p.sugestaoCaixas / p.giroDiarioCliente) : 0;
+                                                        let badgeClass = 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+                                                        let diag = 's/ histórico';
+
+                                                        if (covDias > 0) {
+                                                            if (covDias < 15) {
+                                                                badgeClass = 'bg-red-500/10 text-red-400 border-red-500/20';
+                                                                diag = 'Urgente';
+                                                            } else if (covDias <= 30) {
+                                                                badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                                                                diag = 'Ideal';
+                                                            } else {
+                                                                badgeClass = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                                                                diag = 'Alto';
+                                                            }
+                                                        }
+
+                                                        return (
+                                                            <div 
+                                                                key={p.produtoId} 
+                                                                onClick={() => {
+                                                                    setProdutoManualSelecionado(p.produtoId);
+                                                                    setIsDropdownOpen(false);
+                                                                    setSearchTerm('');
+                                                                }}
+                                                                className={`px-3 py-2.5 rounded-lg cursor-pointer flex justify-between items-center hover:bg-white/5 transition-colors ${produtoManualSelecionado === p.produtoId ? 'bg-emerald-500/10 border border-emerald-500/20' : ''}`}
+                                                            >
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-white text-sm font-medium">{p.nome}</span>
+                                                                    <span className="text-[10px] uppercase font-mono text-gray-500">
+                                                                        Sugestão: {p.sugestaoCaixas} cx
+                                                                    </span>
+                                                                </div>
+                                                                <div className={`flex flex-col items-end`}>
+                                                                    <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${badgeClass}`}>
+                                                                        Cobertura: {covDias > 0 ? `${covDias} d` : '---'}
+                                                                    </span>
+                                                                    {covDias > 0 && <span className="text-[9px] text-gray-500 mt-0.5">{diag}</span>}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                {catalogoCompleto.filter(p => !combinedProdutos.find(c => c.produtoId === p.produtoId) && (p.nome.toLowerCase().includes(searchTerm.toLowerCase()) || p.codigo?.toLowerCase().includes(searchTerm.toLowerCase()))).length === 0 && (
+                                                    <div className="p-4 text-center text-xs text-gray-500">
+                                                        Nenhum produto encontrado.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                                 <button
                                     onClick={handleAddProdutoManual}
                                     disabled={!produtoManualSelecionado}
