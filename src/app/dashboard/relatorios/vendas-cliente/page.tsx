@@ -662,7 +662,7 @@ export default function VendasClientePage() {
                             {/* Modal Body */}
                             <div className="flex-1 overflow-y-auto p-5">
                                 {selectedPedido.itens && selectedPedido.itens.length > 0 ? (
-                                    <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+                                    <div className="overflow-x-auto rounded-xl border border-white/[0.06] overflow-hidden">
                                         <table className="w-full text-sm">
                                             <thead>
                                                 <tr className="border-b border-white/[0.08] bg-white/[0.02]">

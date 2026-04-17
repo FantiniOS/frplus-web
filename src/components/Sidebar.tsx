@@ -112,10 +112,11 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         />
       )}
 
-      <aside className={`fixed left-0 top-0 z-50 h-screen w-64 border-r border-white/10 bg-black text-white transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+      <aside className={`group fixed left-0 top-0 z-50 h-screen border-r border-white/10 bg-black text-white transition-all duration-300 ease-in-out flex flex-col ${isOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'} md:translate-x-0 lg:w-20 lg:overflow-x-hidden xl:w-64 hover:w-64`}>
         <div className="flex h-full flex-col px-3 py-4">
           {/* Logo */}
-          <div className="mb-8 flex flex-col items-center px-4 justify-center">
+          <div className="mb-8 flex flex-col items-center px-4 justify-center py-2 h-24 overflow-hidden">
+            <div className="flex lg:hidden xl:flex group-hover:flex flex-col items-center">
             <NextImage
               src="/logo.png"
               alt="Logo"
@@ -132,12 +133,14 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               </div>
             )}
           </div>
+            <div className="hidden lg:flex xl:hidden group-hover:hidden items-center justify-center font-bold text-2xl text-blue-500 h-full">FR</div>
+          </div>
 
           {/* Menu Principal */}
           <nav className="flex-1 space-y-6 overflow-y-auto">
             {menuGroups.map((group) => (
               <div key={group.title}>
-                <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block lg:hidden xl:block group-hover:block whitespace-nowrap">
                   {group.title}
                 </h3>
                 <div className="space-y-1">
@@ -148,14 +151,14 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                         key={item.href}
                         href={item.href}
                         onClick={onClose}
-                        className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors overflow-hidden ${
                           active 
                             ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
                             : "text-gray-300 hover:bg-white/5 hover:text-white"
                         }`}
                       >
-                        <item.icon className={`mr-3 h-5 w-5 ${active ? "text-white" : "text-gray-400"}`} />
-                        {item.label}
+                        <item.icon className={`flex-shrink-0 mr-3 h-5 w-5 ${active ? "text-white" : "text-gray-400"}`} />
+                        <span className="block lg:hidden xl:block group-hover:block whitespace-nowrap overflow-hidden transition-opacity duration-300">{item.label}</span>
                       </Link>
                     )
                   })}
@@ -165,7 +168,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
             {/* Relatórios (Menu Expansível Principal) */}
             <div>
-              <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block lg:hidden xl:block group-hover:block whitespace-nowrap">
                 Relatórios e Análises
               </h3>
               <div className="space-y-1">
@@ -178,10 +181,10 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   }`}
                 >
                   <span className="flex items-center">
-                    <BarChart3 className={`mr-3 h-5 w-5 ${isRelatoriosParentActive ? "text-white" : "text-gray-400"}`} />
-                    Relatórios
+                    <BarChart3 className={`flex-shrink-0 mr-3 h-5 w-5 ${isRelatoriosParentActive ? "text-white" : "text-gray-400"}`} />
+                    <span className="block lg:hidden xl:block group-hover:block whitespace-nowrap overflow-hidden">Relatórios</span>
                   </span>
-                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${relatoriosOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${relatoriosOpen ? 'rotate-180' : ''} block lg:hidden xl:block group-hover:block flex-shrink-0`} />
                 </button>
                 
                 <div 
@@ -222,7 +225,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           {/* User Info & Footer */}
           <div className="border-t border-white/10 pt-4 mt-6 space-y-2">
             {usuario && (
-              <div className="px-3 py-2 rounded-lg bg-white/5 mb-2">
+              <div className="px-3 py-2 rounded-lg bg-white/5 mb-2 block lg:hidden xl:block group-hover:block whitespace-nowrap overflow-hidden">
                 <p className="text-sm font-medium text-white truncate">{usuario.nome}</p>
                 <p className="text-xs text-gray-500">{usuario.role === 'admin' ? 'Administrador' : 'Vendedor'}</p>
               </div>
@@ -231,24 +234,24 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             <Link
               href="/dashboard/configuracoes"
               onClick={onClose}
-              className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors overflow-hidden ${
                 isItemActive("/dashboard/configuracoes", true)
                   ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
                   : "text-gray-300 hover:bg-white/5 hover:text-white"
               }`}
             >
-              <Settings className={`mr-3 h-5 w-5 ${isItemActive("/dashboard/configuracoes", true) ? "text-white" : "text-gray-400"}`} />
-              Configurações
+              <Settings className={`flex-shrink-0 mr-3 h-5 w-5 ${isItemActive("/dashboard/configuracoes", true) ? "text-white" : "text-gray-400"}`} />
+              <span className="block lg:hidden xl:block group-hover:block whitespace-nowrap overflow-hidden">Configurações</span>
             </Link>
             <button
               onClick={() => {
                 logout();
                 if (onClose) onClose();
               }}
-              className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+              className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors overflow-hidden"
             >
-              <LogOut className="mr-3 h-5 w-5" />
-              Sair
+              <LogOut className="flex-shrink-0 mr-3 h-5 w-5" />
+              <span className="block lg:hidden xl:block group-hover:block whitespace-nowrap overflow-hidden">Sair</span>
             </button>
           </div>
         </div>
