@@ -50,6 +50,10 @@ interface CrossSellOpportunity {
     tabelaLabel: string
     categoriaFaltante: string
     produtoSugerido: string
+    produtoCodigo: string
+    produtoUnidade: string
+    produtoPreco: number
+    fabricaNome: string
     volumeCategoriaPrincipal: number
     categoriaForte: string
 }
@@ -71,7 +75,7 @@ async function minerarGapDeMix(): Promise<CrossSellOpportunity[]> {
     // 2. Buscar todos os produtos ativos e agrupar por categoria
     const produtos = await prisma.produto.findMany({
         where: { ativo: true },
-        select: { id: true, nome: true, categoria: true }
+        select: { id: true, nome: true, categoria: true, codigo: true, unidade: true, preco50a199: true, preco200a699: true, precoAtacado: true, precoAtacadoAVista: true, precoRedes: true, fabrica: { select: { nome: true } } }
     })
 
     // Mapa de produto -> categoria
@@ -83,12 +87,12 @@ async function minerarGapDeMix(): Promise<CrossSellOpportunity[]> {
         categoriasDisponiveis.add(cat)
     }
 
-    // Mapa de categoria -> nome do produto sugerido (pick the first active product in category)
-    const categoriaProdutoSugerido = new Map<string, string>()
+    // Mapa de categoria -> produto sugerido completo (pick the first active product in category)
+    const categoriaProdutoSugerido = new Map<string, typeof produtos[0]>()
     for (const p of produtos) {
         const cat = (p.categoria || 'Geral').trim()
         if (!categoriaProdutoSugerido.has(cat)) {
-            categoriaProdutoSugerido.set(cat, p.nome)
+            categoriaProdutoSugerido.set(cat, p)
         }
     }
 
@@ -161,8 +165,16 @@ async function minerarGapDeMix(): Promise<CrossSellOpportunity[]> {
             if (categoriasDoCliente.has(catDisponivel)) continue // Já compra
             if (catDisponivel === 'Geral') continue // Skip generic
 
-            const prodSugerido = categoriaProdutoSugerido.get(catDisponivel)
-            if (!prodSugerido) continue
+            const prodObj = categoriaProdutoSugerido.get(catDisponivel)
+            if (!prodObj) continue
+
+            // Obter preço correto baseado na tabela do cliente
+            const tabelaKey = (cliente.tabelaPreco || '50a199').toLowerCase().replace(/\s/g, '')
+            let preco = Number(prodObj.preco50a199) || 0
+            if (tabelaKey.includes('200') || tabelaKey.includes('699')) preco = Number(prodObj.preco200a699) || preco
+            else if (tabelaKey === 'avista') preco = Number(prodObj.precoAtacadoAVista) || preco
+            else if (tabelaKey.includes('atacado')) preco = Number(prodObj.precoAtacado) || preco
+            else if (tabelaKey.includes('redes') || tabelaKey.includes('rede')) preco = Number(prodObj.precoRedes) || preco
 
             opportunities.push({
                 clienteId: cliente.id,
@@ -171,7 +183,11 @@ async function minerarGapDeMix(): Promise<CrossSellOpportunity[]> {
                 tabelaPreco: cliente.tabelaPreco || '50a199',
                 tabelaLabel: getTabelaLabel(cliente.tabelaPreco),
                 categoriaFaltante: catDisponivel,
-                produtoSugerido: prodSugerido,
+                produtoSugerido: prodObj.nome,
+                produtoCodigo: prodObj.codigo,
+                produtoUnidade: prodObj.unidade || 'CX',
+                produtoPreco: preco,
+                fabricaNome: prodObj.fabrica?.nome || '',
                 volumeCategoriaPrincipal: categoriaForte[1],
                 categoriaForte: categoriaForte[0],
             })

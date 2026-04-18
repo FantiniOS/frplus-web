@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users, Download } from 'lucide-react';
 import { MessageModal } from '@/components/dashboard/MessageModal';
 import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
 import ExpansionProposalGenerator from './ExpansionProposalGenerator';
@@ -55,6 +55,10 @@ interface CrossSellItem {
     tabelaLabel: string;
     categoriaFaltante: string;
     produtoSugerido: string;
+    produtoCodigo: string;
+    produtoUnidade: string;
+    produtoPreco: number;
+    fabricaNome: string;
     argumentoIA: string;
     volumeCategoriaPrincipal: number;
     categoriaForte: string;
@@ -96,6 +100,8 @@ export default function AIInsightsClient() {
     const [crossSellingItems, setCrossSellingItems] = useState<CrossSellItem[]>([]);
     const [crossSellingLoading, setCrossSellingLoading] = useState(false);
     const [crossSellingLoaded, setCrossSellingLoaded] = useState(false);
+    const [generatingPdfFor, setGeneratingPdfFor] = useState<string | null>(null);
+    const [copiedPitchFor, setCopiedPitchFor] = useState<string | null>(null);
     const [summaries, setSummaries] = useState({
         prestesAComprar: { total: 0 },
         opportunities: { total: 0, upgrade: 0, crossSell: 0, seasonal: 0 },
@@ -715,15 +721,200 @@ export default function AIInsightsClient() {
                                                             </p>
                                                         </div>
 
-                                                        {/* Card Footer */}
-                                                        <div className="p-3 pt-0">
-                                                            <Link
-                                                                href={`/dashboard/pedidos?clienteId=${item.clienteId}`}
-                                                                className="flex w-full items-center justify-center gap-2 py-2.5 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs font-bold uppercase tracking-wide hover:bg-yellow-500/20 border border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-200"
+                                                        {/* Card Footer — 2 Actions */}
+                                                        <div className="p-3 pt-0 space-y-2">
+                                                            <button
+                                                                onClick={async () => {
+                                                                    setGeneratingPdfFor(`${item.clienteId}-${idx}`);
+                                                                    try {
+                                                                        const jsPDF = (await import('jspdf')).default;
+                                                                        const autoTable = (await import('jspdf-autotable')).default;
+
+                                                                        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                                                                        const pw = doc.internal.pageSize.getWidth();
+                                                                        const ph = doc.internal.pageSize.getHeight();
+                                                                        const ml = 12;
+                                                                        const mr = 12;
+
+                                                                        // Colors
+                                                                        const cDark: [number, number, number] = [10, 10, 14];
+                                                                        const cBlue: [number, number, number] = [37, 99, 235];
+                                                                        const cCyan: [number, number, number] = [6, 182, 212];
+                                                                        const cGreen: [number, number, number] = [16, 185, 129];
+                                                                        const cOrange: [number, number, number] = [249, 115, 22];
+                                                                        const cMuted: [number, number, number] = [120, 120, 140];
+                                                                        const cLight: [number, number, number] = [200, 200, 220];
+                                                                        const cBorder: [number, number, number] = [226, 232, 240];
+                                                                        const cRowEven: [number, number, number] = [250, 251, 254];
+
+                                                                        // === HEADER ===
+                                                                        const headerH = 34;
+                                                                        doc.setFillColor(...cDark);
+                                                                        doc.rect(0, 0, pw, headerH, 'F');
+                                                                        doc.setFillColor(...cBlue);
+                                                                        doc.rect(0, headerH, pw, 1.5, 'F');
+                                                                        doc.setFillColor(...cCyan);
+                                                                        doc.rect(pw * 0.4, headerH, pw * 0.6, 1.5, 'F');
+
+                                                                        // Logo attempt
+                                                                        try {
+                                                                            const logoImg = new Image();
+                                                                            logoImg.crossOrigin = 'Anonymous';
+                                                                            await new Promise<void>((res, rej) => {
+                                                                                logoImg.onload = () => {
+                                                                                    const canvas = document.createElement('canvas');
+                                                                                    canvas.width = logoImg.width;
+                                                                                    canvas.height = logoImg.height;
+                                                                                    const ctx = canvas.getContext('2d');
+                                                                                    if (ctx) {
+                                                                                        ctx.drawImage(logoImg, 0, 0);
+                                                                                        const d = canvas.toDataURL('image/png');
+                                                                                        const lH = 17;
+                                                                                        const lW = logoImg.width * (lH / logoImg.height);
+                                                                                        doc.addImage(d, 'PNG', ml, 5, lW, lH);
+                                                                                    }
+                                                                                    res();
+                                                                                };
+                                                                                logoImg.onerror = () => res();
+                                                                                logoImg.src = window.location.origin + '/logo.png';
+                                                                            });
+                                                                        } catch { /* logo skip */ }
+
+                                                                        doc.setFontSize(12);
+                                                                        doc.setFont('helvetica', 'bold');
+                                                                        doc.setTextColor(255, 255, 255);
+                                                                        doc.text('PROPOSTA COMERCIAL — OPORTUNIDADE CROSS-SELLING', pw - mr, 13, { align: 'right' });
+
+                                                                        doc.setFontSize(8);
+                                                                        doc.setFont('helvetica', 'normal');
+                                                                        doc.setTextColor(...cLight);
+                                                                        doc.text(`${item.fabricaNome || 'Representada'} | ${item.tabelaLabel} | Gerado por IA`, pw - mr, 19, { align: 'right' });
+
+                                                                        const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                                                                        doc.setFontSize(7);
+                                                                        doc.text(`Emitido em ${dateStr}`, pw - mr, 24, { align: 'right' });
+
+                                                                        doc.setFontSize(7);
+                                                                        doc.text(`Cliente: ${item.clienteNome}`, pw - mr, 29, { align: 'right' });
+
+                                                                        let startY = headerH + 6;
+
+                                                                        // === FINANCIAL TABLE ===
+                                                                        const custoNF = item.produtoPreco;
+                                                                        const impostoRate = 0.12;
+                                                                        const custoReal = custoNF * (1 + impostoRate);
+                                                                        const tLower = item.tabelaPreco.toLowerCase();
+                                                                        const margemRate = (tLower.includes('atacado') || tLower.includes('avista')) ? 0.10 : tLower.includes('redes') ? 0.15 : 0.22;
+                                                                        const precoGondola = custoReal / (1 - margemRate);
+                                                                        const margemPercent = margemRate * 100;
+                                                                        const qtdSimulacao = 10;
+                                                                        const lucroUnit = precoGondola - custoReal;
+                                                                        const lucroProj = lucroUnit * qtdSimulacao;
+
+                                                                        const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                                                        const isAtacado = tLower.includes('atacado') || tLower.includes('avista');
+                                                                        const colPrecoLabel = isAtacado ? 'Preço Repasse Sug.' : 'Preço Gôndola Sug.';
+
+                                                                        autoTable(doc, {
+                                                                            startY,
+                                                                            head: [['Produto', 'Vol. (CX)', 'Cobertura', 'Custo NF', 'Custo Real', colPrecoLabel, 'Margem', 'Lucro Proj.']],
+                                                                            body: [
+                                                                                [
+                                                                                    item.produtoSugerido,
+                                                                                    `${qtdSimulacao}`,
+                                                                                    'A definir',
+                                                                                    fmtBRL(custoNF),
+                                                                                    fmtBRL(custoReal),
+                                                                                    fmtBRL(precoGondola),
+                                                                                    `${margemPercent.toFixed(0)}%`,
+                                                                                    fmtBRL(lucroProj),
+                                                                                ]
+                                                                            ],
+                                                                            foot: [['TOTAL', `${qtdSimulacao}`, '', fmtBRL(custoNF * qtdSimulacao), fmtBRL(custoReal * qtdSimulacao), '', '', fmtBRL(lucroProj)]],
+                                                                            theme: 'striped',
+                                                                            tableWidth: 'wrap',
+                                                                            styles: { fontSize: 7, cellPadding: 2, halign: 'left', lineColor: cBorder, lineWidth: 0.2, overflow: 'ellipsize' },
+                                                                            headStyles: { fillColor: cDark, textColor: 255, fontStyle: 'bold', cellPadding: 3, halign: 'left', fontSize: 6.5 },
+                                                                            footStyles: { fillColor: [30, 30, 40], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+                                                                            alternateRowStyles: { fillColor: cRowEven },
+                                                                            columnStyles: {
+                                                                                0: { fontStyle: 'bold', textColor: [20, 20, 30], cellWidth: 80 },
+                                                                                1: { halign: 'center', textColor: cMuted, cellWidth: 18 },
+                                                                                2: { halign: 'center', textColor: cMuted, cellWidth: 22 },
+                                                                                3: { halign: 'right', textColor: cMuted, cellWidth: 28 },
+                                                                                4: { halign: 'right', textColor: cOrange, fontStyle: 'bold', cellWidth: 28 },
+                                                                                5: { halign: 'right', textColor: cBlue, fontStyle: 'bold', cellWidth: 34 },
+                                                                                6: { halign: 'center', textColor: cMuted, cellWidth: 18 },
+                                                                                7: { halign: 'right', textColor: cGreen, fontStyle: 'bold', cellWidth: 30 }
+                                                                            },
+                                                                            margin: { left: ml, right: mr },
+                                                                        });
+
+                                                                        startY = (doc as any).lastAutoTable.finalY + 8;
+
+                                                                        // === AI ARGUMENT BLOCK ===
+                                                                        const argBlockW = pw - ml - mr;
+                                                                        doc.setFillColor(30, 20, 50);
+                                                                        doc.roundedRect(ml, startY, argBlockW, 28, 2, 2, 'F');
+                                                                        doc.setFillColor(139, 92, 246);
+                                                                        doc.rect(ml, startY, 3, 28, 'F');
+
+                                                                        doc.setFontSize(8);
+                                                                        doc.setFont('helvetica', 'bold');
+                                                                        doc.setTextColor(139, 92, 246);
+                                                                        doc.text('ARGUMENTO ESTRATÉGICO (GERADO POR IA)', ml + 8, startY + 6);
+
+                                                                        doc.setFontSize(7);
+                                                                        doc.setFont('helvetica', 'normal');
+                                                                        doc.setTextColor(220, 220, 230);
+                                                                        const argLines = doc.splitTextToSize(item.argumentoIA, argBlockW - 16);
+                                                                        doc.text(argLines.slice(0, 4), ml + 8, startY + 13);
+
+                                                                        startY += 34;
+
+                                                                        // === FOOTER ===
+                                                                        const footerY = ph - 7;
+                                                                        doc.setDrawColor(...cBorder);
+                                                                        doc.setLineWidth(0.3);
+                                                                        doc.line(ml, footerY - 3, pw - mr, footerY - 3);
+                                                                        doc.setFontSize(6.5);
+                                                                        doc.setFont('helvetica', 'normal');
+                                                                        doc.setTextColor(...cMuted);
+                                                                        doc.text('FRPlus - Gestao Comercial Inteligente', ml, footerY);
+                                                                        doc.text('Valores estimados. Simulacao com 10 CX e imposto de 12% (ICMS). Precos sujeitos a alteracao.', pw / 2, footerY, { align: 'center' });
+
+                                                                        const nomeClean = item.clienteNome.replace(/[^a-zA-Z0-9]/g, '_');
+                                                                        doc.save(`Proposta_CrossSell_${nomeClean}.pdf`);
+                                                                    } catch (err) {
+                                                                        console.error('[CrossSell PDF] Erro:', err);
+                                                                    } finally {
+                                                                        setGeneratingPdfFor(null);
+                                                                    }
+                                                                }}
+                                                                disabled={generatingPdfFor === `${item.clienteId}-${idx}`}
+                                                                className="flex w-full items-center justify-center gap-2 py-2.5 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs font-bold uppercase tracking-wide hover:bg-yellow-500/20 border border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-200 disabled:opacity-50"
                                                             >
-                                                                <ShoppingBag className="w-3.5 h-3.5" />
-                                                                Abrir Pedido
-                                                            </Link>
+                                                                {generatingPdfFor === `${item.clienteId}-${idx}` ? (
+                                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                ) : (
+                                                                    <Download className="w-3.5 h-3.5" />
+                                                                )}
+                                                                Gerar Proposta
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    navigator.clipboard.writeText(item.argumentoIA);
+                                                                    setCopiedPitchFor(`${item.clienteId}-${idx}`);
+                                                                    setTimeout(() => setCopiedPitchFor(null), 2000);
+                                                                }}
+                                                                className="flex w-full items-center justify-center gap-2 py-2 rounded-lg bg-white/5 text-gray-400 text-xs font-medium hover:bg-white/10 hover:text-white border border-white/[0.06] transition-all duration-200"
+                                                            >
+                                                                {copiedPitchFor === `${item.clienteId}-${idx}` ? (
+                                                                    <><CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> <span className="text-green-400">Copiado!</span></>
+                                                                ) : (
+                                                                    <><Copy className="w-3.5 h-3.5" /> Copiar Pitch</>
+                                                                )}
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 );
