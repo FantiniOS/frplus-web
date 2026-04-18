@@ -252,6 +252,10 @@ export default function AIInsightsClient() {
             if (res.ok) {
                 const data = await res.json();
                 setCrossSellingItems(data.crossSelling || []);
+                setCrossSellingLoaded(true);
+                setTimeout(() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 100);
             }
         } catch (error) {
             console.error('Error fetching cross-selling:', error);
@@ -753,287 +757,7 @@ export default function AIInsightsClient() {
                             </div>
                         )}
 
-                        {/* ============================================================ */}
-                        {/* MODAL DE PRÉ-VISUALIZAÇÃO — PROPOSTA CROSS-SELLING           */}
-                        {/* ============================================================ */}
-                        {previewItem && (() => {
-                            const pi = previewItem;
-                            const custoNF = pi.produtoPreco;
-                            const custoReal = pi.custoReal;
-                            const precoGondola = pi.precoGondola;
-                            const margemPercent = pi.margemPercent;
-                            
-                            const lucroUnit = precoGondola - custoReal;
-                            const lucroProj = lucroUnit * previewVolume;
-                            const totalCustoNF = custoNF * previewVolume;
-                            const totalCustoReal = custoReal * previewVolume;
-                            const tLower = pi.tabelaPreco.toLowerCase();
-                            const isAtacado = tLower.includes('atacado') || tLower.includes('avista');
-                            const colPrecoLabel = isAtacado ? 'Preço Repasse Sug.' : 'Preço Gôndola Sug.';
-                            const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-                            return (
-                                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                                    {/* Backdrop */}
-                                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !previewDownloading && setPreviewItem(null)} />
-
-                                    {/* Modal */}
-                                    <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#0c0c10] shadow-2xl">
-                                        {/* Header */}
-                                        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#0c0c10]/95 backdrop-blur-md">
-                                            <div>
-                                                <h2 className="text-base font-bold text-white">Simulação de Proposta — {pi.clienteNome}</h2>
-                                                <p className="text-xs text-gray-500 mt-0.5">{pi.fabricaNome || 'Representada'} · {pi.tabelaLabel} · {pi.produtoSugerido}</p>
-                                            </div>
-                                            <button onClick={() => !previewDownloading && setPreviewItem(null)} className="p-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
-                                                <X className="w-5 h-5" />
-                                            </button>
-                                        </div>
-
-                                        {/* Body */}
-                                        <div className="p-6 space-y-6">
-                                            {/* Financial Table */}
-                                            <div className="overflow-x-auto rounded-xl border border-white/10">
-                                                <table className="w-full text-xs">
-                                                    <thead>
-                                                        <tr className="bg-[#0a0a0e] text-left">
-                                                            <th className="px-4 py-3 font-bold text-gray-300">Produto</th>
-                                                            <th className="px-3 py-3 font-bold text-gray-300 text-center">Vol. (CX)</th>
-                                                            <th className="px-3 py-3 font-bold text-gray-300 text-center">Cobertura</th>
-                                                            <th className="px-3 py-3 font-bold text-gray-300 text-right">Custo NF</th>
-                                                            <th className="px-3 py-3 font-bold text-gray-300 text-right">Custo Real</th>
-                                                            <th className="px-3 py-3 font-bold text-gray-300 text-right">{colPrecoLabel}</th>
-                                                            <th className="px-3 py-3 font-bold text-gray-300 text-center">Margem</th>
-                                                            <th className="px-3 py-3 font-bold text-gray-300 text-right">Lucro Proj.</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <tr className="border-t border-white/5 bg-white/[0.02]">
-                                                            <td className="px-4 py-3 font-bold text-white">{pi.produtoSugerido}</td>
-                                                            <td className="px-3 py-3 text-center">
-                                                                <input
-                                                                    type="number"
-                                                                    min={1}
-                                                                    value={previewVolume}
-                                                                    onChange={(e) => setPreviewVolume(Math.max(1, parseInt(e.target.value) || 1))}
-                                                                    className="w-16 px-2 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-center text-xs font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500/40 transition-all"
-                                                                />
-                                                            </td>
-                                                            <td className="px-3 py-3 text-center text-gray-500">A definir</td>
-                                                            <td className="px-3 py-3 text-right text-gray-400">{fmtBRL(custoNF)}</td>
-                                                            <td className="px-3 py-3 text-right text-orange-400 font-bold">{fmtBRL(custoReal)}</td>
-                                                            <td className="px-3 py-3 text-right text-blue-400 font-bold">{fmtBRL(precoGondola)}</td>
-                                                            <td className="px-3 py-3 text-center text-gray-400">{margemPercent.toFixed(0)}%</td>
-                                                            <td className="px-3 py-3 text-right text-emerald-400 font-bold">{fmtBRL(lucroProj)}</td>
-                                                        </tr>
-                                                    </tbody>
-                                                    <tfoot>
-                                                        <tr className="border-t border-white/10 bg-[#0a0a0e]">
-                                                            <td className="px-4 py-3 font-bold text-white">TOTAL</td>
-                                                            <td className="px-3 py-3 text-center font-bold text-white">{previewVolume}</td>
-                                                            <td className="px-3 py-3"></td>
-                                                            <td className="px-3 py-3 text-right font-bold text-white">{fmtBRL(totalCustoNF)}</td>
-                                                            <td className="px-3 py-3 text-right font-bold text-orange-400">{fmtBRL(totalCustoReal)}</td>
-                                                            <td className="px-3 py-3"></td>
-                                                            <td className="px-3 py-3"></td>
-                                                            <td className="px-3 py-3 text-right font-bold text-emerald-400 text-sm">{fmtBRL(lucroProj)}</td>
-                                                        </tr>
-                                                    </tfoot>
-                                                </table>
-                                            </div>
-
-                                            {/* Pitch Editor */}
-                                            <div>
-                                                <div className="flex items-center gap-1.5 mb-2">
-                                                    <Bot className="w-4 h-4 text-violet-400" />
-                                                    <span className="text-xs font-bold text-violet-400 uppercase tracking-wider">Argumento de Venda (editável)</span>
-                                                </div>
-                                                <textarea
-                                                    value={previewPitch}
-                                                    onChange={(e) => setPreviewPitch(e.target.value)}
-                                                    rows={4}
-                                                    className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-sm text-gray-200 leading-relaxed placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/30 resize-none transition-all"
-                                                    placeholder="Edite o argumento de venda aqui..."
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Footer Actions */}
-                                        <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10 bg-[#0c0c10]/95 backdrop-blur-md">
-                                            <button
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(previewPitch);
-                                                    setPreviewCopied(true);
-                                                    setTimeout(() => {
-                                                        setPreviewCopied(false);
-                                                        setPreviewItem(null);
-                                                    }, 1200);
-                                                }}
-                                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/5 text-gray-300 text-sm font-medium hover:bg-white/10 hover:text-white border border-white/10 transition-all"
-                                            >
-                                                {previewCopied ? (
-                                                    <><CheckCircle2 className="w-4 h-4 text-green-400" /> <span className="text-green-400">Copiado!</span></>
-                                                ) : (
-                                                    <><Copy className="w-4 h-4" /> Copiar Texto e Fechar</>
-                                                )}
-                                            </button>
-                                            <button
-                                                disabled={previewDownloading}
-                                                onClick={async () => {
-                                                    setPreviewDownloading(true);
-                                                    try {
-                                                        const jsPDF = (await import('jspdf')).default;
-                                                        const autoTable = (await import('jspdf-autotable')).default;
-
-                                                        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-                                                        const pw = doc.internal.pageSize.getWidth();
-                                                        const ph = doc.internal.pageSize.getHeight();
-                                                        const ml = 12;
-                                                        const mr = 12;
-
-                                                        const cDark: [number, number, number] = [10, 10, 14];
-                                                        const cBlue: [number, number, number] = [37, 99, 235];
-                                                        const cCyan: [number, number, number] = [6, 182, 212];
-                                                        const cGreen: [number, number, number] = [16, 185, 129];
-                                                        const cOrange: [number, number, number] = [249, 115, 22];
-                                                        const cMuted: [number, number, number] = [120, 120, 140];
-                                                        const cLight: [number, number, number] = [200, 200, 220];
-                                                        const cBorder: [number, number, number] = [226, 232, 240];
-                                                        const cRowEven: [number, number, number] = [250, 251, 254];
-
-                                                        // Header
-                                                        const headerH = 34;
-                                                        doc.setFillColor(...cDark);
-                                                        doc.rect(0, 0, pw, headerH, 'F');
-                                                        doc.setFillColor(...cBlue);
-                                                        doc.rect(0, headerH, pw, 1.5, 'F');
-                                                        doc.setFillColor(...cCyan);
-                                                        doc.rect(pw * 0.4, headerH, pw * 0.6, 1.5, 'F');
-
-                                                        try {
-                                                            const logoImg = new Image();
-                                                            logoImg.crossOrigin = 'Anonymous';
-                                                            await new Promise<void>((res) => {
-                                                                logoImg.onload = () => {
-                                                                    const canvas = document.createElement('canvas');
-                                                                    canvas.width = logoImg.width;
-                                                                    canvas.height = logoImg.height;
-                                                                    const ctx = canvas.getContext('2d');
-                                                                    if (ctx) {
-                                                                        ctx.drawImage(logoImg, 0, 0);
-                                                                        const d = canvas.toDataURL('image/png');
-                                                                        const lH = 17;
-                                                                        const lW = logoImg.width * (lH / logoImg.height);
-                                                                        doc.addImage(d, 'PNG', ml, 5, lW, lH);
-                                                                    }
-                                                                    res();
-                                                                };
-                                                                logoImg.onerror = () => res();
-                                                                logoImg.src = window.location.origin + '/logo.png';
-                                                            });
-                                                        } catch { /* skip */ }
-
-                                                        doc.setFontSize(12);
-                                                        doc.setFont('helvetica', 'bold');
-                                                        doc.setTextColor(255, 255, 255);
-                                                        doc.text('PROPOSTA COMERCIAL \u2014 OPORTUNIDADE CROSS-SELLING', pw - mr, 13, { align: 'right' });
-
-                                                        doc.setFontSize(8);
-                                                        doc.setFont('helvetica', 'normal');
-                                                        doc.setTextColor(...cLight);
-                                                        doc.text(`${pi.fabricaNome || 'Representada'} | ${pi.tabelaLabel} | Gerado por IA`, pw - mr, 19, { align: 'right' });
-
-                                                        const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-                                                        doc.setFontSize(7);
-                                                        doc.text(`Emitido em ${dateStr}`, pw - mr, 24, { align: 'right' });
-                                                        doc.text(`Cliente: ${pi.clienteNome}`, pw - mr, 29, { align: 'right' });
-
-                                                        let startY = headerH + 6;
-
-                                                        // Financial Table — uses EDITED volume
-                                                        autoTable(doc, {
-                                                            startY,
-                                                            head: [[' Produto', 'Vol. (CX)', 'Cobertura', 'Custo NF', 'Custo Real', colPrecoLabel, 'Margem', 'Lucro Proj.']],
-                                                            body: [[
-                                                                pi.produtoSugerido,
-                                                                `${previewVolume}`,
-                                                                'A definir',
-                                                                fmtBRL(custoNF),
-                                                                fmtBRL(custoReal),
-                                                                fmtBRL(precoGondola),
-                                                                `${margemPercent.toFixed(0)}%`,
-                                                                fmtBRL(lucroProj),
-                                                            ]],
-                                                            foot: [['TOTAL', `${previewVolume}`, '', fmtBRL(totalCustoNF), fmtBRL(totalCustoReal), '', '', fmtBRL(lucroProj)]],
-                                                            theme: 'striped',
-                                                            tableWidth: 'wrap',
-                                                            styles: { fontSize: 7, cellPadding: 2, halign: 'left', lineColor: cBorder, lineWidth: 0.2, overflow: 'ellipsize' },
-                                                            headStyles: { fillColor: cDark, textColor: 255, fontStyle: 'bold', cellPadding: 3, halign: 'left', fontSize: 6.5 },
-                                                            footStyles: { fillColor: [30, 30, 40], textColor: 255, fontStyle: 'bold', fontSize: 7 },
-                                                            alternateRowStyles: { fillColor: cRowEven },
-                                                            columnStyles: {
-                                                                0: { fontStyle: 'bold', textColor: [20, 20, 30], cellWidth: 80 },
-                                                                1: { halign: 'center', textColor: cMuted, cellWidth: 18 },
-                                                                2: { halign: 'center', textColor: cMuted, cellWidth: 22 },
-                                                                3: { halign: 'right', textColor: cMuted, cellWidth: 28 },
-                                                                4: { halign: 'right', textColor: cOrange, fontStyle: 'bold', cellWidth: 28 },
-                                                                5: { halign: 'right', textColor: cBlue, fontStyle: 'bold', cellWidth: 34 },
-                                                                6: { halign: 'center', textColor: cMuted, cellWidth: 18 },
-                                                                7: { halign: 'right', textColor: cGreen, fontStyle: 'bold', cellWidth: 30 }
-                                                            },
-                                                            margin: { left: ml, right: mr },
-                                                        });
-
-                                                        startY = (doc as any).lastAutoTable.finalY + 8;
-
-                                                        // AI Argument — uses EDITED pitch
-                                                        const argBlockW = pw - ml - mr;
-                                                        doc.setFillColor(30, 20, 50);
-                                                        doc.roundedRect(ml, startY, argBlockW, 28, 2, 2, 'F');
-                                                        doc.setFillColor(139, 92, 246);
-                                                        doc.rect(ml, startY, 3, 28, 'F');
-                                                        doc.setFontSize(8);
-                                                        doc.setFont('helvetica', 'bold');
-                                                        doc.setTextColor(139, 92, 246);
-                                                        doc.text('ARGUMENTO ESTRAT\u00c9GICO (GERADO POR IA)', ml + 8, startY + 6);
-                                                        doc.setFontSize(7);
-                                                        doc.setFont('helvetica', 'normal');
-                                                        doc.setTextColor(220, 220, 230);
-                                                        const argLines = doc.splitTextToSize(previewPitch, argBlockW - 16);
-                                                        doc.text(argLines.slice(0, 4), ml + 8, startY + 13);
-
-                                                        // Footer
-                                                        const footerY = ph - 7;
-                                                        doc.setDrawColor(...cBorder);
-                                                        doc.setLineWidth(0.3);
-                                                        doc.line(ml, footerY - 3, pw - mr, footerY - 3);
-                                                        doc.setFontSize(6.5);
-                                                        doc.setFont('helvetica', 'normal');
-                                                        doc.setTextColor(...cMuted);
-                                                        doc.text('FRPlus - Gestao Comercial Inteligente', ml, footerY);
-                                                        doc.text(`Valores estimados. Simulacao com ${previewVolume} CX e imposto de 12% (ICMS). Precos sujeitos a alteracao.`, pw / 2, footerY, { align: 'center' });
-
-                                                        doc.save(`Proposta_CrossSell_${pi.clienteNome.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
-                                                        setPreviewItem(null);
-                                                    } catch (err) {
-                                                        console.error('[CrossSell PDF] Erro:', err);
-                                                    } finally {
-                                                        setPreviewDownloading(false);
-                                                    }
-                                                }}
-                                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-yellow-500/20 text-yellow-400 text-sm font-bold hover:bg-yellow-500/30 border border-yellow-500/30 hover:border-yellow-500/50 transition-all disabled:opacity-50"
-                                            >
-                                                {previewDownloading ? (
-                                                    <><Loader2 className="w-4 h-4 animate-spin" /> Gerando PDF...</>
-                                                ) : (
-                                                    <><Download className="w-4 h-4" /> Finalizar e Baixar PDF</>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })()}
 
                         {/* Campaigns Tab */}
                         {activeTab === 'campaigns' && (
@@ -1705,6 +1429,289 @@ export default function AIInsightsClient() {
                     </div>
                 </div>
             )}
+
+            {/* ============================================================ */}
+            {/* MODAL DE PRÉ-VISUALIZAÇÃO — PROPOSTA CROSS-SELLING           */}
+            {/* Movido para a raiz para evitar stacking context do backdrop-blur */}
+            {/* ============================================================ */}
+            {previewItem && (() => {
+                const pi = previewItem;
+                const custoNF = pi.produtoPreco;
+                const custoReal = pi.custoReal;
+                const precoGondola = pi.precoGondola;
+                const margemPercent = pi.margemPercent;
+                
+                const lucroUnit = precoGondola - custoReal;
+                const lucroProj = lucroUnit * previewVolume;
+                const totalCustoNF = custoNF * previewVolume;
+                const totalCustoReal = custoReal * previewVolume;
+                const tLower = pi.tabelaPreco.toLowerCase();
+                const isAtacado = tLower.includes('atacado') || tLower.includes('avista');
+                const colPrecoLabel = isAtacado ? 'Preço Repasse Sug.' : 'Preço Gôndola Sug.';
+                const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                return (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                        {/* Backdrop */}
+                        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !previewDownloading && setPreviewItem(null)} />
+
+                        {/* Modal */}
+                        <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#0c0c10] shadow-2xl">
+                            {/* Header */}
+                            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#0c0c10]/95 backdrop-blur-md">
+                                <div>
+                                    <h2 className="text-base font-bold text-white">Simulação de Proposta — {pi.clienteNome}</h2>
+                                    <p className="text-xs text-gray-500 mt-0.5">{pi.fabricaNome || 'Representada'} · {pi.tabelaLabel} · {pi.produtoSugerido}</p>
+                                </div>
+                                <button onClick={() => !previewDownloading && setPreviewItem(null)} className="p-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Body */}
+                            <div className="p-6 space-y-6">
+                                {/* Financial Table */}
+                                <div className="overflow-x-auto rounded-xl border border-white/10">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="bg-[#0a0a0e] text-left">
+                                                <th className="px-4 py-3 font-bold text-gray-300">Produto</th>
+                                                <th className="px-3 py-3 font-bold text-gray-300 text-center">Vol. (CX)</th>
+                                                <th className="px-3 py-3 font-bold text-gray-300 text-center">Cobertura</th>
+                                                <th className="px-3 py-3 font-bold text-gray-300 text-right">Custo NF</th>
+                                                <th className="px-3 py-3 font-bold text-gray-300 text-right">Custo Real</th>
+                                                <th className="px-3 py-3 font-bold text-gray-300 text-right">{colPrecoLabel}</th>
+                                                <th className="px-3 py-3 font-bold text-gray-300 text-center">Margem</th>
+                                                <th className="px-3 py-3 font-bold text-gray-300 text-right">Lucro Proj.</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr className="border-t border-white/5 bg-white/[0.02]">
+                                                <td className="px-4 py-3 font-bold text-white">{pi.produtoSugerido}</td>
+                                                <td className="px-3 py-3 text-center">
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        value={previewVolume}
+                                                        onChange={(e) => setPreviewVolume(Math.max(1, parseInt(e.target.value) || 1))}
+                                                        className="w-16 px-2 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-center text-xs font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500/40 transition-all"
+                                                    />
+                                                </td>
+                                                <td className="px-3 py-3 text-center text-gray-500">A definir</td>
+                                                <td className="px-3 py-3 text-right text-gray-400">{fmtBRL(custoNF)}</td>
+                                                <td className="px-3 py-3 text-right text-orange-400 font-bold">{fmtBRL(custoReal)}</td>
+                                                <td className="px-3 py-3 text-right text-blue-400 font-bold">{fmtBRL(precoGondola)}</td>
+                                                <td className="px-3 py-3 text-center text-gray-400">{margemPercent.toFixed(0)}%</td>
+                                                <td className="px-3 py-3 text-right text-emerald-400 font-bold">{fmtBRL(lucroProj)}</td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="border-t border-white/10 bg-[#0a0a0e]">
+                                                <td className="px-4 py-3 font-bold text-white">TOTAL</td>
+                                                <td className="px-3 py-3 text-center font-bold text-white">{previewVolume}</td>
+                                                <td className="px-3 py-3"></td>
+                                                <td className="px-3 py-3 text-right font-bold text-white">{fmtBRL(totalCustoNF)}</td>
+                                                <td className="px-3 py-3 text-right font-bold text-orange-400">{fmtBRL(totalCustoReal)}</td>
+                                                <td className="px-3 py-3"></td>
+                                                <td className="px-3 py-3"></td>
+                                                <td className="px-3 py-3 text-right font-bold text-emerald-400 text-sm">{fmtBRL(lucroProj)}</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+
+                                {/* Pitch Editor */}
+                                <div>
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                        <Bot className="w-4 h-4 text-violet-400" />
+                                        <span className="text-xs font-bold text-violet-400 uppercase tracking-wider">Argumento de Venda (editável)</span>
+                                    </div>
+                                    <textarea
+                                        value={previewPitch}
+                                        onChange={(e) => setPreviewPitch(e.target.value)}
+                                        rows={4}
+                                        className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-sm text-gray-200 leading-relaxed placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/30 resize-none transition-all"
+                                        placeholder="Edite o argumento de venda aqui..."
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10 bg-[#0c0c10]/95 backdrop-blur-md">
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(previewPitch);
+                                        setPreviewCopied(true);
+                                        setTimeout(() => {
+                                            setPreviewCopied(false);
+                                            setPreviewItem(null);
+                                        }, 1200);
+                                    }}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/5 text-gray-300 text-sm font-medium hover:bg-white/10 hover:text-white border border-white/10 transition-all"
+                                >
+                                    {previewCopied ? (
+                                        <><CheckCircle2 className="w-4 h-4 text-green-400" /> <span className="text-green-400">Copiado!</span></>
+                                    ) : (
+                                        <><Copy className="w-4 h-4" /> Copiar Texto e Fechar</>
+                                    )}
+                                </button>
+                                <button
+                                    disabled={previewDownloading}
+                                    onClick={async () => {
+                                        setPreviewDownloading(true);
+                                        try {
+                                            const jsPDF = (await import('jspdf')).default;
+                                            const autoTable = (await import('jspdf-autotable')).default;
+
+                                            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                                            const pw = doc.internal.pageSize.getWidth();
+                                            const ph = doc.internal.pageSize.getHeight();
+                                            const ml = 12;
+                                            const mr = 12;
+
+                                            const cDark: [number, number, number] = [10, 10, 14];
+                                            const cBlue: [number, number, number] = [37, 99, 235];
+                                            const cCyan: [number, number, number] = [6, 182, 212];
+                                            const cGreen: [number, number, number] = [16, 185, 129];
+                                            const cOrange: [number, number, number] = [249, 115, 22];
+                                            const cMuted: [number, number, number] = [120, 120, 140];
+                                            const cLight: [number, number, number] = [200, 200, 220];
+                                            const cBorder: [number, number, number] = [226, 232, 240];
+                                            const cRowEven: [number, number, number] = [250, 251, 254];
+
+                                            // Header
+                                            const headerH = 34;
+                                            doc.setFillColor(...cDark);
+                                            doc.rect(0, 0, pw, headerH, 'F');
+                                            doc.setFillColor(...cBlue);
+                                            doc.rect(0, headerH, pw, 1.5, 'F');
+                                            doc.setFillColor(...cCyan);
+                                            doc.rect(pw * 0.4, headerH, pw * 0.6, 1.5, 'F');
+
+                                            try {
+                                                const logoImg = new Image();
+                                                logoImg.crossOrigin = 'Anonymous';
+                                                await new Promise<void>((res) => {
+                                                    logoImg.onload = () => {
+                                                        const canvas = document.createElement('canvas');
+                                                        canvas.width = logoImg.width;
+                                                        canvas.height = logoImg.height;
+                                                        const ctx = canvas.getContext('2d');
+                                                        if (ctx) {
+                                                            ctx.drawImage(logoImg, 0, 0);
+                                                            const d = canvas.toDataURL('image/png');
+                                                            const lH = 17;
+                                                            const lW = logoImg.width * (lH / logoImg.height);
+                                                            doc.addImage(d, 'PNG', ml, 5, lW, lH);
+                                                        }
+                                                        res();
+                                                    };
+                                                    logoImg.onerror = () => res();
+                                                    logoImg.src = window.location.origin + '/logo.png';
+                                                });
+                                            } catch { /* skip */ }
+
+                                            doc.setFontSize(12);
+                                            doc.setFont('helvetica', 'bold');
+                                            doc.setTextColor(255, 255, 255);
+                                            doc.text('PROPOSTA COMERCIAL \u2014 OPORTUNIDADE CROSS-SELLING', pw - mr, 13, { align: 'right' });
+
+                                            doc.setFontSize(8);
+                                            doc.setFont('helvetica', 'normal');
+                                            doc.setTextColor(...cLight);
+                                            doc.text(`${pi.fabricaNome || 'Representada'} | ${pi.tabelaLabel} | Gerado por IA`, pw - mr, 19, { align: 'right' });
+
+                                            const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                                            doc.setFontSize(7);
+                                            doc.text(`Emitido em ${dateStr}`, pw - mr, 24, { align: 'right' });
+                                            doc.text(`Cliente: ${pi.clienteNome}`, pw - mr, 29, { align: 'right' });
+
+                                            let startY = headerH + 6;
+
+                                            // Financial Table — uses EDITED volume
+                                            autoTable(doc, {
+                                                startY,
+                                                head: [[' Produto', 'Vol. (CX)', 'Cobertura', 'Custo NF', 'Custo Real', colPrecoLabel, 'Margem', 'Lucro Proj.']],
+                                                body: [[
+                                                    pi.produtoSugerido,
+                                                    `${previewVolume}`,
+                                                    'A definir',
+                                                    fmtBRL(custoNF),
+                                                    fmtBRL(custoReal),
+                                                    fmtBRL(precoGondola),
+                                                    `${margemPercent.toFixed(0)}%`,
+                                                    fmtBRL(lucroProj),
+                                                ]],
+                                                foot: [['TOTAL', `${previewVolume}`, '', fmtBRL(totalCustoNF), fmtBRL(totalCustoReal), '', '', fmtBRL(lucroProj)]],
+                                                theme: 'striped',
+                                                tableWidth: 'wrap',
+                                                styles: { fontSize: 7, cellPadding: 2, halign: 'left', lineColor: cBorder, lineWidth: 0.2, overflow: 'ellipsize' },
+                                                headStyles: { fillColor: cDark, textColor: 255, fontStyle: 'bold', cellPadding: 3, halign: 'left', fontSize: 6.5 },
+                                                footStyles: { fillColor: [30, 30, 40], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+                                                alternateRowStyles: { fillColor: cRowEven },
+                                                columnStyles: {
+                                                    0: { fontStyle: 'bold', textColor: [20, 20, 30], cellWidth: 80 },
+                                                    1: { halign: 'center', textColor: cMuted, cellWidth: 18 },
+                                                    2: { halign: 'center', textColor: cMuted, cellWidth: 22 },
+                                                    3: { halign: 'right', textColor: cMuted, cellWidth: 28 },
+                                                    4: { halign: 'right', textColor: cOrange, fontStyle: 'bold', cellWidth: 28 },
+                                                    5: { halign: 'right', textColor: cBlue, fontStyle: 'bold', cellWidth: 34 },
+                                                    6: { halign: 'center', textColor: cMuted, cellWidth: 18 },
+                                                    7: { halign: 'right', textColor: cGreen, fontStyle: 'bold', cellWidth: 30 }
+                                                },
+                                                margin: { left: ml, right: mr },
+                                            });
+
+                                            startY = (doc as any).lastAutoTable.finalY + 8;
+
+                                            // AI Argument — uses EDITED pitch
+                                            const argBlockW = pw - ml - mr;
+                                            doc.setFillColor(30, 20, 50);
+                                            doc.roundedRect(ml, startY, argBlockW, 28, 2, 2, 'F');
+                                            doc.setFillColor(139, 92, 246);
+                                            doc.rect(ml, startY, 3, 28, 'F');
+                                            doc.setFontSize(8);
+                                            doc.setFont('helvetica', 'bold');
+                                            doc.setTextColor(139, 92, 246);
+                                            doc.text('ARGUMENTO ESTRAT\u00c9GICO (GERADO POR IA)', ml + 8, startY + 6);
+                                            doc.setFontSize(7);
+                                            doc.setFont('helvetica', 'normal');
+                                            doc.setTextColor(220, 220, 230);
+                                            const argLines = doc.splitTextToSize(previewPitch, argBlockW - 16);
+                                            doc.text(argLines.slice(0, 4), ml + 8, startY + 13);
+
+                                            // Footer
+                                            const footerY = ph - 7;
+                                            doc.setDrawColor(...cBorder);
+                                            doc.setLineWidth(0.3);
+                                            doc.line(ml, footerY - 3, pw - mr, footerY - 3);
+                                            doc.setFontSize(6.5);
+                                            doc.setFont('helvetica', 'normal');
+                                            doc.setTextColor(...cMuted);
+                                            doc.text('FRPlus - Gestao Comercial Inteligente', ml, footerY);
+                                            doc.text(`Valores estimados. Simulacao com ${previewVolume} CX e imposto de 12% (ICMS). Precos sujeitos a alteracao.`, pw / 2, footerY, { align: 'center' });
+
+                                            doc.save(`Proposta_CrossSell_${pi.clienteNome.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+                                            setPreviewItem(null);
+                                        } catch (err) {
+                                            console.error('[CrossSell PDF] Erro:', err);
+                                        } finally {
+                                            setPreviewDownloading(false);
+                                        }
+                                    }}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-yellow-500/20 text-yellow-400 text-sm font-bold hover:bg-yellow-500/30 border border-yellow-500/30 hover:border-yellow-500/50 transition-all disabled:opacity-50"
+                                >
+                                    {previewDownloading ? (
+                                        <><Loader2 className="w-4 h-4 animate-spin" /> Gerando PDF...</>
+                                    ) : (
+                                        <><Download className="w-4 h-4" /> Finalizar e Baixar PDF</>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Message Modal */}
             <MessageModal
