@@ -47,6 +47,10 @@ interface CrossSellOpportunity {
     produtoCodigo: string
     produtoUnidade: string
     produtoPreco: number
+    custoReal: number
+    precoGondola: number
+    margemPercent: number
+    lucroProjetado20: number
     fabricaNome: string
     volumeCategoriaPrincipal: number
     categoriaForte: string
@@ -202,7 +206,16 @@ async function minerarGapDeMix(): Promise<CrossSellOpportunity[]> {
 
         const best = candidates[0]
         const prodObj = best.prod
+        
+        // --- CÁLCULO FINANCEIRO REAL (CENÁRIO 20 CAIXAS) ---
         const preco = getPrecoByTabela(prodObj, tabKey)
+        const impostoRate = 0.12
+        const custoReal = preco * (1 + impostoRate)
+        const margemRate = (tabKey.includes('atacado') || tabKey.includes('avista')) ? 0.10 : tabKey.includes('redes') ? 0.15 : 0.22
+        const precoGondola = custoReal / (1 - margemRate)
+        const margemPercent = margemRate * 100
+        const lucroUnit = precoGondola - custoReal
+        const lucroProj20 = lucroUnit * 20
 
         opportunities.push({
             clienteId: cliente.id,
@@ -215,6 +228,10 @@ async function minerarGapDeMix(): Promise<CrossSellOpportunity[]> {
             produtoCodigo: prodObj.codigo,
             produtoUnidade: prodObj.unidade || 'CX',
             produtoPreco: preco,
+            custoReal: custoReal,
+            precoGondola: precoGondola,
+            margemPercent: margemPercent,
+            lucroProjetado20: lucroProj20,
             fabricaNome: prodObj.fabrica?.nome || '',
             volumeCategoriaPrincipal: categoriaForte[1],
             categoriaForte: categoriaForte[0],
@@ -224,7 +241,7 @@ async function minerarGapDeMix(): Promise<CrossSellOpportunity[]> {
     // Ordenar: maior volume primeiro (clientes mais valiosos primeiro)
     opportunities.sort((a, b) => b.volumeCategoriaPrincipal - a.volumeCategoriaPrincipal)
 
-    return opportunities.slice(0, 30)
+    return opportunities.slice(0, 30) // Limitar a 30 resultados
 }
 
 // ============================================================
@@ -234,28 +251,29 @@ async function minerarGapDeMix(): Promise<CrossSellOpportunity[]> {
 async function gerarArgumentoDeVenda(
     nomeCliente: string,
     produtoFaltante: string,
-    tabelaLabel: string
+    tabelaLabel: string,
+    custoNF: number,
+    precoGondola: number,
+    margemPercent: number,
+    lucroProjetado20: number
 ): Promise<string> {
-    const tabelaLower = tabelaLabel.toLowerCase()
-    let regraTabela = ''
-    if (tabelaLower.includes('50') || tabelaLower.includes('199') || tabelaLower.includes('200') || tabelaLower.includes('699')) {
-        regraTabela = 'foque em giro rápido, defesa contra concorrência e consumidor final.'
-    } else if (tabelaLower.includes('atacado') && tabelaLower.includes('vista')) {
-        regraTabela = 'foque em margem de revenda, giro de capital e markup.'
-    } else if (tabelaLower.includes('atacado')) {
-        regraTabela = 'foque em margem de revenda, giro de capital e markup.'
-    } else if (tabelaLower.includes('redes') || tabelaLower.includes('rede')) {
-        regraTabela = 'foque em rentabilidade por m² de gôndola, gestão de categoria e verbas.'
-    } else {
-        regraTabela = 'foque em giro rápido, defesa contra concorrência e consumidor final.'
-    }
+    const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    const strCusto = fmtBRL(custoNF)
+    const strGondola = fmtBRL(precoGondola)
+    const strLucro = fmtBRL(lucroProjetado20)
+    
+    const systemPrompt = `Você é um estrategista comercial sênior falando com um comprador. 
+DADOS REAIS DA PROPOSTA: 
+- Cliente: ${nomeCliente}
+- Tabela: ${tabelaLabel}
+- Produto: ${produtoFaltante}
+- Custo NF atual: ${strCusto}
+- Preço de Gôndola Sugerido: ${strGondola}
+- Margem de Lucro: ${margemPercent.toFixed(0)}%
+- Lucro Líquido Projetado na compra de 20 caixas: ${strLucro}
 
-    const systemPrompt = `Você é um estrategista comercial agressivo. O cliente ${nomeCliente} compra muito, mas não possui ${produtoFaltante}. A tabela de preços dele é: ${tabelaLabel}.
-Crie um argumento de vendas persuasivo (máximo 4 linhas). Sem saudações.
-Regra pela tabela:
-- 50 a 199cx / 200 a 699cx: foque em giro rápido, defesa contra concorrência e consumidor final.
-- Atacado / Atacado a vista: foque em margem de revenda, giro de capital e markup.
-- Redes: foque em rentabilidade por m² de gôndola, gestão de categoria e verbas.`
+Sua tarefa: Escreva um pitch de vendas curto e agressivo (máximo 4 linhas) para o WhatsApp. 
+REGRA ABSOLUTA: PROIBIDO usar adjetivos genéricos (ex: 'excelente produto', 'aumente seus lucros'). Você DEVE usar os números exatos fornecidos acima para provar matematicamente por que ele deve comprar. Foque no Lucro Projetado em Reais e na Margem. Sem saudações.`
 
     // ---- TENTATIVA 1: Groq (primário) ----
     const groqKey = process.env.GROQ_API_KEY
@@ -271,9 +289,9 @@ Regra pela tabela:
                     model: 'llama-3.3-70b-versatile',
                     messages: [
                         { role: 'system', content: systemPrompt },
-                        { role: 'user', content: `Gere o argumento de venda para ${nomeCliente} sobre ${produtoFaltante}. Retorne APENAS o argumento, sem explicações extras.` }
+                        { role: 'user', content: `Gere o argumento de venda com o Lucro de ${strLucro} para ${nomeCliente}.` }
                     ],
-                    temperature: 0.7,
+                    temperature: 0.2, // Baixa temperatura para foco exato nos dados
                     max_tokens: 300
                 })
             })
@@ -311,7 +329,7 @@ Regra pela tabela:
         }
     }
 
-    return `${produtoFaltante} tem alta aderência para o perfil deste cliente. Introduzir esse produto no mix pode representar um ganho significativo de margem e competitividade.`
+    return `${produtoFaltante} proporciona uma margem de ${margemPercent.toFixed(0)}%. Ao focar no giro de 20 caixas, sua loja garante ${strLucro} de lucro limpo usando o preço sugerido de ${strGondola}.`
 }
 
 // ============================================================
@@ -341,18 +359,22 @@ export async function GET() {
                 cliente: o.clienteNome,
                 produto: o.produtoSugerido,
                 catFaltante: o.categoriaFaltante,
-                catForte: o.categoriaForte,
+                lucroProjetado20: o.lucroProjetado20
             })),
             null, 2
         ))
 
-        // ETAPA 2: Gerar argumentos de IA em paralelo (cada chamada com contexto isolado)
+        // ETAPA 2: Gerar argumentos de IA em paralelo (cada chamada com contexto isolado e exato)
         const results = await Promise.all(
             opportunities.map(async (opp) => {
                 const argumento = await gerarArgumentoDeVenda(
                     opp.clienteComprador || opp.clienteNome,
                     opp.produtoSugerido,
-                    opp.tabelaLabel
+                    opp.tabelaLabel,
+                    opp.produtoPreco,
+                    opp.precoGondola,
+                    opp.margemPercent,
+                    opp.lucroProjetado20
                 )
                 return {
                     ...opp,
@@ -361,7 +383,7 @@ export async function GET() {
             })
         )
 
-        // DEBUG: Log do array FINAL (com argumentos IA) — verificar unicidade
+        // DEBUG: Log do array FINAL
         console.log('[Cross-Sell] Array FINAL enviado ao frontend:', JSON.stringify(
             results.map(r => ({
                 cliente: r.clienteNome,

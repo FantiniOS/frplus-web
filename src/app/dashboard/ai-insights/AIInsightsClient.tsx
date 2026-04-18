@@ -58,6 +58,9 @@ interface CrossSellItem {
     produtoCodigo: string;
     produtoUnidade: string;
     produtoPreco: number;
+    custoReal: number;
+    precoGondola: number;
+    margemPercent: number;
     fabricaNome: string;
     argumentoIA: string;
     volumeCategoriaPrincipal: number;
@@ -731,7 +734,7 @@ export default function AIInsightsClient() {
                                                             <button
                                                                 onClick={() => {
                                                                     setPreviewItem(item);
-                                                                    setPreviewVolume(10);
+                                                                    setPreviewVolume(20);
                                                                     setPreviewPitch(item.argumentoIA);
                                                                     setPreviewCopied(false);
                                                                 }}
@@ -756,16 +759,15 @@ export default function AIInsightsClient() {
                         {previewItem && (() => {
                             const pi = previewItem;
                             const custoNF = pi.produtoPreco;
-                            const impostoRate = 0.12;
-                            const custoReal = custoNF * (1 + impostoRate);
-                            const tLower = pi.tabelaPreco.toLowerCase();
-                            const margemRate = (tLower.includes('atacado') || tLower.includes('avista')) ? 0.10 : tLower.includes('redes') ? 0.15 : 0.22;
-                            const precoGondola = custoReal / (1 - margemRate);
-                            const margemPercent = margemRate * 100;
+                            const custoReal = pi.custoReal;
+                            const precoGondola = pi.precoGondola;
+                            const margemPercent = pi.margemPercent;
+                            
                             const lucroUnit = precoGondola - custoReal;
                             const lucroProj = lucroUnit * previewVolume;
                             const totalCustoNF = custoNF * previewVolume;
                             const totalCustoReal = custoReal * previewVolume;
+                            const tLower = pi.tabelaPreco.toLowerCase();
                             const isAtacado = tLower.includes('atacado') || tLower.includes('avista');
                             const colPrecoLabel = isAtacado ? 'Preço Repasse Sug.' : 'Preço Gôndola Sug.';
                             const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
