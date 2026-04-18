@@ -1628,6 +1628,24 @@ export default function AIInsightsClient() {
 
                                             let startY = headerH + 6;
 
+                                            // AI Argument (Note from Rep)
+                                            doc.setFontSize(10);
+                                            doc.setFont('helvetica', 'bold');
+                                            doc.setTextColor(30, 30, 40);
+                                            doc.text('Resumo da Oportunidade:', ml, startY);
+                                            
+                                            startY += 5;
+                                            
+                                            doc.setFontSize(10);
+                                            doc.setFont('helvetica', 'italic');
+                                            doc.setTextColor(60, 60, 70);
+                                            const argBlockW = pw - ml - mr;
+                                            const argLines = doc.splitTextToSize(previewPitch, argBlockW);
+                                            doc.text(argLines, ml, startY);
+                                            
+                                            const pitchHeight = argLines.length * 4.5;
+                                            startY += pitchHeight + 4; // Add a small margin before the table
+
                                             // Financial Table — uses EDITED volume
                                             autoTable(doc, {
                                                 startY,
@@ -1661,24 +1679,6 @@ export default function AIInsightsClient() {
                                                 },
                                                 margin: { left: ml, right: mr },
                                             });
-
-                                            startY = (doc as any).lastAutoTable.finalY + 8;
-
-                                            // AI Argument — uses EDITED pitch
-                                            const argBlockW = pw - ml - mr;
-                                            doc.setFillColor(30, 20, 50);
-                                            doc.roundedRect(ml, startY, argBlockW, 28, 2, 2, 'F');
-                                            doc.setFillColor(139, 92, 246);
-                                            doc.rect(ml, startY, 3, 28, 'F');
-                                            doc.setFontSize(8);
-                                            doc.setFont('helvetica', 'bold');
-                                            doc.setTextColor(139, 92, 246);
-                                            doc.text('ARGUMENTO ESTRAT\u00c9GICO (GERADO POR IA)', ml + 8, startY + 6);
-                                            doc.setFontSize(7);
-                                            doc.setFont('helvetica', 'normal');
-                                            doc.setTextColor(220, 220, 230);
-                                            const argLines = doc.splitTextToSize(previewPitch, argBlockW - 16);
-                                            doc.text(argLines.slice(0, 4), ml + 8, startY + 13);
 
                                             // Footer
                                             const footerY = ph - 7;
