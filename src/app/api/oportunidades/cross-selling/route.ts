@@ -204,7 +204,9 @@ async function minerarGapDeMix(): Promise<CrossSellOpportunity[]> {
         // Sort by popularity DESC — most popular product this client doesn't have
         candidates.sort((a, b) => b.popularity - a.popularity)
 
-        const best = candidates[0]
+        // Select a random product from the top 5 to avoid suggesting the exact same product to everyone
+        const topCandidates = candidates.slice(0, 5)
+        const best = topCandidates[Math.floor(Math.random() * topCandidates.length)]
         const prodObj = best.prod
         
         // --- CÁLCULO FINANCEIRO REAL (CENÁRIO 20 CAIXAS) ---
@@ -251,6 +253,7 @@ async function minerarGapDeMix(): Promise<CrossSellOpportunity[]> {
 async function gerarArgumentoDeVenda(
     nomeCliente: string,
     produtoFaltante: string,
+    unidadeVenda: string,
     tabelaLabel: string,
     custoNF: number,
     precoGondola: number,
@@ -262,18 +265,20 @@ async function gerarArgumentoDeVenda(
     const strGondola = fmtBRL(precoGondola)
     const strLucro = fmtBRL(lucroProjetado20)
     
-    const systemPrompt = `Você é um estrategista comercial sênior falando com um comprador. 
-DADOS REAIS DA PROPOSTA: 
-- Cliente: ${nomeCliente}
-- Tabela: ${tabelaLabel}
-- Produto: ${produtoFaltante}
-- Custo NF atual: ${strCusto}
-- Preço de Gôndola Sugerido: ${strGondola}
-- Margem de Lucro: ${margemPercent.toFixed(0)}%
-- Lucro Líquido Projetado na compra de 20 caixas: ${strLucro}
+    const systemPrompt = `Você é um representante comercial experiente falando no WhatsApp com um comprador B2B que você já atende.
+DADOS PARA A VENDA: 
+- Contato/Cliente: ${nomeCliente}
+- Produto sugerido: ${produtoFaltante}
+- Unidade de venda: ${unidadeVenda}
+- Custo por ${unidadeVenda}: ${strCusto}
+- Lucro líquido projetado em um lote teste de 20 ${unidadeVenda}: ${strLucro}
 
-Sua tarefa: Escreva um pitch de vendas curto e agressivo (máximo 4 linhas) para o WhatsApp. 
-REGRA ABSOLUTA: PROIBIDO usar adjetivos genéricos (ex: 'excelente produto', 'aumente seus lucros'). Você DEVE usar os números exatos fornecidos acima para provar matematicamente por que ele deve comprar. Foque no Lucro Projetado em Reais e na Margem. Sem saudações.`
+REGRAS DE ESCRITA:
+1. Inicie com uma saudação natural de negócios (Ex: 'Fala [Nome], tudo bem?').
+2. Vá direto ao ponto mostrando o buraco no mix dele.
+3. NÃO use jargões de marketing ('excelente oportunidade', 'produto de alta demanda').
+4. Prove o valor citando EXATAMENTE os valores de Custo e Lucro Projetado em Reais para a quantidade de 20 ${unidadeVenda} informada acima.
+5. Seja agressivo e foque no dinheiro que ele vai colocar no bolso hoje.`
 
     // ---- TENTATIVA 1: Groq (primário) ----
     const groqKey = process.env.GROQ_API_KEY
@@ -329,7 +334,7 @@ REGRA ABSOLUTA: PROIBIDO usar adjetivos genéricos (ex: 'excelente produto', 'au
         }
     }
 
-    return `${produtoFaltante} proporciona uma margem de ${margemPercent.toFixed(0)}%. Ao focar no giro de 20 caixas, sua loja garante ${strLucro} de lucro limpo usando o preço sugerido de ${strGondola}.`
+    return `Fala ${nomeCliente.split(' ')[0]}, tudo bem? Notei um gap no seu mix para ${produtoFaltante}. O custo por ${unidadeVenda} é ${strCusto}, e em um lote teste de 20 ${unidadeVenda} você coloca ${strLucro} de lucro líquido no bolso vendendo a ${strGondola}. Bora pedir?`
 }
 
 // ============================================================
@@ -370,6 +375,7 @@ export async function GET() {
                 const argumento = await gerarArgumentoDeVenda(
                     opp.clienteComprador || opp.clienteNome,
                     opp.produtoSugerido,
+                    opp.produtoUnidade,
                     opp.tabelaLabel,
                     opp.produtoPreco,
                     opp.precoGondola,

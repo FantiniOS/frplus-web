@@ -1476,7 +1476,7 @@ export default function AIInsightsClient() {
                                         <thead>
                                             <tr className="bg-[#0a0a0e] text-left">
                                                 <th className="px-4 py-3 font-bold text-gray-300">Produto</th>
-                                                <th className="px-3 py-3 font-bold text-gray-300 text-center">Vol. (CX)</th>
+                                                <th className="px-3 py-3 font-bold text-gray-300 text-center">Vol. ({pi.produtoUnidade})</th>
                                                 <th className="px-3 py-3 font-bold text-gray-300 text-center">Cobertura</th>
                                                 <th className="px-3 py-3 font-bold text-gray-300 text-right">Custo NF</th>
                                                 <th className="px-3 py-3 font-bold text-gray-300 text-right">Custo Real</th>
@@ -1631,7 +1631,7 @@ export default function AIInsightsClient() {
                                             // Financial Table — uses EDITED volume
                                             autoTable(doc, {
                                                 startY,
-                                                head: [[' Produto', 'Vol. (CX)', 'Cobertura', 'Custo NF', 'Custo Real', colPrecoLabel, 'Margem', 'Lucro Proj.']],
+                                                head: [[' Produto', `Vol. (${pi.produtoUnidade})`, 'Cobertura', 'Custo NF', 'Custo Real', colPrecoLabel, 'Margem', 'Lucro Proj.']],
                                                 body: [[
                                                     pi.produtoSugerido,
                                                     `${previewVolume}`,
@@ -1689,7 +1689,7 @@ export default function AIInsightsClient() {
                                             doc.setFont('helvetica', 'normal');
                                             doc.setTextColor(...cMuted);
                                             doc.text('FRPlus - Gestao Comercial Inteligente', ml, footerY);
-                                            doc.text(`Valores estimados. Simulacao com ${previewVolume} CX e imposto de 12% (ICMS). Precos sujeitos a alteracao.`, pw / 2, footerY, { align: 'center' });
+                                            doc.text(`Valores estimados. Simulacao com ${previewVolume} ${pi.produtoUnidade} e imposto de 12% (ICMS). Precos sujeitos a alteracao.`, pw / 2, footerY, { align: 'center' });
 
                                             doc.save(`Proposta_CrossSell_${pi.clienteNome.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
                                             setPreviewItem(null);
