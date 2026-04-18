@@ -47,6 +47,19 @@ interface Opportunity {
     contextoParaIA?: string;
 }
 
+interface CrossSellItem {
+    clienteId: string;
+    clienteNome: string;
+    clienteComprador: string | null;
+    tabelaPreco: string;
+    tabelaLabel: string;
+    categoriaFaltante: string;
+    produtoSugerido: string;
+    argumentoIA: string;
+    volumeCategoriaPrincipal: number;
+    categoriaForte: string;
+}
+
 interface SalesInsight {
     type: 'lowTicket' | 'decliningVolume' | 'untappedPotential';
     clienteId: string;
@@ -78,6 +91,11 @@ export default function AIInsightsClient() {
     const [prestesAComprarClients, setPrestesAComprarClients] = useState<PrestesAComprarClient[]>([]);
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [salesInsights, setSalesInsights] = useState<SalesInsight[]>([]);
+
+    // Cross-Selling State
+    const [crossSellingItems, setCrossSellingItems] = useState<CrossSellItem[]>([]);
+    const [crossSellingLoading, setCrossSellingLoading] = useState(false);
+    const [crossSellingLoaded, setCrossSellingLoaded] = useState(false);
     const [summaries, setSummaries] = useState({
         prestesAComprar: { total: 0 },
         opportunities: { total: 0, upgrade: 0, crossSell: 0, seasonal: 0 },
@@ -210,6 +228,30 @@ export default function AIInsightsClient() {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    // Fetch Cross-Selling on tab activation (lazy load)
+    const fetchCrossSelling = useCallback(async () => {
+        if (crossSellingLoaded || crossSellingLoading) return;
+        setCrossSellingLoading(true);
+        try {
+            const res = await fetch('/api/oportunidades/cross-selling', { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                setCrossSellingItems(data.crossSelling || []);
+            }
+        } catch (error) {
+            console.error('Error fetching cross-selling:', error);
+        } finally {
+            setCrossSellingLoading(false);
+            setCrossSellingLoaded(true);
+        }
+    }, [crossSellingLoaded, crossSellingLoading]);
+
+    useEffect(() => {
+        if (activeTab === 'opportunities') {
+            fetchCrossSelling();
+        }
+    }, [activeTab, fetchCrossSelling]);
 
     const alertColors = {
         vermelho: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -576,96 +618,118 @@ export default function AIInsightsClient() {
                             </div>
                         )}
 
-                        {/* Opportunities Tab */}
+                        {/* Opportunities Tab — Cross-Selling AI Engine */}
                         {activeTab === 'opportunities' && (
-                            <div className="space-y-4">
-                                {opportunities.length === 0 ? (
-                                    <p className="text-center text-gray-500 py-8">Nenhuma oportunidade identificada</p>
-                                ) : (
-                                    <div className="grid gap-3">
-                                        {opportunities.map((opp, idx) => {
-                                            const typeLabels = {
-                                                upgrade: 'Upgrade',
-                                                crossSell: 'Aumento de Margem',
-                                                seasonal: 'Sazonal',
-                                                reactivation: 'Reativação'
-                                            };
-                                            const typeLabel = typeLabels[opp.type] || opp.type;
-
-                                            // Handle Phone Link
-                                            const cleanPhone = opp.clienteTelefone?.replace(/\D/g, '');
-                                            const messageText = opp.messageSuggestion || `Olá ${opp.clienteNome}, vi uma oportunidade para você: ${opp.description}`;
-                                            const whatsappLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(messageText)}` : '#';
-
-                                            // Parse the strategy tag from description (e.g. "o vinagre de maçã da Belmont [Resgate]")
-                                            const tagMatch = opp.description?.match(/\[([^\]]+)\]\s*$/);
-                                            const strategyTag = tagMatch ? tagMatch[1] : null;
-                                            const productName = tagMatch ? opp.description.replace(tagMatch[0], '').trim() : opp.description;
-
-                                            // Color map for each strategy tag
-                                            const tagStyles: Record<string, string> = {
-                                                'Resgate': 'bg-red-500/15 text-red-400 border-red-500/30',
-                                                'Cross-Sell': 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-                                                'Pulo Tab.': 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
-                                                'Espelho': 'bg-violet-500/15 text-violet-400 border-violet-500/30',
-                                            };
-                                            const tagEmoji: Record<string, string> = {
-                                                'Resgate': '🔁',
-                                                'Cross-Sell': '🛒',
-                                                'Pulo Tab.': '📈',
-                                                'Espelho': '🪞',
-                                            };
-                                            const tagStyle = strategyTag ? (tagStyles[strategyTag] || 'bg-gray-500/15 text-gray-400 border-gray-500/30') : '';
-                                            const tagIcon = strategyTag ? (tagEmoji[strategyTag] || '💡') : '';
-
-                                            return (
-                                                <div key={idx} className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                                                    <div className="flex items-start justify-between mb-2">
-                                                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                                                            <span className="text-lg mt-0.5 shrink-0">
-                                                                {strategyTag ? tagIcon : (opp.type === 'upgrade' ? '⬆️' : opp.type === 'crossSell' ? '🛒' : opp.type === 'seasonal' ? '📅' : '🔄')}
-                                                            </span>
-                                                            <div className="min-w-0">
-                                                                <p className="font-medium text-white">{opp.clienteNome}</p>
-                                                                {/* Product name subtitle */}
-                                                                {productName && (
-                                                                    <p className="text-sm text-gray-400 mt-0.5 truncate" title={productName}>
-                                                                        🎯 {productName}
-                                                                    </p>
-                                                                )}
-                                                                {/* Strategy tag badge */}
-                                                                {strategyTag && (
-                                                                    <span className={`inline-flex items-center gap-1 mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide border ${tagStyle}`}>
-                                                                        {strategyTag}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <span className={`px-2 py-1 rounded-full text-xs border shrink-0 ml-2 ${(priorityColors[opp.priority] || priorityColors.baixa)}`}>
-                                                            {opp.priority}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between mt-3">
-                                                        <span className="text-xs text-purple-400 uppercase font-semibold">{typeLabel}</span>
-                                                        <div className="flex items-center gap-2">
-                                                            <button
-                                                                onClick={() => handleGenerateAIMessage(opp.clienteId, opp.contextoParaIA)}
-                                                                disabled={generatingMessageFor === opp.clienteId}
-                                                                className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors flex items-center gap-2 disabled:opacity-50"
-                                                            >
-                                                                {generatingMessageFor === opp.clienteId ? (
-                                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                                ) : (
-                                                                    <Bot className="w-4 h-4" />
-                                                                )}
-                                                                Oferecer Novo Produto
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
+                            <div className="space-y-5">
+                                {/* Header */}
+                                <div className="flex flex-col gap-2 pb-5 border-b border-white/10">
+                                    <div className="flex items-center gap-2">
+                                        <Lightbulb className="h-5 w-5 text-yellow-400" />
+                                        <span className="text-sm font-semibold text-white uppercase tracking-wider">Venda Casada (Cross-Selling) — Motor IA</span>
                                     </div>
+                                    <p className="text-sm text-gray-400">
+                                        Clientes <strong className="text-white">ativos</strong> com alto volume em determinadas categorias, mas <strong className="text-red-400">histórico ZERO</strong> em categorias complementares.
+                                        A IA gerou um argumento de venda personalizado para cada oportunidade.
+                                    </p>
+                                </div>
+
+                                {crossSellingLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                                        <div className="relative">
+                                            <div className="w-14 h-14 border-[3px] border-yellow-500/30 border-t-yellow-400 rounded-full animate-spin"></div>
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
+                                            </div>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-white font-semibold">Minerando oportunidades...</p>
+                                            <p className="text-sm text-gray-500 mt-1">Analisando gaps de mix e gerando argumentos com IA</p>
+                                        </div>
+                                    </div>
+                                ) : crossSellingItems.length === 0 ? (
+                                    <p className="text-center text-gray-500 py-12">Nenhuma oportunidade de venda casada identificada no momento.</p>
+                                ) : (
+                                    <>
+                                        {/* Summary pill */}
+                                        <div className="flex items-center gap-3 flex-wrap">
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                                🎯 {crossSellingItems.length} oportunidade{crossSellingItems.length !== 1 ? 's' : ''} encontrada{crossSellingItems.length !== 1 ? 's' : ''}
+                                            </span>
+                                            <button
+                                                onClick={() => { setCrossSellingLoaded(false); setCrossSellingItems([]); }}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors border border-white/10"
+                                            >
+                                                <RefreshCw className="w-3 h-3" />
+                                                Recarregar
+                                            </button>
+                                        </div>
+
+                                        {/* Card Grid */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                            {crossSellingItems.map((item, idx) => {
+                                                // Color mapping for tabela badge
+                                                const tabelaBadgeStyles: Record<string, string> = {
+                                                    '50a199': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+                                                    '200a699': 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+                                                    'atacado': 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+                                                    'avista': 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+                                                    'redes': 'bg-violet-500/15 text-violet-400 border-violet-500/30',
+                                                };
+                                                const tabelaKey = item.tabelaPreco.toLowerCase().replace(/\s/g, '');
+                                                const badgeStyle = tabelaBadgeStyles[tabelaKey] || 'bg-gray-500/15 text-gray-400 border-gray-500/30';
+
+                                                return (
+                                                    <div
+                                                        key={`${item.clienteId}-${idx}`}
+                                                        className="group relative flex flex-col rounded-xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-white/[0.02] hover:border-yellow-500/30 hover:from-yellow-500/[0.04] hover:to-white/[0.02] transition-all duration-300 overflow-hidden"
+                                                    >
+                                                        {/* Card Header */}
+                                                        <div className="p-4 pb-3 border-b border-white/[0.06]">
+                                                            <div className="flex items-start justify-between gap-2 mb-2">
+                                                                <h3 className="text-sm font-bold text-white truncate flex-1" title={item.clienteNome}>
+                                                                    {item.clienteNome}
+                                                                </h3>
+                                                                <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${badgeStyle}`}>
+                                                                    {item.tabelaLabel}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-yellow-400 text-sm">🎯</span>
+                                                                <p className="text-xs text-yellow-300/80 font-medium truncate" title={item.produtoSugerido}>
+                                                                    {item.produtoSugerido}
+                                                                </p>
+                                                            </div>
+                                                            <p className="text-[11px] text-gray-500 mt-1">
+                                                                Forte em <span className="text-gray-400 font-medium">{item.categoriaForte}</span> · Zero em <span className="text-red-400 font-medium">{item.categoriaFaltante}</span>
+                                                            </p>
+                                                        </div>
+
+                                                        {/* AI Argument */}
+                                                        <div className="p-4 flex-1">
+                                                            <div className="flex items-center gap-1.5 mb-2">
+                                                                <Bot className="w-3.5 h-3.5 text-violet-400" />
+                                                                <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wider">Argumento IA</span>
+                                                            </div>
+                                                            <p className="text-xs text-gray-300 leading-relaxed line-clamp-4">
+                                                                {item.argumentoIA}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Card Footer */}
+                                                        <div className="p-3 pt-0">
+                                                            <Link
+                                                                href={`/dashboard/pedidos?clienteId=${item.clienteId}`}
+                                                                className="flex w-full items-center justify-center gap-2 py-2.5 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs font-bold uppercase tracking-wide hover:bg-yellow-500/20 border border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-200"
+                                                            >
+                                                                <ShoppingBag className="w-3.5 h-3.5" />
+                                                                Abrir Pedido
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         )}
