@@ -38,9 +38,13 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
         }
 
-        // Get ACTIVE clients only (exclude manually marked Inativo/Bloqueado)
+        // Support single-client lookup via ?clienteId=xxx
+        const { searchParams } = new URL(request.url);
+        const clienteIdParam = searchParams.get('clienteId');
+
+        // Get clients (single or all active)
         const clients = await prisma.cliente.findMany({
-            where: { status: 'Ativo' },
+            where: clienteIdParam ? { id: clienteIdParam } : { status: 'Ativo' },
             include: {
                 pedidos: {
                     where: {
@@ -188,9 +192,8 @@ Abs, Carlos Fantini
                     nomeRepresentada: fabricaFavorita
                 }
             })
-            // FILTRO DE OURO: Retorna todos os clientes onde diasDesdeUltimoPedido >= (mediaCicloDias - 3)
-            // REMOVE limite superior para manter atrasados no radar
-            .filter(c => c.diasInativo !== null && c.diasInativo >= (c.cicloMedioDias - 3))
+            // When querying a single client, skip the cycle filter to show their status regardless
+            .filter(c => clienteIdParam ? true : (c.diasInativo !== null && c.diasInativo >= (c.cicloMedioDias - 3)))
             // ORDENAÇÃO: Quem está mais atrasado aparece primeiro no topo
             .sort((a, b) => b.diasInativo! - a.diasInativo!)
 

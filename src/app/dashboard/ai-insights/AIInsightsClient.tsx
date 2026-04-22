@@ -97,6 +97,8 @@ export default function AIInsightsClient() {
     const [loading, setLoading] = useState(true);
     const [prestesAComprarClients, setPrestesAComprarClients] = useState<PrestesAComprarClient[]>([]);
     const [clienteIdSelecionado, setClienteIdSelecionado] = useState('');
+    const [consultaIndividualLoading, setConsultaIndividualLoading] = useState(false);
+    const [consultaIndividualResult, setConsultaIndividualResult] = useState<PrestesAComprarClient | null>(null);
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [salesInsights, setSalesInsights] = useState<SalesInsight[]>([]);
 
@@ -538,41 +540,189 @@ export default function AIInsightsClient() {
 
                                 {/* Filtro de Cliente */}
                                 {(() => {
-                                    const clientesUnicos = Array.from(
-                                        new Map(prestesAComprarClients.map(c => [c.id, c.nomeFantasia])).entries()
-                                    )
-                                        .map(([id, nome]) => ({ id, nome }))
-                                        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+                                    // Use the FULL client list from DataContext, sorted alphabetically
+                                    const todosClientes = [...clients]
+                                        .sort((a, b) => (a.nomeFantasia || '').localeCompare(b.nomeFantasia || '', 'pt-BR'));
+
+                                    // Set of IDs already in the radar for visual indicator
+                                    const idsNoRadar = new Set(prestesAComprarClients.map(c => c.id));
+
+                                    // Handler for select change
+                                    const handleClienteSelect = async (selectedId: string) => {
+                                        setClienteIdSelecionado(selectedId);
+                                        setConsultaIndividualResult(null);
+
+                                        // If empty or already in radar, no need to fetch
+                                        if (selectedId === '' || idsNoRadar.has(selectedId)) return;
+
+                                        // Client NOT in radar — fetch individual analysis
+                                        setConsultaIndividualLoading(true);
+                                        try {
+                                            const res = await fetch(`/api/ai/prestes-a-comprar?clienteId=${selectedId}`, { cache: 'no-store' });
+                                            if (res.ok) {
+                                                const data = await res.json();
+                                                if (data.clients && data.clients.length > 0) {
+                                                    setConsultaIndividualResult(data.clients[0]);
+                                                }
+                                            }
+                                        } catch (err) {
+                                            console.error('Erro ao consultar cliente individual:', err);
+                                        } finally {
+                                            setConsultaIndividualLoading(false);
+                                        }
+                                    };
 
                                     return (
                                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                                             <div className="flex items-center gap-2 shrink-0">
                                                 <Search className="h-4 w-4 text-gray-400" />
-                                                <span className="text-sm font-medium text-gray-300">Filtrar Cliente:</span>
+                                                <span className="text-sm font-medium text-gray-300">Consultar Cliente:</span>
                                             </div>
                                             <select
                                                 value={clienteIdSelecionado}
-                                                onChange={(e) => setClienteIdSelecionado(e.target.value)}
+                                                onChange={(e) => handleClienteSelect(e.target.value)}
                                                 className="w-full md:w-1/3 px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30 transition-all shadow-sm appearance-none cursor-pointer"
                                             >
-                                                <option value="" className="text-black">Todos os Clientes ({prestesAComprarClients.length})</option>
-                                                {clientesUnicos.map(c => (
-                                                    <option key={c.id} value={c.id} className="text-black">{c.nome}</option>
+                                                <option value="" className="text-black">Todos no Radar ({prestesAComprarClients.length})</option>
+                                                {todosClientes.map(c => (
+                                                    <option key={c.id} value={c.id} className="text-black">
+                                                        {c.nomeFantasia}{idsNoRadar.has(c.id) ? ' ● Radar' : ''}
+                                                    </option>
                                                 ))}
                                             </select>
                                             {clienteIdSelecionado && (
                                                 <button
-                                                    onClick={() => setClienteIdSelecionado('')}
+                                                    onClick={() => { setClienteIdSelecionado(''); setConsultaIndividualResult(null); }}
                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-colors"
                                                 >
                                                     <X className="w-3 h-3" />
-                                                    Limpar Filtro
+                                                    Voltar ao Radar
                                                 </button>
                                             )}
                                         </div>
                                     );
                                 })()}
 
+                                {/* Loading individual client */}
+                                {consultaIndividualLoading && (
+                                    <div className="flex items-center justify-center py-10 gap-3">
+                                        <div className="relative">
+                                            <div className="w-10 h-10 border-[3px] border-blue-500/30 border-t-blue-400 rounded-full animate-spin"></div>
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <Search className="w-4 h-4 text-blue-400 animate-pulse" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-medium text-sm">Analisando cliente...</p>
+                                            <p className="text-gray-500 text-xs">Calculando ciclo de recompra e previsão</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Show individual result for client NOT in radar */}
+                                {!consultaIndividualLoading && clienteIdSelecionado !== '' && !prestesAComprarClients.some(c => c.id === clienteIdSelecionado) && consultaIndividualResult && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                                🔍 Consulta Individual
+                                            </span>
+                                            <span className="text-xs text-gray-500">Este cliente não estava no radar automático</span>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-white/5 text-xs uppercase text-gray-400">
+                                                    <tr>
+                                                        <th className="px-4 py-3 text-left">Cliente</th>
+                                                        <th className="px-4 py-3 text-left hidden sm:table-cell">Região</th>
+                                                        <th className="px-4 py-3 text-left">Matemática (Por que está aqui?)</th>
+                                                        <th className="px-4 py-3 text-center hidden md:table-cell">Status da Janela</th>
+                                                        <th className="px-4 py-3 text-center">Ações</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {(() => {
+                                                        const client = consultaIndividualResult;
+                                                        const maxWindow = client.cicloMedioDias + 5;
+                                                        const diasRestantes = client.diasInativo !== null ? maxWindow - client.diasInativo : 0;
+                                                        const alertaColor = diasRestantes <= 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-green-500/20 text-green-400 border-green-500/40';
+                                                        return (
+                                                            <tr key={client.id} className="hover:bg-white/5">
+                                                                <td className="px-4 py-3">
+                                                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                        <p className="font-medium text-white">{client.nomeFantasia}</p>
+                                                                        {client.statusCiclo === 'ATRASADO' ? (
+                                                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-500/20 text-red-400 border border-red-500/30 break-normal whitespace-nowrap">
+                                                                                Atrasado há {client.diasInativo !== null ? client.diasInativo - client.cicloMedioDias : 0} dias
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-green-500/20 text-green-400 border border-green-500/30 break-normal whitespace-nowrap">
+                                                                                Em dia (Faltam {client.diasInativo !== null ? Math.max(0, client.cicloMedioDias - client.diasInativo) : 0} dias)
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-500">{client.razaoSocial}</p>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
+                                                                <td className="px-4 py-3">
+                                                                    <div className="space-y-1.5 bg-black/20 p-2 rounded-lg border border-white/5">
+                                                                        <div className="flex justify-between items-center text-xs">
+                                                                            <span className="text-gray-500">Última Compra:</span>
+                                                                            <span className="text-gray-200 font-medium ml-2">
+                                                                                {client.ultimaCompra ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center text-xs">
+                                                                            <span className="text-gray-500">Dias Ausente:</span>
+                                                                            <span className="text-red-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
+                                                                            <span className="text-gray-500">Giro Médio Calculado:</span>
+                                                                            <span className="text-blue-400 font-medium ml-2">a cada {client.cicloMedioDias} dias</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-center hidden md:table-cell">
+                                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${alertaColor}`}>
+                                                                        {diasRestantes <= 0 ? 'Expirando' : `${diasRestantes} dias na janela`}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right">
+                                                                    <button
+                                                                        onClick={() => handleGenerateAIMessage(
+                                                                            client.id,
+                                                                            client.contextoParaIA,
+                                                                            client.diasInativo !== null ? client.diasInativo : undefined,
+                                                                            client.nomeCliente,
+                                                                            client.nomeRepresentada
+                                                                        )}
+                                                                        disabled={generatingMessageFor === client.id}
+                                                                        className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+                                                                    >
+                                                                        {generatingMessageFor === client.id ? (
+                                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                                        ) : (
+                                                                            <Bot className="h-4 w-4" />
+                                                                        )}
+                                                                        Gerar Lembrete de Pedido
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })()}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* No data for individual lookup */}
+                                {!consultaIndividualLoading && clienteIdSelecionado !== '' && !prestesAComprarClients.some(c => c.id === clienteIdSelecionado) && !consultaIndividualResult && (
+                                    <p className="text-center text-gray-500 py-8">Nenhum histórico de pedidos encontrado para este cliente.</p>
+                                )}
+
+                                {/* Normal radar view (show when no individual client is selected, or when selected client IS in radar) */}
+                                {!consultaIndividualLoading && (clienteIdSelecionado === '' || prestesAComprarClients.some(c => c.id === clienteIdSelecionado)) && (
+                                    <>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="p-3 rounded-lg bg-white/5 text-center">
                                         <p className="text-2xl font-bold text-white">{summaries.prestesAComprar.total}</p>
@@ -670,10 +820,9 @@ export default function AIInsightsClient() {
                                     {prestesAComprarClients.length === 0 && (
                                         <p className="text-center text-gray-500 py-8">Nenhum cliente prestes a comprar no momento</p>
                                     )}
-                                    {prestesAComprarClients.length > 0 && clienteIdSelecionado !== '' && prestesAComprarClients.filter(c => c.id === clienteIdSelecionado).length === 0 && (
-                                        <p className="text-center text-gray-500 py-8">Nenhum resultado encontrado para o filtro selecionado</p>
-                                    )}
                                 </div>
+                                    </>
+                                )}
                             </div>
                         )}
 
