@@ -520,8 +520,17 @@ export default function AIInsightsClient() {
 
 
                 {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="min-h-[50vh] flex flex-col items-center justify-center gap-5">
+                        <div className="relative">
+                            <div className="w-14 h-14 border-[3px] border-purple-500/30 border-t-purple-400 rounded-full animate-spin"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <Sparkles className="w-5 h-5 text-purple-400 animate-pulse" />
+                            </div>
+                        </div>
+                        <div className="text-center space-y-1.5">
+                            <p className="text-white font-semibold text-sm">Analisando histórico de compras e processando inteligência...</p>
+                            <p className="text-gray-500 text-xs animate-pulse">Isso pode levar alguns segundos</p>
+                        </div>
                     </div>
                 ) : (
                     <>
