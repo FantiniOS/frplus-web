@@ -96,6 +96,7 @@ export default function AIInsightsClient() {
     const [showcaseMessage, setShowcaseMessage] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [prestesAComprarClients, setPrestesAComprarClients] = useState<PrestesAComprarClient[]>([]);
+    const [clienteIdSelecionado, setClienteIdSelecionado] = useState('');
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [salesInsights, setSalesInsights] = useState<SalesInsight[]>([]);
 
@@ -535,6 +536,43 @@ export default function AIInsightsClient() {
                                     </p>
                                 </div>
 
+                                {/* Filtro de Cliente */}
+                                {(() => {
+                                    const clientesUnicos = Array.from(
+                                        new Map(prestesAComprarClients.map(c => [c.id, c.nomeFantasia])).entries()
+                                    )
+                                        .map(([id, nome]) => ({ id, nome }))
+                                        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+                                    return (
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <Search className="h-4 w-4 text-gray-400" />
+                                                <span className="text-sm font-medium text-gray-300">Filtrar Cliente:</span>
+                                            </div>
+                                            <select
+                                                value={clienteIdSelecionado}
+                                                onChange={(e) => setClienteIdSelecionado(e.target.value)}
+                                                className="w-full md:w-1/3 px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30 transition-all shadow-sm appearance-none cursor-pointer"
+                                            >
+                                                <option value="" className="text-black">Todos os Clientes ({prestesAComprarClients.length})</option>
+                                                {clientesUnicos.map(c => (
+                                                    <option key={c.id} value={c.id} className="text-black">{c.nome}</option>
+                                                ))}
+                                            </select>
+                                            {clienteIdSelecionado && (
+                                                <button
+                                                    onClick={() => setClienteIdSelecionado('')}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-colors"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                    Limpar Filtro
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="p-3 rounded-lg bg-white/5 text-center">
                                         <p className="text-2xl font-bold text-white">{summaries.prestesAComprar.total}</p>
@@ -558,7 +596,7 @@ export default function AIInsightsClient() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
-                                            {prestesAComprarClients.map(client => {
+                                            {(clienteIdSelecionado === '' ? prestesAComprarClients : prestesAComprarClients.filter(c => c.id === clienteIdSelecionado)).map(client => {
                                                 const maxWindow = client.cicloMedioDias + 5;
                                                 const diasRestantes = client.diasInativo !== null ? maxWindow - client.diasInativo : 0;
                                                 const alertaColor = diasRestantes <= 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-green-500/20 text-green-400 border-green-500/40';
@@ -631,6 +669,9 @@ export default function AIInsightsClient() {
                                     </table>
                                     {prestesAComprarClients.length === 0 && (
                                         <p className="text-center text-gray-500 py-8">Nenhum cliente prestes a comprar no momento</p>
+                                    )}
+                                    {prestesAComprarClients.length > 0 && clienteIdSelecionado !== '' && prestesAComprarClients.filter(c => c.id === clienteIdSelecionado).length === 0 && (
+                                        <p className="text-center text-gray-500 py-8">Nenhum resultado encontrado para o filtro selecionado</p>
                                     )}
                                 </div>
                             </div>
