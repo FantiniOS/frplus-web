@@ -66,6 +66,8 @@ model Cliente {
   verbas            Verba[]
   historicoTabelas  HistoricoTabela[]
   visitas           Visita[]
+  vendedorId        String?
+  vendedor          Vendedor?        @relation(fields: [vendedorId], references: [id])
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   contatoClientes   ContatoCliente[]
@@ -88,6 +90,10 @@ model Pedido {
   notaFiscal        String?
   verbaId           String?
   verba             Verba?       @relation(fields: [verbaId], references: [id])
+  vendedorId         String?
+  vendedor           Vendedor?    @relation(fields: [vendedorId], references: [id])
+  valorComissao      Decimal?     @db.Decimal(10, 2)
+  nomeVendedorImport String?
   itens             ItemPedido[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -183,4 +189,16 @@ model PerfilEmpresa {
   email       String
   telefone    String
   updatedAt   DateTime @updatedAt
+}
+
+model Vendedor {
+  id                 String   @id @default(cuid())
+  nome               String
+  telefone           String?
+  percentualComissao Decimal  @default(0) @db.Decimal(5, 2)
+  ativo              Boolean  @default(true)
+  clientes           Cliente[]
+  pedidos            Pedido[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }

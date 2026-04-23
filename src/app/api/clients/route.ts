@@ -148,7 +148,8 @@ export async function POST(request: Request) {
                 tabelaPreco: body.tabelaPreco || '50a199',
                 limiteCredito: body.limiteCredito || 0,
                 status: body.status || 'Ativo',
-                observacoes: body.observacoes || ''
+                observacoes: body.observacoes || '',
+                vendedorId: body.vendedorId || null,
             }
         })
 

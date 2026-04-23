@@ -65,7 +65,8 @@ export async function PUT(request: Request, { params }: Params) {
                 status: body.status,
                 tabelaPreco: body.tabelaPreco || '50a199',
                 limiteCredito: body.limiteCredito,
-                observacoes: body.observacoes
+                observacoes: body.observacoes,
+                vendedorId: body.vendedorId !== undefined ? (body.vendedorId || null) : undefined,
             },
             include: {
                 pedidos: {

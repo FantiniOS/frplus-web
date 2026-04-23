@@ -189,6 +189,15 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
 
     console.log(`[Batch Import] ${orderNums.length} orders in chunk. ${existingOrderIds.size} already exist (update). ${orderNums.length - existingOrderIds.size} new.`);
 
+    // Pre-fetch vendedores for seller matching
+    const allVendedores = await prisma.vendedor.findMany({
+        where: { ativo: true },
+        select: { id: true, nome: true, percentualComissao: true }
+    });
+    const vendedorByName = new Map(
+        allVendedores.map(v => [v.nome.trim().toLowerCase(), v])
+    );
+
     // ====== BATCH UPDATE existing orders ======
     const updatePromises: Promise<any>[] = [];
     for (const [orderNum, docRows] of Array.from(ordersMap.entries())) {
@@ -205,6 +214,10 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
 
         const dataNotaFiscal = parseDateOrNull(firstRow['DT_Emissao_Fat']?.toString());
 
+        // Match vendedor by name
+        const nomeVendedorRaw = firstRow['Nome_Vendedor']?.toString().trim() || '';
+        const vendedorMatch = vendedorByName.get(nomeVendedorRaw.toLowerCase());
+
         updatePromises.push(
             prisma.pedido.update({
                 where: { id: orderNum },
@@ -215,6 +228,10 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
                     data: parseDate(firstRow['DT_Emissao']?.toString() || ''),
                     ...(dataNotaFiscal ? { dataFaturamento: dataNotaFiscal } : {}),
                     fabricaId: targetFabricaId,
+                    nomeVendedorImport: nomeVendedorRaw || null,
+                    ...(vendedorMatch ? {
+                        vendedorId: vendedorMatch.id,
+                    } : {}),
                 }
             }).then(() => { stats.ordersUpdated++; })
                 .catch((e) => { stats.errors.push(`Erro ao atualizar Pedido ${orderNum}: ${e}`); })
@@ -280,6 +297,15 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
 
         const dataNotaFiscalCreate = parseDateOrNull(firstRow['DT_Emissao_Fat']?.toString());
 
+        // Match vendedor by name for new orders
+        const nomeVendedorRaw = firstRow['Nome_Vendedor']?.toString().trim() || '';
+        const vendedorMatch = vendedorByName.get(nomeVendedorRaw.toLowerCase());
+
+        // Calculate commission if vendedor found
+        const valorComissao = vendedorMatch
+            ? totalOrder * (Number(vendedorMatch.percentualComissao) / 100)
+            : null;
+
         if (itemsData.length > 0) {
             try {
                 await prisma.pedido.create({
@@ -296,6 +322,9 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
                         observacoes: `Importado em ${new Date().toLocaleDateString()}`,
                         data: parseDate(firstRow['DT_Emissao']?.toString() || ''),
                         ...(dataNotaFiscalCreate ? { dataFaturamento: dataNotaFiscalCreate } : {}),
+                        nomeVendedorImport: nomeVendedorRaw || null,
+                        ...(vendedorMatch ? { vendedorId: vendedorMatch.id } : {}),
+                        ...(valorComissao !== null ? { valorComissao: valorComissao } : {}),
                         itens: { create: itemsData }
                     }
                 });

@@ -13,6 +13,11 @@ export default function NovoClientePage() {
   const router = useRouter();
   const [loadingCnpj, setLoadingCnpj] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
+  const [vendedores, setVendedores] = useState<{id: string; nome: string}[]>([]);
+
+  useEffect(() => {
+    fetch('/api/vendedores?ativo=true').then(r => r.json()).then(setVendedores).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isIndustria) {
@@ -115,7 +120,8 @@ export default function NovoClientePage() {
       status: 'Ativo',
       ultima_compra: 'Nunca',
       ...formData,
-      tabelaPreco: formData.tabelaPreco || '50a199'
+      tabelaPreco: formData.tabelaPreco || '50a199',
+      vendedorId: formData.vendedorId || null,
     } as Client;
 
     addClient(newClient);
@@ -287,6 +293,15 @@ export default function NovoClientePage() {
             <div>
               <label className="label-compact">Limite de Crédito (R$)</label>
               <input name="limiteCredito" type="number" value={formData.limiteCredito || ''} onChange={handleChange} placeholder="0,00" className="input-compact" />
+            </div>
+            <div>
+              <label className="label-compact">Vendedor Responsável</label>
+              <select name="vendedorId" value={formData.vendedorId || ''} onChange={handleChange} className="input-compact">
+                <option value="">Sem vendedor</option>
+                {vendedores.map(v => (
+                  <option key={v.id} value={v.id}>{v.nome}</option>
+                ))}
+              </select>
             </div>
             <div className="sm:col-span-2">
               <label className="label-compact">Observações</label>

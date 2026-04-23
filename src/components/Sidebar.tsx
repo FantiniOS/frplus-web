@@ -17,6 +17,7 @@ import {
   Wallet,
   Filter,
   UserPlus,
+  UserCog,
   ChevronDown
 } from "lucide-react";
 import NextImage from "next/image";
@@ -61,6 +62,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { icon: Users, label: "Clientes", href: "/dashboard/clientes" },
         { icon: UserPlus, label: "Futuros Clientes", href: "/dashboard/prospects" },
         { icon: ShoppingBag, label: "Produtos", href: "/dashboard/produtos" },
+        { icon: UserCog, label: "Vendedores", href: "/dashboard/vendedores" },
       ]
     },
     {
@@ -80,6 +82,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     { label: "Tabela de Preços", href: "/dashboard/relatorios?tipo=tabela" },
     { label: "Clientes Atendidos", href: "/dashboard/relatorios?tipo=atendidos" },
     { label: "Vendas por Cliente", href: "/dashboard/relatorios/vendas-cliente" },
+    { label: "Comissões", href: "/dashboard/relatorios/comissoes" },
   ];
 
   const isItemActive = (href: string, exact?: boolean) => {

@@ -23,6 +23,11 @@ export default function EditarClientePage({ params }: { params: { id: string } }
     const [horaVisita, setHoraVisita] = useState('');
     const [obsVisita, setObsVisita] = useState('');
     const [loadingVisita, setLoadingVisita] = useState(false);
+    const [vendedores, setVendedores] = useState<{id: string; nome: string}[]>([]);
+
+    useEffect(() => {
+        fetch('/api/vendedores?ativo=true').then(r => r.json()).then(setVendedores).catch(() => {});
+    }, []);
 
 
 
@@ -342,6 +347,15 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                         <div>
                             <label className="label-compact">Limite de Crédito (R$)</label>
                             <input name="limiteCredito" type="number" value={formData.limiteCredito || 0} onChange={handleChange} className="input-compact" />
+                        </div>
+                        <div>
+                            <label className="label-compact">Vendedor Responsável</label>
+                            <select name="vendedorId" value={formData.vendedorId || ''} onChange={handleChange} className="input-compact">
+                                <option value="">Sem vendedor</option>
+                                {vendedores.map(v => (
+                                    <option key={v.id} value={v.id}>{v.nome}</option>
+                                ))}
+                            </select>
                         </div>
                         <div>
                             <label className="label-compact">Status</label>
