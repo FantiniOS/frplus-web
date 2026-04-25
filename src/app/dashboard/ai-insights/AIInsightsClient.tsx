@@ -307,32 +307,31 @@ export default function AIInsightsClient() {
             };
 
             let startY = drawHeader(doc, 1);
-            let totalOrcamento = 0;
 
             const tableData = dataToExport.map(c => {
-                const ticketMedio = c.totalPedidos > 0 ? c.totalGasto / c.totalPedidos : 0;
-                totalOrcamento += ticketMedio;
                 return [
                     c.nomeFantasia,
                     nomeRepresentante,
-                    c.dataEsperada ? new Date(c.dataEsperada).toLocaleDateString('pt-BR') : 'Imediato',
-                    formatCurrency(ticketMedio)
+                    c.ultimaCompra ? new Date(c.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca',
+                    c.diasInativo !== null ? `${c.diasInativo} dias` : '∞',
+                    `a cada ${c.cicloMedioDias} dias`
                 ];
             });
 
             autoTable(doc, {
                 startY,
-                head: [['Cliente', 'Vendedor Responsável', 'Data Prevista', 'Valor do Orçamento (Ref. Ticket Médio)']],
+                head: [['Cliente', 'Vendedor', 'Última Compra', 'Dias Ausente', 'Giro Médio Calculado']],
                 body: tableData,
                 styles: { fontSize: 8, cellPadding: 3, halign: 'left', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
                 headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
                 alternateRowStyles: { fillColor: colors.rowEven },
                 columnStyles: {
-                    0: { fontStyle: 'bold' },
-                    3: { halign: 'right', fontStyle: 'bold' }
+                    0: { fontStyle: 'bold' }
                 },
-                foot: [['', '', 'TOTAL EM NEGOCIAÇÃO', formatCurrency(totalOrcamento)]],
-                footStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
+                foot: [[
+                    { content: `Total de Clientes Listados: ${dataToExport.length}`, colSpan: 5, styles: { halign: 'left' } }
+                ]],
+                footStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
                 margin: { top: startY, left: margin.left, right: margin.right },
                 didDrawPage: (data: { pageNumber: number }) => {
                     if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
