@@ -33,6 +33,7 @@ interface PrestesAComprarClient {
     statusCiclo: 'ATRASADO' | 'PRESTES';
     nomeCliente?: string;
     nomeRepresentada?: string;
+    vendedorNome?: string | null;
 }
 
 interface Opportunity {
@@ -311,7 +312,7 @@ export default function AIInsightsClient() {
             const tableData = dataToExport.map(c => {
                 return [
                     c.nomeFantasia,
-                    nomeRepresentante,
+                    c.vendedorNome || 'Sem Vendedor Vinculado',
                     c.ultimaCompra ? new Date(c.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca',
                     c.diasInativo !== null ? `${c.diasInativo} dias` : '∞',
                     `a cada ${c.cicloMedioDias} dias`
@@ -789,6 +790,7 @@ export default function AIInsightsClient() {
                                                 <thead className="bg-white/5 text-xs uppercase text-gray-400">
                                                     <tr>
                                                         <th className="px-4 py-3 text-left">Cliente</th>
+                                                        <th className="px-4 py-3 text-left hidden lg:table-cell">Vendedor</th>
                                                         <th className="px-4 py-3 text-left hidden sm:table-cell">Região</th>
                                                         <th className="px-4 py-3 text-left">Matemática (Por que está aqui?)</th>
                                                         <th className="px-4 py-3 text-center hidden md:table-cell">Status da Janela</th>
@@ -818,6 +820,7 @@ export default function AIInsightsClient() {
                                                                     </div>
                                                                     <p className="text-xs text-gray-500">{client.razaoSocial}</p>
                                                                 </td>
+                                                                <td className="px-4 py-3 text-gray-300 hidden lg:table-cell text-xs">{client.vendedorNome || 'Sem Vendedor Vinculado'}</td>
                                                                 <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
                                                                 <td className="px-4 py-3">
                                                                     <div className="space-y-1.5 bg-black/20 p-2 rounded-lg border border-white/5">
@@ -895,6 +898,7 @@ export default function AIInsightsClient() {
                                         <thead className="bg-white/5 text-xs uppercase text-gray-400">
                                             <tr>
                                                 <th className="px-4 py-3 text-left">Cliente</th>
+                                                <th className="px-4 py-3 text-left hidden lg:table-cell">Vendedor</th>
                                                 <th className="px-4 py-3 text-left hidden sm:table-cell">Região</th>
                                                 <th className="px-4 py-3 text-left">Matemática (Por que está aqui?)</th>
                                                 <th className="px-4 py-3 text-center hidden md:table-cell">Status da Janela</th>
@@ -924,6 +928,7 @@ export default function AIInsightsClient() {
                                                             </div>
                                                             <p className="text-xs text-gray-500">{client.razaoSocial}</p>
                                                         </td>
+                                                        <td className="px-4 py-3 text-gray-300 hidden lg:table-cell text-xs">{client.vendedorNome || 'Sem Vendedor Vinculado'}</td>
                                                         <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
                                                         <td className="px-4 py-3">
                                                             <div className="space-y-1.5 bg-black/20 p-2 rounded-lg border border-white/5">

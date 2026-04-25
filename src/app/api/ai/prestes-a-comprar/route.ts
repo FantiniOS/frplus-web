@@ -46,6 +46,7 @@ export async function GET(request: Request) {
         const clients = await prisma.cliente.findMany({
             where: clienteIdParam ? { id: clienteIdParam } : { status: 'Ativo' },
             include: {
+                vendedor: true,
                 pedidos: {
                     where: {
                         tipo: 'Venda',
@@ -189,7 +190,8 @@ Abs, Carlos Fantini
                     statusCiclo,
                     contextoParaIA,
                     nomeCliente: greetingName,
-                    nomeRepresentada: fabricaFavorita
+                    nomeRepresentada: fabricaFavorita,
+                    vendedorNome: client.vendedor?.nome || null
                 }
             })
             // When querying a single client, skip the cycle filter to show their status regardless
