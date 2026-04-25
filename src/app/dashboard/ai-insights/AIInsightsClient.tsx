@@ -249,7 +249,8 @@ export default function AIInsightsClient() {
 
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
-            const margin = { left: 14, right: 14 };
+            const margin = { left: 20, right: 20 };
+            const contentWidth = pageWidth - margin.left - margin.right;
 
             // Premium colors from Comissoes
             const colors = {
@@ -316,26 +317,28 @@ export default function AIInsightsClient() {
                     c.vendedorNome || 'Sem Vendedor Vinculado',
                     c.ultimaCompra ? new Date(c.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca',
                     c.valorUltimaCompra !== undefined && c.valorUltimaCompra !== null ? formatCurrency(c.valorUltimaCompra) : '-',
-                    c.diasInativo !== null ? `${c.diasInativo} dias / Giro: ${c.cicloMedioDias}d` : `∞ / Giro: ${c.cicloMedioDias}d`
+                    c.diasInativo !== null ? `${c.diasInativo}d` : '∞',
+                    `${c.cicloMedioDias}d`
                 ];
             });
 
             autoTable(doc, {
                 startY,
-                head: [['Cliente', 'Vendedor', 'Última Compra', 'Vlr. Última Compra', 'Dias/Giro']],
+                head: [['Cliente', 'Vendedor', 'Últ. Compra', 'Valor', 'Dias', 'Giro']],
                 body: tableData,
                 styles: { fontSize: 8, cellPadding: 3, halign: 'left', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
-                headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
+                headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4, fontSize: 9 },
                 alternateRowStyles: { fillColor: colors.rowEven },
                 columnStyles: {
-                    0: { fontStyle: 'bold', cellWidth: pageWidth * 0.35 - margin.left },
-                    1: { cellWidth: pageWidth * 0.20 },
-                    2: { cellWidth: pageWidth * 0.12 },
-                    3: { halign: 'right', fontStyle: 'bold', cellWidth: pageWidth * 0.13 },
-                    4: { cellWidth: pageWidth * 0.20 }
+                    0: { fontStyle: 'bold', cellWidth: contentWidth * 0.32 },
+                    1: { cellWidth: contentWidth * 0.18 },
+                    2: { halign: 'center', cellWidth: contentWidth * 0.13 },
+                    3: { halign: 'right', fontStyle: 'bold', cellWidth: contentWidth * 0.15 },
+                    4: { halign: 'center', cellWidth: contentWidth * 0.10 },
+                    5: { halign: 'center', cellWidth: contentWidth * 0.12 }
                 },
                 foot: [[
-                    { content: `Total de Clientes Listados: ${dataToExport.length}`, colSpan: 5, styles: { halign: 'left' } }
+                    { content: `Total de Clientes Listados: ${dataToExport.length}`, colSpan: 6, styles: { halign: 'left' } }
                 ]],
                 footStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
                 margin: { top: startY, left: margin.left, right: margin.right },
