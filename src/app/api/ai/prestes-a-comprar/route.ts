@@ -191,7 +191,8 @@ Abs, Carlos Fantini
                     contextoParaIA,
                     nomeCliente: greetingName,
                     nomeRepresentada: fabricaFavorita,
-                    vendedorNome: client.vendedor?.nome || null
+                    vendedorNome: client.vendedor?.nome || null,
+                    valorUltimaCompra: lastOrder ? Number(lastOrder.valorTotal) : null
                 }
             })
             // When querying a single client, skip the cycle filter to show their status regardless

@@ -34,6 +34,7 @@ interface PrestesAComprarClient {
     nomeCliente?: string;
     nomeRepresentada?: string;
     vendedorNome?: string | null;
+    valorUltimaCompra?: number | null;
 }
 
 interface Opportunity {
@@ -314,20 +315,24 @@ export default function AIInsightsClient() {
                     c.nomeFantasia,
                     c.vendedorNome || 'Sem Vendedor Vinculado',
                     c.ultimaCompra ? new Date(c.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca',
-                    c.diasInativo !== null ? `${c.diasInativo} dias` : '∞',
-                    `a cada ${c.cicloMedioDias} dias`
+                    c.valorUltimaCompra !== undefined && c.valorUltimaCompra !== null ? formatCurrency(c.valorUltimaCompra) : '-',
+                    c.diasInativo !== null ? `${c.diasInativo} dias / Giro: ${c.cicloMedioDias}d` : `∞ / Giro: ${c.cicloMedioDias}d`
                 ];
             });
 
             autoTable(doc, {
                 startY,
-                head: [['Cliente', 'Vendedor', 'Última Compra', 'Dias Ausente', 'Giro Médio Calculado']],
+                head: [['Cliente', 'Vendedor', 'Última Compra', 'Vlr. Última Compra', 'Dias/Giro']],
                 body: tableData,
                 styles: { fontSize: 8, cellPadding: 3, halign: 'left', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
                 headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
                 alternateRowStyles: { fillColor: colors.rowEven },
                 columnStyles: {
-                    0: { fontStyle: 'bold' }
+                    0: { fontStyle: 'bold', cellWidth: pageWidth * 0.35 - margin.left },
+                    1: { cellWidth: pageWidth * 0.20 },
+                    2: { cellWidth: pageWidth * 0.12 },
+                    3: { halign: 'right', fontStyle: 'bold', cellWidth: pageWidth * 0.13 },
+                    4: { cellWidth: pageWidth * 0.20 }
                 },
                 foot: [[
                     { content: `Total de Clientes Listados: ${dataToExport.length}`, colSpan: 5, styles: { halign: 'left' } }
@@ -831,6 +836,12 @@ export default function AIInsightsClient() {
                                                                             </span>
                                                                         </div>
                                                                         <div className="flex justify-between items-center text-xs">
+                                                                            <span className="text-gray-500">Valor Última Venda:</span>
+                                                                            <span className="text-green-400 font-medium ml-2">
+                                                                                {client.valorUltimaCompra !== undefined && client.valorUltimaCompra !== null ? formatCurrency(client.valorUltimaCompra) : '-'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center text-xs">
                                                                             <span className="text-gray-500">Dias Ausente:</span>
                                                                             <span className="text-red-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
                                                                         </div>
@@ -936,6 +947,12 @@ export default function AIInsightsClient() {
                                                                     <span className="text-gray-500">Última Compra:</span>
                                                                     <span className="text-gray-200 font-medium ml-2">
                                                                         {client.ultimaCompra ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center text-xs">
+                                                                    <span className="text-gray-500">Valor Última Venda:</span>
+                                                                    <span className="text-green-400 font-medium ml-2">
+                                                                        {client.valorUltimaCompra !== undefined && client.valorUltimaCompra !== null ? formatCurrency(client.valorUltimaCompra) : '-'}
                                                                     </span>
                                                                 </div>
                                                                 <div className="flex justify-between items-center text-xs">
