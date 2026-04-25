@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users, Download, Eye } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users, Download, Eye, FileDown } from 'lucide-react';
 import { MessageModal } from '@/components/dashboard/MessageModal';
 import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
 import ExpansionProposalGenerator from './ExpansionProposalGenerator';
@@ -118,6 +118,7 @@ export default function AIInsightsClient() {
         opportunities: { total: 0, upgrade: 0, crossSell: 0, seasonal: 0 },
         campaigns: { total: 1 } // Always available
     });
+    const [exportandoPdf, setExportandoPdf] = useState(false);
 
     // Message Modal State
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
@@ -214,6 +215,143 @@ export default function AIInsightsClient() {
         setAiMessageError(null);
         setAiMessageClientInfo(null);
         setAiMessageFatos(null);
+    };
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL',
+        }).format(value);
+    };
+
+    const exportToPDF = async () => {
+        setExportandoPdf(true);
+        const dataToExport = clienteIdSelecionado === '' 
+            ? prestesAComprarClients 
+            : prestesAComprarClients.filter(c => c.id === clienteIdSelecionado);
+
+        if (dataToExport.length === 0) {
+            setExportandoPdf(false);
+            return;
+        }
+
+        try {
+            const jsPDF = (await import('jspdf')).default;
+            const autoTable = (await import('jspdf-autotable')).default;
+
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = { left: 14, right: 14 };
+
+            // Premium colors from Comissoes
+            const colors = {
+                headerDark: [10, 10, 14] as [number, number, number],
+                accentBlue: [37, 99, 235] as [number, number, number],
+                accentCyan: [6, 182, 212] as [number, number, number],
+                textMuted: [120, 120, 140] as [number, number, number],
+                textLight: [200, 200, 220] as [number, number, number],
+                rowEven: [250, 251, 254] as [number, number, number],
+                tableBorder: [226, 232, 240] as [number, number, number],
+            };
+
+            const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
+                const headerHeight = 38;
+
+                pageDoc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
+                pageDoc.rect(0, 0, pageWidth, headerHeight, 'F');
+
+                pageDoc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                pageDoc.rect(0, headerHeight, pageWidth, 1.5, 'F');
+                pageDoc.setFillColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
+                pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.5, 'F');
+
+                pageDoc.setFontSize(13);
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.setTextColor(255, 255, 255);
+                pageDoc.text('Relatório de Previsão de Vendas - Prestes a Comprar', pageWidth - margin.right, 14, { align: 'right' });
+
+                pageDoc.setFontSize(7);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+                const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                pageDoc.text(`Emitido em ${dateStr}`, pageWidth - margin.right, 20, { align: 'right' });
+
+                if (pageNum > 1) {
+                    pageDoc.setFontSize(7);
+                    pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                    pageDoc.text(`(Continuação)`, pageWidth - margin.right, 30, { align: 'right' });
+                }
+
+                return headerHeight + 10;
+            };
+
+            const drawFooter = (pageDoc: typeof doc, pageNum: number, totalPages: number) => {
+                const footerY = pageHeight - 12;
+                pageDoc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
+                pageDoc.setLineWidth(0.3);
+                pageDoc.line(margin.left, footerY - 3, pageWidth - margin.right, footerY - 3);
+
+                pageDoc.setFontSize(7);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                pageDoc.text('FRPlus — Inteligência Comercial', margin.left, footerY);
+
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.text(`${pageNum} / ${totalPages}`, pageWidth - margin.right, footerY, { align: 'right' });
+            };
+
+            let startY = drawHeader(doc, 1);
+            let totalOrcamento = 0;
+
+            const tableData = dataToExport.map(c => {
+                const ticketMedio = c.totalPedidos > 0 ? c.totalGasto / c.totalPedidos : 0;
+                totalOrcamento += ticketMedio;
+                return [
+                    c.nomeFantasia,
+                    nomeRepresentante,
+                    c.dataEsperada ? new Date(c.dataEsperada).toLocaleDateString('pt-BR') : 'Imediato',
+                    formatCurrency(ticketMedio)
+                ];
+            });
+
+            autoTable(doc, {
+                startY,
+                head: [['Cliente', 'Vendedor Responsável', 'Data Prevista', 'Valor do Orçamento (Ref. Ticket Médio)']],
+                body: tableData,
+                styles: { fontSize: 8, cellPadding: 3, halign: 'left', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
+                headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
+                alternateRowStyles: { fillColor: colors.rowEven },
+                columnStyles: {
+                    0: { fontStyle: 'bold' },
+                    3: { halign: 'right', fontStyle: 'bold' }
+                },
+                foot: [['', '', 'TOTAL EM NEGOCIAÇÃO', formatCurrency(totalOrcamento)]],
+                footStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
+                margin: { top: startY, left: margin.left, right: margin.right },
+                didDrawPage: (data: { pageNumber: number }) => {
+                    if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
+                }
+            });
+
+            const pageCount = (doc as any).internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                drawFooter(doc, i, pageCount);
+            }
+
+            const fileName = `FRPlus_Prestes_a_Comprar_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(fileName);
+
+        } catch (error) {
+            console.error('Erro ao exportar PDF:', error);
+        }
+        setExportandoPdf(false);
     };
 
     const fetchData = useCallback(async () => {
@@ -469,12 +607,22 @@ export default function AIInsightsClient() {
                 </div>
             )}
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white mb-1">Radar Comercial</h1>
                     <p className="text-gray-400 text-sm">Insights e oportunidades gerados pelo FRP AI</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    {activeTab === 'prestesAComprar' && (
+                        <button
+                            onClick={exportToPDF}
+                            disabled={exportandoPdf || prestesAComprarClients.length === 0}
+                            className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30 disabled:opacity-50"
+                        >
+                            <FileDown className="h-4 w-4" />
+                            {exportandoPdf ? 'Gerando...' : 'Exportar Lista (PDF)'}
+                        </button>
+                    )}
                     <button
                         onClick={fetchData}
                         disabled={loading}
