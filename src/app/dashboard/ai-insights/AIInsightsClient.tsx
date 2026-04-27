@@ -263,6 +263,19 @@ export default function AIInsightsClient() {
                 tableBorder: [226, 232, 240] as [number, number, number],
             };
 
+            // Carregar a logo antes de iniciar o PDF para uso síncrono no autoTable
+            let logoImg: HTMLImageElement | null = null;
+            try {
+                logoImg = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.src = '/logo.png';
+                    img.onload = () => resolve(img);
+                    img.onerror = (e) => reject(e);
+                });
+            } catch (e) {
+                console.error("Erro ao carregar logo:", e);
+            }
+
             const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
                 const headerHeight = 38;
 
@@ -274,16 +287,25 @@ export default function AIInsightsClient() {
                 pageDoc.setFillColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
                 pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.5, 'F');
 
+                // Desenhar Logo à Esquerda
+                if (logoImg) {
+                    const logoWidth = 35; // largura proporcional (35mm)
+                    const logoHeight = (logoImg.height * logoWidth) / logoImg.width;
+                    const logoY = (headerHeight - logoHeight) / 2; // Centralizado verticalmente no header
+                    pageDoc.addImage(logoImg, 'PNG', margin.left, logoY, logoWidth, logoHeight);
+                }
+
+                // Textos alinhados à direita
                 pageDoc.setFontSize(13);
                 pageDoc.setFont('helvetica', 'bold');
                 pageDoc.setTextColor(255, 255, 255);
-                pageDoc.text('Relatório de Previsão de Vendas - Prestes a Comprar', pageWidth - margin.right, 14, { align: 'right' });
+                pageDoc.text('Relatório de Previsão de Vendas - Prestes a Comprar', pageWidth - margin.right, 18, { align: 'right' });
 
                 pageDoc.setFontSize(7);
                 pageDoc.setFont('helvetica', 'normal');
                 pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
                 const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                pageDoc.text(`Emitido em ${dateStr}`, pageWidth - margin.right, 20, { align: 'right' });
+                pageDoc.text(`Emitido em ${dateStr}`, pageWidth - margin.right, 24, { align: 'right' });
 
                 if (pageNum > 1) {
                     pageDoc.setFontSize(7);
