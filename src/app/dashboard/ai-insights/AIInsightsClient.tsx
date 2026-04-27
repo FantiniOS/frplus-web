@@ -263,17 +263,33 @@ export default function AIInsightsClient() {
                 tableBorder: [226, 232, 240] as [number, number, number],
             };
 
-            // Carregar a logo antes de iniciar o PDF para uso síncrono no autoTable
-            let logoImg: HTMLImageElement | null = null;
+            // Garantia de compatibilidade: Carregar a logo via caminho absoluto e converter para Base64 para o jsPDF
+            let logoBase64: string | null = null;
+            let logoDimensions: { width: number, height: number } | null = null;
             try {
-                logoImg = await new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.src = '/logo.png';
-                    img.onload = () => resolve(img);
-                    img.onerror = (e) => reject(e);
+                // Passo 2: Usar window.location.origin para garantir caminho absoluto
+                const absoluteUrl = `${window.location.origin}/logo.png`;
+                const response = await fetch(absoluteUrl);
+                const blob = await response.blob();
+                
+                logoBase64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
                 });
+
+                // Obter dimensões originais da imagem
+                if (logoBase64) {
+                    logoDimensions = await new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.onload = () => resolve({ width: img.width, height: img.height });
+                        img.onerror = reject;
+                        img.src = logoBase64 as string;
+                    });
+                }
             } catch (e) {
-                console.error("Erro ao carregar logo:", e);
+                console.error("Erro ao carregar logo para o PDF:", e);
             }
 
             const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
@@ -287,12 +303,12 @@ export default function AIInsightsClient() {
                 pageDoc.setFillColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
                 pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.5, 'F');
 
-                // Desenhar Logo à Esquerda
-                if (logoImg) {
+                // Desenhar Logo à Esquerda usando Base64
+                if (logoBase64 && logoDimensions) {
                     const logoWidth = 35; // largura proporcional (35mm)
-                    const logoHeight = (logoImg.height * logoWidth) / logoImg.width;
+                    const logoHeight = (logoDimensions.height * logoWidth) / logoDimensions.width;
                     const logoY = (headerHeight - logoHeight) / 2; // Centralizado verticalmente no header
-                    pageDoc.addImage(logoImg, 'PNG', margin.left, logoY, logoWidth, logoHeight);
+                    pageDoc.addImage(logoBase64, 'PNG', margin.left, logoY, logoWidth, logoHeight);
                 }
 
                 // Textos alinhados à direita
