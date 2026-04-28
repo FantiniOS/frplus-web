@@ -356,114 +356,126 @@ export default function ProspectsListPage() {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-md overflow-hidden rounded-xl border border-white/10 bg-[#111] p-6 shadow-2xl"
+                            className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-white/10 bg-[#111] shadow-2xl"
                         >
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="rounded-full bg-blue-500/10 p-3 text-blue-500">
-                                    <UserPlus className="h-6 w-6" />
-                                </div>
-                                <h3 className="text-xl font-bold text-white tracking-tight">
-                                    {editMode ? 'Editar Prospect' : 'Novo Prospect'}
-                                </h3>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Nome da Empresa</label>
-                                    <input
-                                        type="text"
-                                        value={formEmpresa}
-                                        onChange={(e) => setFormEmpresa(e.target.value)}
-                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-600"
-                                        placeholder="Ex: Supermercado XYZ"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Contato</label>
-                                        <input
-                                            type="text"
-                                            value={formContato}
-                                            onChange={(e) => setFormContato(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-600"
-                                            placeholder="Nome do comprador"
-                                        />
+                            {/* Sticky Header */}
+                            <div className="sticky top-0 bg-[#111] z-10 px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="rounded-full bg-blue-500/10 p-2.5 text-blue-500">
+                                        <UserPlus className="h-5 w-5" />
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Telefone/WhatsApp</label>
-                                        <input
-                                            type="text"
-                                            value={formTelefone}
-                                            onChange={(e) => setFormTelefone(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-600"
-                                            placeholder="(00) 00000-0000"
-                                        />
-                                    </div>
+                                    <h3 className="text-lg font-bold text-white tracking-tight">
+                                        {editMode ? 'Editar Prospect' : 'Novo Prospect'}
+                                    </h3>
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Data Último Contato</label>
-                                        <input
-                                            type="date"
-                                            value={formDataUltimo}
-                                            onChange={(e) => setFormDataUltimo(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            style={{ colorScheme: 'dark' }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-blue-400 mb-1.5">Agendar Próx. Retorno</label>
-                                        <input
-                                            type="date"
-                                            value={formProximo}
-                                            onChange={(e) => setFormProximo(e.target.value)}
-                                            className="w-full bg-black/40 border border-blue-500/30 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 text-blue-50"
-                                            style={{ colorScheme: 'dark' }}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Observações</label>
-                                    <textarea
-                                        value={formObservacoes}
-                                        onChange={(e) => setFormObservacoes(e.target.value)}
-                                        rows={3}
-                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-600 resize-none"
-                                        placeholder="Anotações sobre a negociação..."
-                                    />
-                                </div>
-
-                                {editMode && (
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Status</label>
-                                        <select
-                                            value={formStatus}
-                                            onChange={(e) => setFormStatus(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                        >
-                                            <option value="ATIVO">Ativo</option>
-                                            <option value="INATIVO">Inativo</option>
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-white/[0.04]">
-                                <button
+                                <button 
                                     onClick={() => setShowModal(false)}
-                                    className="rounded-lg px-4 py-2 text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+                                    className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
                                 >
-                                    Cancelar
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                                 </button>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={saving || !formEmpresa || !formContato || !formTelefone}
-                                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20 disabled:opacity-50"
-                                >
-                                    {saving ? 'Gravando...' : editMode ? 'Salvar Edição' : 'Cadastrar Prospect'}
-                                </button>
+                            </div>
+
+                            {/* Modal Body */}
+                            <div className="p-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Nome da Empresa</label>
+                                        <input
+                                            type="text"
+                                            value={formEmpresa}
+                                            onChange={(e) => setFormEmpresa(e.target.value)}
+                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-600"
+                                            placeholder="Ex: Supermercado XYZ"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-400 mb-1.5">Contato</label>
+                                            <input
+                                                type="text"
+                                                value={formContato}
+                                                onChange={(e) => setFormContato(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-600"
+                                                placeholder="Nome do comprador"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-400 mb-1.5">Telefone/WhatsApp</label>
+                                            <input
+                                                type="text"
+                                                value={formTelefone}
+                                                onChange={(e) => setFormTelefone(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-600"
+                                                placeholder="(00) 00000-0000"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-400 mb-1.5">Data Último Contato</label>
+                                            <input
+                                                type="date"
+                                                value={formDataUltimo}
+                                                onChange={(e) => setFormDataUltimo(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                style={{ colorScheme: 'dark' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-blue-400 mb-1.5">Agendar Próx. Retorno</label>
+                                            <input
+                                                type="date"
+                                                value={formProximo}
+                                                onChange={(e) => setFormProximo(e.target.value)}
+                                                className="w-full bg-black/40 border border-blue-500/30 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 text-blue-50"
+                                                style={{ colorScheme: 'dark' }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Observações</label>
+                                        <textarea
+                                            value={formObservacoes}
+                                            onChange={(e) => setFormObservacoes(e.target.value)}
+                                            rows={3}
+                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-600 resize-none"
+                                            placeholder="Anotações sobre a negociação..."
+                                        />
+                                    </div>
+
+                                    {editMode && (
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-400 mb-1.5">Status</label>
+                                            <select
+                                                value={formStatus}
+                                                onChange={(e) => setFormStatus(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            >
+                                                <option value="ATIVO">Ativo</option>
+                                                <option value="INATIVO">Inativo</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-white/[0.04]">
+                                    <button
+                                        onClick={() => setShowModal(false)}
+                                        className="rounded-lg px-4 py-2 text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={saving || !formEmpresa || !formContato || !formTelefone}
+                                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20 disabled:opacity-50"
+                                    >
+                                        {saving ? 'Gravando...' : editMode ? 'Salvar Edição' : 'Cadastrar Prospect'}
+                                    </button>
+                                </div>
                             </div>
                         </motion.div>
                     </div>
