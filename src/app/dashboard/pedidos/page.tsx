@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { MonthSelector } from "@/components/ui/MonthSelector";
+import { PedidoExportButton } from "@/components/PedidoExportButton";
 
 export default function PedidosPage() {
     const { orders, fabricas, removeOrder, refreshOrders } = useData();
@@ -373,6 +374,10 @@ export default function PedidosPage() {
                                                                 {order.observacoes && (
                                                                     <span className="hidden lg:inline text-gray-400 truncate max-w-[200px]"><span className="text-gray-500">Obs:</span> {order.observacoes}</span>
                                                                 )}
+                                                                
+                                                                <div className="pl-2 border-l border-white/10 ml-1">
+                                                                    <PedidoExportButton order={order} />
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         {/* Items Table */}
