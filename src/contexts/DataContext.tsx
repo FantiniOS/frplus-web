@@ -65,6 +65,7 @@ export interface OrderItem {
     id?: string;
     produtoId: string;
     nomeProduto: string;
+    unidade?: string;
     quantidade: number;
     precoUnitario: number;
     total: number;

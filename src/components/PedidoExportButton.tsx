@@ -191,7 +191,7 @@ export function PedidoExportButton({ order }: PedidoExportButtonProps) {
                 String(index + 1).padStart(2, '0'),
                 item.nomeProduto,
                 String(item.quantidade),
-                'UN', // Unidade fixa ou pegar de outro lugar
+                item.unidade || 'UN',
                 `R$ ${Number(item.precoUnitario).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
                 `R$ ${Number(item.total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             ]);
@@ -228,41 +228,53 @@ export function PedidoExportButton({ order }: PedidoExportButtonProps) {
             const totalsWidth = 70;
             const totalsX = pageWidth - margin.right - totalsWidth;
             
-            // Container Totals
+            // Container Totals (aumentamos a altura para não sobrepor)
             doc.setFillColor(colors.rowEven[0], colors.rowEven[1], colors.rowEven[2]);
             doc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
             doc.setLineWidth(0.3);
-            doc.roundedRect(totalsX, finalY, totalsWidth, temDesconto ? 24 : 14, 1.5, 1.5, 'FD');
+            doc.roundedRect(totalsX, finalY, totalsWidth, temDesconto ? 28 : 22, 1.5, 1.5, 'FD');
 
             doc.setFontSize(8);
             doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
             
+            // Simulando flexDirection: 'column' com espaçamento vertical correto
+            let currentY = finalY + 7;
+            
             if (temDesconto) {
-                doc.text('Valor Bruto:', totalsX + 5, finalY + 6);
-                doc.text('Desconto:', totalsX + 5, finalY + 12);
+                // Linha 1: Valor Bruto
+                doc.text('Valor Bruto:', totalsX + 5, currentY);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
-                doc.text(`R$ ${valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, finalY + 6, { align: 'right' });
+                doc.text(`R$ ${valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
+                
+                // Linha 2: Desconto (marginBottom simulado somando 6)
+                currentY += 6;
+                doc.setFontSize(8);
+                doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                doc.text('Desconto:', totalsX + 5, currentY);
                 doc.setTextColor(239, 68, 68); // Red
-                doc.text(`- R$ ${desconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, finalY + 12, { align: 'right' });
+                doc.text(`- R$ ${desconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
+                
+                // Espaço extra antes do total
+                currentY += 9;
             } else {
-                doc.text('Valor Bruto:', totalsX + 5, finalY + 8);
+                // Linha 1: Valor Bruto
+                doc.text('Valor Bruto:', totalsX + 5, currentY);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
-                doc.text(`R$ ${valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, finalY + 8, { align: 'right' });
+                doc.text(`R$ ${valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
+                
+                // Espaço extra antes do total
+                currentY += 9;
             }
 
-            // Separator line
-            const sepY = temDesconto ? finalY + 15 : finalY + 10;
-            // doc.line(totalsX, sepY, totalsX + totalsWidth, sepY);
-
-            // Total Value
+            // Linha Final: VALOR TOTAL (em negrito e verde)
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
-            doc.text('VALOR TOTAL:', totalsX + 5, temDesconto ? finalY + 20 : finalY + 10);
+            doc.text('VALOR TOTAL:', totalsX + 5, currentY);
             doc.setTextColor(16, 185, 129); // Emerald
-            doc.text(`R$ ${Number(order.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, temDesconto ? finalY + 20 : finalY + 10, { align: 'right' });
+            doc.text(`R$ ${Number(order.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
 
 
             // Observações
