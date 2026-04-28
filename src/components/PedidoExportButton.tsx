@@ -220,7 +220,8 @@ export function PedidoExportButton({ order }: PedidoExportButtonProps) {
             // TOTAIS E OBSERVAÇÕES
             let finalY = (doc as any).lastAutoTable.finalY + 6;
 
-            // Calcular bruto vs desconto
+            // Calcular volumes, bruto e desconto
+            const totalVolumes = order.itens.reduce((acc, item) => acc + Number(item.quantidade), 0);
             const valorBruto = order.itens.reduce((acc, item) => acc + (item.quantidade * item.precoUnitario), 0);
             const desconto = valorBruto - Number(order.valorTotal);
             const temDesconto = desconto > 0.01;
@@ -228,26 +229,37 @@ export function PedidoExportButton({ order }: PedidoExportButtonProps) {
             const totalsWidth = 70;
             const totalsX = pageWidth - margin.right - totalsWidth;
             
-            // Container Totals (aumentamos a altura para não sobrepor)
+            // Container Totals (altura ajustada para acomodar linha de volumes)
             doc.setFillColor(colors.rowEven[0], colors.rowEven[1], colors.rowEven[2]);
             doc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
             doc.setLineWidth(0.3);
-            doc.roundedRect(totalsX, finalY, totalsWidth, temDesconto ? 28 : 22, 1.5, 1.5, 'FD');
+            doc.roundedRect(totalsX, finalY, totalsWidth, temDesconto ? 34 : 28, 1.5, 1.5, 'FD');
 
             doc.setFontSize(8);
             doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
             
             // Simulando flexDirection: 'column' com espaçamento vertical correto
             let currentY = finalY + 7;
+
+            // Linha 1: Total de Volumes
+            doc.setFont('helvetica', 'normal');
+            doc.text('Total de Volumes:', totalsX + 5, currentY);
+            doc.setTextColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${totalVolumes}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
+
+            currentY += 6;
             
             if (temDesconto) {
-                // Linha 1: Valor Bruto
-                doc.text('Valor Bruto:', totalsX + 5, currentY);
+                // Linha 2: Valor Bruto
                 doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                doc.text('Valor Bruto:', totalsX + 5, currentY);
                 doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
                 doc.text(`R$ ${valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
                 
-                // Linha 2: Desconto (marginBottom simulado somando 6)
+                // Linha 3: Desconto
                 currentY += 6;
                 doc.setFontSize(8);
                 doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
@@ -258,9 +270,11 @@ export function PedidoExportButton({ order }: PedidoExportButtonProps) {
                 // Espaço extra antes do total
                 currentY += 9;
             } else {
-                // Linha 1: Valor Bruto
-                doc.text('Valor Bruto:', totalsX + 5, currentY);
+                // Linha 2: Valor Bruto
                 doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                doc.text('Valor Bruto:', totalsX + 5, currentY);
                 doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
                 doc.text(`R$ ${valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
                 
