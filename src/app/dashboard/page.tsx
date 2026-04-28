@@ -232,28 +232,47 @@ export default function DashboardPage() {
 
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-  // Bonificações
-  const bonificacoes = monthlyOrders.filter(o => o.tipo === 'Bonificacao').length;
+  // Bonificações — respeitando chartView (Mensal / Anual / Global)
+  const bonificacaoOrders = useMemo(() => {
+    let startOfPeriod: Date | null = null;
+    let endOfPeriod: Date | null = null;
+
+    if (chartView === 'Mensal' && filterYear !== null && filterMonth !== null) {
+      startOfPeriod = new Date(Date.UTC(filterYear, filterMonth, 1, 0, 0, 0));
+      endOfPeriod = new Date(Date.UTC(filterYear, filterMonth + 1, 1, 0, 0, 0));
+    } else if (chartView === 'Anual' && selectedYear !== null) {
+      startOfPeriod = new Date(Date.UTC(selectedYear, 0, 1, 0, 0, 0));
+      endOfPeriod = new Date(Date.UTC(selectedYear + 1, 0, 1, 0, 0, 0));
+    }
+    // chartView === 'Global' → sem filtro de data
+
+    return orders.filter(o => {
+      if (o.tipo !== 'Bonificacao') return false;
+      const d = new Date(o.data);
+      if (startOfPeriod && endOfPeriod) {
+        return d.getTime() >= startOfPeriod.getTime() && d.getTime() < endOfPeriod.getTime();
+      }
+      return true; // Global
+    });
+  }, [orders, chartView, filterMonth, filterYear, selectedYear]);
+
+  const bonificacoes = bonificacaoOrders.length;
 
   const bonificacaoTotal = useMemo(() =>
-    monthlyOrders
-      .filter(o => o.tipo === 'Bonificacao')
-      .reduce((acc, o) => acc + o.valorTotal, 0),
-    [monthlyOrders]
+    bonificacaoOrders.reduce((acc, o) => acc + o.valorTotal, 0),
+    [bonificacaoOrders]
   );
 
   const bonificacaoDetalhes = useMemo(() => {
     const map = new Map<string, number>();
-    monthlyOrders
-      .filter(o => o.tipo === 'Bonificacao')
-      .forEach(o => {
-        const nome = o.nomeCliente || 'Cliente Desconhecido';
-        map.set(nome, (map.get(nome) || 0) + o.valorTotal);
-      });
+    bonificacaoOrders.forEach(o => {
+      const nome = o.nomeCliente || 'Cliente Desconhecido';
+      map.set(nome, (map.get(nome) || 0) + o.valorTotal);
+    });
     return Array.from(map.entries())
       .map(([nome, valor]) => ({ nome, valor }))
       .sort((a, b) => b.valor - a.valor);
-  }, [monthlyOrders]);
+  }, [bonificacaoOrders]);
 
   const [showBonifDetails, setShowBonifDetails] = useState(false);
 
