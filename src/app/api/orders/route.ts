@@ -28,11 +28,7 @@ export async function GET(request: Request) {
             where: whereClause,
             include: {
                 cliente: true,
-                itens: {
-                    include: {
-                        produto: true
-                    }
-                }
+                itens: true
             },
             orderBy: [
                 { notaFiscal: 'desc' },
@@ -40,7 +36,11 @@ export async function GET(request: Request) {
             ]
         })
 
-        // (We no longer need productMap since we include produto directly)
+        // Fetch all products for name lookup (safe - won't crash if some are missing)
+        const allProducts = await prisma.produto.findMany({
+            select: { id: true, nome: true, unidade: true }
+        })
+        const productMap = new Map(allProducts.map(p => [p.id, p]))
 
         const formattedOrders = orders.map(o => ({
             id: o.id,
@@ -59,20 +59,23 @@ export async function GET(request: Request) {
             observacoes: o.observacoes,
             notaFiscal: o.notaFiscal,
             createdAt: o.createdAt.toISOString(),
-            itens: o.itens.map(item => ({
-                id: item.id,
-                produtoId: item.produtoId,
-                nomeProduto: item.produto?.nome || 'Produto Removido',
-                unidade: item.produto?.unidade || 'UN',
-                quantidade: item.quantidade,
-                precoUnitario: Number(item.precoUnitario),
-                total: Number(item.total)
-            }))
+            itens: o.itens.map(item => {
+                const prod = productMap.get(item.produtoId)
+                return {
+                    id: item.id,
+                    produtoId: item.produtoId,
+                    nomeProduto: prod?.nome || 'Produto Removido',
+                    unidade: prod?.unidade || 'UN',
+                    quantidade: item.quantidade,
+                    precoUnitario: Number(item.precoUnitario),
+                    total: Number(item.total)
+                }
+            })
         }))
 
         return NextResponse.json(formattedOrders)
     } catch (error) {
-        console.error('Error fetching orders:', error)
+        console.error('CRITICAL ERROR FETCHING ORDERS:', error)
         return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 })
     }
 }
