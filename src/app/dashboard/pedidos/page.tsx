@@ -1,7 +1,8 @@
 /* eslint-disable */
 'use client';
 
-import { Search, Plus, Pencil, Trash2, Calendar, DollarSign, FileText, Package, Eye, Printer, Download, Filter, X, ChevronRight } from "lucide-react";
+import React from 'react';
+import { Search, Plus, Pencil, Trash2, Calendar, DollarSign, FileText, Package, Eye, Printer, Download, Filter, X, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -66,10 +67,8 @@ export default function PedidosPage() {
         });
     }, [orders, searchTerm, selectedMonth, tipoFilter]);
 
-    // Selected order object
-    const selectedOrder = useMemo(() => {
-        return filteredOrders.find(o => o.id === selectedOrderId) || null;
-    }, [filteredOrders, selectedOrderId]);
+
+
 
     // Stats
     const stats = {
@@ -216,10 +215,11 @@ export default function PedidosPage() {
                 </div>
 
                 {/* Scrollable Table */}
-                <div className="overflow-auto flex-1" style={{ maxHeight: selectedOrder ? '280px' : '500px' }}>
+                <div className="overflow-auto flex-1">
                     <table className="w-full text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-[#0c1220] border-b border-white/[0.08]">
+                                <th className="w-10 px-2 py-2.5"></th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Data Pedido</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden lg:table-cell">Data NF</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Nota Fiscal</th>
@@ -234,7 +234,7 @@ export default function PedidosPage() {
                         <tbody>
                             {filteredOrders.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="text-center py-12 text-gray-600">
+                                    <td colSpan={9} className="text-center py-12 text-gray-600">
                                         <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                         <p className="text-sm">Nenhum pedido encontrado</p>
                                     </td>
@@ -243,8 +243,8 @@ export default function PedidosPage() {
                                 filteredOrders.map((order, index) => {
                                     const isSelected = selectedOrderId === order.id;
                                     return (
+                                        <React.Fragment key={order.id}>
                                         <tr
-                                            key={order.id}
                                             onClick={() => setSelectedOrderId(isSelected ? null : order.id)}
                                             className={`
                                                 border-b border-white/[0.03] cursor-pointer transition-all duration-150
@@ -256,6 +256,16 @@ export default function PedidosPage() {
                                                 }
                                             `}
                                         >
+                                            {/* Expand Icon */}
+                                            <td className="px-2 py-2.5">
+                                                <div className="p-1 rounded bg-blue-500/10 w-fit">
+                                                    {isSelected ? (
+                                                        <ChevronUp className="h-3.5 w-3.5 text-blue-400" />
+                                                    ) : (
+                                                        <ChevronDown className="h-3.5 w-3.5 text-blue-400" />
+                                                    )}
+                                                </div>
+                                            </td>
                                             {/* Data Pedido */}
                                             <td className="px-3 py-2.5">
                                                 <span className={`text-xs font-mono ${isSelected ? 'text-blue-300' : 'text-gray-400'}`}>
@@ -344,6 +354,62 @@ export default function PedidosPage() {
                                                 </td>
                                             )}
                                         </tr>
+                                        {/* ═══ ACCORDION DETAIL ROW ═══ */}
+                                        {isSelected && (
+                                            <tr className="bg-cyan-500/[0.03] border-b border-cyan-500/10">
+                                                <td colSpan={9} className="p-0">
+                                                    <div className="animate-in slide-in-from-top-2 fade-in duration-200 px-4 py-4 space-y-3">
+                                                        {/* Detail Header */}
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-1 h-4 rounded-full bg-cyan-500"></div>
+                                                                <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Itens do Pedido</span>
+                                                                <span className="text-[10px] text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">{order.itens.length} itens</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-3 text-xs">
+                                                                {(order.dataNotaFiscal || order.dataFaturamento) && (
+                                                                    <span className="hidden md:inline"><span className="text-gray-500">Data NF:</span> <span className="text-cyan-400">{formatDate(order.dataNotaFiscal || order.dataFaturamento)}</span></span>
+                                                                )}
+                                                                {order.observacoes && (
+                                                                    <span className="hidden lg:inline text-gray-400 truncate max-w-[200px]"><span className="text-gray-500">Obs:</span> {order.observacoes}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {/* Items Table */}
+                                                        <div className="rounded-lg border border-white/[0.06] overflow-hidden">
+                                                            <table className="w-full text-sm">
+                                                                <thead>
+                                                                    <tr className="bg-[#0c1220] border-b border-white/[0.08]">
+                                                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">#</th>
+                                                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Produto</th>
+                                                                        <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Qtd</th>
+                                                                        <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Preço Unit.</th>
+                                                                        <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Valor Total</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {order.itens.map((item, idx) => (
+                                                                        <tr key={idx} className={`border-b border-white/[0.03] ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'}`}>
+                                                                            <td className="px-3 py-2"><span className="text-[10px] text-gray-600 font-mono">{String(idx + 1).padStart(2, '0')}</span></td>
+                                                                            <td className="px-3 py-2"><span className="text-sm text-gray-200">{item.nomeProduto}</span></td>
+                                                                            <td className="px-3 py-2 text-center"><span className="text-sm text-cyan-400 font-semibold">{item.quantidade}</span></td>
+                                                                            <td className="px-3 py-2 text-right"><span className="text-xs text-gray-400 font-mono">{Number(item.precoUnitario).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></td>
+                                                                            <td className="px-3 py-2 text-right"><span className="text-sm text-emerald-400 font-bold font-mono">{Number(item.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></td>
+                                                                        </tr>
+                                                                    ))}
+                                                                    <tr className="bg-white/[0.03] border-t border-white/[0.08]">
+                                                                        <td colSpan={3} className="px-3 py-2.5"><span className="text-xs text-gray-500 uppercase font-semibold">Total do Pedido</span></td>
+                                                                        <td className="px-3 py-2.5 text-right"><span className="text-xs text-gray-500">{order.itens.reduce((acc, i) => acc + i.quantidade, 0)} un.</span></td>
+                                                                        <td className="px-3 py-2.5 text-right"><span className="text-base text-emerald-400 font-bold">R$ {Number(order.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
                                     );
                                 })
                             )}
@@ -352,151 +418,6 @@ export default function PedidosPage() {
                 </div>
             </div>
 
-            {/* ═══════════ DETAIL PANEL — Itens do Pedido ═══════════ */}
-            {selectedOrder && (
-                <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
-                    {/* Detail Header */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-cyan-500/10 to-transparent border-b border-white/[0.06]">
-                        <div className="flex items-center gap-2">
-                            <div className="w-1 h-4 rounded-full bg-cyan-500"></div>
-                            <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Itens do Pedido</span>
-                            <span className="text-[10px] text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">{selectedOrder.itens.length} itens</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 text-xs">
-                                <span className="text-gray-500">Cliente:</span>
-                                <span className="text-white font-medium">{selectedOrder.nomeCliente}</span>
-                            </div>
-                            <div className="hidden md:flex items-center gap-2 text-xs">
-                                <span className="text-gray-500">Data Pedido:</span>
-                                <span className="text-gray-300">{formatDate(getDataPedido(selectedOrder))}</span>
-                            </div>
-                            {(selectedOrder.dataNotaFiscal || selectedOrder.dataFaturamento) && (
-                                <div className="hidden md:flex items-center gap-2 text-xs">
-                                    <span className="text-gray-500">Data NF:</span>
-                                    <span className="text-cyan-400">{formatDate(selectedOrder.dataNotaFiscal || selectedOrder.dataFaturamento)}</span>
-                                </div>
-                            )}
-
-                            {selectedOrder.observacoes && (
-                                <div className="hidden lg:flex items-center gap-2 text-xs">
-                                    <span className="text-gray-500">Obs:</span>
-                                    <span className="text-gray-400 truncate max-w-[150px]">{selectedOrder.observacoes}</span>
-                                </div>
-                            )}
-                            <button
-                                onClick={() => setSelectedOrderId(null)}
-                                className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
-                            >
-                                <X className="h-3.5 w-3.5" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Items Table */}
-                    <div className="overflow-auto" style={{ maxHeight: '220px' }}>
-                        <table className="w-full text-sm">
-                            <thead className="sticky top-0 z-10">
-                                <tr className="bg-[#0c1220] border-b border-white/[0.08]">
-                                    <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">#</th>
-                                    <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Produto</th>
-                                    <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Qtd</th>
-                                    <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Preço Unit.</th>
-                                    <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Valor Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {selectedOrder.itens.map((item, idx) => (
-                                    <tr key={idx} className={`border-b border-white/[0.03] ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'}`}>
-                                        <td className="px-3 py-2">
-                                            <span className="text-[10px] text-gray-600 font-mono">{String(idx + 1).padStart(2, '0')}</span>
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <span className="text-sm text-gray-200">{item.nomeProduto}</span>
-                                        </td>
-                                        <td className="px-3 py-2 text-center">
-                                            <span className="text-sm text-cyan-400 font-semibold">{item.quantidade}</span>
-                                        </td>
-                                        <td className="px-3 py-2 text-right">
-                                            <span className="text-xs text-gray-400 font-mono">{Number(item.precoUnitario).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                        </td>
-                                        <td className="px-3 py-2 text-right">
-                                            <span className="text-sm text-emerald-400 font-bold font-mono">{Number(item.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {/* Total Row */}
-                                <tr className="bg-white/[0.03] border-t border-white/[0.08]">
-                                    <td colSpan={3} className="px-3 py-2.5">
-                                        <span className="text-xs text-gray-500 uppercase font-semibold">Total do Pedido</span>
-                                    </td>
-                                    <td className="px-3 py-2.5 text-right">
-                                        <span className="text-xs text-gray-500">{selectedOrder.itens.reduce((acc, i) => acc + i.quantidade, 0)} un.</span>
-                                    </td>
-                                    <td className="px-3 py-2.5 text-right">
-                                        <span className="text-base text-emerald-400 font-bold">R$ {Number(selectedOrder.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {/* ═══════════ ACTION BAR ═══════════ */}
-            <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
-                {!isIndustria && (
-                    <Link href="/dashboard/pedidos/novo">
-                        <button className="flex items-center gap-1.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 px-3 py-2 text-xs font-semibold text-white transition-all">
-                            <Plus className="h-3.5 w-3.5" />
-                            Incluir Pedido
-                        </button>
-                    </Link>
-                )}
-
-                {selectedOrder && (
-                    <>
-                        <Link href={`/dashboard/pedidos/${selectedOrder.id}`}>
-                            <button className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-gray-300 transition-all">
-                                <Eye className="h-3.5 w-3.5" />
-                                Visualizar Pedido
-                            </button>
-                        </Link>
-                        {!isIndustria && (
-                            <>
-                                <Link href={`/dashboard/pedidos/${selectedOrder.id}`}>
-                                    <button className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-gray-300 transition-all">
-                                        <Pencil className="h-3.5 w-3.5" />
-                                        Editar Pedido
-                                    </button>
-                                </Link>
-                                <button
-                                    onClick={() => setDeleteId(selectedOrder.id)}
-                                    className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 px-3 py-2 text-xs font-medium text-gray-300 hover:text-red-400 transition-all"
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                    Excluir
-                                </button>
-                            </>
-                        )}
-                    </>
-                )}
-
-                {/* Spacer */}
-                <div className="flex-1" />
-
-                {/* Info */}
-                <div className="text-[10px] text-gray-600 hidden md:block">
-                    {selectedOrder ? (
-                        <span className="flex items-center gap-1">
-                            <ChevronRight className="h-3 w-3" />
-                            Pedido selecionado: <span className="text-blue-400 font-medium">{selectedOrder.nomeCliente}</span>
-                        </span>
-                    ) : (
-                        <span>Selecione um pedido na tabela para ver detalhes</span>
-                    )}
-                </div>
-            </div>
 
             {/* ═══════════ DELETE MODAL ═══════════ */}
             {deleteId && (
