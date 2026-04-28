@@ -362,17 +362,17 @@ export default function AIInsightsClient() {
 
             autoTable(doc, {
                 startY,
-                head: [['Cliente', 'Vendedor', 'Últ. Compra', 'Valor', 'Dias', 'Giro']],
+                head: [['Cliente', 'Vendedor', 'Últ. Compra', 'Valor', 'Dias s/ Comprar', 'Giro']],
                 body: tableData,
                 styles: { fontSize: 8, cellPadding: 3, halign: 'left', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
                 headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4, fontSize: 9 },
                 alternateRowStyles: { fillColor: colors.rowEven },
                 columnStyles: {
-                    0: { fontStyle: 'bold', cellWidth: contentWidth * 0.32 },
+                    0: { fontStyle: 'bold', cellWidth: contentWidth * 0.28 },
                     1: { cellWidth: contentWidth * 0.18 },
                     2: { halign: 'center', cellWidth: contentWidth * 0.13 },
                     3: { halign: 'right', fontStyle: 'bold', cellWidth: contentWidth * 0.15 },
-                    4: { halign: 'center', cellWidth: contentWidth * 0.10 },
+                    4: { halign: 'center', cellWidth: contentWidth * 0.14 },
                     5: { halign: 'center', cellWidth: contentWidth * 0.12 }
                 },
                 foot: [[
@@ -855,8 +855,8 @@ export default function AIInsightsClient() {
                                                                     <div className="flex flex-wrap items-center gap-2 mb-1">
                                                                         <p className="font-medium text-white">{client.nomeFantasia}</p>
                                                                         {client.statusCiclo === 'ATRASADO' ? (
-                                                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-500/20 text-red-400 border border-red-500/30 break-normal whitespace-nowrap">
-                                                                                Atrasado há {client.diasInativo !== null ? client.diasInativo - client.cicloMedioDias : 0} dias
+                                                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 break-normal whitespace-nowrap">
+                                                                                Sem comprar há {client.diasInativo !== null ? client.diasInativo - client.cicloMedioDias : 0} dias
                                                                             </span>
                                                                         ) : (
                                                                             <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-green-500/20 text-green-400 border border-green-500/30 break-normal whitespace-nowrap">
@@ -884,7 +884,7 @@ export default function AIInsightsClient() {
                                                                         </div>
                                                                         <div className="flex justify-between items-center text-xs">
                                                                             <span className="text-gray-500">Dias Ausente:</span>
-                                                                            <span className="text-red-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
+                                                                            <span className="text-orange-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
                                                                         </div>
                                                                         <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
                                                                             <span className="text-gray-500">Giro Médio Calculado:</span>
@@ -969,8 +969,8 @@ export default function AIInsightsClient() {
                                                             <div className="flex flex-wrap items-center gap-2 mb-1">
                                                                 <p className="font-medium text-white">{client.nomeFantasia}</p>
                                                                 {client.statusCiclo === 'ATRASADO' ? (
-                                                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-500/20 text-red-400 border border-red-500/30 break-normal whitespace-nowrap">
-                                                                        Atrasado há {client.diasInativo !== null ? client.diasInativo - client.cicloMedioDias : 0} dias
+                                                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 break-normal whitespace-nowrap">
+                                                                        Sem comprar há {client.diasInativo !== null ? client.diasInativo - client.cicloMedioDias : 0} dias
                                                                     </span>
                                                                 ) : (
                                                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 break-normal whitespace-nowrap">
@@ -998,7 +998,7 @@ export default function AIInsightsClient() {
                                                                 </div>
                                                                 <div className="flex justify-between items-center text-xs">
                                                                     <span className="text-gray-500">Dias Ausente:</span>
-                                                                    <span className="text-red-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
+                                                                    <span className="text-orange-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
                                                                 </div>
                                                                 <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
                                                                     <span className="text-gray-500">Giro Médio Calculado:</span>
