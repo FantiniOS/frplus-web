@@ -1,8 +1,8 @@
 /* eslint-disable */
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Wallet, X, Eye, Trash2, Pencil, Package, ChevronRight, FileText, CalendarClock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Plus, Wallet, X, Eye, Trash2, Pencil, Package, ChevronRight, ChevronDown, ChevronUp, FileText, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -130,10 +130,6 @@ export default function VerbaListPage() {
             return matchesSearch && matchesStatus;
         });
     }, [verbas, searchTerm, statusFilter]);
-
-    const selectedVerba = useMemo(() => {
-        return filteredVerbas.find(v => v.id === selectedVerbaId) || null;
-    }, [filteredVerbas, selectedVerbaId]);
 
 
     const handleCreate = async () => {
@@ -320,10 +316,11 @@ export default function VerbaListPage() {
                 </div>
 
                 {/* Scrollable Table */}
-                <div className={`overflow-auto flex-1 min-h-0 ${selectedVerbaId ? 'max-h-[40vh]' : 'max-h-[70vh]'}`}>
+                <div className="overflow-auto flex-1">
                     <table className="w-full text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-[#0c1220] border-b border-white/[0.08]">
+                                <th className="w-10 px-2 py-2.5"></th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Cliente</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Título</th>
                                 <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 w-10 hidden md:table-cell">Obs.</th>
@@ -338,7 +335,7 @@ export default function VerbaListPage() {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={9} className="text-center py-12 text-gray-600">
+                                    <td colSpan={10} className="text-center py-12 text-gray-600">
                                         <div className="flex items-center justify-center gap-2">
                                             <div className="h-4 w-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
                                             Carregando...
@@ -347,7 +344,7 @@ export default function VerbaListPage() {
                                 </tr>
                             ) : filteredVerbas.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="text-center py-12 text-gray-600">
+                                    <td colSpan={10} className="text-center py-12 text-gray-600">
                                         <Wallet className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                         <p className="text-sm">Nenhuma verba encontrada</p>
                                     </td>
@@ -356,8 +353,8 @@ export default function VerbaListPage() {
                                 filteredVerbas.map((verba, index) => {
                                     const isSelected = selectedVerbaId === verba.id;
                                     return (
+                                        <React.Fragment key={verba.id}>
                                         <tr
-                                            key={verba.id}
                                             onClick={() => handleSelectVerba(verba.id)}
                                             className={`
                                                 border-b border-white/[0.03] cursor-pointer transition-all duration-150
@@ -369,6 +366,17 @@ export default function VerbaListPage() {
                                                 }
                                             `}
                                         >
+                                            {/* Expand Icon */}
+                                            <td className="px-2 py-2.5">
+                                                <div className="p-1 rounded bg-purple-500/10 w-fit">
+                                                    {isSelected ? (
+                                                        <ChevronUp className="h-3.5 w-3.5 text-purple-400" />
+                                                    ) : (
+                                                        <ChevronDown className="h-3.5 w-3.5 text-purple-400" />
+                                                    )}
+                                                </div>
+                                            </td>
+
                                             {/* Cliente */}
                                             <td className="px-3 py-2.5">
                                                 <div className="flex flex-col">
@@ -479,6 +487,102 @@ export default function VerbaListPage() {
                                                 </div>
                                             </td>
                                         </tr>
+                                        {/* ═══ ACCORDION DETAIL ROW ═══ */}
+                                        {isSelected && (
+                                            <tr className="bg-purple-500/[0.03] border-b border-purple-500/10">
+                                                <td colSpan={10} className="p-0">
+                                                    <div className="animate-in slide-in-from-top-2 fade-in duration-200 px-4 py-4 space-y-3">
+                                                        {/* Detail Header */}
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-1 h-4 rounded-full bg-cyan-500"></div>
+                                                                <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Pedidos Vinculados</span>
+                                                                <span className="text-[10px] text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">
+                                                                    {loadingDetail ? '...' : `${detailPedidos.length} pedidos`}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-3 text-xs">
+                                                                <span className="text-gray-500">Verba:</span>
+                                                                <span className="text-white font-medium">{verba.titulo}</span>
+                                                                <span className="hidden md:inline text-gray-500">Saldo:</span>
+                                                                <span className={`hidden md:inline font-bold ${verba.saldo > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                                    R$ {verba.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {/* Detail Content */}
+                                                        {loadingDetail ? (
+                                                            <div className="flex items-center justify-center py-8">
+                                                                <div className="h-4 w-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                                                                <span className="text-xs text-gray-500 ml-2">Carregando...</span>
+                                                            </div>
+                                                        ) : detailPedidos.length === 0 ? (
+                                                            <div className="text-center py-8 text-gray-600">
+                                                                <Package className="h-6 w-6 mx-auto mb-1 opacity-30" />
+                                                                <p className="text-xs">Nenhum pedido vinculado a esta verba</p>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="rounded-lg border border-white/[0.06] overflow-hidden">
+                                                                <table className="w-full text-sm">
+                                                                    <thead>
+                                                                        <tr className="bg-[#0c1220] border-b border-white/[0.08]">
+                                                                            <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">#</th>
+                                                                            <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Data</th>
+                                                                            <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Nota Fiscal</th>
+                                                                            <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Nº Pedido</th>
+                                                                            <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 hidden md:table-cell">Cond. Pagamento</th>
+                                                                            <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Valor Abatido</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {detailPedidos.map((p, idx) => (
+                                                                            <tr key={p.id} className={`border-b border-white/[0.03] ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'}`}>
+                                                                                <td className="px-3 py-2">
+                                                                                    <span className="text-[10px] text-gray-600 font-mono">{String(idx + 1).padStart(2, '0')}</span>
+                                                                                </td>
+                                                                                <td className="px-3 py-2">
+                                                                                    <span className="text-xs font-mono text-gray-400">{new Date(p.data).toLocaleDateString('pt-BR')}</span>
+                                                                                </td>
+                                                                                <td className="px-3 py-2">
+                                                                                    {p.notaFiscal ? (
+                                                                                        <span className="text-xs font-mono text-gray-300">{p.notaFiscal}</span>
+                                                                                    ) : (
+                                                                                        <span className="text-xs text-gray-600">-</span>
+                                                                                    )}
+                                                                                </td>
+                                                                                <td className="px-3 py-2">
+                                                                                    <span className="text-sm text-gray-200 font-medium">#{p.id.slice(-6)}</span>
+                                                                                </td>
+                                                                                <td className="px-3 py-2 hidden md:table-cell">
+                                                                                    <span className="text-xs text-gray-500">{p.condicaoPagamento}</span>
+                                                                                </td>
+                                                                                <td className="px-3 py-2 text-right">
+                                                                                    <span className="text-sm text-emerald-400 font-bold font-mono">
+                                                                                        R$ {p.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                                    </span>
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                        {/* Total Row */}
+                                                                        <tr className="bg-white/[0.03] border-t border-white/[0.08]">
+                                                                            <td colSpan={5} className="px-3 py-2.5">
+                                                                                <span className="text-xs text-gray-500 uppercase font-semibold">Total Consumido</span>
+                                                                            </td>
+                                                                            <td className="px-3 py-2.5 text-right">
+                                                                                <span className="text-base text-amber-400 font-bold">
+                                                                                    R$ {detailPedidos.reduce((acc, p) => acc + p.valorTotal, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                                </span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                        </React.Fragment>
                                     );
                                 })
                             )}
@@ -487,169 +591,6 @@ export default function VerbaListPage() {
                 </div>
             </div>
 
-            {/* ═══════════ DETAIL PANEL — Pedidos Vinculados (inline) ═══════════ */}
-            {selectedVerba && (
-                <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
-                    {/* Detail Header */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-cyan-500/10 to-transparent border-b border-white/[0.06]">
-                        <div className="flex items-center gap-2">
-                            <div className="w-1 h-4 rounded-full bg-cyan-500"></div>
-                            <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Pedidos Vinculados</span>
-                            <span className="text-[10px] text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">
-                                {loadingDetail ? '...' : `${detailPedidos.length} pedidos`}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 text-xs">
-                                <span className="text-gray-500">Verba:</span>
-                                <span className="text-white font-medium">{selectedVerba.titulo}</span>
-                            </div>
-                            <div className="hidden md:flex items-center gap-2 text-xs">
-                                <span className="text-gray-500">Cliente:</span>
-                                <span className="text-gray-300">{selectedVerba.clienteNome}</span>
-                            </div>
-                            <div className="hidden md:flex items-center gap-2 text-xs">
-                                <span className="text-gray-500">Saldo:</span>
-                                <span className={`font-bold ${selectedVerba.saldo > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                    R$ {selectedVerba.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </span>
-                            </div>
-                            <button
-                                onClick={() => setSelectedVerbaId(null)}
-                                className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
-                            >
-                                <X className="h-3.5 w-3.5" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Detail Table */}
-                    <div className="overflow-auto" style={{ maxHeight: '35vh' }}>
-                        {loadingDetail ? (
-                            <div className="flex items-center justify-center py-8">
-                                <div className="h-4 w-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
-                                <span className="text-xs text-gray-500 ml-2">Carregando...</span>
-                            </div>
-                        ) : detailPedidos.length === 0 ? (
-                            <div className="text-center py-8 text-gray-600">
-                                <Package className="h-6 w-6 mx-auto mb-1 opacity-30" />
-                                <p className="text-xs">Nenhum pedido vinculado a esta verba</p>
-                            </div>
-                        ) : (
-                            <table className="w-full text-sm">
-                                <thead className="sticky top-0 z-10">
-                                    <tr className="bg-[#0c1220] border-b border-white/[0.08]">
-                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">#</th>
-                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Data</th>
-                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Nota Fiscal</th>
-                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Nº Pedido</th>
-                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 hidden md:table-cell">Cond. Pagamento</th>
-                                        <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Valor Abatido</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {detailPedidos.map((p, idx) => (
-                                        <tr key={p.id} className={`border-b border-white/[0.03] ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'}`}>
-                                            <td className="px-3 py-2">
-                                                <span className="text-[10px] text-gray-600 font-mono">{String(idx + 1).padStart(2, '0')}</span>
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                <span className="text-xs font-mono text-gray-400">{new Date(p.data).toLocaleDateString('pt-BR')}</span>
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                {p.notaFiscal ? (
-                                                    <span className="text-xs font-mono text-gray-300">{p.notaFiscal}</span>
-                                                ) : (
-                                                    <span className="text-xs text-gray-600">-</span>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                <span className="text-sm text-gray-200 font-medium">#{p.id.slice(-6)}</span>
-                                            </td>
-                                            <td className="px-3 py-2 hidden md:table-cell">
-                                                <span className="text-xs text-gray-500">{p.condicaoPagamento}</span>
-                                            </td>
-                                            <td className="px-3 py-2 text-right">
-                                                <span className="text-sm text-emerald-400 font-bold font-mono">
-                                                    R$ {p.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {/* Total Row */}
-                                    <tr className="bg-white/[0.03] border-t border-white/[0.08]">
-                                        <td colSpan={5} className="px-3 py-2.5">
-                                            <span className="text-xs text-gray-500 uppercase font-semibold">Total Consumido</span>
-                                        </td>
-                                        <td className="px-3 py-2.5 text-right">
-                                            <span className="text-base text-amber-400 font-bold">
-                                                R$ {detailPedidos.reduce((acc, p) => acc + p.valorTotal, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* ═══════════ ACTION BAR ═══════════ */}
-            <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
-                {!isIndustria && (
-                    <button
-                        onClick={() => setShowModal(true)}
-                        className="flex items-center gap-1.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 px-3 py-2 text-xs font-semibold text-white transition-all"
-                    >
-                        <Plus className="h-3.5 w-3.5" />
-                        Nova Verba
-                    </button>
-                )}
-
-                {selectedVerba && (
-                    <>
-                        <Link href={`/dashboard/verbas/${selectedVerba.id}`}>
-                            <button className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-gray-300 transition-all">
-                                <Eye className="h-3.5 w-3.5" />
-                                Abrir Detalhes
-                            </button>
-                        </Link>
-                        {!isIndustria && (
-                            <>
-                                <button
-                                    onClick={() => openEdit(selectedVerba)}
-                                    className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-medium text-gray-300 transition-all"
-                                >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                    Editar Verba
-                                </button>
-                                <button
-                                    onClick={() => setDeleteId(selectedVerba.id)}
-                                    className="flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 px-3 py-2 text-xs font-medium text-gray-300 hover:text-red-400 transition-all"
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                    Excluir
-                                </button>
-                            </>
-                        )}
-                    </>
-                )}
-
-                {/* Spacer */}
-                <div className="flex-1" />
-
-                {/* Info */}
-                <div className="text-[10px] text-gray-600 hidden md:block">
-                    {selectedVerba ? (
-                        <span className="flex items-center gap-1">
-                            <ChevronRight className="h-3 w-3" />
-                            Verba selecionada: <span className="text-blue-400 font-medium">{selectedVerba.titulo}</span>
-                        </span>
-                    ) : (
-                        <span>Clique em uma verba para ver os pedidos vinculados</span>
-                    )}
-                </div>
-            </div>
 
             {/* ═══════════ MODAL — Nova Verba ═══════════ */}
             <AnimatePresence>
