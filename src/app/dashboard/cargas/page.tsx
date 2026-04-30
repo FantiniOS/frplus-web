@@ -148,7 +148,7 @@ export default function MontagemCargasPage() {
                 if (truck.totalVolume + vol <= effectiveCapacity) {
                     const remainingSpace = effectiveCapacity - (truck.totalVolume + vol);
                     // Dê prioridade se o caminhão já contiver uma carga para a mesma Cidade/Praça ou Cliente
-                    const sameCity = truck.orders.some(o => (o.cidade && o.cidade === order.cidade) || (o.nomeCliente === order.nomeCliente));
+                    const sameCity = truck.orders.some(o => ((o as any).cidade && (o as any).cidade === (order as any).cidade) || (o.nomeCliente === order.nomeCliente));
                     
                     // Score = minimiza espaço vazio (Best Fit), e bônus alto se mesma cidade
                     const score = (sameCity ? 1000000 : 0) - remainingSpace;
