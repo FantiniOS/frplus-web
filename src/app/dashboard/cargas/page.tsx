@@ -257,11 +257,7 @@ export default function MontagemCargasPage() {
 
     return (
         <div className="flex flex-col gap-4 animate-in fade-in duration-500 h-full pb-8">
-            {/* INVISIBLE PRINT HEADER */}
-            <div className="hidden print:block mb-8">
-                <h1 className="text-2xl font-bold text-black border-b pb-2">Sugestão de Romaneio</h1>
-                <p className="text-sm text-gray-600 mt-2">Data de Geração: {new Date().toLocaleDateString('pt-BR')} | Fábrica: {selectedFabrica === 'todas' ? 'Todas' : fabricas.find(f => f.id === selectedFabrica)?.nome || selectedFabrica}</p>
-            </div>
+
 
             {/* HEADER */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 print:hidden">
@@ -464,7 +460,25 @@ export default function MontagemCargasPage() {
 
             {/* RESULTS GRID - Visible in print and screen if generated */}
             {generatedTrucks.length > 0 && (
-                <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-500">
+                <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-500 print:absolute print:top-0 print:left-0 print:w-full print:h-auto print:min-h-screen print:overflow-visible print:bg-white print:text-black print:z-[99999] print:m-0 print:p-8">
+                    
+                    {/* CABEÇALHO OFICIAL (Apenas Impressão) */}
+                    <div className="hidden print:flex flex-col border-b-2 border-black pb-4 mb-6">
+                        <div className="flex justify-between items-end">
+                            <h1 className="text-2xl font-bold text-black uppercase tracking-tight">FRPlus - Ordem de Embarque e Romaneio</h1>
+                            <span className="text-sm text-gray-600 font-mono">Gerado em: {new Date().toLocaleString('pt-BR')}</span>
+                        </div>
+                        <div className="flex gap-8 mt-4 text-sm text-gray-800 font-semibold">
+                            <span>Fábrica: {selectedFabrica === 'todas' ? 'Todas' : fabricas.find(f => f.id === selectedFabrica)?.nome || selectedFabrica}</span>
+                            <span>Cap. Base: {truckCapacity} cxs</span>
+                            <span>Cap. Paletizada: {truckPalletCapacity} cxs</span>
+                        </div>
+                        <div className="flex gap-8 mt-1 text-sm text-gray-800 font-semibold">
+                            <span>Total de Veículos: {generatedTrucks.length}</span>
+                            <span>Volume Total Alocado: {generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} cxs</span>
+                        </div>
+                    </div>
+
                     <div className="flex items-center gap-2 print:hidden">
                         <h2 className="text-lg font-bold text-white">Resultado do Romaneio</h2>
                         <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{generatedTrucks.length} Caminhões</span>
@@ -474,7 +488,7 @@ export default function MontagemCargasPage() {
                         {generatedTrucks.map((truck) => {
                             const colorClass = getOccupancyColor(truck.occupancyPct);
                             return (
-                                <div key={truck.id} className="rounded-xl border border-white/[0.08] bg-[#0c1220] overflow-hidden flex flex-col shadow-lg print:border-gray-300 print:bg-white print:shadow-none print:break-inside-avoid">
+                                <div key={truck.id} className="rounded-xl border border-white/[0.08] bg-[#0c1220] overflow-hidden flex flex-col shadow-lg print:border-black print:border-2 print:bg-white print:shadow-none print:break-inside-avoid print:overflow-visible print:rounded-none">
                                     {/* Truck Header */}
                                     <div className="p-3 border-b border-white/[0.06] print:border-gray-200 bg-black/20 print:bg-gray-50">
                                         <div className="flex justify-between items-center mb-2">
@@ -546,40 +560,7 @@ export default function MontagemCargasPage() {
                 </div>
             )}
             
-            <style jsx global>{`
-                @media print {
-                    @page {
-                        size: A4 portrait;
-                        margin: 10mm;
-                    }
-                    body * {
-                        visibility: hidden;
-                    }
-                    .print\\:block, .print\\:block * {
-                        visibility: visible;
-                    }
-                    .print\\:grid-cols-2 {
-                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                    }
-                    /* Make the results grid visible */
-                    .grid.print\\:grid-cols-2, .grid.print\\:grid-cols-2 * {
-                        visibility: visible;
-                    }
-                    /* Reset absolute positioning for printed content to flow naturally */
-                    .print\\:block, .grid.print\\:grid-cols-2 {
-                        position: relative;
-                        left: 0;
-                        top: 0;
-                    }
-                    /* Specifically make the main container the parent for print */
-                    .pb-8 {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                    }
-                }
-            `}</style>
+
         </div>
     );
 }
