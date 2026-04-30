@@ -2,10 +2,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package } from "lucide-react";
+import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package, Loader2 } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { ReportLayout } from "@/components/ReportLayout";
 import { MonthSelector } from "@/components/ui/MonthSelector";
 
 interface CargaResult {
@@ -33,6 +32,7 @@ export default function MontagemCargasPage() {
     const [truckPalletCapacity, setTruckPalletCapacity] = useState<number>(1080);
     const [palletizedOrders, setPalletizedOrders] = useState<Record<string, boolean>>({});
     const [generatedTrucks, setGeneratedTrucks] = useState<CargaResult[]>([]);
+    const [exportando, setExportando] = useState(false);
 
     useEffect(() => {
         refreshOrders(selectedFabrica);
@@ -256,8 +256,160 @@ export default function MontagemCargasPage() {
         setGeneratedTrucks(trucks);
     };
 
-    const handlePrint = () => {
-        window.print();
+    const handleExportPDF = async () => {
+        if (generatedTrucks.length === 0) return;
+        setExportando(true);
+        try {
+            const jsPDF = (await import('jspdf')).default;
+            const autoTable = (await import('jspdf-autotable')).default;
+
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = { left: 14, right: 14 };
+
+            const colors = {
+                headerDark: [10, 10, 14] as [number, number, number],
+                accentBlue: [37, 99, 235] as [number, number, number],
+                accentCyan: [6, 182, 212] as [number, number, number],
+                textDark: [20, 20, 30] as [number, number, number],
+                textMuted: [120, 120, 140] as [number, number, number],
+                textLight: [200, 200, 220] as [number, number, number],
+                tableBorder: [226, 232, 240] as [number, number, number],
+                rowEven: [250, 251, 254] as [number, number, number],
+            };
+
+            const loadLogo = (): Promise<{ data: string; width: number; height: number } | null> => {
+                return new Promise((resolve) => {
+                    const logoImg = new Image();
+                    logoImg.crossOrigin = 'anonymous';
+                    logoImg.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = logoImg.width;
+                        canvas.height = logoImg.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx?.drawImage(logoImg, 0, 0);
+                        resolve({ data: canvas.toDataURL('image/png'), width: logoImg.width, height: logoImg.height });
+                    };
+                    logoImg.onerror = () => resolve(null);
+                    logoImg.src = '/logo.png';
+                });
+            };
+
+            const logoResult = await loadLogo();
+            const logoData = logoResult?.data || null;
+
+            const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
+                const headerHeight = 38;
+                pageDoc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
+                pageDoc.rect(0, 0, pageWidth, headerHeight, 'F');
+                pageDoc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                pageDoc.rect(0, headerHeight, pageWidth, 1.5, 'F');
+                pageDoc.setFillColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
+                pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.5, 'F');
+
+                if (logoData) {
+                    try {
+                        const logoH = 19.5;
+                        let logoW = 19.5;
+                        if (logoResult) {
+                            const aspect = logoResult.width / logoResult.height;
+                            logoW = logoH * aspect;
+                        }
+                        pageDoc.addImage(logoData, 'PNG', margin.left, 6, logoW, logoH);
+                    } catch { /* ignore */ }
+                }
+
+                pageDoc.setFontSize(13);
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.setTextColor(255, 255, 255);
+                pageDoc.text('Ordem de Embarque', pageWidth - margin.right, 14, { align: 'right' });
+
+                pageDoc.setFontSize(7);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+                const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                pageDoc.text(`Emitido em ${dateStr}`, pageWidth - margin.right, 20, { align: 'right' });
+
+                if (pageNum > 1) {
+                    pageDoc.text('(Continuação)', pageWidth - margin.right, 25, { align: 'right' });
+                }
+
+                return headerHeight + 5;
+            };
+
+            const drawFooter = (pageDoc: typeof doc, pageNum: number, totalPages: number) => {
+                const footerY = pageHeight - 12;
+                pageDoc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
+                pageDoc.setLineWidth(0.3);
+                pageDoc.line(margin.left, footerY - 3, pageWidth - margin.right, footerY - 3);
+                pageDoc.setFontSize(7);
+                pageDoc.setFont('helvetica', 'normal');
+                pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                pageDoc.text('FRPlus — Gestão Comercial Inteligente', margin.left, footerY);
+                pageDoc.text('Documento gerado eletronicamente', pageWidth / 2, footerY, { align: 'center' });
+                pageDoc.setFont('helvetica', 'bold');
+                pageDoc.text(`Página ${pageNum} de ${totalPages}`, pageWidth - margin.right, footerY, { align: 'right' });
+            };
+
+            let startY = 43; // initial startY
+            
+            // Draw Subtitle / Summary (only on page 1)
+            doc.setFontSize(9);
+            doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
+            doc.setFont('helvetica', 'bold');
+            const facName = selectedFabrica === 'todas' ? 'Todas' : fabricas.find(f => f.id === selectedFabrica)?.nome || selectedFabrica;
+            doc.text(`Fábrica: ${facName}`, margin.left, startY + 5);
+            doc.text(`Veículos: ${generatedTrucks.length}`, margin.left + 60, startY + 5);
+            doc.text(`Vol. Alocado: ${generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} cxs`, margin.left + 120, startY + 5);
+            
+            startY += 12;
+
+            // Draw Each Truck
+            generatedTrucks.forEach((truck) => {
+                const bodyData = truck.orders.map(o => {
+                    let cName = o.nomeCliente;
+                    if (isRestricted(cName)) cName += ' (* Última Entrega)';
+                    return [cName, o.isBlock ? o.volume.toString() : getVolume(o).toString()];
+                });
+
+                const truckTitle = `Caminhão ${truck.id} — Ocupação: ${truck.occupancyPct}% — Vol: ${truck.totalVolume}/${truck.capacity} cxs ${truck.isPalletized ? '(Paletizado)' : ''}`;
+
+                autoTable(doc, {
+                    startY,
+                    head: [[truckTitle, 'Cxs']],
+                    body: bodyData,
+                    theme: 'grid',
+                    styles: { fontSize: 8, cellPadding: 3, textColor: colors.textDark, lineColor: colors.tableBorder },
+                    headStyles: { fillColor: [240, 240, 245], textColor: colors.textDark, fontStyle: 'bold' },
+                    alternateRowStyles: { fillColor: colors.rowEven },
+                    columnStyles: {
+                        0: { halign: 'left' },
+                        1: { halign: 'right', cellWidth: 20, fontStyle: 'bold', textColor: colors.accentBlue }
+                    },
+                    margin: { top: 45, bottom: 20, left: margin.left, right: margin.right },
+                    pageBreak: 'avoid',
+                });
+                
+                // Get Y position after table
+                startY = (doc as any).lastAutoTable.finalY + 8;
+            });
+
+            // Add Headers and footers on ALL pages
+            const pageCount = doc.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                drawHeader(doc, i);
+                drawFooter(doc, i, pageCount);
+            }
+
+            doc.save(`Romaneio_Cargas_${new Date().toISOString().slice(0,10)}.pdf`);
+        } catch (error) {
+            console.error('Erro ao gerar PDF:', error);
+            alert("Erro ao gerar PDF.");
+        } finally {
+            setExportando(false);
+        }
     };
 
     const getOccupancyColor = (pct: number) => {
@@ -271,7 +423,7 @@ export default function MontagemCargasPage() {
 
 
             {/* HEADER */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 print:hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/20">
                         <Truck className="h-5 w-5 text-blue-400" />
@@ -284,7 +436,7 @@ export default function MontagemCargasPage() {
             </div>
 
             {/* FILTER BAR */}
-            <div className="relative z-30 flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06] backdrop-blur-sm print:hidden">
+            <div className="relative z-30 flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06] backdrop-blur-sm">
                 {!isIndustria && fabricas.length > 0 && (
                     <select
                         value={selectedFabrica}
@@ -314,7 +466,7 @@ export default function MontagemCargasPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
                 {/* LEFT COLUMN: SELECTION TABLE */}
-                <div className="lg:col-span-2 flex flex-col gap-4 print:hidden">
+                <div className="lg:col-span-2 flex flex-col gap-4">
                     <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm flex flex-col flex-1 max-h-[600px] overflow-hidden">
                         <div className="flex items-center justify-between px-4 py-3 bg-[#0c1220] border-b border-white/[0.06]">
                             <h2 className="text-sm font-semibold text-gray-200">Selecione os Pedidos (Prontos na Fábrica)</h2>
@@ -404,7 +556,7 @@ export default function MontagemCargasPage() {
                 </div>
 
                 {/* RIGHT COLUMN: CONTROLS & SUMMARY */}
-                <div className="lg:col-span-1 flex flex-col gap-4 print:hidden">
+                <div className="lg:col-span-1 flex flex-col gap-4">
                     <div className="rounded-xl border border-white/[0.06] bg-[#0c1220] p-4 flex flex-col gap-4 shadow-xl">
                         <h2 className="text-sm font-semibold text-gray-200 border-b border-white/10 pb-2">Parâmetros do Romaneio</h2>
                         
@@ -458,20 +610,21 @@ export default function MontagemCargasPage() {
                         <div className="rounded-xl border border-white/[0.06] bg-emerald-500/5 p-4 flex flex-col gap-3">
                             <h3 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Pronto para Exportar</h3>
                             <button 
-                                onClick={handlePrint}
-                                className="w-full py-2 rounded-lg font-semibold text-sm bg-white/10 text-white hover:bg-white/20 transition-all flex items-center justify-center gap-2 border border-white/10"
+                                onClick={handleExportPDF}
+                                disabled={exportando}
+                                className="w-full py-2 rounded-lg font-semibold text-sm bg-white/10 text-white hover:bg-white/20 transition-all flex items-center justify-center gap-2 border border-white/10 disabled:opacity-50"
                             >
-                                <Printer className="h-4 w-4" />
-                                Exportar (PDF / Imprimir)
+                                {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                                {exportando ? 'Gerando...' : 'Exportar (PDF)'}
                             </button>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* VERSÃO TELA - RESULTS GRID */}
+            {/* RESULTS GRID */}
             {generatedTrucks.length > 0 && (
-                <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-500 print:hidden">
+                <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-500">
                     <div className="flex items-center gap-2">
                         <h2 className="text-lg font-bold text-white">Resultado do Romaneio</h2>
                         <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{generatedTrucks.length} Caminhões</span>
@@ -549,88 +702,6 @@ export default function MontagemCargasPage() {
                             );
                         })}
                     </div>
-                </div>
-            )}
-
-            {/* VERSÃO IMPRESSÃO OFICIAL */}
-            {generatedTrucks.length > 0 && (
-                <div className="absolute top-0 left-0 w-full z-[99999] opacity-0 print:opacity-100 print:relative pointer-events-none print:pointer-events-auto">
-                    <ReportLayout 
-                        title="Ordem de Embarque e Roteirização"
-                        subtitle={`Fábrica: ${selectedFabrica === 'todas' ? 'Todas' : fabricas.find(f => f.id === selectedFabrica)?.nome || selectedFabrica} | Cap. Base: ${truckCapacity} cxs | Cap. Paletizada: ${truckPalletCapacity} cxs | Veículos: ${generatedTrucks.length} | Vol. Alocado: ${generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} cxs`}
-                    >
-                        <div className="grid grid-cols-2 gap-4 mt-4">
-                            {generatedTrucks.map((truck) => {
-                                const colorClass = getOccupancyColor(truck.occupancyPct);
-                                return (
-                                    <div key={truck.id} className="rounded-none border border-gray-300 bg-white overflow-visible flex flex-col print:break-inside-avoid">
-                                        {/* Truck Header Print */}
-                                        <div className="p-2 border-b border-gray-300 bg-transparent">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="font-bold text-gray-900 uppercase text-[11px]">Caminhão {truck.id}</span>
-                                                    {truck.isPalletized && (
-                                                        <span className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 border border-gray-400 text-gray-700 bg-gray-100 ml-1">
-                                                            Paletizado
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 border border-gray-300 text-gray-700 bg-gray-50`}>
-                                                    Ocupação: {truck.occupancyPct}%
-                                                </span>
-                                            </div>
-                                            <div className="flex flex-col gap-1 mt-1">
-                                                <div className="flex justify-between items-end">
-                                                    <span className="text-[9px] text-gray-500 uppercase font-semibold">Volume Total</span>
-                                                    <span className="text-[11px] font-bold text-gray-900">{truck.totalVolume} / {truck.capacity} <span className="text-[8px] font-normal text-gray-500">cxs</span></span>
-                                                </div>
-                                                <div className="w-full bg-gray-200 h-2 rounded-none overflow-hidden">
-                                                    <div 
-                                                        className="h-full bg-gray-600" 
-                                                        style={{ width: `${Math.min(truck.occupancyPct, 100)}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Truck Content Print */}
-                                        <div className="flex-1 p-0 overflow-visible max-h-none">
-                                            <table className="w-full text-xs">
-                                                <thead className="bg-gray-100 border-b border-gray-200">
-                                                    <tr>
-                                                        <th className="text-left text-[8px] text-gray-700 uppercase px-2 py-1 font-semibold">Cliente</th>
-                                                        <th className="text-right text-[8px] text-gray-700 uppercase px-2 py-1 font-semibold w-10">Cxs</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {truck.orders.map((order, idx) => {
-                                                        const restricted = isRestricted(order.nomeCliente);
-                                                        return (
-                                                            <tr key={idx} className="border-b border-gray-200 bg-white">
-                                                                <td className="px-2 py-1">
-                                                                    <div className="flex flex-col gap-0">
-                                                                        <span className="font-semibold text-gray-900 text-[9px] leading-tight">{order.nomeCliente}</span>
-                                                                        {restricted && (
-                                                                            <span className="text-[8px] font-bold uppercase text-gray-600">
-                                                                                * Última Entrega
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-2 py-1 text-right">
-                                                                    <span className="font-mono text-gray-900 text-[9px] font-semibold">{order.isBlock ? order.volume : getVolume(order)}</span>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </ReportLayout>
                 </div>
             )}
             
