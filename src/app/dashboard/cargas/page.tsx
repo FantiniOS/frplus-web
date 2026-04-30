@@ -14,6 +14,7 @@ interface CargaResult {
     capacity: number;
     occupancyPct: number;
     isPalletized?: boolean;
+    hasRestrictedClient?: boolean;
 }
 
 export default function MontagemCargasPage() {
@@ -188,6 +189,7 @@ export default function MontagemCargasPage() {
         for (const block of blocksToPack) {
             const vol = block.volume;
             const blockPalletized = block.isPalletized;
+            const blockRestricted = isRestricted(block.nomeCliente);
             let placed = false;
             
             let bestTruckIndex = -1;
@@ -195,6 +197,12 @@ export default function MontagemCargasPage() {
 
             for (let i = 0; i < trucks.length; i++) {
                 const truck = trucks[i];
+                
+                // TRAVA NA DISTRIBUIÇÃO: Caminhão só pode ter um cliente restrito ("Última Entrega")
+                if (blockRestricted && truck.hasRestrictedClient) {
+                    continue;
+                }
+
                 // B. TETO DINÂMICO: Se o bloco for paletizado, a capacidade cai
                 const newTruckPalletized = truck.isPalletized || blockPalletized;
                 const effectiveCapacity = newTruckPalletized ? capacityPallet : capacityNormal;
@@ -220,6 +228,7 @@ export default function MontagemCargasPage() {
                 const newTruckPalletized = truck.isPalletized || blockPalletized;
                 truck.isPalletized = newTruckPalletized;
                 truck.capacity = newTruckPalletized ? capacityPallet : capacityNormal;
+                if (blockRestricted) truck.hasRestrictedClient = true;
                 placed = true;
             }
 
@@ -232,7 +241,8 @@ export default function MontagemCargasPage() {
                     totalVolume: vol,
                     capacity: effectiveCapacity,
                     occupancyPct: 0,
-                    isPalletized: blockPalletized
+                    isPalletized: blockPalletized,
+                    hasRestrictedClient: blockRestricted
                 });
             }
         }
