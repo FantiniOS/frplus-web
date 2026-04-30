@@ -123,16 +123,71 @@ export default function MontagemCargasPage() {
         const capacityNormal = Number(truckCapacity) || 1360;
         const capacityPallet = Number(truckPalletCapacity) || 1080;
 
-        // A. ORDENAÇÃO: Ordenar o array de Notas selecionadas pelo volume de caixas em ordem DECRESCENTE
-        const allOrdersToPack = [...selectedOrdersList].sort((a, b) => getVolume(b) - getVolume(a));
+        // PASSO 1: AGRUPAMENTO POR CLIENTE (Pre-processing)
+        const clientGroups: Record<string, {
+            nomeCliente: string;
+            totalVolume: number;
+            isPalletized: boolean;
+            orders: any[];
+        }> = {};
+
+        selectedOrdersList.forEach(order => {
+            const clientName = order.nomeCliente || 'Desconhecido';
+            if (!clientGroups[clientName]) {
+                clientGroups[clientName] = {
+                    nomeCliente: clientName,
+                    totalVolume: 0,
+                    isPalletized: false,
+                    orders: []
+                };
+            }
+            clientGroups[clientName].orders.push(order);
+            clientGroups[clientName].totalVolume += getVolume(order);
+            if (isOrderPalletized(order)) {
+                clientGroups[clientName].isPalletized = true;
+            }
+        });
+
+        // PASSO 2: TRATAMENTO DE CLIENTES GIGANTES (Overflow)
+        const blocksToPack: any[] = [];
+        
+        Object.values(clientGroups).forEach(group => {
+            let remainingVolume = group.totalVolume;
+            const limit = group.isPalletized ? capacityPallet : capacityNormal;
+
+            while (remainingVolume > 0) {
+                if (remainingVolume > limit) {
+                    blocksToPack.push({
+                        nomeCliente: group.nomeCliente,
+                        volume: limit,
+                        isPalletized: group.isPalletized,
+                        isBlock: true,
+                        orders: [...group.orders]
+                    });
+                    remainingVolume -= limit;
+                } else {
+                    blocksToPack.push({
+                        nomeCliente: group.nomeCliente,
+                        volume: remainingVolume,
+                        isPalletized: group.isPalletized,
+                        isBlock: true,
+                        orders: [...group.orders]
+                    });
+                    remainingVolume = 0;
+                }
+            }
+        });
+
+        // PASSO 3: APLICAÇÃO DO BEST FIT (Tetris do Cliente)
+        // Ordenar decrescente por volume
+        blocksToPack.sort((a, b) => b.volume - a.volume);
 
         const trucks: CargaResult[] = [];
         let currentTruckId = 1;
 
-        // C. BIN PACKING (Best Fit)
-        for (const order of allOrdersToPack) {
-            const vol = getVolume(order);
-            const orderPalletized = isOrderPalletized(order);
+        for (const block of blocksToPack) {
+            const vol = block.volume;
+            const blockPalletized = block.isPalletized;
             let placed = false;
             
             let bestTruckIndex = -1;
@@ -140,18 +195,16 @@ export default function MontagemCargasPage() {
 
             for (let i = 0; i < trucks.length; i++) {
                 const truck = trucks[i];
-                // B. TETO DINÂMICO: Se qualquer NF for paletizada, a capacidade cai
-                const newTruckPalletized = truck.isPalletized || orderPalletized;
+                // B. TETO DINÂMICO: Se o bloco for paletizado, a capacidade cai
+                const newTruckPalletized = truck.isPalletized || blockPalletized;
                 const effectiveCapacity = newTruckPalletized ? capacityPallet : capacityNormal;
                 
-                // D. REGRA FISCAL INQUEBRÁVEL: Avalia se cabe integralmente no caminhão
+                // Avalia se o bloco cabe integralmente no espaço restante
                 if (truck.totalVolume + vol <= effectiveCapacity) {
                     const remainingSpace = effectiveCapacity - (truck.totalVolume + vol);
-                    // Dê prioridade se o caminhão já contiver uma carga para a mesma Cidade/Praça ou Cliente
-                    const sameCity = truck.orders.some(o => ((o as any).cidade && (o as any).cidade === (order as any).cidade) || (o.nomeCliente === order.nomeCliente));
                     
-                    // Score = minimiza espaço vazio (Best Fit), e bônus alto se mesma cidade
-                    const score = (sameCity ? 1000000 : 0) - remainingSpace;
+                    // Score = minimiza espaço vazio (Best Fit)
+                    const score = -remainingSpace;
 
                     if (bestTruckIndex === -1 || score > bestScore) {
                         bestTruckIndex = i;
@@ -162,9 +215,9 @@ export default function MontagemCargasPage() {
 
             if (bestTruckIndex !== -1) {
                 const truck = trucks[bestTruckIndex];
-                truck.orders.push(order);
+                truck.orders.push(block);
                 truck.totalVolume += vol;
-                const newTruckPalletized = truck.isPalletized || orderPalletized;
+                const newTruckPalletized = truck.isPalletized || blockPalletized;
                 truck.isPalletized = newTruckPalletized;
                 truck.capacity = newTruckPalletized ? capacityPallet : capacityNormal;
                 placed = true;
@@ -172,14 +225,14 @@ export default function MontagemCargasPage() {
 
             // Se não couber em nenhum, instancia um Caminhão Novo
             if (!placed) {
-                const effectiveCapacity = orderPalletized ? capacityPallet : capacityNormal;
+                const effectiveCapacity = blockPalletized ? capacityPallet : capacityNormal;
                 trucks.push({
                     id: currentTruckId++,
-                    orders: [order],
+                    orders: [block],
                     totalVolume: vol,
                     capacity: effectiveCapacity,
                     occupancyPct: 0,
-                    isPalletized: orderPalletized
+                    isPalletized: blockPalletized
                 });
             }
         }
@@ -478,7 +531,7 @@ export default function MontagemCargasPage() {
                                                                 </div>
                                                             </td>
                                                             <td className="px-3 py-2 text-right">
-                                                                <span className="font-mono text-cyan-400 print:text-black font-semibold">{getVolume(order)}</span>
+                                                                <span className="font-mono text-cyan-400 print:text-black font-semibold">{order.isBlock ? order.volume : getVolume(order)}</span>
                                                             </td>
                                                         </tr>
                                                     );
