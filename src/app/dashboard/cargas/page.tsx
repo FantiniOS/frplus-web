@@ -470,46 +470,34 @@ export default function MontagemCargasPage() {
 
             {/* RESULTS GRID - Visible in print and screen if generated */}
             {generatedTrucks.length > 0 && (
-                <div 
-                    className="mt-4 flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-500 print:absolute print:top-0 print:left-0 print:w-full print:h-auto print:min-h-screen print:overflow-visible print:bg-white print:text-black print:z-[99999] print:m-0 print:p-8"
-                    style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
-                >
+                <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-500 print:absolute print:top-0 print:left-0 print:w-full print:h-auto print:min-h-screen print:overflow-visible print:bg-white print:text-black print:z-[99999] print:m-0 print:p-8">
                     
-                    {/* CABEÇALHO OFICIAL (Apenas Impressão) */}
-                    <div className="hidden print:flex flex-col bg-[#0c1220] text-white p-6 rounded-t-xl mb-6 shadow-md border-b-4 border-blue-500">
-                        <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-500 rounded-lg">
-                                    <Truck className="h-6 w-6 text-white" />
-                                </div>
-                                <h1 className="text-2xl font-bold tracking-tight">FRPlus <span className="font-light text-blue-300">| Ordem de Embarque e Roteirização</span></h1>
-                            </div>
-                            <span className="text-sm font-mono text-blue-200">Gerado em: {new Date().toLocaleString('pt-BR')}</span>
+                    {/* CABEÇALHO OFICIAL SÓBRIO (Apenas Impressão) */}
+                    <div className="hidden print:flex flex-col border-b-2 border-gray-800 pb-4 mb-6">
+                        <div className="flex justify-between items-end mb-4">
+                            <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-tight">Ordem de Embarque e Roteirização</h1>
+                            <span className="text-sm text-gray-600">Gerado em: {new Date().toLocaleString('pt-BR')}</span>
                         </div>
-                        <div className="flex justify-between items-end">
-                            <div className="flex gap-8 text-sm font-medium">
-                                <div className="flex flex-col">
-                                    <span className="text-blue-300 text-[10px] uppercase tracking-wider font-bold">Fábrica</span>
-                                    <span>{selectedFabrica === 'todas' ? 'Todas' : fabricas.find(f => f.id === selectedFabrica)?.nome || selectedFabrica}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-blue-300 text-[10px] uppercase tracking-wider font-bold">Cap. Base</span>
-                                    <span>{truckCapacity} cxs</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-blue-300 text-[10px] uppercase tracking-wider font-bold">Cap. Paletizada</span>
-                                    <span>{truckPalletCapacity} cxs</span>
-                                </div>
+                        <div className="flex gap-8 text-sm font-medium text-gray-800">
+                            <div className="flex flex-col">
+                                <span className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Fábrica</span>
+                                <span className="font-semibold">{selectedFabrica === 'todas' ? 'Todas' : fabricas.find(f => f.id === selectedFabrica)?.nome || selectedFabrica}</span>
                             </div>
-                            <div className="flex gap-8 text-sm font-bold">
-                                <div className="flex flex-col text-right">
-                                    <span className="text-blue-300 text-[10px] uppercase tracking-wider font-bold">Total de Veículos</span>
-                                    <span className="text-xl">{generatedTrucks.length}</span>
-                                </div>
-                                <div className="flex flex-col text-right">
-                                    <span className="text-blue-300 text-[10px] uppercase tracking-wider font-bold">Volume Alocado</span>
-                                    <span className="text-xl text-cyan-400">{generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} <span className="text-sm font-normal text-white">cxs</span></span>
-                                </div>
+                            <div className="flex flex-col">
+                                <span className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Cap. Base</span>
+                                <span className="font-semibold">{truckCapacity} cxs</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Cap. Paletizada</span>
+                                <span className="font-semibold">{truckPalletCapacity} cxs</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Total de Veículos</span>
+                                <span className="font-semibold">{generatedTrucks.length}</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Volume Alocado</span>
+                                <span className="font-semibold">{generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} cxs</span>
                             </div>
                         </div>
                     </div>
@@ -523,31 +511,31 @@ export default function MontagemCargasPage() {
                         {generatedTrucks.map((truck) => {
                             const colorClass = getOccupancyColor(truck.occupancyPct);
                             return (
-                                <div key={truck.id} className="rounded-xl border border-white/[0.08] bg-[#0c1220] overflow-hidden flex flex-col shadow-lg print:border-gray-300 print:border print:bg-white print:shadow-sm print:break-inside-avoid print:overflow-visible print:rounded-lg">
+                                <div key={truck.id} className="rounded-xl border border-white/[0.08] bg-[#0c1220] overflow-hidden flex flex-col shadow-lg print:border-gray-300 print:border print:bg-white print:shadow-none print:break-inside-avoid print:overflow-visible print:rounded-none">
                                     {/* Truck Header */}
-                                    <div className="p-3 border-b border-white/[0.06] print:border-gray-200 bg-black/20 print:bg-gray-50">
+                                    <div className="p-3 border-b border-white/[0.06] print:border-gray-300 bg-black/20 print:bg-transparent">
                                         <div className="flex justify-between items-center mb-2">
                                             <div className="flex items-center gap-2">
-                                                <Truck className="h-4 w-4 text-blue-400 print:text-blue-600" />
-                                                <span className="font-bold text-white print:text-black">Caminhão {truck.id}</span>
+                                                <Truck className="h-4 w-4 text-blue-400 print:text-gray-700" />
+                                                <span className="font-bold text-white print:text-gray-900 uppercase">Caminhão {truck.id}</span>
                                                 {truck.isPalletized && (
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 print:border-purple-600 print:text-white print:bg-purple-600 ml-1 flex items-center gap-1">
-                                                        <Package className="h-2.5 w-2.5" /> Carga Paletizada
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 print:border-gray-400 print:text-gray-700 print:bg-gray-100 ml-1 flex items-center gap-1">
+                                                        <Package className="h-2.5 w-2.5 print:hidden" /> Paletizado
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${colorClass} print:border-gray-400 print:text-gray-800 print:bg-white`}>
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${colorClass} print:border-gray-300 print:text-gray-700 print:bg-gray-50`}>
                                                 Ocupação: {truck.occupancyPct}%
                                             </span>
                                         </div>
                                         <div className="flex flex-col gap-1.5 mt-2">
                                             <div className="flex justify-between items-end">
-                                                <span className="text-xs text-gray-400 print:text-gray-600">Volume Total</span>
-                                                <span className="text-sm font-bold text-cyan-400 print:text-black">{truck.totalVolume} / {truck.capacity} <span className="text-[10px] font-normal text-gray-500">cxs</span></span>
+                                                <span className="text-xs text-gray-400 print:text-gray-500 uppercase font-semibold text-[10px]">Volume Total</span>
+                                                <span className="text-sm font-bold text-cyan-400 print:text-gray-900">{truck.totalVolume} / {truck.capacity} <span className="text-[10px] font-normal text-gray-500">cxs</span></span>
                                             </div>
-                                            <div className="w-full bg-[#0a0f1a] print:bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                                            <div className="w-full bg-[#0a0f1a] print:bg-gray-200 h-1.5 rounded-full overflow-hidden print:h-2">
                                                 <div 
-                                                    className={`h-full rounded-full ${truck.occupancyPct >= 90 ? 'bg-emerald-500 print:bg-emerald-500' : truck.occupancyPct >= 70 ? 'bg-amber-500 print:bg-amber-500' : 'bg-red-500 print:bg-red-500'} transition-all duration-1000`} 
+                                                    className={`h-full rounded-full ${truck.occupancyPct >= 90 ? 'bg-emerald-500' : truck.occupancyPct >= 70 ? 'bg-amber-500' : 'bg-red-500'} print:bg-gray-600 transition-all duration-1000`} 
                                                     style={{ width: `${Math.min(truck.occupancyPct, 100)}%` }}
                                                 />
                                             </div>
@@ -567,20 +555,19 @@ export default function MontagemCargasPage() {
                                                 {truck.orders.map((order, idx) => {
                                                     const restricted = isRestricted(order.nomeCliente);
                                                     return (
-                                                        <tr key={idx} className="border-b border-white/[0.02] print:border-gray-200 print:even:bg-gray-50 print:odd:bg-white">
-                                                            <td className="px-3 py-2">
-                                                                <div className="flex flex-col gap-1">
-                                                                    <span className="font-medium text-gray-300 print:text-black leading-tight">{order.nomeCliente}</span>
+                                                        <tr key={idx} className="border-b border-white/[0.02] print:border-gray-200 print:bg-white">
+                                                            <td className="px-3 py-2 print:py-1">
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <span className="font-medium text-gray-300 print:text-gray-800 print:text-[10px] leading-tight">{order.nomeCliente}</span>
                                                                     {restricted && (
-                                                                        <span className="inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider text-red-500 bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5 w-fit print:text-white print:border-red-600 print:bg-red-600">
-                                                                            <AlertTriangle className="h-2 w-2" />
-                                                                            Última Entrega
+                                                                        <span className="text-[9px] font-bold uppercase text-red-500 print:text-gray-600">
+                                                                            * Última Entrega
                                                                         </span>
                                                                     )}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-3 py-2 text-right">
-                                                                <span className="font-mono text-cyan-400 print:text-black font-semibold">{order.isBlock ? order.volume : getVolume(order)}</span>
+                                                            <td className="px-3 py-2 print:py-1 text-right">
+                                                                <span className="font-mono text-cyan-400 print:text-gray-900 print:text-[10px] font-semibold">{order.isBlock ? order.volume : getVolume(order)}</span>
                                                             </td>
                                                         </tr>
                                                     );
