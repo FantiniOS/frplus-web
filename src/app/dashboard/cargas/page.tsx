@@ -5,6 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { ReportLayout } from "@/components/ReportLayout";
 import { MonthSelector } from "@/components/ui/MonthSelector";
 
 interface CargaResult {
@@ -468,74 +469,43 @@ export default function MontagemCargasPage() {
                 </div>
             </div>
 
-            {/* RESULTS GRID - Visible in print and screen if generated */}
+            {/* VERSÃO TELA - RESULTS GRID */}
             {generatedTrucks.length > 0 && (
-                <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-500 print:absolute print:top-0 print:left-0 print:w-full print:h-auto print:min-h-screen print:overflow-visible print:bg-white print:text-black print:z-[99999] print:m-0 print:p-8">
-                    
-                    {/* CABEÇALHO OFICIAL SÓBRIO (Apenas Impressão) */}
-                    <div className="hidden print:flex flex-col border-b-2 border-gray-800 pb-4 mb-6">
-                        <div className="flex justify-between items-end mb-4">
-                            <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-tight">Ordem de Embarque e Roteirização</h1>
-                            <span className="text-sm text-gray-600">Gerado em: {new Date().toLocaleString('pt-BR')}</span>
-                        </div>
-                        <div className="flex gap-8 text-sm font-medium text-gray-800">
-                            <div className="flex flex-col">
-                                <span className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Fábrica</span>
-                                <span className="font-semibold">{selectedFabrica === 'todas' ? 'Todas' : fabricas.find(f => f.id === selectedFabrica)?.nome || selectedFabrica}</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Cap. Base</span>
-                                <span className="font-semibold">{truckCapacity} cxs</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Cap. Paletizada</span>
-                                <span className="font-semibold">{truckPalletCapacity} cxs</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Total de Veículos</span>
-                                <span className="font-semibold">{generatedTrucks.length}</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Volume Alocado</span>
-                                <span className="font-semibold">{generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} cxs</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 print:hidden">
+                <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-500 print:hidden">
+                    <div className="flex items-center gap-2">
                         <h2 className="text-lg font-bold text-white">Resultado do Romaneio</h2>
                         <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{generatedTrucks.length} Caminhões</span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 print:grid-cols-2 print:gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {generatedTrucks.map((truck) => {
                             const colorClass = getOccupancyColor(truck.occupancyPct);
                             return (
-                                <div key={truck.id} className="rounded-xl border border-white/[0.08] bg-[#0c1220] overflow-hidden flex flex-col shadow-lg print:border-gray-300 print:border print:bg-white print:shadow-none print:break-inside-avoid print:overflow-visible print:rounded-none">
+                                <div key={truck.id} className="rounded-xl border border-white/[0.08] bg-[#0c1220] overflow-hidden flex flex-col shadow-lg">
                                     {/* Truck Header */}
-                                    <div className="p-3 border-b border-white/[0.06] print:border-gray-300 bg-black/20 print:bg-transparent">
+                                    <div className="p-3 border-b border-white/[0.06] bg-black/20">
                                         <div className="flex justify-between items-center mb-2">
                                             <div className="flex items-center gap-2">
-                                                <Truck className="h-4 w-4 text-blue-400 print:text-gray-700" />
-                                                <span className="font-bold text-white print:text-gray-900 uppercase">Caminhão {truck.id}</span>
+                                                <Truck className="h-4 w-4 text-blue-400" />
+                                                <span className="font-bold text-white uppercase">Caminhão {truck.id}</span>
                                                 {truck.isPalletized && (
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 print:border-gray-400 print:text-gray-700 print:bg-gray-100 ml-1 flex items-center gap-1">
-                                                        <Package className="h-2.5 w-2.5 print:hidden" /> Paletizado
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 ml-1 flex items-center gap-1">
+                                                        <Package className="h-2.5 w-2.5" /> Paletizado
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${colorClass} print:border-gray-300 print:text-gray-700 print:bg-gray-50`}>
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${colorClass}`}>
                                                 Ocupação: {truck.occupancyPct}%
                                             </span>
                                         </div>
                                         <div className="flex flex-col gap-1.5 mt-2">
                                             <div className="flex justify-between items-end">
-                                                <span className="text-xs text-gray-400 print:text-gray-500 uppercase font-semibold text-[10px]">Volume Total</span>
-                                                <span className="text-sm font-bold text-cyan-400 print:text-gray-900">{truck.totalVolume} / {truck.capacity} <span className="text-[10px] font-normal text-gray-500">cxs</span></span>
+                                                <span className="text-xs text-gray-400 uppercase font-semibold text-[10px]">Volume Total</span>
+                                                <span className="text-sm font-bold text-cyan-400">{truck.totalVolume} / {truck.capacity} <span className="text-[10px] font-normal text-gray-500">cxs</span></span>
                                             </div>
-                                            <div className="w-full bg-[#0a0f1a] print:bg-gray-200 h-1.5 rounded-full overflow-hidden print:h-2">
+                                            <div className="w-full bg-[#0a0f1a] h-1.5 rounded-full overflow-hidden">
                                                 <div 
-                                                    className={`h-full rounded-full ${truck.occupancyPct >= 90 ? 'bg-emerald-500' : truck.occupancyPct >= 70 ? 'bg-amber-500' : 'bg-red-500'} print:bg-gray-600 transition-all duration-1000`} 
+                                                    className={`h-full rounded-full ${truck.occupancyPct >= 90 ? 'bg-emerald-500' : truck.occupancyPct >= 70 ? 'bg-amber-500' : 'bg-red-500'} transition-all duration-1000`} 
                                                     style={{ width: `${Math.min(truck.occupancyPct, 100)}%` }}
                                                 />
                                             </div>
@@ -543,31 +513,31 @@ export default function MontagemCargasPage() {
                                     </div>
 
                                     {/* Truck Content (Orders) */}
-                                    <div className="flex-1 p-0 overflow-y-auto max-h-[300px] print:max-h-none print:overflow-visible">
+                                    <div className="flex-1 p-0 overflow-y-auto max-h-[300px]">
                                         <table className="w-full text-xs">
-                                            <thead className="bg-[#0a0f1a] print:bg-gray-100 border-b border-white/[0.04] print:border-gray-200">
+                                            <thead className="bg-[#0a0f1a] border-b border-white/[0.04]">
                                                 <tr>
-                                                    <th className="text-left text-[9px] text-gray-500 print:text-gray-700 uppercase px-3 py-1.5 font-semibold">Cliente</th>
-                                                    <th className="text-right text-[9px] text-gray-500 print:text-gray-700 uppercase px-3 py-1.5 font-semibold w-12">Cxs</th>
+                                                    <th className="text-left text-[9px] text-gray-500 uppercase px-3 py-1.5 font-semibold">Cliente</th>
+                                                    <th className="text-right text-[9px] text-gray-500 uppercase px-3 py-1.5 font-semibold w-12">Cxs</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {truck.orders.map((order, idx) => {
                                                     const restricted = isRestricted(order.nomeCliente);
                                                     return (
-                                                        <tr key={idx} className="border-b border-white/[0.02] print:border-gray-200 print:bg-white">
-                                                            <td className="px-3 py-2 print:py-1">
+                                                        <tr key={idx} className="border-b border-white/[0.02]">
+                                                            <td className="px-3 py-2">
                                                                 <div className="flex flex-col gap-0.5">
-                                                                    <span className="font-medium text-gray-300 print:text-gray-800 print:text-[10px] leading-tight">{order.nomeCliente}</span>
+                                                                    <span className="font-medium text-gray-300 text-[10px] leading-tight">{order.nomeCliente}</span>
                                                                     {restricted && (
-                                                                        <span className="text-[9px] font-bold uppercase text-red-500 print:text-gray-600">
+                                                                        <span className="text-[9px] font-bold uppercase text-red-500">
                                                                             * Última Entrega
                                                                         </span>
                                                                     )}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-3 py-2 print:py-1 text-right">
-                                                                <span className="font-mono text-cyan-400 print:text-gray-900 print:text-[10px] font-semibold">{order.isBlock ? order.volume : getVolume(order)}</span>
+                                                            <td className="px-3 py-2 text-right">
+                                                                <span className="font-mono text-cyan-400 text-[10px] font-semibold">{order.isBlock ? order.volume : getVolume(order)}</span>
                                                             </td>
                                                         </tr>
                                                     );
@@ -579,6 +549,88 @@ export default function MontagemCargasPage() {
                             );
                         })}
                     </div>
+                </div>
+            )}
+
+            {/* VERSÃO IMPRESSÃO OFICIAL */}
+            {generatedTrucks.length > 0 && (
+                <div className="absolute top-0 left-0 w-full z-[99999] opacity-0 print:opacity-100 print:relative pointer-events-none print:pointer-events-auto">
+                    <ReportLayout 
+                        title="Ordem de Embarque e Roteirização"
+                        subtitle={`Fábrica: ${selectedFabrica === 'todas' ? 'Todas' : fabricas.find(f => f.id === selectedFabrica)?.nome || selectedFabrica} | Cap. Base: ${truckCapacity} cxs | Cap. Paletizada: ${truckPalletCapacity} cxs | Veículos: ${generatedTrucks.length} | Vol. Alocado: ${generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} cxs`}
+                    >
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                            {generatedTrucks.map((truck) => {
+                                const colorClass = getOccupancyColor(truck.occupancyPct);
+                                return (
+                                    <div key={truck.id} className="rounded-none border border-gray-300 bg-white overflow-visible flex flex-col print:break-inside-avoid">
+                                        {/* Truck Header Print */}
+                                        <div className="p-2 border-b border-gray-300 bg-transparent">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <div className="flex items-center gap-1">
+                                                    <span className="font-bold text-gray-900 uppercase text-[11px]">Caminhão {truck.id}</span>
+                                                    {truck.isPalletized && (
+                                                        <span className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 border border-gray-400 text-gray-700 bg-gray-100 ml-1">
+                                                            Paletizado
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 border border-gray-300 text-gray-700 bg-gray-50`}>
+                                                    Ocupação: {truck.occupancyPct}%
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col gap-1 mt-1">
+                                                <div className="flex justify-between items-end">
+                                                    <span className="text-[9px] text-gray-500 uppercase font-semibold">Volume Total</span>
+                                                    <span className="text-[11px] font-bold text-gray-900">{truck.totalVolume} / {truck.capacity} <span className="text-[8px] font-normal text-gray-500">cxs</span></span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 h-2 rounded-none overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-gray-600" 
+                                                        style={{ width: `${Math.min(truck.occupancyPct, 100)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Truck Content Print */}
+                                        <div className="flex-1 p-0 overflow-visible max-h-none">
+                                            <table className="w-full text-xs">
+                                                <thead className="bg-gray-100 border-b border-gray-200">
+                                                    <tr>
+                                                        <th className="text-left text-[8px] text-gray-700 uppercase px-2 py-1 font-semibold">Cliente</th>
+                                                        <th className="text-right text-[8px] text-gray-700 uppercase px-2 py-1 font-semibold w-10">Cxs</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {truck.orders.map((order, idx) => {
+                                                        const restricted = isRestricted(order.nomeCliente);
+                                                        return (
+                                                            <tr key={idx} className="border-b border-gray-200 bg-white">
+                                                                <td className="px-2 py-1">
+                                                                    <div className="flex flex-col gap-0">
+                                                                        <span className="font-semibold text-gray-900 text-[9px] leading-tight">{order.nomeCliente}</span>
+                                                                        {restricted && (
+                                                                            <span className="text-[8px] font-bold uppercase text-gray-600">
+                                                                                * Última Entrega
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-2 py-1 text-right">
+                                                                    <span className="font-mono text-gray-900 text-[9px] font-semibold">{order.isBlock ? order.volume : getVolume(order)}</span>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </ReportLayout>
                 </div>
             )}
             
