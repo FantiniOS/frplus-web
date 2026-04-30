@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle } from "lucide-react";
+import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { MonthSelector } from "@/components/ui/MonthSelector";
@@ -13,6 +13,7 @@ interface CargaResult {
     totalVolume: number;
     capacity: number;
     occupancyPct: number;
+    isPalletized?: boolean;
 }
 
 export default function MontagemCargasPage() {
@@ -27,6 +28,8 @@ export default function MontagemCargasPage() {
 
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     const [truckCapacity, setTruckCapacity] = useState<number>(1360);
+    const [truckPalletCapacity, setTruckPalletCapacity] = useState<number>(1000);
+    const [palletizedOrders, setPalletizedOrders] = useState<Record<string, boolean>>({});
     const [generatedTrucks, setGeneratedTrucks] = useState<CargaResult[]>([]);
 
     useEffect(() => {
@@ -100,10 +103,25 @@ export default function MontagemCargasPage() {
         return upper.includes('BH') || upper.includes('DMA');
     };
 
+    const isOrderPalletized = (order: any) => {
+        if (palletizedOrders[order.id] !== undefined) return palletizedOrders[order.id];
+        return isRestricted(order.nomeCliente); // Default to true if BH/DMA
+    };
+
+    const toggleOrderPalletized = (order: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setPalletizedOrders(prev => ({
+            ...prev,
+            [order.id]: !isOrderPalletized(order)
+        }));
+        setGeneratedTrucks([]);
+    };
+
     const gerarRomaneio = () => {
         if (selectedOrdersList.length === 0) return;
 
-        const capacity = Number(truckCapacity) || 1360;
+        const capacityNormal = Number(truckCapacity) || 1360;
+        const capacityPallet = Number(truckPalletCapacity) || 1000;
 
         const restrictedOrders: any[] = [];
         const normalOrders: any[] = [];
@@ -128,24 +146,32 @@ export default function MontagemCargasPage() {
 
         for (const order of allOrdersToPack) {
             const vol = getVolume(order);
+            const orderPalletized = isOrderPalletized(order);
             let placed = false;
 
             for (const truck of trucks) {
-                if (truck.totalVolume + vol <= capacity) {
+                const newTruckPalletized = truck.isPalletized || orderPalletized;
+                const effectiveCapacity = newTruckPalletized ? capacityPallet : capacityNormal;
+
+                if (truck.totalVolume + vol <= effectiveCapacity) {
                     truck.orders.push(order);
                     truck.totalVolume += vol;
+                    truck.isPalletized = newTruckPalletized;
+                    truck.capacity = effectiveCapacity;
                     placed = true;
                     break;
                 }
             }
 
             if (!placed) {
+                const effectiveCapacity = orderPalletized ? capacityPallet : capacityNormal;
                 trucks.push({
                     id: currentTruckId++,
                     orders: [order],
                     totalVolume: vol,
-                    capacity: capacity,
-                    occupancyPct: 0
+                    capacity: effectiveCapacity,
+                    occupancyPct: 0,
+                    isPalletized: orderPalletized
                 });
             }
         }
@@ -245,6 +271,7 @@ export default function MontagemCargasPage() {
                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Data</th>
                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Cliente</th>
                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Pedido/NF</th>
+                                        <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Paletizado?</th>
                                         <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Volume (Cxs)</th>
                                     </tr>
                                 </thead>
@@ -290,6 +317,11 @@ export default function MontagemCargasPage() {
                                                     <td className="px-3 py-2.5 hidden md:table-cell">
                                                         <span className="text-xs text-gray-500">{order.notaFiscal || order.id.slice(0,8)}</span>
                                                     </td>
+                                                    <td className="px-3 py-2.5" onClick={(e) => toggleOrderPalletized(order, e)}>
+                                                        <div className={`mx-auto w-8 h-4 rounded-full transition-colors relative cursor-pointer ${isOrderPalletized(order) ? 'bg-purple-500/20 border border-purple-500/50' : 'bg-white/5 border border-white/10'}`}>
+                                                            <div className={`absolute top-[1px] w-3 h-3 rounded-full transition-all ${isOrderPalletized(order) ? 'bg-purple-400 left-[16px]' : 'bg-gray-500 left-[2px]'}`}></div>
+                                                        </div>
+                                                    </td>
                                                     <td className="px-3 py-2.5 text-right">
                                                         <span className="text-sm font-bold text-cyan-400 tabular-nums">{vol}</span>
                                                     </td>
@@ -308,14 +340,25 @@ export default function MontagemCargasPage() {
                     <div className="rounded-xl border border-white/[0.06] bg-[#0c1220] p-4 flex flex-col gap-4 shadow-xl">
                         <h2 className="text-sm font-semibold text-gray-200 border-b border-white/10 pb-2">Parâmetros do Romaneio</h2>
                         
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-xs text-gray-400">Capacidade do Camião (Caixas)</label>
-                            <input 
-                                type="number" 
-                                value={truckCapacity} 
-                                onChange={(e) => setTruckCapacity(Number(e.target.value))}
-                                className="bg-[#0a0f1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs text-gray-400">Cap. Normal (Cxs)</label>
+                                <input 
+                                    type="number" 
+                                    value={truckCapacity} 
+                                    onChange={(e) => setTruckCapacity(Number(e.target.value))}
+                                    className="bg-[#0a0f1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 w-full"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs text-gray-400">Cap. Paletizado</label>
+                                <input 
+                                    type="number" 
+                                    value={truckPalletCapacity} 
+                                    onChange={(e) => setTruckPalletCapacity(Number(e.target.value))}
+                                    className="bg-[#0a0f1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 w-full"
+                                />
+                            </div>
                         </div>
 
                         <div className="bg-blue-500/5 rounded-lg p-3 border border-blue-500/10 flex flex-col gap-2">
@@ -377,6 +420,11 @@ export default function MontagemCargasPage() {
                                             <div className="flex items-center gap-2">
                                                 <Truck className="h-4 w-4 text-blue-400 print:text-gray-800" />
                                                 <span className="font-bold text-white print:text-black">Camião {truck.id}</span>
+                                                {truck.isPalletized && (
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 print:border-black print:text-black print:bg-transparent ml-1 flex items-center gap-1">
+                                                        <Package className="h-2.5 w-2.5" /> Carga Paletizada
+                                                    </span>
+                                                )}
                                             </div>
                                             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${colorClass} print:border-gray-400 print:text-gray-800 print:bg-transparent`}>
                                                 Ocupação: {truck.occupancyPct}%
