@@ -406,7 +406,7 @@ export default function MontagemCargasPage() {
                 <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-500">
                     <div className="flex items-center gap-2 print:hidden">
                         <h2 className="text-lg font-bold text-white">Resultado do Romaneio</h2>
-                        <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{generatedTrucks.length} Camiões</span>
+                        <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{generatedTrucks.length} Caminhões</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 print:grid-cols-2 print:gap-4">
@@ -419,7 +419,7 @@ export default function MontagemCargasPage() {
                                         <div className="flex justify-between items-center mb-2">
                                             <div className="flex items-center gap-2">
                                                 <Truck className="h-4 w-4 text-blue-400 print:text-gray-800" />
-                                                <span className="font-bold text-white print:text-black">Camião {truck.id}</span>
+                                                <span className="font-bold text-white print:text-black">Caminhão {truck.id}</span>
                                                 {truck.isPalletized && (
                                                     <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 print:border-black print:text-black print:bg-transparent ml-1 flex items-center gap-1">
                                                         <Package className="h-2.5 w-2.5" /> Carga Paletizada
