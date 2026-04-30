@@ -44,8 +44,8 @@ function ProtectedContent({ children }: { children: React.ReactNode }) {
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <main className="flex-1 md:ml-64 lg:ml-20 xl:ml-64 bg-gradient-to-br from-black to-gray-900 transition-all duration-300 w-full overflow-x-hidden">
-        <div className="container mx-auto p-3 text-sm lg:p-4 lg:text-sm xl:p-8 xl:text-base min-h-screen">
+      <main className="flex-1 md:ml-64 lg:ml-20 xl:ml-64 bg-gradient-to-br from-black to-gray-900 transition-all duration-300 w-full overflow-x-hidden print:m-0 print:bg-white print:p-0">
+        <div className="container mx-auto p-3 text-sm lg:p-4 lg:text-sm xl:p-8 xl:text-base min-h-screen print:p-0 print:min-h-0">
           {children}
         </div>
       </main>

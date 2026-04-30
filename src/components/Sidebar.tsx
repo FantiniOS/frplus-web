@@ -18,7 +18,8 @@ import {
   Filter,
   UserPlus,
   UserCog,
-  ChevronDown
+  ChevronDown,
+  Truck
 } from "lucide-react";
 import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -69,6 +70,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       title: "Gestão",
       items: [
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
+        { icon: Truck, label: "Montagem de Cargas", href: "/dashboard/cargas" },
         { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
         { icon: Filter, label: "Curva ABC", href: "/dashboard/curva-abc" },
       ]
