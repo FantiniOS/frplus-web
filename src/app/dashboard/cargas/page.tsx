@@ -28,7 +28,7 @@ export default function MontagemCargasPage() {
 
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     const [truckCapacity, setTruckCapacity] = useState<number>(1360);
-    const [truckPalletCapacity, setTruckPalletCapacity] = useState<number>(1000);
+    const [truckPalletCapacity, setTruckPalletCapacity] = useState<number>(1080);
     const [palletizedOrders, setPalletizedOrders] = useState<Record<string, boolean>>({});
     const [generatedTrucks, setGeneratedTrucks] = useState<CargaResult[]>([]);
 
@@ -105,7 +105,7 @@ export default function MontagemCargasPage() {
 
     const isOrderPalletized = (order: any) => {
         if (palletizedOrders[order.id] !== undefined) return palletizedOrders[order.id];
-        return isRestricted(order.nomeCliente); // Default to true if BH/DMA
+        return false;
     };
 
     const toggleOrderPalletized = (order: any, e: React.MouseEvent) => {
@@ -121,48 +121,56 @@ export default function MontagemCargasPage() {
         if (selectedOrdersList.length === 0) return;
 
         const capacityNormal = Number(truckCapacity) || 1360;
-        const capacityPallet = Number(truckPalletCapacity) || 1000;
+        const capacityPallet = Number(truckPalletCapacity) || 1080;
 
-        const restrictedOrders: any[] = [];
-        const normalOrders: any[] = [];
-
-        selectedOrdersList.forEach(o => {
-            if (isRestricted(o.nomeCliente)) {
-                restrictedOrders.push(o);
-            } else {
-                normalOrders.push(o);
-            }
-        });
-
-        // Sort descending by volume to pack larger items first
-        restrictedOrders.sort((a, b) => getVolume(b) - getVolume(a));
-        normalOrders.sort((a, b) => getVolume(b) - getVolume(a));
+        // A. ORDENAÇÃO: Ordenar o array de Notas selecionadas pelo volume de caixas em ordem DECRESCENTE
+        const allOrdersToPack = [...selectedOrdersList].sort((a, b) => getVolume(b) - getVolume(a));
 
         const trucks: CargaResult[] = [];
         let currentTruckId = 1;
 
-        // Process restricted first, then normal
-        const allOrdersToPack = [...restrictedOrders, ...normalOrders];
-
+        // C. BIN PACKING (Best Fit)
         for (const order of allOrdersToPack) {
             const vol = getVolume(order);
             const orderPalletized = isOrderPalletized(order);
             let placed = false;
+            
+            let bestTruckIndex = -1;
+            let bestScore = -Infinity;
 
-            for (const truck of trucks) {
+            for (let i = 0; i < trucks.length; i++) {
+                const truck = trucks[i];
+                // B. TETO DINÂMICO: Se qualquer NF for paletizada, a capacidade cai
                 const newTruckPalletized = truck.isPalletized || orderPalletized;
                 const effectiveCapacity = newTruckPalletized ? capacityPallet : capacityNormal;
-
+                
+                // D. REGRA FISCAL INQUEBRÁVEL: Avalia se cabe integralmente no caminhão
                 if (truck.totalVolume + vol <= effectiveCapacity) {
-                    truck.orders.push(order);
-                    truck.totalVolume += vol;
-                    truck.isPalletized = newTruckPalletized;
-                    truck.capacity = effectiveCapacity;
-                    placed = true;
-                    break;
+                    const remainingSpace = effectiveCapacity - (truck.totalVolume + vol);
+                    // Dê prioridade se o caminhão já contiver uma carga para a mesma Cidade/Praça ou Cliente
+                    const sameCity = truck.orders.some(o => (o.cidade && o.cidade === order.cidade) || (o.nomeCliente === order.nomeCliente));
+                    
+                    // Score = minimiza espaço vazio (Best Fit), e bônus alto se mesma cidade
+                    const score = (sameCity ? 1000000 : 0) - remainingSpace;
+
+                    if (bestTruckIndex === -1 || score > bestScore) {
+                        bestTruckIndex = i;
+                        bestScore = score;
+                    }
                 }
             }
 
+            if (bestTruckIndex !== -1) {
+                const truck = trucks[bestTruckIndex];
+                truck.orders.push(order);
+                truck.totalVolume += vol;
+                const newTruckPalletized = truck.isPalletized || orderPalletized;
+                truck.isPalletized = newTruckPalletized;
+                truck.capacity = newTruckPalletized ? capacityPallet : capacityNormal;
+                placed = true;
+            }
+
+            // Se não couber em nenhum, instancia um Caminhão Novo
             if (!placed) {
                 const effectiveCapacity = orderPalletized ? capacityPallet : capacityNormal;
                 trucks.push({
@@ -176,7 +184,7 @@ export default function MontagemCargasPage() {
             }
         }
 
-        // Calculate occupancy percentages
+        // Calcular porcentagem de ocupação
         trucks.forEach(t => {
             t.occupancyPct = Math.round((t.totalVolume / t.capacity) * 100);
         });
@@ -342,7 +350,7 @@ export default function MontagemCargasPage() {
                         
                         <div className="grid grid-cols-2 gap-3">
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs text-gray-400">Cap. Normal (Cxs)</label>
+                                <label className="text-xs text-gray-400">Cap. Caminhão Batido (Cxs)</label>
                                 <input 
                                     type="number" 
                                     value={truckCapacity} 
@@ -351,7 +359,7 @@ export default function MontagemCargasPage() {
                                 />
                             </div>
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs text-gray-400">Cap. Paletizado</label>
+                                <label className="text-xs text-gray-400">Cap. Caminhão Paletizado</label>
                                 <input 
                                     type="number" 
                                     value={truckPalletCapacity} 
@@ -430,9 +438,17 @@ export default function MontagemCargasPage() {
                                                 Ocupação: {truck.occupancyPct}%
                                             </span>
                                         </div>
-                                        <div className="flex justify-between items-end">
-                                            <span className="text-xs text-gray-400 print:text-gray-600">Volume Total</span>
-                                            <span className="text-sm font-bold text-cyan-400 print:text-black">{truck.totalVolume} / {truck.capacity} <span className="text-[10px] font-normal text-gray-500">cxs</span></span>
+                                        <div className="flex flex-col gap-1.5 mt-2">
+                                            <div className="flex justify-between items-end">
+                                                <span className="text-xs text-gray-400 print:text-gray-600">Volume Total</span>
+                                                <span className="text-sm font-bold text-cyan-400 print:text-black">{truck.totalVolume} / {truck.capacity} <span className="text-[10px] font-normal text-gray-500">cxs</span></span>
+                                            </div>
+                                            <div className="w-full bg-[#0a0f1a] print:bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                                                <div 
+                                                    className={`h-full rounded-full ${truck.occupancyPct >= 90 ? 'bg-emerald-500' : truck.occupancyPct >= 70 ? 'bg-amber-500' : 'bg-red-500'} print:bg-black print:opacity-50 transition-all duration-1000`} 
+                                                    style={{ width: `${Math.min(truck.occupancyPct, 100)}%` }}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -454,7 +470,7 @@ export default function MontagemCargasPage() {
                                                                 <div className="flex flex-col gap-1">
                                                                     <span className="font-medium text-gray-300 print:text-black leading-tight">{order.nomeCliente}</span>
                                                                     {restricted && (
-                                                                        <span className="inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded px-1.5 py-0.5 w-fit print:text-black print:border-black print:bg-transparent">
+                                                                        <span className="inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider text-red-500 bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5 w-fit print:text-black print:border-black print:bg-transparent">
                                                                             <AlertTriangle className="h-2 w-2" />
                                                                             Última Entrega
                                                                         </span>
