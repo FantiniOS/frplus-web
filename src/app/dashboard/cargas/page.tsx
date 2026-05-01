@@ -450,7 +450,14 @@ export default function MontagemCargasPage() {
                 const bodyData = sortedOrders.map(o => {
                     let cName = o.nomeCliente;
                     if (isRestricted(cName)) cName += ' [ÚLTIMA ENTREGA]';
-                    return [cName, o.isBlock ? o.volume.toString() : getVolume(o).toString()];
+                    
+                    // Extrair NFs dos pedidos internos do bloco
+                    const nfs = (o.orders || [o])
+                        .map((p: any) => p.notaFiscal || '')
+                        .filter((nf: string) => nf !== '')
+                        .join(', ');
+                    
+                    return [cName, nfs || '—', o.isBlock ? o.volume.toString() : getVolume(o).toString()];
                 });
 
                 let truckTitle = `Caminhão ${truck.id} — Ocupação: ${truck.occupancyPct}% — Vol: ${truck.totalVolume}/${truck.capacity} cxs ${truck.isPalletized ? '(Paletizado)' : ''}`;
@@ -461,7 +468,7 @@ export default function MontagemCargasPage() {
 
                 autoTable(doc, {
                     startY,
-                    head: [[truckTitle, 'Cxs']],
+                    head: [[truckTitle, 'Nota Fiscal', 'Cxs']],
                     body: bodyData,
                     theme: 'grid',
                     styles: { fontSize: 8, cellPadding: 3, textColor: colors.textDark, lineColor: colors.tableBorder },
@@ -469,7 +476,8 @@ export default function MontagemCargasPage() {
                     alternateRowStyles: { fillColor: colors.rowEven },
                     columnStyles: {
                         0: { halign: 'left' },
-                        1: { halign: 'right', cellWidth: 20, fontStyle: 'bold', textColor: colors.accentBlue }
+                        1: { halign: 'center', cellWidth: 35, fontSize: 7 },
+                        2: { halign: 'right', cellWidth: 18, fontStyle: 'bold', textColor: colors.accentBlue }
                     },
                     margin: { top: 45, bottom: 20, left: margin.left, right: margin.right },
                     pageBreak: 'avoid',
