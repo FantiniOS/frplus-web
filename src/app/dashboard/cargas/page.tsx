@@ -279,37 +279,44 @@ export default function MontagemCargasPage() {
         // Calcular porcentagem de ocupação e frete estimado
         const valKm = Number(custoAdicionalKm) || 0;
 
-        const ORIGENS_POR_INDUSTRIA: Record<string, {cep: string, nome: string}> = {
-            "BELMONT": { cep: "1868", nome: "Lençóis Paulista/SP" },
-            "DEFAULT": { cep: "3221", nome: "Contagem/MG" }
-        };
-
         const fabricaObj = fabricas.find(f => f.id === selectedFabrica);
-        const nomeFab = (fabricaObj?.nome || '').toUpperCase();
-        const origemKey = nomeFab.includes('BELMONT') ? 'BELMONT' : 'DEFAULT';
-        const origemData = ORIGENS_POR_INDUSTRIA[origemKey];
+        const nomeFab = (fabricaObj?.nome || '').toLowerCase();
+        const isBelmont = nomeFab.includes('belmont');
+
+        const origemData = isBelmont 
+            ? { cep: "1868", nome: "Lençóis Paulista/SP" } 
+            : { cep: "3221", nome: "Contagem/MG" };
 
         trucks.forEach(t => {
             t.occupancyPct = Math.round((t.totalVolume / t.capacity) * 100);
             t.origem = origemData.nome;
             
-            // Distância Heurística
-            let maxDist = 0;
-            t.zonas.forEach(z => {
-                const dist = Math.abs(Number(origemData.cep) - Number(z));
-                if (dist > maxDist) maxDist = dist;
-            });
-
-            // Km Estimado: 15km por zona de destino
-            t.kmEstimado = t.zonas.length * 15;
-
-            // Tabela de Preço por Distância de Prefixo
-            if (maxDist === 0) {
-                t.freteEstimado = 300;
-            } else if (maxDist <= 2) {
-                t.freteEstimado = 500;
+            if (isBelmont) {
+                // Lógica Interestadual (SP -> MG)
+                const transferKm = 600;
+                const lastMileKm = t.zonas.length * 15;
+                t.kmEstimado = transferKm + lastMileKm;
+                
+                const custoBase = 3500;
+                const custoPorZona = t.zonas.length * 50;
+                t.freteEstimado = custoBase + custoPorZona;
             } else {
-                t.freteEstimado = 800 + (t.kmEstimado * valKm);
+                // Lógica Local (MG)
+                let maxDist = 0;
+                t.zonas.forEach(z => {
+                    const dist = Math.abs(Number(origemData.cep) - Number(z));
+                    if (dist > maxDist) maxDist = dist;
+                });
+
+                t.kmEstimado = t.zonas.length * 15;
+
+                if (maxDist === 0) {
+                    t.freteEstimado = 300;
+                } else if (maxDist <= 2) {
+                    t.freteEstimado = 500;
+                } else {
+                    t.freteEstimado = 800 + (t.kmEstimado * valKm);
+                }
             }
         });
 
