@@ -293,13 +293,16 @@ export default function MontagemCargasPage() {
             
             if (isBelmont) {
                 // Lógica Interestadual (SP -> MG)
-                const transferKm = 600;
+                const transferKm = 697;
                 const lastMileKm = t.zonas.length * 15;
                 t.kmEstimado = transferKm + lastMileKm;
                 
-                const custoBase = 3500;
+                const custoKmCarreta = 6.50;
+                const custoPedagio = 450;
+                const custoBaseTransferencia = (transferKm * custoKmCarreta) + custoPedagio;
+                
                 const custoPorZona = t.zonas.length * 50;
-                t.freteEstimado = custoBase + custoPorZona;
+                t.freteEstimado = custoBaseTransferencia + custoPorZona;
             } else {
                 // Lógica Local (MG)
                 let maxDist = 0;
