@@ -433,12 +433,7 @@ export default function MontagemCargasPage() {
             doc.text(`Veículos: ${generatedTrucks.length}`, margin.left + 50, startY + 5);
             doc.text(`Vol. Alocado: ${generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} cxs`, margin.left + 85, startY + 5);
             
-            const totalFrete = generatedTrucks.reduce((acc, t) => acc + (t.freteEstimado || 0), 0);
-            if (totalFrete > 0) {
-                doc.setTextColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
-                doc.text(`Frete Total Estimado: R$ ${totalFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin.left + 140, startY + 5);
-                doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
-            }
+
             
             startY += 12;
 
@@ -452,9 +447,8 @@ export default function MontagemCargasPage() {
 
                 let truckTitle = `Caminhão ${truck.id} — Ocupação: ${truck.occupancyPct}% — Vol: ${truck.totalVolume}/${truck.capacity} cxs ${truck.isPalletized ? '(Paletizado)' : ''}`;
 
-                if (truck.freteEstimado !== undefined && truck.totalVolume > 0) {
-                    const custoCaixa = truck.freteEstimado / truck.totalVolume;
-                    truckTitle += ` | Rota: ${truck.origem} -> ${truck.zonas?.join(', ')} (${truck.kmEstimado}km) | Frete: R$ ${truck.freteEstimado.toLocaleString('pt-BR')} (R$ ${custoCaixa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/cx)`;
+                if (truck.origem && truck.zonas) {
+                    truckTitle += ` | Rota: ${truck.origem} -> ${truck.zonas?.join(', ')}`;
                 }
 
                 autoTable(doc, {
