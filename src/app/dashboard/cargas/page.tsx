@@ -27,7 +27,8 @@ export default function MontagemCargasPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedFabrica, setSelectedFabrica] = useState<string>('todas');
     
-    const currentMonth = new Date().toISOString().slice(0, 7);
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());

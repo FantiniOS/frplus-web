@@ -179,7 +179,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
             if (clientsRes.ok) setClients(await clientsRes.json());
             if (productsRes.ok) setProducts(await productsRes.json());
-            if (ordersRes.ok) setOrders(await ordersRes.json());
+            if (ordersRes.ok) {
+                const data = await ordersRes.json();
+                console.log('[FRONTEND] Pedidos carregados no refreshData:', data.length);
+                setOrders(data);
+            } else {
+                console.error('[FRONTEND] Erro ao carregar pedidos:', await ordersRes.text());
+            }
             if (fabricasRes.ok) setFabricas(await fabricasRes.json());
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -195,7 +201,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
             const url = fabricaId && fabricaId !== 'todas' ? `/api/orders?fabricaId=${fabricaId}` : '/api/orders';
             const ordersRes = await fetch(url, { cache: 'no-store' });
-            if (ordersRes.ok) setOrders(await ordersRes.json());
+            if (ordersRes.ok) {
+                const data = await ordersRes.json();
+                console.log(`[FRONTEND] Pedidos carregados no refreshOrders (${url}):`, data.length);
+                setOrders(data);
+            } else {
+                console.error('[FRONTEND] Erro refreshOrders:', await ordersRes.text());
+            }
         } catch (error) {
             console.error('Error fetching orders:', error);
             showToast('Erro ao atualizar pedidos', 'error');

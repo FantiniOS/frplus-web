@@ -24,6 +24,7 @@ export async function GET(request: Request) {
             whereClause.fabricaId = filterFabricaId
         }
 
+        console.log('[API ORDERS] Buscando pedidos no DB com where:', whereClause);
         const orders = await prisma.pedido.findMany({
             where: whereClause,
             include: {
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
                 { data: 'desc' }
             ]
         })
+        console.log(`[API ORDERS] ${orders.length} pedidos encontrados.`);
 
         // Fetch all products for name lookup (safe - won't crash if some are missing)
         const allProducts = await prisma.produto.findMany({
@@ -73,10 +75,11 @@ export async function GET(request: Request) {
             })
         }))
 
+        console.log(`[API ORDERS] Formatados ${formattedOrders.length} pedidos. Retornando...`);
         return NextResponse.json(formattedOrders)
-    } catch (error) {
-        console.error('CRITICAL ERROR FETCHING ORDERS:', error)
-        return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 })
+    } catch (error: any) {
+        console.error('CRITICAL ERROR FETCHING ORDERS:', error?.message || error, error)
+        return NextResponse.json({ error: 'Failed to fetch orders', details: error?.message }, { status: 500 })
     }
 }
 
