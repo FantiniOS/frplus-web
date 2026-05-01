@@ -439,9 +439,17 @@ export default function MontagemCargasPage() {
 
             // Draw Each Truck
             generatedTrucks.forEach((truck) => {
-                const bodyData = truck.orders.map(o => {
+                const sortedOrders = [...truck.orders].sort((a, b) => {
+                    const aRestricted = isRestricted(a.nomeCliente);
+                    const bRestricted = isRestricted(b.nomeCliente);
+                    if (aRestricted && !bRestricted) return 1;
+                    if (!aRestricted && bRestricted) return -1;
+                    return 0;
+                });
+
+                const bodyData = sortedOrders.map(o => {
                     let cName = o.nomeCliente;
-                    if (isRestricted(cName)) cName += ' (* Última Entrega)';
+                    if (isRestricted(cName)) cName += ' [ÚLTIMA ENTREGA]';
                     return [cName, o.isBlock ? o.volume.toString() : getVolume(o).toString()];
                 });
 
