@@ -145,8 +145,8 @@ export default function MontagemCargasPage() {
             const clientName = order.nomeCliente || 'Desconhecido';
             if (!clientGroups[clientName]) {
                 const clientObj = clients.find(c => c.id === order.clienteId || c.nomeFantasia === order.nomeCliente || c.razaoSocial === order.nomeCliente);
-                const rawCep = clientObj?.cep || '';
-                const cepPrefix = rawCep.replace(/\D/g, '').substring(0, 4) || '0000';
+                const cepSeguro = clientObj?.cep ? String(clientObj.cep).replace(/\D/g, '') : '00000000';
+                const cepPrefix = cepSeguro.substring(0, 4) || '0000';
 
                 clientGroups[clientName] = {
                     nomeCliente: clientName,
@@ -436,7 +436,7 @@ export default function MontagemCargasPage() {
 
                 if (truck.freteEstimado !== undefined && truck.totalVolume > 0) {
                     const custoCaixa = truck.freteEstimado / truck.totalVolume;
-                    truckTitle += ` | Rota: ${truck.origem} -> ${truck.zonas.join(', ')} (${truck.kmEstimado}km) | Frete: R$ ${truck.freteEstimado.toLocaleString('pt-BR')} (R$ ${custoCaixa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/cx)`;
+                    truckTitle += ` | Rota: ${truck.origem} -> ${truck.zonas?.join(', ')} (${truck.kmEstimado}km) | Frete: R$ ${truck.freteEstimado.toLocaleString('pt-BR')} (R$ ${custoCaixa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/cx)`;
                 }
 
                 autoTable(doc, {
@@ -560,14 +560,14 @@ export default function MontagemCargasPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredOrders.length === 0 ? (
+                                    {!filteredOrders || filteredOrders.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} className="text-center py-8 text-gray-600">
+                                            <td colSpan={6} className="text-center py-8 text-gray-600">
                                                 <p className="text-sm">Nenhum pedido encontrado para os filtros atuais.</p>
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredOrders.map((order, idx) => {
+                                        filteredOrders?.map((order, idx) => {
                                             const isSelected = selectedOrderIds.has(order.id);
                                             const vol = getVolume(order);
                                             return (
@@ -722,7 +722,7 @@ export default function MontagemCargasPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {generatedTrucks.map((truck) => {
+                        {generatedTrucks?.map((truck) => {
                             const colorClass = getOccupancyColor(truck.occupancyPct);
                             return (
                                 <div key={truck.id} className="rounded-xl border border-white/[0.08] bg-[#0c1220] overflow-hidden flex flex-col shadow-lg">
@@ -766,7 +766,7 @@ export default function MontagemCargasPage() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {truck.orders.map((order, idx) => {
+                                                {truck.orders?.map((order, idx) => {
                                                     const restricted = isRestricted(order.nomeCliente);
                                                     return (
                                                         <tr key={idx} className="border-b border-white/[0.02]">
@@ -796,7 +796,7 @@ export default function MontagemCargasPage() {
                                             <div className="flex flex-col gap-1 mb-1 border-b border-white/[0.04] pb-2">
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-[9px] text-gray-500 uppercase font-semibold">Trajeto</span>
-                                                    <span className="text-[10px] text-gray-400 text-right">{truck.origem} <span className="text-gray-600">→</span> {truck.zonas.join(', ')}</span>
+                                                    <span className="text-[10px] text-gray-400 text-right">{truck.origem} <span className="text-gray-600">→</span> {truck.zonas?.join(', ') || ''}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-[9px] text-gray-500 uppercase font-semibold">Distância Estimada</span>
