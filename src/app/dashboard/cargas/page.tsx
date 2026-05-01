@@ -2,10 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package, Loader2, MapPin } from "lucide-react";
-import dynamic from 'next/dynamic';
-
-const RouteMapModal = dynamic(() => import('@/components/RouteMapModal'), { ssr: false });
+import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package, Loader2 } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { MonthSelector } from "@/components/ui/MonthSelector";
@@ -37,7 +34,6 @@ export default function MontagemCargasPage() {
     const [palletizedOrders, setPalletizedOrders] = useState<Record<string, boolean>>({});
     const [generatedTrucks, setGeneratedTrucks] = useState<CargaResult[]>([]);
     const [exportando, setExportando] = useState(false);
-    const [routeModalTruck, setRouteModalTruck] = useState<CargaResult | null>(null);
 
     useEffect(() => {
         refreshOrders(selectedFabrica);
@@ -656,14 +652,6 @@ export default function MontagemCargasPage() {
                                                 Ocupação: {truck.occupancyPct}%
                                             </span>
                                         </div>
-                                        {/* Route Button */}
-                                        <button
-                                            onClick={() => setRouteModalTruck(truck)}
-                                            className="mt-2 w-full flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-blue-300 border border-blue-500/20 hover:from-blue-600/30 hover:to-cyan-600/30 hover:text-white transition-all"
-                                        >
-                                            <MapPin className="h-3.5 w-3.5" />
-                                            🗺️ Ver Rota
-                                        </button>
                                         <div className="flex flex-col gap-1.5 mt-2">
                                             <div className="flex justify-between items-end">
                                                 <span className="text-xs text-gray-400 uppercase font-semibold text-[10px]">Volume Total</span>
@@ -716,16 +704,6 @@ export default function MontagemCargasPage() {
                         })}
                     </div>
                 </div>
-            )}
-
-            {/* Route Map Modal */}
-            {routeModalTruck && (
-                <RouteMapModal
-                    isOpen={!!routeModalTruck}
-                    onClose={() => setRouteModalTruck(null)}
-                    truck={routeModalTruck}
-                    clients={clients}
-                />
             )}
 
         </div>
