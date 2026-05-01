@@ -29,7 +29,7 @@ export default function NovoClientePage() {
     status: 'Ativo',
     ultima_compra: 'Nunca',
     tabelaPreco: '50a199',
-    uf: 'SP'
+    estado: 'SP'
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -61,7 +61,7 @@ export default function NovoClientePage() {
         numero: data.numero || prev.numero,
         bairro: data.bairro || prev.bairro,
         cidade: data.municipio || prev.cidade,
-        uf: data.uf || prev.uf,
+        estado: data.uf || prev.estado,
       }));
 
       showToast("Dados do CNPJ carregados!", "success");
@@ -92,7 +92,7 @@ export default function NovoClientePage() {
         endereco: data.logradouro || prev.endereco,
         bairro: data.bairro || prev.bairro,
         cidade: data.localidade || prev.cidade,
-        uf: data.uf || prev.uf,
+        estado: data.uf || prev.estado,
       }));
 
       showToast("Endereço carregado!", "success");
@@ -116,7 +116,7 @@ export default function NovoClientePage() {
       nomeFantasia: formData.nomeFantasia || '',
       nome: formData.razaoSocial || '', // Backward compatibility
       cnpj: formData.cnpj || '',
-      cidade: `${formData.cidade || ''}, ${formData.uf || ''}`,
+      cidade: formData.cidade || '',
       status: 'Ativo',
       ultima_compra: 'Nunca',
       ...formData,
@@ -259,7 +259,7 @@ export default function NovoClientePage() {
             </div>
             <div>
               <label className="label-compact">UF</label>
-              <select name="uf" value={formData.uf || ''} onChange={handleChange} className="input-compact">
+              <select name="estado" value={formData.estado || ''} onChange={handleChange} className="input-compact">
                 <option value="">-</option>
                 <option>AC</option><option>AL</option><option>AP</option><option>AM</option>
                 <option>BA</option><option>CE</option><option>DF</option><option>ES</option>

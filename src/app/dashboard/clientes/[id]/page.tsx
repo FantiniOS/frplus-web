@@ -120,7 +120,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                 endereco: data.logradouro || prev.endereco,
                 bairro: data.bairro || prev.bairro,
                 cidade: data.localidade || prev.cidade,
-                uf: data.uf || prev.uf,
+                estado: data.uf || prev.estado,
             }));
 
             showToast("Endereço carregado!", "success");
@@ -312,7 +312,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                         </div>
                         <div>
                             <label className="label-compact">UF</label>
-                            <select name="uf" value={formData.uf || ''} onChange={handleChange} className="input-compact">
+                            <select name="estado" value={formData.estado || ''} onChange={handleChange} className="input-compact">
                                 <option value="">-</option>
                                 <option>AC</option><option>AL</option><option>AP</option><option>AM</option>
                                 <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
