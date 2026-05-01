@@ -15,6 +15,8 @@ interface CargaResult {
     occupancyPct: number;
     isPalletized?: boolean;
     hasRestrictedClient?: boolean;
+    zonas: string[];
+    freteEstimado?: number;
 }
 
 export default function MontagemCargasPage() {
@@ -34,7 +36,8 @@ export default function MontagemCargasPage() {
     const [palletizedOrders, setPalletizedOrders] = useState<Record<string, boolean>>({});
     const [generatedTrucks, setGeneratedTrucks] = useState<CargaResult[]>([]);
     const [exportando, setExportando] = useState(false);
-    const [custoFixoCaminhao, setCustoFixoCaminhao] = useState<number | ''>(1500);
+    const [custoBaseFrete, setCustoBaseFrete] = useState<number | ''>(600);
+    const [custoPorZona, setCustoPorZona] = useState<number | ''>(150);
 
     useEffect(() => {
         refreshOrders(selectedFabrica);
@@ -127,22 +130,28 @@ export default function MontagemCargasPage() {
         const capacityNormal = Number(truckCapacity) || 1360;
         const capacityPallet = Number(truckPalletCapacity) || 1080;
 
-        // PASSO 1: AGRUPAMENTO POR CLIENTE (Pre-processing)
+        // PASSO 1: AGRUPAMENTO POR CLIENTE E ZONA GEOGRÁFICA (Pre-processing)
         const clientGroups: Record<string, {
             nomeCliente: string;
             totalVolume: number;
             isPalletized: boolean;
             orders: any[];
+            cepPrefix: string;
         }> = {};
 
         selectedOrdersList.forEach(order => {
             const clientName = order.nomeCliente || 'Desconhecido';
             if (!clientGroups[clientName]) {
+                const clientObj = clients.find(c => c.id === order.clienteId || c.nomeFantasia === order.nomeCliente || c.razaoSocial === order.nomeCliente);
+                const rawCep = clientObj?.cep || '';
+                const cepPrefix = rawCep.replace(/\D/g, '').substring(0, 4) || '0000';
+
                 clientGroups[clientName] = {
                     nomeCliente: clientName,
                     totalVolume: 0,
                     isPalletized: false,
-                    orders: []
+                    orders: [],
+                    cepPrefix
                 };
             }
             clientGroups[clientName].orders.push(order);
@@ -166,7 +175,8 @@ export default function MontagemCargasPage() {
                         volume: limit,
                         isPalletized: group.isPalletized,
                         isBlock: true,
-                        orders: [...group.orders]
+                        orders: [...group.orders],
+                        cepPrefix: group.cepPrefix
                     });
                     remainingVolume -= limit;
                 } else {
@@ -175,16 +185,22 @@ export default function MontagemCargasPage() {
                         volume: remainingVolume,
                         isPalletized: group.isPalletized,
                         isBlock: true,
-                        orders: [...group.orders]
+                        orders: [...group.orders],
+                        cepPrefix: group.cepPrefix
                     });
                     remainingVolume = 0;
                 }
             }
         });
 
-        // PASSO 3: APLICAÇÃO DO BEST FIT (Tetris do Cliente)
-        // Ordenar decrescente por volume
-        blocksToPack.sort((a, b) => b.volume - a.volume);
+        // PASSO 3: APLICAÇÃO DO BEST FIT (Tetris do Cliente + Zonas)
+        // Ordenar primeiro pelo prefixo do CEP, depois por volume
+        blocksToPack.sort((a, b) => {
+            if (a.cepPrefix !== b.cepPrefix) {
+                return a.cepPrefix.localeCompare(b.cepPrefix);
+            }
+            return b.volume - a.volume;
+        });
 
         const trucks: CargaResult[] = [];
         let currentTruckId = 1;
@@ -215,7 +231,12 @@ export default function MontagemCargasPage() {
                     const remainingSpace = effectiveCapacity - (truck.totalVolume + vol);
                     
                     // Score = minimiza espaço vazio (Best Fit)
-                    const score = -remainingSpace;
+                    let score = -remainingSpace;
+
+                    // Bônus se o caminhão já estiver atendendo essa zona
+                    if (truck.zonas.includes(block.cepPrefix)) {
+                        score += 100000;
+                    }
 
                     if (bestTruckIndex === -1 || score > bestScore) {
                         bestTruckIndex = i;
@@ -228,6 +249,9 @@ export default function MontagemCargasPage() {
                 const truck = trucks[bestTruckIndex];
                 truck.orders.push(block);
                 truck.totalVolume += vol;
+                if (!truck.zonas.includes(block.cepPrefix)) {
+                    truck.zonas.push(block.cepPrefix);
+                }
                 const newTruckPalletized = truck.isPalletized || blockPalletized;
                 truck.isPalletized = newTruckPalletized;
                 truck.capacity = newTruckPalletized ? capacityPallet : capacityNormal;
@@ -245,14 +269,19 @@ export default function MontagemCargasPage() {
                     capacity: effectiveCapacity,
                     occupancyPct: 0,
                     isPalletized: blockPalletized,
-                    hasRestrictedClient: blockRestricted
+                    hasRestrictedClient: blockRestricted,
+                    zonas: [block.cepPrefix]
                 });
             }
         }
 
-        // Calcular porcentagem de ocupação
+        // Calcular porcentagem de ocupação e frete estimado
+        const baseFrete = Number(custoBaseFrete) || 0;
+        const porZona = Number(custoPorZona) || 0;
+
         trucks.forEach(t => {
             t.occupancyPct = Math.round((t.totalVolume / t.capacity) * 100);
+            t.freteEstimado = baseFrete + (t.zonas.length * porZona);
         });
 
         setGeneratedTrucks(trucks);
@@ -365,10 +394,10 @@ export default function MontagemCargasPage() {
             doc.text(`Veículos: ${generatedTrucks.length}`, margin.left + 50, startY + 5);
             doc.text(`Vol. Alocado: ${generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} cxs`, margin.left + 85, startY + 5);
             
-            if (custoFixoCaminhao !== '') {
-                const totalFrete = generatedTrucks.length * Number(custoFixoCaminhao);
+            const totalFrete = generatedTrucks.reduce((acc, t) => acc + (t.freteEstimado || 0), 0);
+            if (totalFrete > 0) {
                 doc.setTextColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
-                doc.text(`Frete Total: R$ ${totalFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin.left + 140, startY + 5);
+                doc.text(`Frete Total Estimado: R$ ${totalFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin.left + 140, startY + 5);
                 doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
             }
             
@@ -384,9 +413,9 @@ export default function MontagemCargasPage() {
 
                 let truckTitle = `Caminhão ${truck.id} — Ocupação: ${truck.occupancyPct}% — Vol: ${truck.totalVolume}/${truck.capacity} cxs ${truck.isPalletized ? '(Paletizado)' : ''}`;
 
-                if (custoFixoCaminhao !== '' && truck.totalVolume > 0) {
-                    const custoCaixa = Number(custoFixoCaminhao) / truck.totalVolume;
-                    truckTitle += ` | Frete: R$ ${Number(custoFixoCaminhao).toLocaleString('pt-BR')} (R$ ${custoCaixa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/cx)`;
+                if (truck.freteEstimado !== undefined && truck.totalVolume > 0) {
+                    const custoCaixa = truck.freteEstimado / truck.totalVolume;
+                    truckTitle += ` | Zonas: ${truck.zonas.length} | Frete: R$ ${truck.freteEstimado.toLocaleString('pt-BR')} (R$ ${custoCaixa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/cx)`;
                 }
 
                 autoTable(doc, {
@@ -574,7 +603,7 @@ export default function MontagemCargasPage() {
                     <div className="rounded-xl border border-white/[0.06] bg-[#0c1220] p-4 flex flex-col gap-4 shadow-xl">
                         <h2 className="text-sm font-semibold text-gray-200 border-b border-white/10 pb-2">Parâmetros do Romaneio</h2>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-xs text-gray-400">Cap. Caminhão Batido (Cxs)</label>
                                 <input 
@@ -594,13 +623,23 @@ export default function MontagemCargasPage() {
                                 />
                             </div>
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs text-gray-400">Custo Fixo Médio (R$)</label>
+                                <label className="text-xs text-gray-400">Custo Base Frete (R$)</label>
                                 <input 
                                     type="number" 
-                                    value={custoFixoCaminhao} 
-                                    onChange={(e) => setCustoFixoCaminhao(e.target.value === '' ? '' : Number(e.target.value))}
+                                    value={custoBaseFrete} 
+                                    onChange={(e) => setCustoBaseFrete(e.target.value === '' ? '' : Number(e.target.value))}
                                     className="bg-[#0a0f1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 w-full"
-                                    placeholder="Ex: 1500"
+                                    placeholder="Ex: 600"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs text-gray-400">Custo Zona Adicional</label>
+                                <input 
+                                    type="number" 
+                                    value={custoPorZona} 
+                                    onChange={(e) => setCustoPorZona(e.target.value === '' ? '' : Number(e.target.value))}
+                                    className="bg-[#0a0f1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 w-full"
+                                    placeholder="Ex: 150"
                                 />
                             </div>
                         </div>
@@ -653,13 +692,11 @@ export default function MontagemCargasPage() {
                         <h2 className="text-lg font-bold text-white">Resultado do Romaneio</h2>
                         <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{generatedTrucks.length} Caminhões</span>
                         
-                        {custoFixoCaminhao !== '' && (
-                            <div className="flex items-center gap-2 ml-auto">
-                                <span className="text-xs bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-lg text-emerald-400 font-semibold shadow-inner">
-                                    Custo Total de Frete: R$ {(generatedTrucks.length * Number(custoFixoCaminhao)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </span>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-2 ml-auto">
+                            <span className="text-xs bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-lg text-emerald-400 font-semibold shadow-inner">
+                                Frete Estimado Total: R$ {generatedTrucks.reduce((acc, t) => acc + (t.freteEstimado || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -732,16 +769,18 @@ export default function MontagemCargasPage() {
                                     </div>
 
                                     {/* Financial Footer */}
-                                    {custoFixoCaminhao !== '' && truck.totalVolume > 0 && (
+                                    {truck.freteEstimado !== undefined && truck.totalVolume > 0 && (
                                         <div className="p-3 border-t border-white/[0.06] bg-[#080b12] flex flex-col gap-1.5 mt-auto">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-[9px] text-gray-500 uppercase font-semibold">Custo do Frete</span>
-                                                <span className="text-xs font-bold text-gray-300">R$ {Number(custoFixoCaminhao).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                <span className="text-[9px] text-gray-500 uppercase font-semibold" title={`Zonas: ${truck.zonas.join(', ')}`}>
+                                                    Frete Estimado ({truck.zonas.length} Zona{truck.zonas.length > 1 ? 's' : ''})
+                                                </span>
+                                                <span className="text-xs font-bold text-gray-300">R$ {truck.freteEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-[9px] text-gray-500 uppercase font-semibold">Custo por Caixa</span>
-                                                <span className={`text-xs font-bold ${Number(custoFixoCaminhao) / truck.totalVolume > 1.5 ? 'text-orange-400' : 'text-emerald-400'}`}>
-                                                    R$ {(Number(custoFixoCaminhao) / truck.totalVolume).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                <span className={`text-xs font-bold ${(truck.freteEstimado / truck.totalVolume) > 1.5 ? 'text-orange-400' : 'text-emerald-400'}`}>
+                                                    R$ {(truck.freteEstimado / truck.totalVolume).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                             </div>
                                         </div>
