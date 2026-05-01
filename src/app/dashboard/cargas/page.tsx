@@ -17,6 +17,8 @@ interface CargaResult {
     hasRestrictedClient?: boolean;
     zonas: string[];
     freteEstimado?: number;
+    kmEstimado?: number;
+    origem?: string;
 }
 
 export default function MontagemCargasPage() {
@@ -36,8 +38,8 @@ export default function MontagemCargasPage() {
     const [palletizedOrders, setPalletizedOrders] = useState<Record<string, boolean>>({});
     const [generatedTrucks, setGeneratedTrucks] = useState<CargaResult[]>([]);
     const [exportando, setExportando] = useState(false);
-    const [custoBaseFrete, setCustoBaseFrete] = useState<number | ''>(600);
-    const [custoPorZona, setCustoPorZona] = useState<number | ''>(150);
+    const [cepOrigem, setCepOrigem] = useState<string>("3221");
+    const [custoAdicionalKm, setCustoAdicionalKm] = useState<number | ''>(2.50);
 
     useEffect(() => {
         refreshOrders(selectedFabrica);
@@ -276,12 +278,31 @@ export default function MontagemCargasPage() {
         }
 
         // Calcular porcentagem de ocupação e frete estimado
-        const baseFrete = Number(custoBaseFrete) || 0;
-        const porZona = Number(custoPorZona) || 0;
+        const origemCalc = cepOrigem || "3221";
+        const valKm = Number(custoAdicionalKm) || 0;
 
         trucks.forEach(t => {
             t.occupancyPct = Math.round((t.totalVolume / t.capacity) * 100);
-            t.freteEstimado = baseFrete + (t.zonas.length * porZona);
+            t.origem = origemCalc;
+            
+            // Distância Heurística
+            let maxDist = 0;
+            t.zonas.forEach(z => {
+                const dist = Math.abs(Number(origemCalc) - Number(z));
+                if (dist > maxDist) maxDist = dist;
+            });
+
+            // Km Estimado: 15km por zona de destino
+            t.kmEstimado = t.zonas.length * 15;
+
+            // Tabela de Preço por Distância de Prefixo
+            if (maxDist === 0) {
+                t.freteEstimado = 300;
+            } else if (maxDist <= 2) {
+                t.freteEstimado = 500;
+            } else {
+                t.freteEstimado = 800 + (t.kmEstimado * valKm);
+            }
         });
 
         setGeneratedTrucks(trucks);
@@ -415,7 +436,7 @@ export default function MontagemCargasPage() {
 
                 if (truck.freteEstimado !== undefined && truck.totalVolume > 0) {
                     const custoCaixa = truck.freteEstimado / truck.totalVolume;
-                    truckTitle += ` | Zonas: ${truck.zonas.length} | Frete: R$ ${truck.freteEstimado.toLocaleString('pt-BR')} (R$ ${custoCaixa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/cx)`;
+                    truckTitle += ` | Rota: ${truck.origem} -> ${truck.zonas.join(', ')} (${truck.kmEstimado}km) | Frete: R$ ${truck.freteEstimado.toLocaleString('pt-BR')} (R$ ${custoCaixa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/cx)`;
                 }
 
                 autoTable(doc, {
@@ -623,23 +644,24 @@ export default function MontagemCargasPage() {
                                 />
                             </div>
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs text-gray-400">Custo Base Frete (R$)</label>
+                                <label className="text-xs text-gray-400">CEP Origem (Prefixo)</label>
                                 <input 
-                                    type="number" 
-                                    value={custoBaseFrete} 
-                                    onChange={(e) => setCustoBaseFrete(e.target.value === '' ? '' : Number(e.target.value))}
+                                    type="text" 
+                                    value={cepOrigem} 
+                                    onChange={(e) => setCepOrigem(e.target.value)}
                                     className="bg-[#0a0f1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 w-full"
-                                    placeholder="Ex: 600"
+                                    placeholder="Ex: 3221"
                                 />
                             </div>
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs text-gray-400">Custo Zona Adicional</label>
+                                <label className="text-xs text-gray-400">Custo Adicional / Km (R$)</label>
                                 <input 
                                     type="number" 
-                                    value={custoPorZona} 
-                                    onChange={(e) => setCustoPorZona(e.target.value === '' ? '' : Number(e.target.value))}
+                                    value={custoAdicionalKm} 
+                                    onChange={(e) => setCustoAdicionalKm(e.target.value === '' ? '' : Number(e.target.value))}
                                     className="bg-[#0a0f1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 w-full"
-                                    placeholder="Ex: 150"
+                                    placeholder="Ex: 2.50"
+                                    step="0.10"
                                 />
                             </div>
                         </div>
@@ -771,10 +793,18 @@ export default function MontagemCargasPage() {
                                     {/* Financial Footer */}
                                     {truck.freteEstimado !== undefined && truck.totalVolume > 0 && (
                                         <div className="p-3 border-t border-white/[0.06] bg-[#080b12] flex flex-col gap-1.5 mt-auto">
+                                            <div className="flex flex-col gap-1 mb-1 border-b border-white/[0.04] pb-2">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-[9px] text-gray-500 uppercase font-semibold">Trajeto</span>
+                                                    <span className="text-[10px] text-gray-400 text-right">{truck.origem} <span className="text-gray-600">→</span> {truck.zonas.join(', ')}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-[9px] text-gray-500 uppercase font-semibold">Distância Estimada</span>
+                                                    <span className="text-[10px] text-cyan-400 font-semibold">{truck.kmEstimado} km</span>
+                                                </div>
+                                            </div>
                                             <div className="flex justify-between items-center">
-                                                <span className="text-[9px] text-gray-500 uppercase font-semibold" title={`Zonas: ${truck.zonas.join(', ')}`}>
-                                                    Frete Estimado ({truck.zonas.length} Zona{truck.zonas.length > 1 ? 's' : ''})
-                                                </span>
+                                                <span className="text-[9px] text-gray-500 uppercase font-semibold">Frete Estimado</span>
                                                 <span className="text-xs font-bold text-gray-300">R$ {truck.freteEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                             </div>
                                             <div className="flex justify-between items-center">
