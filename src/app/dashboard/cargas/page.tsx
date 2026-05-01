@@ -38,7 +38,6 @@ export default function MontagemCargasPage() {
     const [palletizedOrders, setPalletizedOrders] = useState<Record<string, boolean>>({});
     const [generatedTrucks, setGeneratedTrucks] = useState<CargaResult[]>([]);
     const [exportando, setExportando] = useState(false);
-    const [cepOrigem, setCepOrigem] = useState<string>("3221");
     const [custoAdicionalKm, setCustoAdicionalKm] = useState<number | ''>(2.50);
 
     useEffect(() => {
@@ -278,17 +277,26 @@ export default function MontagemCargasPage() {
         }
 
         // Calcular porcentagem de ocupação e frete estimado
-        const origemCalc = cepOrigem || "3221";
         const valKm = Number(custoAdicionalKm) || 0;
+
+        const ORIGENS_POR_INDUSTRIA: Record<string, {cep: string, nome: string}> = {
+            "BELMONT": { cep: "1868", nome: "Lençóis Paulista/SP" },
+            "DEFAULT": { cep: "3221", nome: "Contagem/MG" }
+        };
+
+        const fabricaObj = fabricas.find(f => f.id === selectedFabrica);
+        const nomeFab = (fabricaObj?.nome || '').toUpperCase();
+        const origemKey = nomeFab.includes('BELMONT') ? 'BELMONT' : 'DEFAULT';
+        const origemData = ORIGENS_POR_INDUSTRIA[origemKey];
 
         trucks.forEach(t => {
             t.occupancyPct = Math.round((t.totalVolume / t.capacity) * 100);
-            t.origem = origemCalc;
+            t.origem = origemData.nome;
             
             // Distância Heurística
             let maxDist = 0;
             t.zonas.forEach(z => {
-                const dist = Math.abs(Number(origemCalc) - Number(z));
+                const dist = Math.abs(Number(origemData.cep) - Number(z));
                 if (dist > maxDist) maxDist = dist;
             });
 
@@ -643,16 +651,7 @@ export default function MontagemCargasPage() {
                                     className="bg-[#0a0f1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 w-full"
                                 />
                             </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs text-gray-400">CEP Origem (Prefixo)</label>
-                                <input 
-                                    type="text" 
-                                    value={cepOrigem} 
-                                    onChange={(e) => setCepOrigem(e.target.value)}
-                                    className="bg-[#0a0f1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 w-full"
-                                    placeholder="Ex: 3221"
-                                />
-                            </div>
+
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-xs text-gray-400">Custo Adicional / Km (R$)</label>
                                 <input 
