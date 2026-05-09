@@ -59,6 +59,7 @@ export async function GET(request: Request) {
             tabelaPreco: o.tabelaPreco,
             condicaoPagamento: o.condicaoPagamento,
             observacoes: o.observacoes,
+            dataEntregaProgramada: (o as any).dataEntregaProgramada?.toISOString() || null,
             notaFiscal: o.notaFiscal,
             createdAt: o.createdAt.toISOString(),
             itens: o.itens.map(item => {

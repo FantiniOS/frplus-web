@@ -87,6 +87,7 @@ model Pedido {
   tabelaPreco       String // 50a199, 200a699, atacado, avista, redes
   condicaoPagamento String
   observacoes       String?
+  dataEntregaProgramada DateTime?   // Data agendada para entrega (apenas dia, sem controle de horário)
   notaFiscal        String?
   verbaId           String?
   verba             Verba?       @relation(fields: [verbaId], references: [id])

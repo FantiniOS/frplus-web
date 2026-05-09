@@ -2,10 +2,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package, Loader2 } from "lucide-react";
+import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package, Loader2, CalendarClock, X, Clock } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { MonthSelector } from "@/components/ui/MonthSelector";
 
 interface CargaResult {
     id: number;
@@ -22,15 +21,11 @@ interface CargaResult {
 }
 
 export default function MontagemCargasPage() {
-    const { orders, fabricas, refreshOrders, clients } = useData();
+    const { orders, fabricas, refreshOrders, clients, updateOrder, showToast } = useData();
     const { isIndustria } = useAuth();
     
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedFabrica, setSelectedFabrica] = useState<string>('todas');
-    
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     const [truckCapacity, setTruckCapacity] = useState<number>(1360);
@@ -43,6 +38,12 @@ export default function MontagemCargasPage() {
     useEffect(() => {
         refreshOrders(selectedFabrica);
     }, [selectedFabrica, refreshOrders]);
+
+    // Mês atual para comparação de atraso
+    const currentMonthStr = useMemo(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }, []);
 
     const getDataPedido = (order: any): string | null => {
         return order.dataPedido || order.data || order.createdAt || null;
@@ -57,28 +58,113 @@ export default function MontagemCargasPage() {
         }
     };
 
+    // ENTREGAS PROGRAMADAS: Extrai data agendada do pedido (fallback-safe)
+    const getDataProgramada = (order: any): string | null => {
+        return order.dataEntregaProgramada || null;
+    };
+
+    // ENTREGAS PROGRAMADAS: Formata para DD/MM (corta timestamp, usa UTC para evitar timezone shift)
+    const formatDataProgramada = (dateStr: string | null | undefined): string | null => {
+        if (!dateStr) return null;
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return null;
+            const dia = String(d.getUTCDate()).padStart(2, '0');
+            const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+            return `${dia}/${mes}`;
+        } catch {
+            return null;
+        }
+    };
+
     const getVolume = (order: any) => order.itens?.reduce((acc: number, i: any) => acc + (Number(i.quantidade) || 0), 0) || 0;
 
+    // STATUS: Um pedido é "descartado" se estiver cancelado ou recusado.
+    // Qualquer outro status = carteira livre do representante.
+    const isOrderExcluded = (order: any) => {
+        const statusUpper = (order.status || '').toUpperCase();
+        return statusUpper === 'CANCELADO' || statusUpper === 'RECUSADO';
+    };
+
+    // Verifica se o pedido é de um mês anterior ao atual (backlog / atraso)
+    const isFromPreviousMonth = (order: any) => {
+        const rawDate = getDataPedido(order);
+        if (!rawDate) return false;
+        try {
+            const orderMonth = new Date(rawDate).toISOString().slice(0, 7);
+            return orderMonth < currentMonthStr;
+        } catch {
+            return false;
+        }
+    };
+
+    // Helper: Extrair prefixo CEP do cliente para ordenação por zona
+    const getClientCep = (order: any): string => {
+        const clientObj = clients.find(c => c.id === order.clienteId || c.nomeFantasia === order.nomeCliente || c.razaoSocial === order.nomeCliente);
+        const cep = clientObj?.cep ? String(clientObj.cep).replace(/\D/g, '') : '00000000';
+        return cep.substring(0, 4) || '0000';
+    };
+
+    const getMesNome = (dateStr: string | null) => {
+        if (!dateStr) return '';
+        try {
+            const d = new Date(dateStr);
+            const nomeMes = d.toLocaleDateString('pt-BR', { month: 'long', timeZone: 'UTC' });
+            return nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+        } catch {
+            return '';
+        }
+    };
+
+    // CARTEIRA LIVRE: Todos os pedidos ativos (não cancelados/recusados)
+    // Inclui mês atual + qualquer pedido antigo que não foi descartado
     const filteredOrders = useMemo(() => {
         return orders.filter(order => {
+            // 1. Busca textual
             const matchesSearch = (order.nomeCliente || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                                   (order.notaFiscal || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                                   order.id.includes(searchTerm);
 
-            let matchesMonth = true;
-            if (selectedMonth) {
-                const rawDate = getDataPedido(order);
-                if (rawDate) {
-                    const orderDate = new Date(rawDate).toISOString().slice(0, 7);
-                    matchesMonth = orderDate === selectedMonth;
-                } else {
-                    matchesMonth = false;
-                }
+            // 2. Excluir cancelados/recusados
+            if (isOrderExcluded(order)) return false;
+
+            return matchesSearch;
+        });
+    }, [orders, searchTerm]);
+
+    // ORDENAÇÃO INTELIGENTE: Prioridade logística estrita
+    // 1º Agendados (mais próximo) → 2º Atrasados (mais antigo) → 3º CEP/Zona → 4º Volume
+    const sortedFilteredOrders = useMemo(() => {
+        return [...filteredOrders].sort((a, b) => {
+            // 1º Critério: Pedidos AGENDADOS primeiro (data mais próxima = maior prioridade)
+            const aAgendado = getDataProgramada(a);
+            const bAgendado = getDataProgramada(b);
+            if (aAgendado && !bAgendado) return -1;
+            if (!aAgendado && bAgendado) return 1;
+            if (aAgendado && bAgendado) {
+                return new Date(aAgendado).getTime() - new Date(bAgendado).getTime();
             }
 
-            return matchesSearch && matchesMonth;
+            // 2º Critério: Pedidos de MESES ANTERIORES (backlog — mais antigo primeiro)
+            const aIsOld = isFromPreviousMonth(a);
+            const bIsOld = isFromPreviousMonth(b);
+            if (aIsOld && !bIsOld) return -1;
+            if (!aIsOld && bIsOld) return 1;
+            if (aIsOld && bIsOld) {
+                const aDate = getDataPedido(a) || '';
+                const bDate = getDataPedido(b) || '';
+                return aDate.localeCompare(bDate); // mais antigo primeiro
+            }
+
+            // 3º Critério: Zona / Prefixo do CEP
+            const aCep = getClientCep(a);
+            const bCep = getClientCep(b);
+            if (aCep !== bCep) return aCep.localeCompare(bCep);
+
+            // 4º Critério: Volume (maior primeiro)
+            return getVolume(b) - getVolume(a);
         });
-    }, [orders, searchTerm, selectedMonth]);
+    }, [filteredOrders, currentMonthStr]);
 
     const toggleOrderSelection = (id: string) => {
         const newSet = new Set(selectedOrderIds);
@@ -88,22 +174,21 @@ export default function MontagemCargasPage() {
             newSet.add(id);
         }
         setSelectedOrderIds(newSet);
-        // Clear generated trucks if selection changes so they have to regenerate
-        setGeneratedTrucks([]);
+        // NÃO resetar trucks aqui — a carga montada persiste
     };
 
     const toggleAllSelection = () => {
-        if (selectedOrderIds.size === filteredOrders.length && filteredOrders.length > 0) {
+        if (selectedOrderIds.size === sortedFilteredOrders.length && sortedFilteredOrders.length > 0) {
             setSelectedOrderIds(new Set());
         } else {
             const newSet = new Set<string>();
-            filteredOrders.forEach(o => newSet.add(o.id));
+            sortedFilteredOrders.forEach(o => newSet.add(o.id));
             setSelectedOrderIds(newSet);
         }
-        setGeneratedTrucks([]);
+        // NÃO resetar trucks aqui — a carga montada persiste
     };
 
-    const selectedOrdersList = filteredOrders.filter(o => selectedOrderIds.has(o.id));
+    const selectedOrdersList = orders.filter(o => selectedOrderIds.has(o.id));
     const totalSelectedVolume = selectedOrdersList.reduce((acc, o) => acc + getVolume(o), 0);
 
     const isRestricted = (clientName: string) => {
@@ -125,6 +210,20 @@ export default function MontagemCargasPage() {
         setGeneratedTrucks([]);
     };
 
+    const handleSetDate = async (order: any, date: string, e?: React.SyntheticEvent) => {
+        if (e) e.stopPropagation();
+        // Dispara requisição otimista/background
+        const payload = {
+            ...order,
+            dataEntregaProgramada: date || null
+        };
+        const success = await updateOrder(order.id, payload);
+        if (success) {
+            setGeneratedTrucks([]);
+            showToast('Data de agendamento atualizada!', 'success');
+        }
+    };
+
     const gerarRomaneio = () => {
         if (selectedOrdersList.length === 0) return;
 
@@ -138,6 +237,7 @@ export default function MontagemCargasPage() {
             isPalletized: boolean;
             orders: any[];
             cepPrefix: string;
+            dataEntregaProgramada: string | null;
         }> = {};
 
         selectedOrdersList.forEach(order => {
@@ -152,13 +252,22 @@ export default function MontagemCargasPage() {
                     totalVolume: 0,
                     isPalletized: false,
                     orders: [],
-                    cepPrefix
+                    cepPrefix,
+                    dataEntregaProgramada: null
                 };
             }
             clientGroups[clientName].orders.push(order);
             clientGroups[clientName].totalVolume += getVolume(order);
             if (isOrderPalletized(order)) {
                 clientGroups[clientName].isPalletized = true;
+            }
+            // ENTREGAS PROGRAMADAS: propaga a data mais próxima do grupo
+            const orderDataProg = getDataProgramada(order);
+            if (orderDataProg) {
+                const current = clientGroups[clientName].dataEntregaProgramada;
+                if (!current || new Date(orderDataProg) < new Date(current)) {
+                    clientGroups[clientName].dataEntregaProgramada = orderDataProg;
+                }
             }
         });
 
@@ -177,7 +286,8 @@ export default function MontagemCargasPage() {
                         isPalletized: group.isPalletized,
                         isBlock: true,
                         orders: [...group.orders],
-                        cepPrefix: group.cepPrefix
+                        cepPrefix: group.cepPrefix,
+                        dataEntregaProgramada: group.dataEntregaProgramada
                     });
                     remainingVolume -= limit;
                 } else {
@@ -187,7 +297,8 @@ export default function MontagemCargasPage() {
                         isPalletized: group.isPalletized,
                         isBlock: true,
                         orders: [...group.orders],
-                        cepPrefix: group.cepPrefix
+                        cepPrefix: group.cepPrefix,
+                        dataEntregaProgramada: group.dataEntregaProgramada
                     });
                     remainingVolume = 0;
                 }
@@ -195,11 +306,22 @@ export default function MontagemCargasPage() {
         });
 
         // PASSO 3: APLICAÇÃO DO BEST FIT (Tetris do Cliente + Zonas)
-        // Ordenar primeiro pelo prefixo do CEP, depois por volume
+        // Hierarquia: 1º Agendados (cronológico) → 2º CEP → 3º Volume
         blocksToPack.sort((a, b) => {
+            const aData = a.dataEntregaProgramada ? new Date(a.dataEntregaProgramada).getTime() : null;
+            const bData = b.dataEntregaProgramada ? new Date(b.dataEntregaProgramada).getTime() : null;
+
+            // 1º Critério: Pedidos agendados vêm primeiro (mais próximo = maior prioridade)
+            if (aData !== null && bData === null) return -1;
+            if (aData === null && bData !== null) return 1;
+            if (aData !== null && bData !== null && aData !== bData) return aData - bData;
+
+            // 2º Critério: Zona / Prefixo do CEP
             if (a.cepPrefix !== b.cepPrefix) {
                 return a.cepPrefix.localeCompare(b.cepPrefix);
             }
+
+            // 3º Critério: Volume (maior primeiro)
             return b.volume - a.volume;
         });
 
@@ -449,7 +571,12 @@ export default function MontagemCargasPage() {
 
                 const bodyData = sortedOrders.map(o => {
                     let cName = o.nomeCliente;
-                    if (isRestricted(cName)) cName += ' [ÚLTIMA ENTREGA]';
+
+                    // ENTREGAS PROGRAMADAS: Prefixar com data no PDF para instruir motorista
+                    const dataProg = formatDataProgramada(o.dataEntregaProgramada);
+                    if (dataProg) cName = `[AGENDADO: ${dataProg}] - ${cName}`;
+
+                    if (isRestricted(o.nomeCliente)) cName += ' [ÚLTIMA ENTREGA]';
                     
                     // Extrair NFs dos pedidos internos do bloco
                     const nfs = (o.orders || [o])
@@ -522,7 +649,7 @@ export default function MontagemCargasPage() {
                     </div>
                     <div>
                         <h1 className="text-xl font-bold text-white tracking-tight">Montagem de Cargas</h1>
-                        <p className="text-xs text-gray-500">Romaneio Inteligente de Pedidos Faturados</p>
+                        <p className="text-xs text-gray-500">Sugestão Inteligente de Cargas — Carteira Livre</p>
                     </div>
                 </div>
             </div>
@@ -542,7 +669,7 @@ export default function MontagemCargasPage() {
                     </select>
                 )}
                 
-                <MonthSelector value={selectedMonth} onChange={setSelectedMonth} />
+                {/* MonthSelector removido — lista unificada de carteira livre */}
 
                 <div className="relative flex-1 min-w-[180px]">
                     <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
@@ -561,8 +688,8 @@ export default function MontagemCargasPage() {
                 <div className="lg:col-span-2 flex flex-col gap-4">
                     <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm flex flex-col flex-1 max-h-[600px] overflow-hidden">
                         <div className="flex items-center justify-between px-4 py-3 bg-[#0c1220] border-b border-white/[0.06]">
-                            <h2 className="text-sm font-semibold text-gray-200">Selecione os Pedidos (Prontos na Fábrica)</h2>
-                            <span className="text-xs bg-white/5 px-2 py-1 rounded text-gray-400">{filteredOrders.length} encontrados</span>
+                            <h2 className="text-sm font-semibold text-gray-200">Carteira Livre — Pedidos Disponíveis</h2>
+                            <span className="text-xs bg-white/5 px-2 py-1 rounded text-gray-400">{sortedFilteredOrders.length} disponíveis</span>
                         </div>
                         <div className="overflow-auto flex-1">
                             <table className="w-full text-sm">
@@ -573,7 +700,7 @@ export default function MontagemCargasPage() {
                                                 onClick={toggleAllSelection}
                                                 className="text-gray-400 hover:text-white focus:outline-none"
                                             >
-                                                {selectedOrderIds.size === filteredOrders.length && filteredOrders.length > 0 ? (
+                                                {selectedOrderIds.size === sortedFilteredOrders.length && sortedFilteredOrders.length > 0 ? (
                                                     <CheckSquare className="h-4 w-4 text-blue-400" />
                                                 ) : (
                                                     <Square className="h-4 w-4" />
@@ -588,14 +715,14 @@ export default function MontagemCargasPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {!filteredOrders || filteredOrders.length === 0 ? (
+                                    {!sortedFilteredOrders || sortedFilteredOrders.length === 0 ? (
                                         <tr>
                                             <td colSpan={6} className="text-center py-8 text-gray-600">
-                                                <p className="text-sm">Nenhum pedido encontrado para os filtros atuais.</p>
+                                                <p className="text-sm">Nenhum pedido disponível na carteira.</p>
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredOrders?.map((order, idx) => {
+                                        sortedFilteredOrders?.map((order, idx) => {
                                             const isSelected = selectedOrderIds.has(order.id);
                                             const vol = getVolume(order);
                                             return (
@@ -616,11 +743,65 @@ export default function MontagemCargasPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-3 py-2.5">
-                                                        <span className="text-xs font-mono text-gray-400">{formatDate(getDataPedido(order))}</span>
+                                                        <div className="flex flex-col gap-1 items-start">
+                                                            <span className="text-xs font-mono text-gray-400">{formatDate(getDataPedido(order))}</span>
+                                                            {isFromPreviousMonth(order) && (
+                                                                <span className="text-[9px] font-bold text-red-400 bg-red-500/15 border border-red-500/25 px-1.5 py-0.5 rounded flex items-center gap-1 uppercase tracking-wider">
+                                                                    <Clock className="h-2.5 w-2.5" /> 🔴 EM ATRASO / {getMesNome(getDataPedido(order))}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className="px-3 py-2.5">
                                                         <div className="flex flex-col">
-                                                            <span className="text-sm font-medium text-gray-200 truncate max-w-[200px]">{order.nomeCliente}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm font-medium text-gray-200 truncate max-w-[200px]">{order.nomeCliente}</span>
+                                                                
+                                                                {/* Date Picker Interativo */}
+                                                                <div className="flex items-center ml-2" onClick={e => e.stopPropagation()}>
+                                                                    {order.dataEntregaProgramada ? (
+                                                                        <div className="relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/20 group/badge cursor-pointer hover:bg-red-500/20 transition-colors">
+                                                                            <span className="text-[9px] font-bold text-red-400 uppercase tracking-wider">
+                                                                                🔴 AGENDADO: {formatDataProgramada(getDataProgramada(order))}
+                                                                            </span>
+                                                                            <input 
+                                                                                type="date"
+                                                                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-0"
+                                                                                value={order.dataEntregaProgramada.split('T')[0]}
+                                                                                onChange={(e) => handleSetDate(order, e.target.value, e)}
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    try { if ('showPicker' in HTMLInputElement.prototype) { (e.target as HTMLInputElement).showPicker(); } } catch(err) {}
+                                                                                }}
+                                                                            />
+                                                                            <button 
+                                                                                type="button"
+                                                                                title="Remover agendamento"
+                                                                                onClick={(e) => handleSetDate(order, '', e)}
+                                                                                className="relative z-10 p-0.5 rounded-full hover:bg-red-500/20 text-red-400 opacity-60 hover:opacity-100 transition-all focus:outline-none ml-1"
+                                                                            >
+                                                                                <X className="h-3 w-3" />
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer group">
+                                                                            <CalendarClock className="h-3 w-3 text-gray-400 group-hover:text-gray-300" />
+                                                                            <span className="text-[10px] font-bold text-gray-400 group-hover:text-gray-300">AGENDAR</span>
+                                                                            <input 
+                                                                                type="date"
+                                                                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-0"
+                                                                                value=""
+                                                                                onChange={(e) => handleSetDate(order, e.target.value, e)}
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    try { if ('showPicker' in HTMLInputElement.prototype) { (e.target as HTMLInputElement).showPicker(); } } catch(err) {}
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            
                                                             {isRestricted(order.nomeCliente) && (
                                                                 <span className="text-[9px] text-orange-400 uppercase tracking-wider font-semibold mt-0.5">Restrição DMA/BH</span>
                                                             )}
@@ -792,6 +973,11 @@ export default function MontagemCargasPage() {
                                                             <td className="px-3 py-2">
                                                                 <div className="flex flex-col gap-0.5">
                                                                     <span className="font-medium text-gray-300 text-[10px] leading-tight">{order.nomeCliente}</span>
+                                                                    {formatDataProgramada(order.dataEntregaProgramada) && (
+                                                                        <span className="inline-flex items-center gap-0.5 text-[8px] font-bold uppercase tracking-wider px-1 py-px rounded bg-red-500/15 text-red-400 border border-red-500/20 w-fit">
+                                                                            🔴 AGENDADO: {formatDataProgramada(order.dataEntregaProgramada)}
+                                                                        </span>
+                                                                    )}
                                                                     {restricted && (
                                                                         <span className="text-[9px] font-bold uppercase text-red-500">
                                                                             * Última Entrega

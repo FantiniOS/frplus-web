@@ -49,7 +49,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     }
   }, [pathname]);
 
-  const menuGroups = [
+  const menuGroups: { title: string; items: { icon: any; label: string; href: string; exact?: boolean; separated?: boolean }[] }[] = [
     {
       title: "Principal",
       items: [
@@ -70,9 +70,9 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       title: "Gestão",
       items: [
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
-        { icon: Truck, label: "Montagem de Cargas", href: "/dashboard/cargas" },
         { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
         { icon: Filter, label: "Curva ABC", href: "/dashboard/curva-abc" },
+        // { icon: Truck, label: "Montagem de Cargas", href: "/dashboard/cargas", separated: true }, // OCULTO: Módulo pausado — descomentar para reativar
       ]
     },
   ];
@@ -152,19 +152,23 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   {group.items.map((item) => {
                     const active = isItemActive(item.href, item.exact);
                     return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={onClose}
-                        className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors overflow-hidden ${
-                          active 
-                            ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
-                            : "text-gray-300 hover:bg-white/5 hover:text-white"
-                        }`}
-                      >
-                        <item.icon className={`flex-shrink-0 mr-3 h-5 w-5 ${active ? "text-white" : "text-gray-400"}`} />
-                        <span className="block lg:hidden xl:block group-hover:block whitespace-nowrap overflow-hidden transition-opacity duration-300">{item.label}</span>
-                      </Link>
+                      <div key={item.href}>
+                        {item.separated && (
+                          <hr className="my-2 border-white/[0.08]" />
+                        )}
+                        <Link
+                          href={item.href}
+                          onClick={onClose}
+                          className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors overflow-hidden ${
+                            active 
+                              ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
+                              : "text-gray-300 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <item.icon className={`flex-shrink-0 mr-3 h-5 w-5 ${active ? "text-white" : "text-gray-400"}`} />
+                          <span className="block lg:hidden xl:block group-hover:block whitespace-nowrap overflow-hidden transition-opacity duration-300">{item.label}</span>
+                        </Link>
+                      </div>
                     )
                   })}
                 </div>

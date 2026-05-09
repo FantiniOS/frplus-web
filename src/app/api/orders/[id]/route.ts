@@ -43,6 +43,7 @@ export async function GET(request: Request, { params }: Params) {
             tabelaPreco: order.tabelaPreco,
             condicaoPagamento: order.condicaoPagamento,
             observacoes: order.observacoes,
+            dataEntregaProgramada: (order as any).dataEntregaProgramada?.toISOString() || null,
             itens: order.itens.map(item => ({
                 id: item.id,
                 produtoId: item.produtoId,
@@ -109,6 +110,8 @@ export async function PUT(request: Request, { params }: Params) {
                     valorTotal: body.valorTotal,
                     tabelaPreco: body.tabelaPreco,
                     condicaoPagamento: body.condicaoPagamento,
+                    // Entrega Programada (opcional, apenas data)
+                    ...(body.dataEntregaProgramada !== undefined && { dataEntregaProgramada: body.dataEntregaProgramada ? new Date(body.dataEntregaProgramada) : null }),
                     // Auto-manage dataFaturamento based on status
                     ...(dataFaturamentoUpdate !== undefined && { dataFaturamento: dataFaturamentoUpdate }),
                     // Re-create items

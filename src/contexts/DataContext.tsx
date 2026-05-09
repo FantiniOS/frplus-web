@@ -87,6 +87,7 @@ export interface Order {
     tabelaPreco: string;
     condicaoPagamento: string;
     observacoes?: string;
+    dataEntregaProgramada?: string | null;
     notaFiscal?: string;
     itens: OrderItem[];
 }
@@ -370,7 +371,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
             if (res.ok) {
                 const updatedOrder = await res.json();
-                setOrders(prev => prev.map(o => o.id === id ? updatedOrder : o));
+                setOrders(prev => prev.map(o => {
+                    if (o.id === id) {
+                        return {
+                            ...o,
+                            ...data, // merge local optimistic data
+                            dataEntregaProgramada: updatedOrder.dataEntregaProgramada,
+                            // Preserve mapped frontend fields that the raw Prisma response lacks
+                            nomeCliente: o.nomeCliente,
+                            itens: o.itens
+                        };
+                    }
+                    return o;
+                }));
                 showToast('Pedido atualizado com sucesso!', 'success');
                 return true;
             } else {

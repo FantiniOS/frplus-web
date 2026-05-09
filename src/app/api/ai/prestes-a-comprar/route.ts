@@ -98,16 +98,51 @@ export async function GET(request: Request) {
                     daysSinceLastOrder = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
                 }
 
-                // ---- Calcular Ciclo Médio Individual ----
+                // ---- Calcular Ciclo Médio Individual (baseado em frequência de datas) ----
                 const pedidosDatas = salesOrders.map(o => new Date(o.data));
-                const { cicloMedioDias, confianca } = calcularCicloMedio(pedidosDatas);
+                const { cicloMedioDias: cicloBase, confianca } = calcularCicloMedio(pedidosDatas);
 
-                // ---- Calcular Data Esperada e Dias de Atraso (Excedente ao Ciclo) ----
+                // ---- COBERTURA DE ESTOQUE: Fator de Volume (Proporcionalidade) ----
+                // Calcula o volume total (soma de itens.quantidade) de cada pedido
+                const volumesPorPedido = salesOrders.map(pedido => {
+                    return pedido.itens.reduce((sum: number, item: any) => sum + Number(item.quantidade), 0);
+                });
+
+                const quantidadeUltimaCompra = volumesPorPedido[0] || 0;
+
+                // Média histórica EXCLUI o último pedido para comparação justa
+                const quantidadeMediaHistorica = volumesPorPedido.length > 1
+                    ? volumesPorPedido.slice(1).reduce((a: number, b: number) => a + b, 0) / (volumesPorPedido.length - 1)
+                    : quantidadeUltimaCompra;
+
+                // Calcular o fator de volume (última compra / média histórica)
+                let fatorVolume = quantidadeMediaHistorica > 0
+                    ? quantidadeUltimaCompra / quantidadeMediaHistorica
+                    : 1;
+
+                // TRAVAS DE SEGURANÇA:
+                // - Máximo 3x: evita que uma compra 10x maior jogue o ciclo para anos
+                // - Mínimo 0.5x: evita que uma compra mínima encurte demais
+                // - Fallback 1.0: se menos de 2 pedidos, sem histórico suficiente para comparar
+                if (fatorVolume > 3) fatorVolume = 3;
+                if (fatorVolume < 0.5) fatorVolume = 0.5;
+                if (salesOrders.length < 2) fatorVolume = 1;
+
+                // Ciclo ajustado pela cobertura de estoque — VARIÁVEL INTERNA
+                // Usado EXCLUSIVAMENTE no filtro de exibição (.filter), nunca enviado ao frontend
+                const novoCicloEstimado = Math.round(cicloBase * fatorVolume);
+
+                // cicloMedioDias = giro histórico PURO do cliente (identidade real)
+                const cicloMedioDias = cicloBase;
+
+                // ---- Calcular Data Esperada e Dias de Atraso ----
+                // dataEsperada e diasDeAtraso usam novoCicloEstimado (ajustado pelo volume)
+                // para que o atraso exibido na tag reconheça as "férias" da compra grande
                 let dataEsperada: Date | null = null;
                 let diasDeAtraso = 0;
 
                 if (lastOrderDate) {
-                    dataEsperada = new Date(lastOrderDate.getTime() + cicloMedioDias * 24 * 60 * 60 * 1000);
+                    dataEsperada = new Date(lastOrderDate.getTime() + novoCicloEstimado * 24 * 60 * 60 * 1000);
                     const diffTimeAtraso = hoje.getTime() - dataEsperada.getTime();
                     diasDeAtraso = Math.max(0, Math.floor(diffTimeAtraso / (1000 * 60 * 60 * 24)));
                 } else {
@@ -133,7 +168,7 @@ export async function GET(request: Request) {
                     fabricaFavorita = sortedFactories[0][0]; // Pega o nome da fábrica com maior volume
                 }
 
-                // ---- Alert Level baseado na relação com o ciclo ----
+                // ---- Alert Level baseado na relação com o ciclo PURO ----
                 // @ts-ignore - comprador exists in schema
                 const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
 
@@ -165,7 +200,7 @@ Abs, Carlos Fantini
                 const totalGasto = client.pedidos.reduce((acc, o) => acc + Number(o.valorTotal), 0);
 
                 let statusCiclo: 'ATRASADO' | 'PRESTES' = 'PRESTES';
-                if (daysSinceLastOrder !== null && daysSinceLastOrder > cicloMedioDias) {
+                if (daysSinceLastOrder !== null && daysSinceLastOrder > novoCicloEstimado) {
                     statusCiclo = 'ATRASADO';
                 }
 
@@ -182,7 +217,8 @@ Abs, Carlos Fantini
                     ultimaCompra: lastOrderDate ? lastOrderDate.toISOString() : null,
                     dataEsperada: dataEsperada ? dataEsperada.toISOString() : null,
                     diasDeAtraso,
-                    cicloMedioDias,
+                    cicloMedioDias,         // Giro histórico PURO (para exibição no frontend)
+                    _novoCicloEstimado: novoCicloEstimado,  // INTERNO: usado apenas no .filter() abaixo
                     confiancaCiclo: confianca,
                     totalGasto,
                     totalPedidos: client._count.pedidos,
@@ -196,7 +232,7 @@ Abs, Carlos Fantini
                 }
             })
             // When querying a single client, skip the cycle filter to show their status regardless
-            .filter(c => clienteIdParam ? true : (c.diasInativo !== null && c.diasInativo >= (c.cicloMedioDias - 3)))
+            .filter(c => clienteIdParam ? true : (c.diasInativo !== null && c.diasInativo >= (c._novoCicloEstimado - 3)))
             // ORDENAÇÃO: Quem está mais atrasado aparece primeiro no topo
             .sort((a, b) => b.diasInativo! - a.diasInativo!)
 
