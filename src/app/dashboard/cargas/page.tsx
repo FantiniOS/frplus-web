@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package, Loader2, Clock, DollarSign } from "lucide-react";
+import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package, Loader2, DollarSign } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { MonthSelector } from "@/components/ui/MonthSelector";
@@ -40,11 +40,7 @@ export default function MontagemCargasPage() {
         refreshOrders(selectedFabrica);
     }, [selectedFabrica, refreshOrders]);
 
-    // Mês atual para comparação de atraso
-    const currentMonthStr = useMemo(() => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    }, []);
+
 
     const getDataPedido = (order: any): string | null => {
         return order.dataPedido || order.data || order.createdAt || null;
@@ -99,20 +95,7 @@ export default function MontagemCargasPage() {
         return statusUpper === 'CANCELADO' || statusUpper === 'RECUSADO';
     };
 
-    // Verifica se o pedido é de um mês anterior ao selecionado (backlog / atraso)
-    const isFromPreviousMonth = (order: any) => {
-        const rawDate = getDataPedido(order);
-        if (!rawDate) return false;
-        try {
-            const orderMonth = new Date(rawDate).toISOString().slice(0, 7);
-            const referenceMonth = selectedMonth || currentMonthStr;
-            return orderMonth < referenceMonth;
-        } catch {
-            return false;
-        }
-    };
-
-    // Verifica se o pedido pertence ao mês selecionado
+    // Verifica se o pedido pertence ao mês selecionado (filtro ESTRITO)
     const isFromSelectedMonth = (order: any) => {
         if (!selectedMonth) return true; // sem filtro = tudo
         const rawDate = getDataPedido(order);
@@ -132,58 +115,36 @@ export default function MontagemCargasPage() {
         return cep.substring(0, 4) || '0000';
     };
 
-    const getMesNome = (dateStr: string | null) => {
-        if (!dateStr) return '';
-        try {
-            const d = new Date(dateStr);
-            const nomeMes = d.toLocaleDateString('pt-BR', { month: 'long', timeZone: 'UTC' });
-            return nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
-        } catch {
-            return '';
-        }
-    };
-
-    // CARTEIRA: Pedidos do mês selecionado + pendências de meses anteriores
+    // FILTRO ESTRITO: Apenas pedidos do mês selecionado (sem backlog)
     const filteredOrders = useMemo(() => {
         return orders.filter(order => {
-            // 1. Busca textual
+            // 1. Excluir cancelados/recusados
+            if (isOrderExcluded(order)) return false;
+
+            // 2. Filtro ESTRITO por mês — só mostra pedidos daquele mês
+            if (!isFromSelectedMonth(order)) return false;
+
+            // 3. Busca textual
             const matchesSearch = (order.nomeCliente || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                                   (order.notaFiscal || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                                   order.id.includes(searchTerm);
-
-            // 2. Excluir cancelados/recusados
-            if (isOrderExcluded(order)) return false;
-
-            // 3. Filtro de mês: mostra pedidos do mês selecionado + backlog (meses anteriores)
-            if (selectedMonth) {
-                const belongsToMonth = isFromSelectedMonth(order);
-                const isBacklog = isFromPreviousMonth(order);
-                if (!belongsToMonth && !isBacklog) return false;
-            }
 
             return matchesSearch;
         });
     }, [orders, searchTerm, selectedMonth]);
 
-    // ORDENAÇÃO LEVE: sem rigidez logística — apenas organiza visualmente
-    // 1º Atrasados (backlog) → 2º Data do pedido → 3º Volume
+    // ORDENAÇÃO: Data do pedido → Volume
     const sortedFilteredOrders = useMemo(() => {
         return [...filteredOrders].sort((a, b) => {
-            // 1º Critério: Pedidos de MESES ANTERIORES (backlog — mais antigo primeiro)
-            const aIsOld = isFromPreviousMonth(a);
-            const bIsOld = isFromPreviousMonth(b);
-            if (aIsOld && !bIsOld) return -1;
-            if (!aIsOld && bIsOld) return 1;
-
-            // 2º Critério: Data do pedido (mais antigo primeiro)
+            // 1º Critério: Data do pedido (mais antigo primeiro)
             const aDate = getDataPedido(a) || '';
             const bDate = getDataPedido(b) || '';
             if (aDate !== bDate) return aDate.localeCompare(bDate);
 
-            // 3º Critério: Volume (maior primeiro)
+            // 2º Critério: Volume (maior primeiro)
             return getVolume(b) - getVolume(a);
         });
-    }, [filteredOrders, currentMonthStr]);
+    }, [filteredOrders]);
 
     const toggleOrderSelection = (id: string) => {
         const newSet = new Set(selectedOrderIds);
@@ -698,14 +659,7 @@ export default function MontagemCargasPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-3 py-2.5">
-                                                        <div className="flex flex-col gap-1 items-start">
-                                                            <span className="text-xs font-mono text-gray-400">{formatDate(getDataPedido(order))}</span>
-                                                            {isFromPreviousMonth(order) && (
-                                                                <span className="text-[9px] font-bold text-red-400 bg-red-500/15 border border-red-500/25 px-1.5 py-0.5 rounded flex items-center gap-1 uppercase tracking-wider">
-                                                                    <Clock className="h-2.5 w-2.5" /> 🔴 EM ATRASO / {getMesNome(getDataPedido(order))}
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                        <span className="text-xs font-mono text-gray-400">{formatDate(getDataPedido(order))}</span>
                                                     </td>
                                                     <td className="px-3 py-2.5">
                                                         <div className="flex flex-col">
