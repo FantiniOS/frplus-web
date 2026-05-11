@@ -72,7 +72,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
         { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
         { icon: Filter, label: "Curva ABC", href: "/dashboard/curva-abc" },
-        // { icon: Truck, label: "Montagem de Cargas", href: "/dashboard/cargas", separated: true }, // OCULTO: Módulo pausado — descomentar para reativar
+        { icon: Truck, label: "Sugestão de Cargas", href: "/dashboard/cargas", separated: true },
       ]
     },
   ];

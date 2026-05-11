@@ -2,9 +2,10 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package, Loader2, CalendarClock, X, Clock } from "lucide-react";
+import { Search, Plus, Truck, Printer, Info, CheckSquare, Square, Check, AlertTriangle, Package, Loader2, Clock, DollarSign } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { MonthSelector } from "@/components/ui/MonthSelector";
 
 interface CargaResult {
     id: number;
@@ -15,17 +16,18 @@ interface CargaResult {
     isPalletized?: boolean;
     hasRestrictedClient?: boolean;
     zonas: string[];
-    freteEstimado?: number;
-    kmEstimado?: number;
-    origem?: string;
 }
 
 export default function MontagemCargasPage() {
-    const { orders, fabricas, refreshOrders, clients, updateOrder, showToast } = useData();
+    const { orders, fabricas, refreshOrders, clients } = useData();
     const { isIndustria } = useAuth();
     
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedFabrica, setSelectedFabrica] = useState<string>('todas');
+    const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    });
 
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     const [truckCapacity, setTruckCapacity] = useState<number>(1360);
@@ -33,7 +35,6 @@ export default function MontagemCargasPage() {
     const [palletizedOrders, setPalletizedOrders] = useState<Record<string, boolean>>({});
     const [generatedTrucks, setGeneratedTrucks] = useState<CargaResult[]>([]);
     const [exportando, setExportando] = useState(false);
-    const [custoAdicionalKm, setCustoAdicionalKm] = useState<number | ''>(2.50);
 
     useEffect(() => {
         refreshOrders(selectedFabrica);
@@ -79,6 +80,18 @@ export default function MontagemCargasPage() {
 
     const getVolume = (order: any) => order.itens?.reduce((acc: number, i: any) => acc + (Number(i.quantidade) || 0), 0) || 0;
 
+    // Valor financeiro do pedido (soma de quantidade × precoUnitario de cada item)
+    const getOrderValue = (order: any): number => {
+        if (!order.itens || !Array.isArray(order.itens)) return 0;
+        return order.itens.reduce((acc: number, i: any) => {
+            const qty = Number(i.quantidade) || 0;
+            const price = Number(i.precoUnitario) || 0;
+            return acc + (qty * price);
+        }, 0);
+    };
+
+    const formatBRL = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
     // STATUS: Um pedido é "descartado" se estiver cancelado ou recusado.
     // Qualquer outro status = carteira livre do representante.
     const isOrderExcluded = (order: any) => {
@@ -86,13 +99,27 @@ export default function MontagemCargasPage() {
         return statusUpper === 'CANCELADO' || statusUpper === 'RECUSADO';
     };
 
-    // Verifica se o pedido é de um mês anterior ao atual (backlog / atraso)
+    // Verifica se o pedido é de um mês anterior ao selecionado (backlog / atraso)
     const isFromPreviousMonth = (order: any) => {
         const rawDate = getDataPedido(order);
         if (!rawDate) return false;
         try {
             const orderMonth = new Date(rawDate).toISOString().slice(0, 7);
-            return orderMonth < currentMonthStr;
+            const referenceMonth = selectedMonth || currentMonthStr;
+            return orderMonth < referenceMonth;
+        } catch {
+            return false;
+        }
+    };
+
+    // Verifica se o pedido pertence ao mês selecionado
+    const isFromSelectedMonth = (order: any) => {
+        if (!selectedMonth) return true; // sem filtro = tudo
+        const rawDate = getDataPedido(order);
+        if (!rawDate) return false;
+        try {
+            const orderMonth = new Date(rawDate).toISOString().slice(0, 7);
+            return orderMonth === selectedMonth;
         } catch {
             return false;
         }
@@ -116,8 +143,7 @@ export default function MontagemCargasPage() {
         }
     };
 
-    // CARTEIRA LIVRE: Todos os pedidos ativos (não cancelados/recusados)
-    // Inclui mês atual + qualquer pedido antigo que não foi descartado
+    // CARTEIRA: Pedidos do mês selecionado + pendências de meses anteriores
     const filteredOrders = useMemo(() => {
         return orders.filter(order => {
             // 1. Busca textual
@@ -128,40 +154,33 @@ export default function MontagemCargasPage() {
             // 2. Excluir cancelados/recusados
             if (isOrderExcluded(order)) return false;
 
-            return matchesSearch;
-        });
-    }, [orders, searchTerm]);
-
-    // ORDENAÇÃO INTELIGENTE: Prioridade logística estrita
-    // 1º Agendados (mais próximo) → 2º Atrasados (mais antigo) → 3º CEP/Zona → 4º Volume
-    const sortedFilteredOrders = useMemo(() => {
-        return [...filteredOrders].sort((a, b) => {
-            // 1º Critério: Pedidos AGENDADOS primeiro (data mais próxima = maior prioridade)
-            const aAgendado = getDataProgramada(a);
-            const bAgendado = getDataProgramada(b);
-            if (aAgendado && !bAgendado) return -1;
-            if (!aAgendado && bAgendado) return 1;
-            if (aAgendado && bAgendado) {
-                return new Date(aAgendado).getTime() - new Date(bAgendado).getTime();
+            // 3. Filtro de mês: mostra pedidos do mês selecionado + backlog (meses anteriores)
+            if (selectedMonth) {
+                const belongsToMonth = isFromSelectedMonth(order);
+                const isBacklog = isFromPreviousMonth(order);
+                if (!belongsToMonth && !isBacklog) return false;
             }
 
-            // 2º Critério: Pedidos de MESES ANTERIORES (backlog — mais antigo primeiro)
+            return matchesSearch;
+        });
+    }, [orders, searchTerm, selectedMonth]);
+
+    // ORDENAÇÃO LEVE: sem rigidez logística — apenas organiza visualmente
+    // 1º Atrasados (backlog) → 2º Data do pedido → 3º Volume
+    const sortedFilteredOrders = useMemo(() => {
+        return [...filteredOrders].sort((a, b) => {
+            // 1º Critério: Pedidos de MESES ANTERIORES (backlog — mais antigo primeiro)
             const aIsOld = isFromPreviousMonth(a);
             const bIsOld = isFromPreviousMonth(b);
             if (aIsOld && !bIsOld) return -1;
             if (!aIsOld && bIsOld) return 1;
-            if (aIsOld && bIsOld) {
-                const aDate = getDataPedido(a) || '';
-                const bDate = getDataPedido(b) || '';
-                return aDate.localeCompare(bDate); // mais antigo primeiro
-            }
 
-            // 3º Critério: Zona / Prefixo do CEP
-            const aCep = getClientCep(a);
-            const bCep = getClientCep(b);
-            if (aCep !== bCep) return aCep.localeCompare(bCep);
+            // 2º Critério: Data do pedido (mais antigo primeiro)
+            const aDate = getDataPedido(a) || '';
+            const bDate = getDataPedido(b) || '';
+            if (aDate !== bDate) return aDate.localeCompare(bDate);
 
-            // 4º Critério: Volume (maior primeiro)
+            // 3º Critério: Volume (maior primeiro)
             return getVolume(b) - getVolume(a);
         });
     }, [filteredOrders, currentMonthStr]);
@@ -190,6 +209,7 @@ export default function MontagemCargasPage() {
 
     const selectedOrdersList = orders.filter(o => selectedOrderIds.has(o.id));
     const totalSelectedVolume = selectedOrdersList.reduce((acc, o) => acc + getVolume(o), 0);
+    const totalSelectedValue = selectedOrdersList.reduce((acc, o) => acc + getOrderValue(o), 0);
 
     const isRestricted = (clientName: string) => {
         const upper = (clientName || '').toUpperCase();
@@ -210,19 +230,7 @@ export default function MontagemCargasPage() {
         setGeneratedTrucks([]);
     };
 
-    const handleSetDate = async (order: any, date: string, e?: React.SyntheticEvent) => {
-        if (e) e.stopPropagation();
-        // Dispara requisição otimista/background
-        const payload = {
-            ...order,
-            dataEntregaProgramada: date || null
-        };
-        const success = await updateOrder(order.id, payload);
-        if (success) {
-            setGeneratedTrucks([]);
-            showToast('Data de agendamento atualizada!', 'success');
-        }
-    };
+
 
     const gerarRomaneio = () => {
         if (selectedOrdersList.length === 0) return;
@@ -306,22 +314,14 @@ export default function MontagemCargasPage() {
         });
 
         // PASSO 3: APLICAÇÃO DO BEST FIT (Tetris do Cliente + Zonas)
-        // Hierarquia: 1º Agendados (cronológico) → 2º CEP → 3º Volume
+        // Hierarquia: 1º CEP → 2º Volume
         blocksToPack.sort((a, b) => {
-            const aData = a.dataEntregaProgramada ? new Date(a.dataEntregaProgramada).getTime() : null;
-            const bData = b.dataEntregaProgramada ? new Date(b.dataEntregaProgramada).getTime() : null;
-
-            // 1º Critério: Pedidos agendados vêm primeiro (mais próximo = maior prioridade)
-            if (aData !== null && bData === null) return -1;
-            if (aData === null && bData !== null) return 1;
-            if (aData !== null && bData !== null && aData !== bData) return aData - bData;
-
-            // 2º Critério: Zona / Prefixo do CEP
+            // 1º Critério: Zona / Prefixo do CEP
             if (a.cepPrefix !== b.cepPrefix) {
                 return a.cepPrefix.localeCompare(b.cepPrefix);
             }
 
-            // 3º Critério: Volume (maior primeiro)
+            // 2º Critério: Volume (maior primeiro)
             return b.volume - a.volume;
         });
 
@@ -398,51 +398,9 @@ export default function MontagemCargasPage() {
             }
         }
 
-        // Calcular porcentagem de ocupação e frete estimado
-        const valKm = Number(custoAdicionalKm) || 0;
-
-        const fabricaObj = fabricas.find(f => f.id === selectedFabrica);
-        const nomeFab = (fabricaObj?.nome || '').toLowerCase();
-        const isBelmont = nomeFab.includes('belmont');
-
-        const origemData = isBelmont 
-            ? { cep: "1868", nome: "Lençóis Paulista/SP" } 
-            : { cep: "3221", nome: "Contagem/MG" };
-
+        // Calcular porcentagem de ocupação
         trucks.forEach(t => {
             t.occupancyPct = Math.round((t.totalVolume / t.capacity) * 100);
-            t.origem = origemData.nome;
-            
-            if (isBelmont) {
-                // Lógica Interestadual (SP -> MG)
-                const transferKm = 697;
-                const lastMileKm = t.zonas.length * 15;
-                t.kmEstimado = transferKm + lastMileKm;
-                
-                const custoKmCarreta = 6.50;
-                const custoPedagio = 450;
-                const custoBaseTransferencia = (transferKm * custoKmCarreta) + custoPedagio;
-                
-                const custoPorZona = t.zonas.length * 50;
-                t.freteEstimado = custoBaseTransferencia + custoPorZona;
-            } else {
-                // Lógica Local (MG)
-                let maxDist = 0;
-                t.zonas.forEach(z => {
-                    const dist = Math.abs(Number(origemData.cep) - Number(z));
-                    if (dist > maxDist) maxDist = dist;
-                });
-
-                t.kmEstimado = t.zonas.length * 15;
-
-                if (maxDist === 0) {
-                    t.freteEstimado = 300;
-                } else if (maxDist <= 2) {
-                    t.freteEstimado = 500;
-                } else {
-                    t.freteEstimado = 800 + (t.kmEstimado * valKm);
-                }
-            }
         });
 
         setGeneratedTrucks(trucks);
@@ -515,7 +473,7 @@ export default function MontagemCargasPage() {
                 pageDoc.setFontSize(13);
                 pageDoc.setFont('helvetica', 'bold');
                 pageDoc.setTextColor(255, 255, 255);
-                pageDoc.text('Ordem de Embarque', pageWidth - margin.right, 14, { align: 'right' });
+                pageDoc.text('Sugestão de Cargas', pageWidth - margin.right, 14, { align: 'right' });
 
                 pageDoc.setFontSize(7);
                 pageDoc.setFont('helvetica', 'normal');
@@ -572,9 +530,9 @@ export default function MontagemCargasPage() {
                 const bodyData = sortedOrders.map(o => {
                     let cName = o.nomeCliente;
 
-                    // ENTREGAS PROGRAMADAS: Prefixar com data no PDF para instruir motorista
+                    // ENTREGAS PROGRAMADAS: Etiqueta informativa no PDF
                     const dataProg = formatDataProgramada(o.dataEntregaProgramada);
-                    if (dataProg) cName = `[AGENDADO: ${dataProg}] - ${cName}`;
+                    if (dataProg) cName = `[📅 ${dataProg}] - ${cName}`;
 
                     if (isRestricted(o.nomeCliente)) cName += ' [ÚLTIMA ENTREGA]';
                     
@@ -588,10 +546,6 @@ export default function MontagemCargasPage() {
                 });
 
                 let truckTitle = `Caminhão ${truck.id} — Ocupação: ${truck.occupancyPct}% — Vol: ${truck.totalVolume}/${truck.capacity} cxs ${truck.isPalletized ? '(Paletizado)' : ''}`;
-
-                if (truck.origem && truck.zonas) {
-                    truckTitle += ` | Rota: ${truck.origem} -> ${truck.zonas?.join(', ')}`;
-                }
 
                 autoTable(doc, {
                     startY,
@@ -622,7 +576,7 @@ export default function MontagemCargasPage() {
                 drawFooter(doc, i, pageCount);
             }
 
-            doc.save(`Romaneio_Cargas_${new Date().toISOString().slice(0,10)}.pdf`);
+            doc.save(`Sugestao_Cargas_${new Date().toISOString().slice(0,10)}.pdf`);
         } catch (error) {
             console.error('Erro ao gerar PDF:', error);
             alert("Erro ao gerar PDF.");
@@ -648,8 +602,8 @@ export default function MontagemCargasPage() {
                         <Truck className="h-5 w-5 text-blue-400" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-white tracking-tight">Montagem de Cargas</h1>
-                        <p className="text-xs text-gray-500">Sugestão Inteligente de Cargas — Carteira Livre</p>
+                        <h1 className="text-xl font-bold text-white tracking-tight">Sugestão de Cargas</h1>
+                        <p className="text-xs text-gray-500">Simulador de Volume — Conferência de Caixas por Caminhão</p>
                     </div>
                 </div>
             </div>
@@ -669,7 +623,7 @@ export default function MontagemCargasPage() {
                     </select>
                 )}
                 
-                {/* MonthSelector removido — lista unificada de carteira livre */}
+                <MonthSelector value={selectedMonth} onChange={setSelectedMonth} />
 
                 <div className="relative flex-1 min-w-[180px]">
                     <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
@@ -712,12 +666,13 @@ export default function MontagemCargasPage() {
                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Pedido/NF</th>
                                         <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Paletizado?</th>
                                         <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Volume (Cxs)</th>
+                                        <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden lg:table-cell">Valor (R$)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {!sortedFilteredOrders || sortedFilteredOrders.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="text-center py-8 text-gray-600">
+                                            <td colSpan={7} className="text-center py-8 text-gray-600">
                                                 <p className="text-sm">Nenhum pedido disponível na carteira.</p>
                                             </td>
                                         </tr>
@@ -757,49 +712,12 @@ export default function MontagemCargasPage() {
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-sm font-medium text-gray-200 truncate max-w-[200px]">{order.nomeCliente}</span>
                                                                 
-                                                                {/* Date Picker Interativo */}
-                                                                <div className="flex items-center ml-2" onClick={e => e.stopPropagation()}>
-                                                                    {order.dataEntregaProgramada ? (
-                                                                        <div className="relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/20 group/badge cursor-pointer hover:bg-red-500/20 transition-colors">
-                                                                            <span className="text-[9px] font-bold text-red-400 uppercase tracking-wider">
-                                                                                🔴 AGENDADO: {formatDataProgramada(getDataProgramada(order))}
-                                                                            </span>
-                                                                            <input 
-                                                                                type="date"
-                                                                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-0"
-                                                                                value={order.dataEntregaProgramada.split('T')[0]}
-                                                                                onChange={(e) => handleSetDate(order, e.target.value, e)}
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    try { if ('showPicker' in HTMLInputElement.prototype) { (e.target as HTMLInputElement).showPicker(); } } catch(err) {}
-                                                                                }}
-                                                                            />
-                                                                            <button 
-                                                                                type="button"
-                                                                                title="Remover agendamento"
-                                                                                onClick={(e) => handleSetDate(order, '', e)}
-                                                                                className="relative z-10 p-0.5 rounded-full hover:bg-red-500/20 text-red-400 opacity-60 hover:opacity-100 transition-all focus:outline-none ml-1"
-                                                                            >
-                                                                                <X className="h-3 w-3" />
-                                                                            </button>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer group">
-                                                                            <CalendarClock className="h-3 w-3 text-gray-400 group-hover:text-gray-300" />
-                                                                            <span className="text-[10px] font-bold text-gray-400 group-hover:text-gray-300">AGENDAR</span>
-                                                                            <input 
-                                                                                type="date"
-                                                                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-0"
-                                                                                value=""
-                                                                                onChange={(e) => handleSetDate(order, e.target.value, e)}
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    try { if ('showPicker' in HTMLInputElement.prototype) { (e.target as HTMLInputElement).showPicker(); } } catch(err) {}
-                                                                                }}
-                                                                            />
-                                                                        </div>
-                                                                    )}
-                                                                </div>
+                                                                {/* Badge informativa de entrega programada (somente leitura) */}
+                                                                {order.dataEntregaProgramada && formatDataProgramada(getDataProgramada(order)) && (
+                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-[9px] font-bold text-blue-400 uppercase tracking-wider">
+                                                                        📅 {formatDataProgramada(getDataProgramada(order))}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             
                                                             {isRestricted(order.nomeCliente) && (
@@ -817,6 +735,9 @@ export default function MontagemCargasPage() {
                                                     </td>
                                                     <td className="px-3 py-2.5 text-right">
                                                         <span className="text-sm font-bold text-cyan-400 tabular-nums">{vol}</span>
+                                                    </td>
+                                                    <td className="px-3 py-2.5 text-right hidden lg:table-cell">
+                                                        <span className="text-xs font-semibold text-emerald-400 tabular-nums">{formatBRL(getOrderValue(order))}</span>
                                                     </td>
                                                 </tr>
                                             );
@@ -853,17 +774,6 @@ export default function MontagemCargasPage() {
                                 />
                             </div>
 
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs text-gray-400">Custo Adicional / Km (R$)</label>
-                                <input 
-                                    type="number" 
-                                    value={custoAdicionalKm} 
-                                    onChange={(e) => setCustoAdicionalKm(e.target.value === '' ? '' : Number(e.target.value))}
-                                    className="bg-[#0a0f1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 w-full"
-                                    placeholder="Ex: 2.50"
-                                    step="0.10"
-                                />
-                            </div>
                         </div>
 
                         <div className="bg-blue-500/5 rounded-lg p-3 border border-blue-500/10 flex flex-col gap-2">
@@ -874,6 +784,10 @@ export default function MontagemCargasPage() {
                             <div className="flex justify-between items-center">
                                 <span className="text-xs text-gray-400">Volume Total</span>
                                 <span className="text-sm font-bold text-cyan-400">{totalSelectedVolume} <span className="text-xs font-normal">Cxs</span></span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-400">Valor Total</span>
+                                <span className="text-sm font-bold text-emerald-400">{formatBRL(totalSelectedValue)}</span>
                             </div>
                         </div>
 
@@ -914,9 +828,18 @@ export default function MontagemCargasPage() {
                         <h2 className="text-lg font-bold text-white">Resultado do Romaneio</h2>
                         <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-300">{generatedTrucks.length} Caminhões</span>
                         
-                        <div className="flex items-center gap-2 ml-auto">
+                        <div className="flex items-center gap-2 ml-auto flex-wrap">
+                            <span className="text-xs bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 rounded-lg text-cyan-400 font-semibold shadow-inner">
+                                Volume: {generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} Cxs
+                            </span>
                             <span className="text-xs bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-lg text-emerald-400 font-semibold shadow-inner">
-                                Frete Estimado Total: R$ {generatedTrucks.reduce((acc, t) => acc + (t.freteEstimado || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                Valor: {formatBRL(generatedTrucks.reduce((acc, t) => {
+                                    const truckVal = t.orders.reduce((oAcc: number, block: any) => {
+                                        const blockOrders = block.orders || [block];
+                                        return oAcc + blockOrders.reduce((bAcc: number, o: any) => bAcc + getOrderValue(o), 0);
+                                    }, 0);
+                                    return acc + truckVal;
+                                }, 0))}
                             </span>
                         </div>
                     </div>
@@ -963,6 +886,7 @@ export default function MontagemCargasPage() {
                                                 <tr>
                                                     <th className="text-left text-[9px] text-gray-500 uppercase px-3 py-1.5 font-semibold">Cliente</th>
                                                     <th className="text-right text-[9px] text-gray-500 uppercase px-3 py-1.5 font-semibold w-12">Cxs</th>
+                                                    <th className="text-right text-[9px] text-gray-500 uppercase px-3 py-1.5 font-semibold w-20">Valor</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -974,8 +898,8 @@ export default function MontagemCargasPage() {
                                                                 <div className="flex flex-col gap-0.5">
                                                                     <span className="font-medium text-gray-300 text-[10px] leading-tight">{order.nomeCliente}</span>
                                                                     {formatDataProgramada(order.dataEntregaProgramada) && (
-                                                                        <span className="inline-flex items-center gap-0.5 text-[8px] font-bold uppercase tracking-wider px-1 py-px rounded bg-red-500/15 text-red-400 border border-red-500/20 w-fit">
-                                                                            🔴 AGENDADO: {formatDataProgramada(order.dataEntregaProgramada)}
+                                                                        <span className="inline-flex items-center gap-0.5 text-[8px] font-bold uppercase tracking-wider px-1 py-px rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 w-fit">
+                                                                            📅 {formatDataProgramada(order.dataEntregaProgramada)}
                                                                         </span>
                                                                     )}
                                                                     {restricted && (
@@ -988,6 +912,11 @@ export default function MontagemCargasPage() {
                                                             <td className="px-3 py-2 text-right">
                                                                 <span className="font-mono text-cyan-400 text-[10px] font-semibold">{order.isBlock ? order.volume : getVolume(order)}</span>
                                                             </td>
+                                                            <td className="px-3 py-2 text-right">
+                                                                <span className="font-mono text-emerald-400 text-[9px] font-semibold">
+                                                                    {formatBRL((order.orders || [order]).reduce((acc: number, o: any) => acc + getOrderValue(o), 0))}
+                                                                </span>
+                                                            </td>
                                                         </tr>
                                                     );
                                                 })}
@@ -995,31 +924,18 @@ export default function MontagemCargasPage() {
                                         </table>
                                     </div>
 
-                                    {/* Financial Footer */}
-                                    {truck.freteEstimado !== undefined && truck.totalVolume > 0 && (
-                                        <div className="p-3 border-t border-white/[0.06] bg-[#080b12] flex flex-col gap-1.5 mt-auto">
-                                            <div className="flex flex-col gap-1 mb-1 border-b border-white/[0.04] pb-2">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-[9px] text-gray-500 uppercase font-semibold">Trajeto</span>
-                                                    <span className="text-[10px] text-gray-400 text-right">{truck.origem} <span className="text-gray-600">→</span> {truck.zonas?.join(', ') || ''}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-[9px] text-gray-500 uppercase font-semibold">Distância Estimada</span>
-                                                    <span className="text-[10px] text-cyan-400 font-semibold">{truck.kmEstimado} km</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[9px] text-gray-500 uppercase font-semibold">Frete Estimado</span>
-                                                <span className="text-xs font-bold text-gray-300">R$ {truck.freteEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[9px] text-gray-500 uppercase font-semibold">Custo por Caixa</span>
-                                                <span className={`text-xs font-bold ${(truck.freteEstimado / truck.totalVolume) > 1.5 ? 'text-orange-400' : 'text-emerald-400'}`}>
-                                                    R$ {(truck.freteEstimado / truck.totalVolume).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* Valor Total da Carga */}
+                                    <div className="p-2.5 border-t border-white/[0.06] bg-[#080b12] flex justify-between items-center mt-auto">
+                                        <span className="text-[9px] text-gray-500 uppercase font-semibold flex items-center gap-1">
+                                            <DollarSign className="h-3 w-3" /> Valor da Carga
+                                        </span>
+                                        <span className="text-xs font-bold text-emerald-400">
+                                            {formatBRL(truck.orders.reduce((acc: number, block: any) => {
+                                                const blockOrders = block.orders || [block];
+                                                return acc + blockOrders.reduce((bAcc: number, o: any) => bAcc + getOrderValue(o), 0);
+                                            }, 0))}
+                                        </span>
+                                    </div>
                                 </div>
                             );
                         })}
