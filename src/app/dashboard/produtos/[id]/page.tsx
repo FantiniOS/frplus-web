@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowLeft, Save, Package, DollarSign, Factory, Image as ImageIcon, Upload } from "lucide-react";
+import { ArrowLeft, Save, Package, DollarSign, Factory, Image as ImageIcon, Upload, BarChart3 } from "lucide-react";
 import { useData, Product } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
@@ -70,9 +70,16 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
                     </Link>
                     <h1 className="text-xl font-bold text-white">Editar Produto</h1>
                 </div>
-                <button onClick={handleSubmit} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-500">
-                    <Save className="h-4 w-4" /> Salvar
-                </button>
+                <div className="flex items-center gap-2">
+                    <Link href={`/dashboard/produtos/${params.id}/saidas`}>
+                        <button className="flex items-center gap-2 rounded-lg bg-cyan-600/20 px-4 py-1.5 text-sm font-medium text-cyan-400 border border-cyan-500/20 hover:bg-cyan-600/30">
+                            <BarChart3 className="h-4 w-4" /> Ver Saídas
+                        </button>
+                    </Link>
+                    <button onClick={handleSubmit} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-500">
+                        <Save className="h-4 w-4" /> Salvar
+                    </button>
+                </div>
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>

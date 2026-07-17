@@ -31,7 +31,7 @@ function ProtectedContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col md:flex-row overflow-x-hidden">
+    <div className="min-h-screen bg-black text-white flex flex-col md:flex-row overflow-x-hidden print:overflow-visible print:h-auto print:min-h-0">
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b border-white/10 bg-black sticky top-0 z-30">
         <div className="flex items-center gap-3">
@@ -44,8 +44,8 @@ function ProtectedContent({ children }: { children: React.ReactNode }) {
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <main className="flex-1 md:ml-64 lg:ml-20 xl:ml-64 bg-gradient-to-br from-black to-gray-900 transition-all duration-300 w-full overflow-x-hidden print:m-0 print:bg-white print:p-0">
-        <div className="container mx-auto p-3 text-sm lg:p-4 lg:text-sm xl:p-8 xl:text-base min-h-screen print:p-0 print:min-h-0">
+      <main className="flex-1 md:ml-64 lg:ml-20 xl:ml-64 bg-gradient-to-br from-black to-gray-900 transition-all duration-300 w-full overflow-x-hidden print:overflow-visible print:m-0 print:bg-white print:p-0 print:w-auto">
+        <div className="container mx-auto p-3 text-sm lg:p-4 lg:text-sm xl:p-8 xl:text-base min-h-screen print:p-0 print:min-h-0 print:overflow-visible">
           {children}
         </div>
       </main>

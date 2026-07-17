@@ -197,9 +197,34 @@ model Vendedor {
   nome               String
   telefone           String?
   percentualComissao Decimal  @default(0) @db.Decimal(5, 2)
+  taxaRetencaoIR     Decimal  @default(0) @db.Decimal(5, 2)
+  taxaRetencaoISSQN  Decimal  @default(0) @db.Decimal(5, 2)
   ativo              Boolean  @default(true)
   clientes           Cliente[]
   pedidos            Pedido[]
+  comissaoVigencias  ComissaoVigencia[]
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model ComissaoVigencia {
+  id         String   @id @default(cuid())
+  vendedorId String
+  vendedor   Vendedor @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+  percentual Float
+  dataInicio DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([vendedorId, dataInicio])
+}
+
+model Campanha {
+  id               String    @id @default(cuid())
+  slug             String    @unique
+  nome             String
+  status           String    @default("ATIVA") // ATIVA, ENCERRADA
+  dataInicio       DateTime  @default(now())
+  dataEncerramento DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }

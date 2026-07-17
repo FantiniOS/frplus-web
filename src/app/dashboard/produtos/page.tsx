@@ -1,7 +1,7 @@
 /* eslint-disable */
 'use client';
 
-import { Search, Plus, Package, Trash2, Edit, Factory } from "lucide-react";
+import { Search, Plus, Package, Trash2, Edit, Factory, BarChart3 } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -170,17 +170,23 @@ export default function ProdutosPage() {
                                                 </div>
                                                 {!isIndustria && (
                                                     <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                                        <button
-                                                            onClick={() => setDeleteId(product.id)}
-                                                            className="p-1 rounded text-red-400 hover:bg-red-500/10"
-                                                        >
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </button>
-                                                        <Link href={`/dashboard/produtos/${product.id}`}>
+                                                        <Link href={`/dashboard/produtos/${product.id}/saidas`} title="Ver Saídas">
+                                                            <button className="p-1 rounded text-cyan-400 hover:bg-cyan-500/10">
+                                                                <BarChart3 className="h-3 w-3" />
+                                                            </button>
+                                                        </Link>
+                                                        <Link href={`/dashboard/produtos/${product.id}`} title="Editar">
                                                             <button className="p-1 rounded text-blue-400 hover:bg-blue-500/10">
                                                                 <Edit className="h-3 w-3" />
                                                             </button>
                                                         </Link>
+                                                        <button
+                                                            onClick={() => setDeleteId(product.id)}
+                                                            className="p-1 rounded text-red-400 hover:bg-red-500/10"
+                                                            title="Excluir"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </button>
                                                     </div>
                                                 )}
                                             </div>

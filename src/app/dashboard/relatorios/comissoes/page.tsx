@@ -29,12 +29,16 @@ interface DetalhePedido {
     vendedorNome: string;
     valorVenda: number;
     valorComissao: number;
+    percentualAplicado: number;
     notaFiscal: string | null;
 }
 
 interface ReportData {
     totalVendido: number;
     totalComissoes: number;
+    totalDescontoIR: number;
+    totalDescontoISSQN: number;
+    totalLiquido: number;
     totalPedidos: number;
     detalhamento: DetalhePedido[];
 }
@@ -114,18 +118,19 @@ export default function ComissoesPage() {
     const exportCSV = () => {
         if (!report || report.detalhamento.length === 0) return;
 
-        const headers = ['Data', 'Cliente', 'Vendedor', 'Nota Fiscal', 'Valor Venda', 'Valor Comissão'];
+        const headers = ['Data', 'Cliente', 'Vendedor', '% Aplicado', 'Nota Fiscal', 'Valor Venda', 'Valor Comissão'];
         const rows = report.detalhamento.map(d => [
             formatDate(d.data),
             d.clienteNome,
             d.vendedorNome,
+            d.percentualAplicado.toFixed(1) + '%',
             d.notaFiscal || '',
             d.valorVenda.toFixed(2).replace('.', ','),
             d.valorComissao.toFixed(2).replace('.', ','),
         ]);
 
         // Add totals row
-        rows.push(['', '', '', 'TOTAL', report.totalVendido.toFixed(2).replace('.', ','), report.totalComissoes.toFixed(2).replace('.', ',')]);
+        rows.push(['', '', '', '', 'TOTAL', report.totalVendido.toFixed(2).replace('.', ','), report.totalComissoes.toFixed(2).replace('.', ',')]);
 
         const csvContent = [
             headers.join(';'),
@@ -339,11 +344,12 @@ export default function ComissoesPage() {
             // ---- TABLE DATA ----
             autoTable(doc, {
                 startY,
-                head: [['Data', 'Cliente', 'Vendedor', 'NF', 'Valor Venda', 'Comissão']],
+                head: [['Data', 'Cliente', 'Vendedor', '%', 'NF', 'Valor Venda', 'Comissão']],
                 body: report.detalhamento.map(d => [
                     formatDate(d.data),
                     d.clienteNome,
                     d.vendedorNome,
+                    `${d.percentualAplicado.toFixed(1)}%`,
                     d.notaFiscal || '—',
                     `R$ ${d.valorVenda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
                     `R$ ${d.valorComissao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
@@ -355,11 +361,12 @@ export default function ComissoesPage() {
                     0: { halign: 'center', cellWidth: 20 },
                     1: { halign: 'left' },
                     2: { halign: 'center' },
-                    3: { halign: 'center', cellWidth: 20 },
-                    4: { halign: 'right', fontStyle: 'bold' },
-                    5: { halign: 'right', fontStyle: 'bold', textColor: colors.accentGold }
+                    3: { halign: 'center', cellWidth: 14 },
+                    4: { halign: 'center', cellWidth: 18 },
+                    5: { halign: 'right', fontStyle: 'bold' },
+                    6: { halign: 'right', fontStyle: 'bold', textColor: colors.accentGold }
                 },
-                foot: [['', '', '', 'TOTAL', 
+                foot: [['', '', '', '', 'TOTAL', 
                     `R$ ${report.totalVendido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
                     `R$ ${report.totalComissoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]],
                 footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
@@ -368,6 +375,44 @@ export default function ComissoesPage() {
                     if (data.pageNumber > 1) drawHeader(doc, data.pageNumber);
                 }
             });
+
+            const finalY = (doc as any).lastAutoTable.finalY + 10;
+            
+            doc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
+            doc.roundedRect(pageWidth - margin.right - 85, finalY, 85, 38, 2, 2, 'F');
+            
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+            
+            let currentY = finalY + 6;
+            doc.text('Comissão Bruta:', pageWidth - margin.right - 80, currentY);
+            doc.text(`R$ ${report.totalComissoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
+            
+            if (report.totalDescontoIR > 0) {
+                currentY += 6;
+                doc.setTextColor(239, 68, 68); // Red-500
+                doc.text('(-) Retenção IR (1,5%):', pageWidth - margin.right - 80, currentY);
+                doc.text(`- R$ ${report.totalDescontoIR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
+            }
+            
+            if (report.totalDescontoISSQN > 0) {
+                currentY += 6;
+                doc.setTextColor(239, 68, 68); // Red-500
+                doc.text('(-) Retenção ISSQN (2,5%):', pageWidth - margin.right - 80, currentY);
+                doc.text(`- R$ ${report.totalDescontoISSQN.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
+            }
+            
+            currentY += 8;
+            
+            doc.setDrawColor(255, 255, 255, 0.1);
+            doc.line(pageWidth - margin.right - 80, currentY - 5, pageWidth - margin.right - 5, currentY - 5);
+            
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(colors.greenAccent[0], colors.greenAccent[1], colors.greenAccent[2]);
+            doc.text('LÍQUIDO A RECEBER:', pageWidth - margin.right - 80, currentY);
+            doc.text(`R$ ${report.totalLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
 
             // ====== APPLY FOOTERS TO ALL PAGES ======
             const pageCount = (doc as any).internal.getNumberOfPages();
@@ -528,6 +573,9 @@ export default function ComissoesPage() {
                                             <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                                                 Vendedor
                                             </th>
+                                            <th className="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                                % Aplicado
+                                            </th>
                                             <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                                                 NF
                                             </th>
@@ -559,6 +607,11 @@ export default function ComissoesPage() {
                                                         {item.vendedorNome}
                                                     </div>
                                                 </td>
+                                                <td className="px-5 py-3 text-center">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-500/10 text-xs font-semibold text-purple-400">
+                                                        {item.percentualAplicado.toFixed(1)}%
+                                                    </span>
+                                                </td>
                                                 <td className="px-5 py-3 text-sm text-gray-500">
                                                     {item.notaFiscal || '—'}
                                                 </td>
@@ -575,7 +628,7 @@ export default function ComissoesPage() {
                                     </tbody>
                                     <tfoot>
                                         <tr className="border-t-2 border-white/10 bg-white/[0.02]">
-                                            <td colSpan={4} className="px-5 py-3 text-sm font-bold text-white text-right">
+                                            <td colSpan={5} className="px-5 py-3 text-sm font-bold text-white text-right">
                                                 TOTAL
                                             </td>
                                             <td className="px-5 py-3 text-sm text-right font-bold text-white">
@@ -587,6 +640,40 @@ export default function ComissoesPage() {
                                         </tr>
                                     </tfoot>
                                 </table>
+                            </div>
+                        )}
+
+                        {/* Resumo Financeiro */}
+                        {report.detalhamento.length > 0 && (
+                            <div className="p-5 bg-gradient-to-br from-black/20 to-transparent border-t border-white/[0.06] flex justify-end">
+                                <div className="w-full max-w-sm rounded-xl border border-white/10 bg-white/5 p-5 shadow-lg">
+                                    <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                                        <Receipt className="h-4 w-4 text-emerald-400" />
+                                        Resumo Financeiro
+                                    </h3>
+                                    <div className="space-y-3 text-sm">
+                                        <div className="flex justify-between text-gray-300">
+                                            <span>Comissão Bruta</span>
+                                            <span className="font-medium text-white">{formatCurrency(report.totalComissoes)}</span>
+                                        </div>
+                                        {report.totalDescontoIR > 0 && (
+                                            <div className="flex justify-between text-red-400">
+                                                <span>(-) Retenção IR (1,5%)</span>
+                                                <span>- {formatCurrency(report.totalDescontoIR)}</span>
+                                            </div>
+                                        )}
+                                        {report.totalDescontoISSQN > 0 && (
+                                            <div className="flex justify-between text-red-400">
+                                                <span>(-) Retenção ISSQN (2,5%)</span>
+                                                <span>- {formatCurrency(report.totalDescontoISSQN)}</span>
+                                            </div>
+                                        )}
+                                        <div className="pt-3 mt-3 border-t border-white/10 flex justify-between items-center">
+                                            <span className="font-bold text-white text-base">TOTAL LÍQUIDO A RECEBER</span>
+                                            <span className="font-bold text-emerald-400 text-lg">{formatCurrency(report.totalLiquido)}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>

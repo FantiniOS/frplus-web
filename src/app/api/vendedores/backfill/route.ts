@@ -3,13 +3,39 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Given a list of vigências for a vendedor (sorted by dataInicio DESC)
+ * and a pedido date, returns the applicable commission percentage.
+ * Falls back to the vendedor's default percentualComissao if no vigência applies.
+ */
+function getPercentualVigente(
+    vigencias: { dataInicio: Date; percentual: number }[],
+    dataPedido: Date,
+    percentualPadrao: number
+): number {
+    for (const v of vigencias) {
+        if (v.dataInicio <= dataPedido) {
+            return v.percentual
+        }
+    }
+    return percentualPadrao
+}
+
 // POST /api/vendedores/backfill - Retroactively link vendedores to orders and calculate commissions
 // Strategy: For each cliente that has a vendedorId, propagate it to all their orders
 export async function POST() {
     try {
-        // 1. Fetch all vendedores with their percentual
+        // 1. Fetch all vendedores with their percentual AND vigências
         const vendedores = await prisma.vendedor.findMany({
-            select: { id: true, nome: true, percentualComissao: true }
+            select: {
+                id: true,
+                nome: true,
+                percentualComissao: true,
+                comissaoVigencias: {
+                    orderBy: { dataInicio: 'desc' },
+                    select: { dataInicio: true, percentual: true },
+                },
+            }
         })
 
         if (vendedores.length === 0) {
@@ -23,7 +49,7 @@ export async function POST() {
             vendedores.map(v => [v.id, v])
         )
 
-        console.log(`[Backfill] ${vendedores.length} vendedores:`, vendedores.map(v => `${v.nome} (${v.percentualComissao}%)`))
+        console.log(`[Backfill] ${vendedores.length} vendedores:`, vendedores.map(v => `${v.nome} (${v.percentualComissao}%, ${v.comissaoVigencias.length} vigências)`))
 
         // 2. Find all clients that have a vendedorId assigned
         const clientesComVendedor = await prisma.cliente.findMany({
@@ -43,8 +69,6 @@ export async function POST() {
             const vendedor = vendedorById.get(cliente.vendedorId!)
             if (!vendedor) continue
 
-            const percentual = Number(vendedor.percentualComissao) || 0
-
             // Get orders for this client that don't have vendedorId yet
             const pedidos = await prisma.pedido.findMany({
                 where: {
@@ -52,11 +76,17 @@ export async function POST() {
                     vendedorId: null,
                     tipo: 'Venda',
                 },
-                select: { id: true, valorTotal: true }
+                select: { id: true, valorTotal: true, data: true }
             })
 
             for (const pedido of pedidos) {
                 const valorTotal = Number(pedido.valorTotal) || 0
+                // Use vigência-based lookup for the commission rate
+                const percentual = getPercentualVigente(
+                    vendedor.comissaoVigencias,
+                    new Date(pedido.data),
+                    Number(vendedor.percentualComissao) || 0
+                )
                 const comissao = valorTotal * (percentual / 100)
 
                 try {
@@ -88,6 +118,7 @@ export async function POST() {
                 id: true,
                 valorTotal: true,
                 vendedorId: true,
+                data: true,
             }
         })
 
@@ -96,7 +127,12 @@ export async function POST() {
             if (!vendedor) continue
 
             const valorTotal = Number(pedido.valorTotal) || 0
-            const percentual = Number(vendedor.percentualComissao) || 0
+            // Use vigência-based lookup for the commission rate
+            const percentual = getPercentualVigente(
+                vendedor.comissaoVigencias,
+                new Date(pedido.data),
+                Number(vendedor.percentualComissao) || 0
+            )
             const comissao = valorTotal * (percentual / 100)
 
             try {

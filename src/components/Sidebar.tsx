@@ -19,7 +19,8 @@ import {
   UserPlus,
   UserCog,
   ChevronDown,
-  Truck
+  Truck,
+  Target
 } from "lucide-react";
 import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,6 +74,12 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
         { icon: Filter, label: "Curva ABC", href: "/dashboard/curva-abc" },
         { icon: Truck, label: "Sugestão de Cargas", href: "/dashboard/cargas", separated: true },
+      ]
+    },
+    {
+      title: "Campanhas",
+      items: [
+        { icon: Target, label: "Composto Belmont", href: "/dashboard/campanhas/belmont" },
       ]
     },
   ];

@@ -50,6 +50,8 @@ export async function POST(request: Request) {
                 nome: body.nome.trim(),
                 telefone: body.telefone?.trim() || null,
                 percentualComissao: body.percentualComissao ?? 0,
+                taxaRetencaoIR: body.taxaRetencaoIR ?? 0,
+                taxaRetencaoISSQN: body.taxaRetencaoISSQN ?? 0,
                 ativo: body.ativo ?? true,
             },
             include: {

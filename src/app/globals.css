@@ -116,3 +116,59 @@
   margin-bottom: 0.25rem;
   display: block;
 }
+
+/* ═══════ PRINT STYLES ═══════ */
+@media print {
+  html, body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide navigation chrome */
+  aside,
+  .md\:hidden,
+  nav {
+    display: none !important;
+  }
+
+  /* Remove glassmorphism effects for print */
+  .glass-panel {
+    background: #fafafa !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-color: #e5e7eb !important;
+  }
+
+  /* Remove animations for print */
+  .animate-in {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  /* Remove glow effects */
+  .glow-blue,
+  .glow-green {
+    box-shadow: none !important;
+  }
+
+  /* Clean table styling for print */
+  table {
+    border-collapse: collapse;
+    page-break-inside: avoid;
+  }
+
+  tr, canvas, img, .glass-panel {
+    page-break-inside: avoid;
+  }
+
+  th, td {
+    border: 1px solid #e5e7eb;
+  }
+
+  @page {
+    margin: 1cm;
+    size: A4 portrait;
+  }
+}

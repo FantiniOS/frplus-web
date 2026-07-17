@@ -46,6 +46,8 @@ export async function PUT(request: Request, { params }: Params) {
                 ...(body.nome !== undefined && { nome: body.nome.trim() }),
                 ...(body.telefone !== undefined && { telefone: body.telefone?.trim() || null }),
                 ...(body.percentualComissao !== undefined && { percentualComissao: body.percentualComissao }),
+                ...(body.taxaRetencaoIR !== undefined && { taxaRetencaoIR: body.taxaRetencaoIR }),
+                ...(body.taxaRetencaoISSQN !== undefined && { taxaRetencaoISSQN: body.taxaRetencaoISSQN }),
                 ...(body.ativo !== undefined && { ativo: body.ativo }),
             },
             include: {

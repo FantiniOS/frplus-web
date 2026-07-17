@@ -3,6 +3,26 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Given a list of vigências for a vendedor (sorted by dataInicio DESC)
+ * and a pedido date, returns the applicable commission percentage.
+ * Falls back to the vendedor's default percentualComissao if no vigência applies.
+ */
+function getPercentualVigente(
+    vigencias: { dataInicio: Date; percentual: number }[],
+    dataPedido: Date,
+    percentualPadrao: number
+): number {
+    // vigencias are already sorted DESC by dataInicio
+    for (const v of vigencias) {
+        if (v.dataInicio <= dataPedido) {
+            return v.percentual
+        }
+    }
+    // No vigência applies — use fallback
+    return percentualPadrao
+}
+
 // GET /api/relatorios/comissoes - Commission report with filters
 export async function GET(request: Request) {
     try {
@@ -40,9 +60,19 @@ export async function GET(request: Request) {
 
         console.log('[Comissoes API] whereClause:', JSON.stringify(whereClause, null, 2))
 
-        // Pre-fetch all vendedores for fallback commission calculation
+        // Pre-fetch all vendedores with their vigências for commission lookup
         const allVendedores = await prisma.vendedor.findMany({
-            select: { id: true, nome: true, percentualComissao: true }
+            select: {
+                id: true,
+                nome: true,
+                percentualComissao: true,
+                taxaRetencaoIR: true,
+                taxaRetencaoISSQN: true,
+                comissaoVigencias: {
+                    orderBy: { dataInicio: 'desc' },
+                    select: { dataInicio: true, percentual: true },
+                },
+            }
         })
         const vendedorByName = new Map(
             allVendedores.map(v => [v.nome.trim().toLowerCase(), v])
@@ -91,33 +121,46 @@ export async function GET(request: Request) {
         // Calculate totals
         let totalVendido = 0
         let totalComissoes = 0
+        let totalDescontoIR = 0
+        let totalDescontoISSQN = 0
 
         const detalhamento = pedidos.map(p => {
             const valorVenda = Number(p.valorTotal) || 0
+            const dataPedido = new Date(p.data)
 
-            // Dynamic commission calculation (Real-time based on client's current Vendedor)
-            // Ignores the frozen p.valorComissao from the database
+            // Dynamic commission calculation using vigência (rate history)
             let comissao = 0
             let vendedorNome = 'N/A'
+            let percentualAplicado = 0
 
-            if (p.cliente?.vendedor?.percentualComissao) {
-                comissao = valorVenda * (Number(p.cliente.vendedor.percentualComissao) / 100)
-            } else if (p.vendedor?.percentualComissao) {
-                comissao = valorVenda * (Number(p.vendedor.percentualComissao) / 100)
-            } else if (p.nomeVendedorImport) {
-                const matched = vendedorByName.get(p.nomeVendedorImport.trim().toLowerCase())
-                if (matched) {
-                    comissao = valorVenda * (Number(matched.percentualComissao) / 100)
-                }
-            }
+            // Resolve the vendedor (prefer client's current vendedor, then order's vendedor, then imported name)
+            let resolvedVendedor: typeof allVendedores[0] | undefined = undefined
 
-            // Resolve vendedor name based on CURRENT client assignment
             if (p.cliente?.vendedor) {
+                resolvedVendedor = vendedorById.get(p.cliente.vendedor.id)
                 vendedorNome = p.cliente.vendedor.nome
             } else if (p.vendedor) {
+                resolvedVendedor = vendedorById.get(p.vendedor.id)
                 vendedorNome = p.vendedor.nome
             } else if (p.nomeVendedorImport) {
+                resolvedVendedor = vendedorByName.get(p.nomeVendedorImport.trim().toLowerCase())
                 vendedorNome = p.nomeVendedorImport
+            }
+
+            if (resolvedVendedor) {
+                // Use vigência-based lookup: find the rate active at the pedido's date
+                percentualAplicado = getPercentualVigente(
+                    resolvedVendedor.comissaoVigencias,
+                    dataPedido,
+                    Number(resolvedVendedor.percentualComissao) || 0
+                )
+                comissao = valorVenda * (percentualAplicado / 100)
+                
+                const ir = comissao * (Number(resolvedVendedor.taxaRetencaoIR) / 100)
+                const issqn = comissao * (Number(resolvedVendedor.taxaRetencaoISSQN) / 100)
+                
+                totalDescontoIR += ir
+                totalDescontoISSQN += issqn
             }
 
             totalVendido += valorVenda
@@ -130,15 +173,21 @@ export async function GET(request: Request) {
                 vendedorNome,
                 valorVenda,
                 valorComissao: comissao,
+                percentualAplicado,
                 notaFiscal: p.notaFiscal,
             }
         })
 
         console.log(`[Comissoes API] totalVendido: ${totalVendido}, totalComissoes: ${totalComissoes}`)
 
+        const totalLiquido = totalComissoes - totalDescontoIR - totalDescontoISSQN
+
         return NextResponse.json({
             totalVendido,
             totalComissoes,
+            totalDescontoIR,
+            totalDescontoISSQN,
+            totalLiquido,
             totalPedidos: detalhamento.length,
             detalhamento,
         })

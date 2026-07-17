@@ -24,6 +24,8 @@ interface PrestesAComprarClient {
     dataEsperada: string | null;
     diasDeAtraso: number;
     cicloMedioDias: number;
+    cicloAjustado?: number;
+    diasAteProximaCompra?: number;
     confiancaCiclo: 'alta' | 'media' | 'baixa';
     totalGasto: number;
     totalPedidos: number;
@@ -737,7 +739,7 @@ export default function AIInsightsClient() {
                                         <span className="text-sm font-semibold text-white uppercase tracking-wider">Regra de Exibição</span>
                                     </div>
                                     <p className="text-sm text-gray-400">
-                                        Esta lista é <strong className="text-white">100% baseada em matemática</strong> e não possui limite de quantidade. Exibimos clientes <strong className="text-white">Ativos</strong> que estão há <strong>mais dias sem comprar do que o seu Ciclo/Giro Médio</strong> histórico (com 3 dias de margem de antecedência).
+                                        Esta lista é <strong className="text-white">100% baseada em matemática</strong> e não possui limite de quantidade. Exibimos clientes <strong className="text-white">Ativos</strong> que estão há <strong>mais dias sem comprar do que o seu Ciclo/Giro Médio</strong> histórico (com 5 dias de margem de antecedência).
                                     </p>
                                 </div>
 
@@ -856,11 +858,11 @@ export default function AIInsightsClient() {
                                                                         <p className="font-medium text-white">{client.nomeFantasia}</p>
                                                                         {client.statusCiclo === 'ATRASADO' ? (
                                                                             <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 break-normal whitespace-nowrap">
-                                                                                Sem comprar há {client.diasInativo !== null ? client.diasInativo - client.cicloMedioDias : 0} dias
+                                                                                Atrasado {client.diasDeAtraso} {client.diasDeAtraso === 1 ? 'dia' : 'dias'}
                                                                             </span>
                                                                         ) : (
                                                                             <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-green-500/20 text-green-400 border border-green-500/30 break-normal whitespace-nowrap">
-                                                                                Em dia (Faltam {client.diasInativo !== null ? Math.max(0, client.cicloMedioDias - client.diasInativo) : 0} dias)
+                                                                                Em dia (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - (client.diasInativo ?? 0))} dias)
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -970,11 +972,11 @@ export default function AIInsightsClient() {
                                                                 <p className="font-medium text-white">{client.nomeFantasia}</p>
                                                                 {client.statusCiclo === 'ATRASADO' ? (
                                                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 break-normal whitespace-nowrap">
-                                                                        Sem comprar há {client.diasInativo !== null ? client.diasInativo - client.cicloMedioDias : 0} dias
+                                                                        Atrasado {client.diasDeAtraso} {client.diasDeAtraso === 1 ? 'dia' : 'dias'}
                                                                     </span>
                                                                 ) : (
                                                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 break-normal whitespace-nowrap">
-                                                                        No prazo (Faltam {client.diasInativo !== null ? Math.max(0, client.cicloMedioDias - client.diasInativo) : 0} dias)
+                                                                        No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - (client.diasInativo ?? 0))} dias)
                                                                     </span>
                                                                 )}
                                                             </div>

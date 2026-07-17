@@ -13,6 +13,7 @@ import { Loader2, Phone } from "lucide-react";
 import { VisitasCalendar } from "@/components/dashboard/VisitasCalendar";
 import { getLembretesProspeccao } from "@/app/actions/prospects";
 import { getDashboardChartData, getAvailableYears, ChartDataResponse, ChartViewMode } from "@/app/actions/dashboard";
+import { getBonificacaoComissao, BonificacaoComissaoResult } from "@/app/actions/bonificacaoComissao";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
@@ -286,6 +287,18 @@ export default function DashboardPage() {
       .reduce((acc, o) => acc + o.valorTotal, 0),
     [orders, filterYear]
   );
+
+  // ====== COMISSÃO VIGENTE DO VENDEDOR FANTINI ======
+  const [bonifComissao, setBonifComissao] = useState<BonificacaoComissaoResult>({
+    taxaPeriodo: 0, comissaoPeriodo: 0, comissaoAnual: 0
+  });
+  useEffect(() => {
+    if (filterYear !== null) {
+      getBonificacaoComissao(filterYear, filterMonth)
+        .then(setBonifComissao)
+        .catch(console.error);
+    }
+  }, [filterYear, filterMonth]);
   
   // ====== LEADS / PROSPECTS ======
   const [lembretes, setLembretes] = useState<any[]>([]);
@@ -298,7 +311,7 @@ export default function DashboardPage() {
   const kpis = [
     {
       label: 'Vendas Totais',
-      value: `R$ ${stats.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      value: `R$ ${stats.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       sub: `${stats.totalOrders} pedidos emitidos`,
       icon: ShoppingCart,
       gradient: 'from-blue-500/20 to-blue-500/[0.02]',
@@ -309,7 +322,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Faturamento',
-      value: `R$ ${faturamentoData.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      value: `R$ ${faturamentoData.total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       sub: `${faturamentoData.count} pedidos faturados`,
       icon: DollarSign,
       gradient: 'from-emerald-500/20 to-emerald-500/[0.02]',
@@ -318,18 +331,7 @@ export default function DashboardPage() {
       borderHover: 'hover:border-emerald-500/30',
       glow: 'group-hover:shadow-emerald-500/10'
     },
-    {
-      label: 'Total Bonificado',
-      value: `R$ ${bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      sub: `${bonificacoes} pedidos · Ano: R$ ${bonificacaoAnual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (7%: R$ ${(bonificacaoAnual * 0.07).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
-      icon: Gift,
-      gradient: 'from-rose-500/20 to-rose-500/[0.02]',
-      iconBg: 'bg-rose-500/15',
-      iconColor: 'text-rose-400',
-      borderHover: 'hover:border-rose-500/30',
-      glow: 'group-hover:shadow-rose-500/10',
-      onClick: () => setShowBonifDetails(true)
-    },
+
     {
       label: 'Lembretes de Prospecção',
       value: lembretes.length > 0 ? (
@@ -446,6 +448,45 @@ export default function DashboardPage() {
             </div>
           </div>
         ))}
+
+        {/* ===== CARD ACORDOS COMERCIAIS (layout customizado) ===== */}
+        <div
+          onClick={() => setShowBonifDetails(true)}
+          className="group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br from-rose-500/20 to-rose-500/[0.02] p-4 transition-all duration-300 hover:border-rose-500/30 shadow-lg shadow-black/20 group-hover:shadow-rose-500/10 cursor-pointer overflow-hidden h-[140px] flex flex-col"
+        >
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
+          <div className="relative z-10 flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Acordos Comerciais</span>
+              <div className="p-1.5 rounded-lg bg-rose-500/15">
+                <Gift className="h-3.5 w-3.5 text-rose-400" />
+              </div>
+            </div>
+
+            {/* Main value */}
+            <div className="text-xl font-bold text-white tracking-tight leading-tight">
+              R$ {bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <span className="text-[11px] text-gray-500 mt-0.5">{bonificacoes} pedidos no período</span>
+
+            {/* Footer: Anual + Comissão */}
+            <div className="mt-auto flex items-end justify-between border-t border-white/[0.06] pt-2">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-gray-600 uppercase tracking-wider leading-tight">Acum. Ano</span>
+                <span className="text-xs font-semibold text-white/80 tabular-nums">
+                  R$ {bonificacaoAnual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] text-gray-600 uppercase tracking-wider leading-tight">Comissão ({bonifComissao.taxaPeriodo}%)</span>
+                <span className="text-xs font-semibold text-rose-400 tabular-nums">
+                  -R$ {bonifComissao.comissaoPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ===== MODAL DETALHAMENTO BONIFICAÇÕES ===== */}
@@ -494,7 +535,7 @@ export default function DashboardPage() {
                     >
                       <span className="text-xs font-medium text-white/80 truncate mr-4">{item.nome}</span>
                       <span className="text-xs font-bold text-rose-400 tabular-nums flex-shrink-0">
-                        R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   ))}
@@ -507,7 +548,7 @@ export default function DashboardPage() {
               <div className="px-5 py-3.5 border-t border-white/[0.06] flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total</span>
                 <span className="text-sm font-bold text-white">
-                  R$ {bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             )}

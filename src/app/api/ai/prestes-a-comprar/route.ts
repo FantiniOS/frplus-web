@@ -82,20 +82,27 @@ export async function GET(request: Request) {
             }
         })
 
-        const hoje = new Date();
+        // Normalizar "hoje" para início do dia (00:00:00) para evitar
+        // que horas/minutos causem arredondamento fracionário de dias
+        const hojeRaw = new Date();
+        const hoje = new Date(hojeRaw.getFullYear(), hojeRaw.getMonth(), hojeRaw.getDate());
 
         // Map and analyze clients with cycle-based delay
         const analyzedClients = clients
             .map(client => {
                 const salesOrders = client.pedidos;
                 const lastOrder = salesOrders[0];
-                const lastOrderDate = lastOrder?.data ? new Date(lastOrder.data) : null;
+                const lastOrderDateRaw = lastOrder?.data ? new Date(lastOrder.data) : null;
+                // Normalizar data da última compra para início do dia (ignora horas)
+                const lastOrderDate = lastOrderDateRaw
+                    ? new Date(lastOrderDateRaw.getFullYear(), lastOrderDateRaw.getMonth(), lastOrderDateRaw.getDate())
+                    : null;
 
-                // Dias sem comprar (Total absoluto)
+                // Dias sem comprar (Total absoluto — agora com datas normalizadas, sem fração)
                 let daysSinceLastOrder = null;
                 if (lastOrderDate) {
                     const diffTime = hoje.getTime() - lastOrderDate.getTime();
-                    daysSinceLastOrder = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+                    daysSinceLastOrder = Math.round(diffTime / (1000 * 60 * 60 * 24));
                 }
 
                 // ---- Calcular Ciclo Médio Individual (baseado em frequência de datas) ----
@@ -200,9 +207,15 @@ Abs, Carlos Fantini
                 const totalGasto = client.pedidos.reduce((acc, o) => acc + Number(o.valorTotal), 0);
 
                 let statusCiclo: 'ATRASADO' | 'PRESTES' = 'PRESTES';
-                if (daysSinceLastOrder !== null && daysSinceLastOrder > novoCicloEstimado) {
+                // >= garante que o "dia zero" (diasAusente === ciclo) seja classificado como ATRASADO
+                if (daysSinceLastOrder !== null && daysSinceLastOrder >= novoCicloEstimado) {
                     statusCiclo = 'ATRASADO';
                 }
+
+                // Dias restantes até a próxima compra esperada (baseado no ciclo ajustado por volume)
+                const diasAteProximaCompra = daysSinceLastOrder !== null
+                    ? Math.max(0, novoCicloEstimado - daysSinceLastOrder)
+                    : 0;
 
                 return {
                     id: client.id,
@@ -217,8 +230,10 @@ Abs, Carlos Fantini
                     ultimaCompra: lastOrderDate ? lastOrderDate.toISOString() : null,
                     dataEsperada: dataEsperada ? dataEsperada.toISOString() : null,
                     diasDeAtraso,
-                    cicloMedioDias,         // Giro histórico PURO (para exibição no frontend)
-                    _novoCicloEstimado: novoCicloEstimado,  // INTERNO: usado apenas no .filter() abaixo
+                    cicloMedioDias,              // Giro histórico PURO (identidade do cliente)
+                    cicloAjustado: novoCicloEstimado,  // Giro ajustado pelo volume da última compra
+                    _novoCicloEstimado: novoCicloEstimado,  // INTERNO: usado no .filter()
+                    diasAteProximaCompra,        // Dias restantes (0 = compra devida)
                     confiancaCiclo: confianca,
                     totalGasto,
                     totalPedidos: client._count.pedidos,
@@ -232,7 +247,9 @@ Abs, Carlos Fantini
                 }
             })
             // When querying a single client, skip the cycle filter to show their status regardless
-            .filter(c => clienteIdParam ? true : (c.diasInativo !== null && c.diasInativo >= (c._novoCicloEstimado - 3)))
+            // Janela de 5 dias: usa o MENOR entre ciclo puro e ajustado por volume
+            // Assim, se o volume indica que o estoque acabou antes, o cliente aparece mais cedo
+            .filter(c => clienteIdParam ? true : (c.diasInativo !== null && c.diasInativo >= (Math.min(c.cicloMedioDias, c._novoCicloEstimado) - 5)))
             // ORDENAÇÃO: Quem está mais atrasado aparece primeiro no topo
             .sort((a, b) => b.diasInativo! - a.diasInativo!)
 
