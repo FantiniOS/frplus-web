@@ -23,10 +23,10 @@ export async function GET() {
                             { nome: { contains: 'Composto Branco', mode: 'insensitive' } },
                         ]
                     },
-                    { nome: { contains: '750', mode: 'insensitive' } }
+                    { nome: { contains: '750ml', mode: 'insensitive' } }
                 ]
             },
-            select: { id: true, nome: true }
+            select: { id: true, nome: true, imagem: true }
         })
 
         const produtoIds = produtosComposto.map(p => p.id)
@@ -34,6 +34,16 @@ export async function GET() {
         if (produtoIds.length === 0) {
             return NextResponse.json([])
         }
+
+        // Get Vinagre products for bonus tracking
+        const produtosVinagre = await prisma.produto.findMany({
+            where: {
+                ativo: true,
+                nome: { contains: 'Vinagre', mode: 'insensitive' }
+            },
+            select: { id: true }
+        })
+        const vinagreIds = produtosVinagre.map(p => p.id)
 
         // 2. Get or create the Campaign record to freeze the start date
         let campanha = await prisma.campanha.findUnique({
@@ -56,9 +66,9 @@ export async function GET() {
         const sessantaDiasAtras = new Date(dataReferencia)
         sessantaDiasAtras.setDate(sessantaDiasAtras.getDate() - 60)
 
-        // 3. Fetch all active clients
+        // 3. Fetch all active clients (carteira base) without order restriction
         const clientes = await prisma.cliente.findMany({
-            where: { status: 'Ativo' },
+            where: { status: { in: ['Ativo', 'ATIVO', 'ativo'] } },
             select: {
                 id: true,
                 nomeFantasia: true,
@@ -68,6 +78,7 @@ export async function GET() {
                 tabelaPreco: true,
                 telefone: true,
                 celular: true,
+                comprador: true,
             }
         })
 
@@ -105,12 +116,52 @@ export async function GET() {
             }
         })
 
-        // Build a map: clienteId -> total caixas
+        // Build a map: clienteId -> total caixas (Average baseline)
         const consumoPorCliente = new Map<string, number>()
         for (const item of itensRelevantes) {
             const clienteId = item.pedido.clienteId
             const atual = consumoPorCliente.get(clienteId) || 0
             consumoPorCliente.set(clienteId, atual + item.quantidade)
+        }
+
+        // 4.1 Fetch "Realizado" (sales manually linked to this campaign)
+        const itensRealizados = await prisma.itemPedido.findMany({
+            where: {
+                produtoId: { in: produtoIds },
+                pedido: {
+                    campanhaId: campanha.id,
+                    status: { not: 'Cancelado' },
+                    tipo: 'Venda',
+                }
+            },
+            select: { quantidade: true, pedido: { select: { clienteId: true } } }
+        })
+
+        const realizadoPorCliente = new Map<string, number>()
+        for (const item of itensRealizados) {
+            const clienteId = item.pedido.clienteId
+            const atual = realizadoPorCliente.get(clienteId) || 0
+            realizadoPorCliente.set(clienteId, atual + item.quantidade)
+        }
+
+        // 4.2 Fetch "BonificacoesEmitidas" (bonus orders manually linked to this campaign)
+        const itensBonificados = await prisma.itemPedido.findMany({
+            where: {
+                produtoId: { in: vinagreIds },
+                pedido: {
+                    campanhaId: campanha.id,
+                    status: { not: 'Cancelado' },
+                    tipo: 'Bonificacao'
+                }
+            },
+            select: { quantidade: true, pedido: { select: { clienteId: true } } }
+        })
+
+        const bonificacaoEmitidaPorCliente = new Map<string, number>()
+        for (const item of itensBonificados) {
+            const clienteId = item.pedido.clienteId
+            const atual = bonificacaoEmitidaPorCliente.get(clienteId) || 0
+            bonificacaoEmitidaPorCliente.set(clienteId, atual + item.quantidade)
         }
 
         // 5. Calculate campaign metrics for each client
@@ -121,8 +172,17 @@ export async function GET() {
             // Fórmula da campanha
             const mediaBase = mediaAtual < 50 ? 50 : mediaAtual
             const metaCampanha = Math.ceil(mediaBase * 0.25)
-            const quantidadeFaturar = mediaBase + metaCampanha
+            const quantidadeFaturar = Math.ceil(mediaBase + metaCampanha)
             const bonificacaoVinagre = Math.floor(quantidadeFaturar / 12.5)
+
+            // Tracking e Conciliação
+            const realizado = realizadoPorCliente.get(cliente.id) || 0
+            const faltam = Math.max(0, quantidadeFaturar - realizado)
+            const progresso = Math.min(100, Math.round((realizado / quantidadeFaturar) * 100))
+
+            const bonificacaoConquistada = Math.floor(realizado / 12.5)
+            const bonificacaoEmitida = bonificacaoEmitidaPorCliente.get(cliente.id) || 0
+            const saldoPendente = bonificacaoConquistada - bonificacaoEmitida
 
             return {
                 clienteId: cliente.id,
@@ -133,6 +193,7 @@ export async function GET() {
                 tabelaPreco: cliente.tabelaPreco,
                 telefone: cliente.telefone,
                 celular: cliente.celular,
+                comprador: cliente.comprador,
                 totalCaixas60d,
                 mediaAtual,
                 mediaBase,
@@ -140,6 +201,12 @@ export async function GET() {
                 quantidadeFaturar,
                 bonificacaoVinagre,
                 isZerado: mediaAtual < 50,
+                realizado,
+                faltam,
+                progresso,
+                bonificacaoConquistada,
+                bonificacaoEmitida,
+                saldoPendente,
             }
         })
 
@@ -153,6 +220,11 @@ export async function GET() {
                 dataInicio: campanha.dataInicio.toISOString(),
             },
             produtosEncontrados: produtosComposto.map(p => p.nome),
+            produtosDetalhes: produtosComposto.map(p => ({
+                id: p.id,
+                nome: p.nome,
+                imagemUrl: p.imagem || '/placeholder-bottle.png'
+            })),
             periodoInicio: sessantaDiasAtras.toISOString(),
             periodoFim: dataReferencia.toISOString(),
             totalClientes: resultado.length,
