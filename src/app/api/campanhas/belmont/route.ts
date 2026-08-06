@@ -178,7 +178,7 @@ export async function GET() {
             // Tracking e Conciliação
             const realizado = realizadoPorCliente.get(cliente.id) || 0
             const faltam = Math.max(0, quantidadeFaturar - realizado)
-            const progresso = Math.min(100, Math.round((realizado / quantidadeFaturar) * 100))
+            const progresso = quantidadeFaturar > 0 ? Math.round((realizado / quantidadeFaturar) * 100) : 0
 
             const bonificacaoConquistada = Math.floor(realizado / 12.5)
             const bonificacaoEmitida = bonificacaoEmitidaPorCliente.get(cliente.id) || 0

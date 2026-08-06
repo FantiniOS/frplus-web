@@ -739,7 +739,7 @@ export default function AIInsightsClient() {
                                         <span className="text-sm font-semibold text-white uppercase tracking-wider">Regra de Exibição</span>
                                     </div>
                                     <p className="text-sm text-gray-400">
-                                        Esta lista é <strong className="text-white">100% baseada em matemática</strong> e não possui limite de quantidade. Exibimos clientes <strong className="text-white">Ativos</strong> que estão há <strong>mais dias sem comprar do que o seu Ciclo/Giro Médio</strong> histórico (com 5 dias de margem de antecedência).
+                                        Esta lista é <strong className="text-white">100% baseada em matemática</strong> e não possui limite de quantidade. Exibimos clientes <strong className="text-white">Ativos</strong> que estão há <strong>mais dias sem comprar do que 90% do seu Giro Médio</strong> (margem de 10% de antecedência). O giro é calculado com <strong className="text-cyan-400">Média Móvel Ponderada</strong> — pedidos recentes (≤90 dias) têm peso 3× maior.
                                     </p>
                                 </div>
 
@@ -889,9 +889,24 @@ export default function AIInsightsClient() {
                                                                             <span className="text-orange-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
                                                                         </div>
                                                                         <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
-                                                                            <span className="text-gray-500">Giro Médio Calculado:</span>
-                                                                            <span className="text-blue-400 font-medium ml-2">a cada {client.cicloMedioDias} dias</span>
+                                                                            <span className="text-gray-500">Giro Médio Atual:</span>
+                                                                            <div className="flex items-center gap-1.5 ml-2">
+                                                                                <span className="text-blue-400 font-medium">a cada {client.cicloMedioDias} dias</span>
+                                                                                <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
+                                                                                    client.confiancaCiclo === 'alta' ? 'bg-green-500/15 text-green-400 border border-green-500/30' :
+                                                                                    client.confiancaCiclo === 'media' ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30' :
+                                                                                    'bg-red-500/15 text-red-400 border border-red-500/30'
+                                                                                }`}>
+                                                                                    {client.confiancaCiclo === 'alta' ? '🟢 Alta' : client.confiancaCiclo === 'media' ? '🟡 Média' : '🔴 Baixa'}
+                                                                                </span>
+                                                                            </div>
                                                                         </div>
+                                                                        {client.cicloAjustado && client.cicloAjustado !== client.cicloMedioDias && (
+                                                                            <div className="flex justify-between items-center text-xs mt-1">
+                                                                                <span className="text-gray-500">Ciclo c/ Volume:</span>
+                                                                                <span className="text-purple-400 font-medium ml-2">{client.cicloAjustado} dias</span>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-4 py-3 text-center hidden md:table-cell">
@@ -1003,9 +1018,24 @@ export default function AIInsightsClient() {
                                                                     <span className="text-orange-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
                                                                 </div>
                                                                 <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
-                                                                    <span className="text-gray-500">Giro Médio Calculado:</span>
-                                                                    <span className="text-blue-400 font-medium ml-2">a cada {client.cicloMedioDias} dias</span>
+                                                                    <span className="text-gray-500">Giro Médio Atual:</span>
+                                                                    <div className="flex items-center gap-1.5 ml-2">
+                                                                        <span className="text-blue-400 font-medium">a cada {client.cicloMedioDias} dias</span>
+                                                                        <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
+                                                                            client.confiancaCiclo === 'alta' ? 'bg-green-500/15 text-green-400 border border-green-500/30' :
+                                                                            client.confiancaCiclo === 'media' ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30' :
+                                                                            'bg-red-500/15 text-red-400 border border-red-500/30'
+                                                                        }`}>
+                                                                            {client.confiancaCiclo === 'alta' ? '🟢 Alta' : client.confiancaCiclo === 'media' ? '🟡 Média' : '🔴 Baixa'}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
+                                                                {client.cicloAjustado && client.cicloAjustado !== client.cicloMedioDias && (
+                                                                    <div className="flex justify-between items-center text-xs mt-1">
+                                                                        <span className="text-gray-500">Ciclo c/ Volume:</span>
+                                                                        <span className="text-purple-400 font-medium ml-2">{client.cicloAjustado} dias</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </td>
                                                         <td className="px-4 py-3 text-center hidden md:table-cell">

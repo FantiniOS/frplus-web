@@ -6,9 +6,30 @@ import { getServerUser } from '@/lib/getServerUser'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+// ======================== CONSTANTES DE CONFIGURAÇÃO ========================
+// Quantidade máxima de pedidos usados no cálculo do giro médio.
+// Usar poucos pedidos garante adaptação rápida a mudanças de tabela/comportamento.
+const MAX_PEDIDOS_GIRO = 5;
+
+// Peso atribuído a intervalos cujo pedido mais recente do par é dos últimos N dias.
+const PESO_RECENTE = 3;
+const JANELA_RECENTE_DIAS = 90;
+
+// Data a partir da qual o reajuste de tabela entrou em vigor.
+// Intervalos que cruzam essa data E destoam muito (>50%) da mediana recente
+// são descartados para não distorcer o giro.
+const DATA_REAJUSTE_TABELA = new Date('2025-06-01');
+// ============================================================================
+
 /**
- * Calcula o ciclo médio de compra de um cliente baseado nas datas dos pedidos.
- * Retorna o ciclo em dias.
+ * Calcula o ciclo médio de compra de um cliente usando Média Móvel Ponderada.
+ *
+ * - Considera apenas os últimos MAX_PEDIDOS_GIRO pedidos.
+ * - Intervalos recentes (≤ JANELA_RECENTE_DIAS) recebem peso PESO_RECENTE.
+ * - Intervalos antigos recebem peso 1.
+ * - Intervalos que cruzam a DATA_REAJUSTE_TABELA e destoam >50% da mediana
+ *   recente são descartados (Corte Temporal).
+ *
  * Fallback: 30 dias se o cliente tiver apenas 1 pedido.
  */
 function calcularCicloMedio(pedidosDatas: Date[]): { cicloMedioDias: number; confianca: 'alta' | 'media' | 'baixa' } {
@@ -16,17 +37,88 @@ function calcularCicloMedio(pedidosDatas: Date[]): { cicloMedioDias: number; con
         return { cicloMedioDias: 30, confianca: 'baixa' };
     }
 
-    let totalDaysDiff = 0;
-    for (let i = 0; i < pedidosDatas.length - 1; i++) {
-        const d1 = pedidosDatas[i];
-        const d2 = pedidosDatas[i + 1];
-        const diffTime = Math.abs(d1.getTime() - d2.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        totalDaysDiff += diffDays;
+    // Garantir que as datas estejam em ordem decrescente (mais recente primeiro)
+    const datasOrdenadas = [...pedidosDatas].sort((a, b) => b.getTime() - a.getTime());
+
+    // Limitar aos últimos MAX_PEDIDOS_GIRO pedidos
+    const datasLimitadas = datasOrdenadas.slice(0, MAX_PEDIDOS_GIRO);
+
+    if (datasLimitadas.length < 2) {
+        return { cicloMedioDias: 30, confianca: 'baixa' };
     }
 
-    const cicloMedioDias = Math.max(7, Math.floor(totalDaysDiff / (pedidosDatas.length - 1)));
-    const confianca = pedidosDatas.length >= 4 ? 'alta' : 'media';
+    const hoje = new Date();
+    const limiteRecente = new Date(hoje.getTime() - JANELA_RECENTE_DIAS * 24 * 60 * 60 * 1000);
+
+    // Calcular todos os intervalos entre pedidos consecutivos
+    // datasLimitadas[0] = mais recente, datasLimitadas[N-1] = mais antigo
+    // Intervalo i: entre datasLimitadas[i] e datasLimitadas[i+1]
+    interface IntervaloInfo {
+        dias: number;
+        dataMaisRecente: Date; // A data mais recente do par (datasLimitadas[i])
+        cruzaReajuste: boolean;
+    }
+
+    const intervalos: IntervaloInfo[] = [];
+    for (let i = 0; i < datasLimitadas.length - 1; i++) {
+        const dataMaisRecente = datasLimitadas[i];
+        const dataMaisAntiga = datasLimitadas[i + 1];
+        const diffTime = Math.abs(dataMaisRecente.getTime() - dataMaisAntiga.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        // Verificar se o intervalo cruza a data de reajuste
+        const cruzaReajuste = dataMaisAntiga.getTime() < DATA_REAJUSTE_TABELA.getTime()
+            && dataMaisRecente.getTime() >= DATA_REAJUSTE_TABELA.getTime();
+
+        intervalos.push({ dias: diffDays, dataMaisRecente, cruzaReajuste });
+    }
+
+    // Calcular a mediana dos intervalos recentes (para referência no corte temporal)
+    const intervalosRecentes = intervalos
+        .filter(iv => iv.dataMaisRecente.getTime() >= limiteRecente.getTime())
+        .map(iv => iv.dias)
+        .sort((a, b) => a - b);
+
+    let medianaRecente: number | null = null;
+    if (intervalosRecentes.length > 0) {
+        const mid = Math.floor(intervalosRecentes.length / 2);
+        medianaRecente = intervalosRecentes.length % 2 === 0
+            ? (intervalosRecentes[mid - 1] + intervalosRecentes[mid]) / 2
+            : intervalosRecentes[mid];
+    }
+
+    // Filtrar intervalos: descartar os que cruzam o reajuste E destoam >50% da mediana recente
+    const intervalosFiltrados = intervalos.filter(iv => {
+        if (iv.cruzaReajuste && medianaRecente !== null) {
+            const desvio = Math.abs(iv.dias - medianaRecente) / medianaRecente;
+            if (desvio > 0.5) return false; // Descarta — distorção pré-reajuste
+        }
+        return true;
+    });
+
+    // Se todos foram descartados, usar os intervalos originais (segurança)
+    const intervalosFinais = intervalosFiltrados.length > 0 ? intervalosFiltrados : intervalos;
+
+    // Média Móvel Ponderada: peso PESO_RECENTE para recentes, peso 1 para antigos
+    let somaPonderada = 0;
+    let somaPesos = 0;
+
+    for (const iv of intervalosFinais) {
+        const peso = iv.dataMaisRecente.getTime() >= limiteRecente.getTime()
+            ? PESO_RECENTE
+            : 1;
+        somaPonderada += iv.dias * peso;
+        somaPesos += peso;
+    }
+
+    const cicloMedioDias = Math.max(7, Math.round(somaPonderada / somaPesos));
+
+    // Confiança baseada na quantidade de pedidos efetivamente usados
+    const qtdPedidosUsados = datasLimitadas.length;
+    const confianca: 'alta' | 'media' | 'baixa' =
+        qtdPedidosUsados >= 4 ? 'alta' :
+        qtdPedidosUsados >= 2 ? 'media' :
+        'baixa';
 
     return { cicloMedioDias, confianca };
 }
@@ -53,7 +145,7 @@ export async function GET(request: Request) {
                         status: { in: ['Concluido', 'FATURADO'] }
                     },
                     orderBy: { data: 'desc' },
-                    take: 10, // 10 pedidos para calcular ciclo médio com precisão
+                    take: MAX_PEDIDOS_GIRO + 1, // +1 margem para cálculo preciso do giro
                     select: {
                         data: true,
                         valorTotal: true,
@@ -249,7 +341,8 @@ Abs, Carlos Fantini
             // When querying a single client, skip the cycle filter to show their status regardless
             // Janela de 5 dias: usa o MENOR entre ciclo puro e ajustado por volume
             // Assim, se o volume indica que o estoque acabou antes, o cliente aparece mais cedo
-            .filter(c => clienteIdParam ? true : (c.diasInativo !== null && c.diasInativo >= (Math.min(c.cicloMedioDias, c._novoCicloEstimado) - 5)))
+            // Margem de 10% de antecedência: exibe quando diasInativo >= ciclo * 0.9
+            .filter(c => clienteIdParam ? true : (c.diasInativo !== null && c.diasInativo >= Math.floor(Math.min(c.cicloMedioDias, c._novoCicloEstimado) * 0.9)))
             // ORDENAÇÃO: Quem está mais atrasado aparece primeiro no topo
             .sort((a, b) => b.diasInativo! - a.diasInativo!)
 

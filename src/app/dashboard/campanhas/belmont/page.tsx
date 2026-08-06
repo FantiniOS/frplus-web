@@ -1617,14 +1617,14 @@ export default function CampanhaBelmontPage() {
                           cliente.progresso >= 100 ? 'bg-emerald-500 print:bg-emerald-600' :
                           cliente.progresso >= 50 ? 'bg-amber-400 print:bg-amber-500' : 'bg-red-400 print:bg-red-500'
                         }`}
-                        style={{ width: `${Math.max(5, cliente.progresso)}%` }}
+                        style={{ width: `${Math.min(100, Math.max(5, cliente.progresso))}%` }}
                       />
                     </div>
                     <span className={`text-[10px] font-bold ${
                       cliente.progresso >= 100 ? 'text-emerald-400 print:text-emerald-700' :
                       cliente.progresso >= 50 ? 'text-amber-400 print:text-amber-600' : 'text-red-400 print:text-red-600'
                     }`}>
-                      {cliente.progresso >= 100 ? 'Meta Batida' : `${cliente.progresso}%`}
+                      {cliente.progresso}%
                     </span>
                   </div>
                 </td>
@@ -1933,8 +1933,8 @@ export default function CampanhaBelmontPage() {
               </button>
               <button
                 onClick={handleSaveLançamentos}
-                disabled={savingLançamento}
-                className="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                disabled={savingLançamento || data?.campanha.status !== 'ATIVA'}
+                className="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {savingLançamento ? (
                   <>
