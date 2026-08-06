@@ -466,7 +466,7 @@ async function generateRelatorioCampanhaPDF(data: CampanhaData, periodoStr: stri
   // ── TOTAIS ──
   const totalAlvo = data.clientes.reduce((a, c) => a + c.quantidadeFaturar, 0);
   const totalRealizado = data.clientes.reduce((a, c) => a + c.realizado, 0);
-  const totalBonif = data.clientes.reduce((a, c) => a + c.bonificacaoVinagre, 0);
+  const totalBonif = data.clientes.reduce((a, c) => a + c.bonificacaoConquistada, 0);
   const progressoGeral = totalAlvo > 0 ? Math.round((totalRealizado / totalAlvo) * 100) : 0;
   const clientesAtingidos = data.clientes.filter(c => c.progresso >= 100).length;
 
@@ -646,7 +646,7 @@ async function generateRelatorioCampanhaPDF(data: CampanhaData, periodoStr: stri
     `${c.quantidadeFaturar}`,
     `${c.realizado}`,
     `${c.progresso}%`,
-    `${c.bonificacaoVinagre}`,
+    `${c.bonificacaoConquistada}`,
     `${c.bonificacaoEmitida}`,
   ]);
 
@@ -1200,8 +1200,8 @@ export default function CampanhaBelmontPage() {
           valB = b.mediaAtual;
           break;
         case 'bonificacaoVinagre':
-          valA = a.bonificacaoVinagre;
-          valB = b.bonificacaoVinagre;
+          valA = a.bonificacaoConquistada;
+          valB = b.bonificacaoConquistada;
           break;
         case 'nome':
           valA = (a.nomeFantasia || a.razaoSocial || '').toLowerCase();
@@ -1246,7 +1246,7 @@ export default function CampanhaBelmontPage() {
 
   const totalMetaBatida = data.clientes.filter(c => c.progresso >= 100).length;
   const volumeTotalFaturado = data.clientes.reduce((acc, c) => acc + c.realizado, 0);
-  const provisaoVinagres = data.clientes.reduce((acc, c) => acc + c.bonificacaoVinagre, 0);
+  const provisaoVinagres = data.clientes.reduce((acc, c) => acc + c.bonificacaoConquistada, 0);
   const vinagreEntregue = data.clientes.reduce((acc, c) => acc + c.bonificacaoEmitida, 0);
   const vinagrePendente = provisaoVinagres - vinagreEntregue;
   const totalAlvo = data.clientes.reduce((acc, c) => acc + c.quantidadeFaturar, 0);
