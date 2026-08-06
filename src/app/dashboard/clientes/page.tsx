@@ -1,7 +1,7 @@
 /* eslint-disable */
 'use client';
 
-import { Search, Plus, MoreHorizontal, MapPin, Filter, Trash2, Edit, ChevronDown, ChevronUp, User, FileText } from "lucide-react";
+import { Search, Plus, MoreHorizontal, MapPin, Filter, Trash2, Edit, ChevronDown, ChevronUp, User, FileText, Activity } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
@@ -214,6 +214,11 @@ export default function ClientesPage() {
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
+                        <Link href={`/dashboard/clientes/${cliente.id}/raio-x`} onClick={(e) => e.stopPropagation()}>
+                          <button className="rounded p-2 text-cyan-500/70 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors" title="Ver Raio-X">
+                            <Activity className="h-4 w-4" />
+                          </button>
+                        </Link>
                         <Link href={`/dashboard/clientes/${cliente.id}`}>
                           <button className="rounded p-2 hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title="Editar Cliente">
                             <Edit className="h-4 w-4" />

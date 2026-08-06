@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowLeft, Save, Building2, MapPin, DollarSign, Search, Loader2, User, CalendarPlus, X } from "lucide-react";
+import { ArrowLeft, Save, Building2, MapPin, DollarSign, Search, Loader2, User, CalendarPlus, X, Activity } from "lucide-react";
 import { useData, Client } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
@@ -196,6 +196,15 @@ export default function EditarClientePage({ params }: { params: { id: string } }
                     <h1 className="text-xl font-bold text-white">Editar Cliente</h1>
                 </div>
                 <div className="flex items-center gap-2">
+                    {params.id !== 'novo' && (
+                        <Link
+                            href={`/dashboard/clientes/${params.id}/raio-x`}
+                            className="flex items-center gap-2 rounded-lg bg-cyan-600/20 px-4 py-1.5 text-sm font-medium text-cyan-400 hover:bg-cyan-600/30 transition-colors"
+                            title="Ver Raio-X do Cliente"
+                        >
+                            <Activity className="h-4 w-4" /> Raio-X
+                        </Link>
+                    )}
                     <button
                         onClick={() => setShowModalVisita(true)}
                         className="flex items-center gap-2 rounded-lg bg-emerald-600/20 px-4 py-1.5 text-sm font-medium text-emerald-400 hover:bg-emerald-600/30 transition-colors"
