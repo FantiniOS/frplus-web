@@ -134,14 +134,25 @@ export async function GET() {
                     tipo: 'Venda',
                 }
             },
-            select: { quantidade: true, pedido: { select: { clienteId: true } } }
+            select: { quantidade: true, pedido: { select: { id: true, clienteId: true } } }
         })
 
+        const pedidosRealizadosPorCliente = new Map<string, Map<string, number>>()
         const realizadoPorCliente = new Map<string, number>()
+        
         for (const item of itensRealizados) {
             const clienteId = item.pedido.clienteId
-            const atual = realizadoPorCliente.get(clienteId) || 0
-            realizadoPorCliente.set(clienteId, atual + item.quantidade)
+            const pedidoId = item.pedido.id
+
+            const atualRealizado = realizadoPorCliente.get(clienteId) || 0
+            realizadoPorCliente.set(clienteId, atualRealizado + item.quantidade)
+
+            if (!pedidosRealizadosPorCliente.has(clienteId)) {
+                pedidosRealizadosPorCliente.set(clienteId, new Map<string, number>())
+            }
+            const clientOrders = pedidosRealizadosPorCliente.get(clienteId)!
+            const atualPedido = clientOrders.get(pedidoId) || 0
+            clientOrders.set(pedidoId, atualPedido + item.quantidade)
         }
 
         // 4.2 Fetch "BonificacoesEmitidas" (bonus orders manually linked to this campaign)
@@ -173,14 +184,23 @@ export async function GET() {
             const mediaBase = mediaAtual < 50 ? 50 : mediaAtual
             const metaCampanha = Math.ceil(mediaBase * 0.25)
             const quantidadeFaturar = Math.ceil(mediaBase + metaCampanha)
-            const bonificacaoVinagre = Math.floor(quantidadeFaturar / 12.5)
+            const bonificacaoVinagre = Math.floor((quantidadeFaturar / 63) * 5)
 
             // Tracking e Conciliação
             const realizado = realizadoPorCliente.get(cliente.id) || 0
             const faltam = Math.max(0, quantidadeFaturar - realizado)
             const progresso = quantidadeFaturar > 0 ? Math.round((realizado / quantidadeFaturar) * 100) : 0
 
-            const bonificacaoConquistada = Math.floor(realizado / 12.5)
+            let bonificacaoConquistada = 0
+            const clientOrders = pedidosRealizadosPorCliente.get(cliente.id)
+            if (clientOrders && quantidadeFaturar > 0) {
+                for (const volumePedido of Array.from(clientOrders.values())) {
+                    if (volumePedido >= quantidadeFaturar) {
+                        const bonusDoPedido = Math.floor((volumePedido / 63) * 5)
+                        bonificacaoConquistada += bonusDoPedido
+                    }
+                }
+            }
             const bonificacaoEmitida = bonificacaoEmitidaPorCliente.get(cliente.id) || 0
             const saldoPendente = bonificacaoConquistada - bonificacaoEmitida
 
