@@ -32,8 +32,9 @@ export interface ClienteRaioXResponse {
         ticketMedio: number;
         giroMedioDias: number;
         diasAusente: number;
-        faturamento12m: number;
+        faturamentoAno: number;
         totalPedidos: number;
+        anoReferencia: number;
     };
     volumesMensais: VolumeMensalFinanceiro[];
     curvaABC: ProdutoABC[];
@@ -44,7 +45,7 @@ const MESES_PT = [
     'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
 ];
 
-export async function getClienteRaioX(clienteId: string): Promise<ClienteRaioXResponse> {
+export async function getClienteRaioX(clienteId: string, ano?: number): Promise<ClienteRaioXResponse> {
     try {
         const cliente = await prisma.cliente.findUnique({
             where: { id: clienteId },
@@ -62,20 +63,25 @@ export async function getClienteRaioX(clienteId: string): Promise<ClienteRaioXRe
         if (!cliente) {
             return {
                 cliente: null,
-                kpis: { ticketMedio: 0, giroMedioDias: 0, diasAusente: 0, faturamento12m: 0, totalPedidos: 0 },
+                kpis: { ticketMedio: 0, giroMedioDias: 0, diasAusente: 0, faturamentoAno: 0, totalPedidos: 0, anoReferencia: ano || new Date().getFullYear() },
                 volumesMensais: [],
                 curvaABC: []
             };
         }
 
         const now = new Date();
-        const twelveMonthsAgo = new Date(Date.UTC(now.getFullYear(), now.getMonth() - 11, 1));
+        const anoRef = ano || now.getFullYear();
+        
+        // Filtro de data: por ano específico ou últimos 12 meses
+        const dateFilter = ano
+            ? { gte: new Date(`${ano}-01-01T00:00:00.000Z`), lte: new Date(`${ano}-12-31T23:59:59.999Z`) }
+            : { gte: new Date(Date.UTC(now.getFullYear(), now.getMonth() - 11, 1)) };
 
-        // 1. Pedidos do último ano para KPIs e Gráfico
+        // 1. Pedidos filtrados para KPIs e Gráfico
         const pedidos = await prisma.pedido.findMany({
             where: {
                 clienteId,
-                data: { gte: twelveMonthsAgo },
+                data: dateFilter,
                 status: { not: 'Cancelado' },
                 tipo: { not: 'Bonificacao' }
             },
@@ -84,18 +90,27 @@ export async function getClienteRaioX(clienteId: string): Promise<ClienteRaioXRe
 
         // 2. Gráfico Mensal
         const volumeMap = new Map<string, number>();
-        for (let i = 11; i >= 0; i--) {
-            const d = new Date(Date.UTC(now.getFullYear(), now.getMonth() - i, 1));
-            const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-            volumeMap.set(key, 0);
+        if (ano) {
+            // Ano específico: Jan a Dez do ano selecionado
+            for (let m = 0; m < 12; m++) {
+                const key = `${ano}-${String(m + 1).padStart(2, '0')}`;
+                volumeMap.set(key, 0);
+            }
+        } else {
+            // Últimos 12 meses a partir de hoje
+            for (let i = 11; i >= 0; i--) {
+                const d = new Date(Date.UTC(now.getFullYear(), now.getMonth() - i, 1));
+                const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+                volumeMap.set(key, 0);
+            }
         }
 
-        let faturamento12m = 0;
+        let faturamentoAno = 0;
         const purchaseDates: Date[] = [];
 
         for (const p of pedidos) {
             const val = Number(p.valorTotal);
-            faturamento12m += val;
+            faturamentoAno += val;
             purchaseDates.push(p.data);
 
             const key = `${p.data.getUTCFullYear()}-${String(p.data.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -118,7 +133,7 @@ export async function getClienteRaioX(clienteId: string): Promise<ClienteRaioXRe
 
         // 3. Cálculos de KPIs
         const totalPedidos = pedidos.length;
-        const ticketMedio = totalPedidos > 0 ? faturamento12m / totalPedidos : 0;
+        const ticketMedio = totalPedidos > 0 ? faturamentoAno / totalPedidos : 0;
         
         let diasAusente = 0;
         let giroMedioDias = 0;
@@ -137,12 +152,12 @@ export async function getClienteRaioX(clienteId: string): Promise<ClienteRaioXRe
             }
         }
 
-        // 4. Curva ABC de Produtos (12 Meses)
+        // 4. Curva ABC de Produtos
         const itens = await prisma.itemPedido.findMany({
             where: {
                 pedido: {
                     clienteId,
-                    data: { gte: twelveMonthsAgo },
+                    data: dateFilter,
                     status: { not: 'Cancelado' },
                     tipo: { not: 'Bonificacao' }
                 }
@@ -186,8 +201,9 @@ export async function getClienteRaioX(clienteId: string): Promise<ClienteRaioXRe
                 ticketMedio: Math.round(ticketMedio * 100) / 100,
                 giroMedioDias: Math.round(giroMedioDias),
                 diasAusente,
-                faturamento12m: Math.round(faturamento12m * 100) / 100,
-                totalPedidos
+                faturamentoAno: Math.round(faturamentoAno * 100) / 100,
+                totalPedidos,
+                anoReferencia: anoRef
             }
         };
 
@@ -195,7 +211,7 @@ export async function getClienteRaioX(clienteId: string): Promise<ClienteRaioXRe
         console.error('[ClienteRaioX] Erro ao buscar dados:', error);
         return {
             cliente: null,
-            kpis: { ticketMedio: 0, giroMedioDias: 0, diasAusente: 0, faturamento12m: 0, totalPedidos: 0 },
+            kpis: { ticketMedio: 0, giroMedioDias: 0, diasAusente: 0, faturamentoAno: 0, totalPedidos: 0, anoReferencia: ano || new Date().getFullYear() },
             volumesMensais: [],
             curvaABC: []
         };

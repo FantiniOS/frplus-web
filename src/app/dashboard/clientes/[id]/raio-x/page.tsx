@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowLeft, Printer, Loader2, UserCircle, DollarSign, Activity, Clock, FileText, BarChart3, Package } from 'lucide-react';
+import { ArrowLeft, Printer, Loader2, UserCircle, DollarSign, Activity, Clock, FileText, BarChart3, Package, CalendarDays, Brain, Sparkles } from 'lucide-react';
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ import autoTable from "jspdf-autotable";
 
 import { getClienteRaioX, ClienteRaioXResponse } from "@/app/actions/clienteRaioX";
 import { getPerfilEmpresa } from "@/app/actions/perfilEmpresa";
+import { gerarAnaliseClienteIA } from "@/app/actions/analiseClienteIA";
 import { PrintHeader } from "@/components/ui/PrintHeader";
 
 interface Props {
@@ -25,6 +26,10 @@ export default function ClienteRaioXPage({ params }: Props) {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<ClienteRaioXResponse | null>(null);
     const [loadingPDF, setLoadingPDF] = useState(false);
+    const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear());
+    const [analiseIA, setAnaliseIA] = useState<string | null>(null);
+    const [analiseIAErro, setAnaliseIAErro] = useState<string | null>(null);
+    const [loadingIA, setLoadingIA] = useState(false);
     const chartRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -34,7 +39,10 @@ export default function ClienteRaioXPage({ params }: Props) {
     useEffect(() => {
         const fetchDados = async () => {
             try {
-                const result = await getClienteRaioX(params.id);
+                setLoading(true);
+                setAnaliseIA(null);
+                setAnaliseIAErro(null);
+                const result = await getClienteRaioX(params.id, anoSelecionado);
                 setData(result);
             } catch (error) {
                 console.error("Erro ao buscar raio-x do cliente:", error);
@@ -45,7 +53,7 @@ export default function ClienteRaioXPage({ params }: Props) {
         };
 
         if (usuario) fetchDados();
-    }, [params.id, usuario, showToast]);
+    }, [params.id, usuario, showToast, anoSelecionado]);
 
     // ═══════════════════════════════════════════
     // PDF GENERATION
@@ -178,6 +186,129 @@ export default function ClienteRaioXPage({ params }: Props) {
 
             startY += 26;
 
+            // ═══════ SÍNTESE DO DOSSIÊ (PDF) ═══════
+            {
+                const sinteseLineHeight = 5;
+                const sinteseBoxX = margin.left;
+                const sinteseInnerX = sinteseBoxX + 5;
+                const sinteseMaxWidth = contentWidth - 7;
+
+                // Compute status
+                const diasAus = data.kpis.diasAusente;
+                const temDadosPdf = data.kpis.totalPedidos > 0;
+                const statusLabel = temDadosPdf
+                    ? (diasAus <= 30 ? 'CLIENTE ATIVO' : diasAus <= 90 ? 'RISCO DE CHURN' : 'CLIENTE INATIVO')
+                    : 'SEM REGISTRO';
+                const statusColor: [number, number, number] = diasAus <= 30
+                    ? [16, 185, 129]   // emerald
+                    : diasAus <= 90
+                        ? [245, 158, 11]   // amber
+                        : [239, 68, 68];   // red
+
+                // Build lines
+                const sinteseLines: string[] = [];
+                if (temDadosPdf) {
+                    const fatFmt = `R$ ${data.kpis.faturamentoAno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                    const ticketFmt = `R$ ${data.kpis.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                    sinteseLines.push(`Desempenho: No ano de ${anoSelecionado}, o cliente acumulou faturamento total de ${fatFmt} em ${data.kpis.totalPedidos} pedido${data.kpis.totalPedidos !== 1 ? 's' : ''}, com ticket médio de ${ticketFmt}.`);
+
+                    if (data.kpis.giroMedioDias > 0) {
+                        sinteseLines.push(`Comportamento: O ciclo médio de compras (giro) atual é de ${data.kpis.giroMedioDias} dias.${diasAus > 0 ? ` Última compra há ${diasAus} dias.` : ''}`);
+                    } else {
+                        sinteseLines.push(`Comportamento: Apenas 1 compra registrada — giro médio ainda não calculável.${diasAus > 0 ? ` Última compra há ${diasAus} dias.` : ''}`);
+                    }
+
+                    if (data.curvaABC.length > 0) {
+                        const top = data.curvaABC[0];
+                        sinteseLines.push(`Curva A: O produto de maior tração foi ${top.nome}, totalizando R$ ${top.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${top.quantidadeTotal} un.).`);
+                    }
+
+                    sinteseLines.push(`Status: ${statusLabel}${diasAus > 60 ? ' — atenção recomendada, cliente ausente há mais de 60 dias.' : '.'}`);
+                } else {
+                    sinteseLines.push(`Aguardando dados de faturamento para o ano de ${anoSelecionado}. Nenhum pedido registrado neste período.`);
+                }
+
+                // Calculate box height
+                let totalWrappedLines = 0;
+                const wrappedLinesArr: string[][] = [];
+                doc.setFontSize(7.5);
+                doc.setFont('helvetica', 'normal');
+                for (const line of sinteseLines) {
+                    const wrapped = doc.splitTextToSize(line, sinteseMaxWidth) as string[];
+                    wrappedLinesArr.push(wrapped);
+                    totalWrappedLines += wrapped.length;
+                }
+                const sinteseBoxH = 10 + (totalWrappedLines * sinteseLineHeight) + (sinteseLines.length - 1) * 1.5;
+
+                // Draw background
+                doc.setFillColor(245, 247, 252);
+                doc.roundedRect(sinteseBoxX, startY, contentWidth, sinteseBoxH, 1.5, 1.5, 'F');
+
+                // Blue left accent bar
+                doc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                doc.rect(sinteseBoxX, startY + 2, 1.5, sinteseBoxH - 4, 'F');
+
+                // Header: icon placeholder + title
+                doc.setFontSize(7);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                doc.text('SÍNTESE DO DOSSIÊ', sinteseInnerX, startY + 5.5);
+
+                // Status badge
+                doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+                const badgeText = statusLabel;
+                doc.setFontSize(6);
+                doc.setFont('helvetica', 'bold');
+                const badgeW = doc.getTextWidth(badgeText) + 6;
+                const badgeX = sinteseBoxX + contentWidth - badgeW - 4;
+                doc.roundedRect(badgeX, startY + 2.5, badgeW, 5, 1, 1, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.text(badgeText, badgeX + 3, startY + 6);
+
+                // Render bullet lines
+                let bulletY = startY + 10;
+                doc.setFontSize(7.5);
+                doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
+
+                for (let li = 0; li < wrappedLinesArr.length; li++) {
+                    const wrapped = wrappedLinesArr[li];
+                    // Draw bullet dot
+                    doc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                    doc.circle(sinteseInnerX + 1, bulletY + 1.2, 0.6, 'F');
+
+                    // First line: bold label part
+                    const firstLine = wrapped[0];
+                    const colonIdx = firstLine.indexOf(':');
+                    if (colonIdx > 0 && colonIdx < 20) {
+                        const labelPart = firstLine.substring(0, colonIdx + 1);
+                        const restPart = firstLine.substring(colonIdx + 1);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
+                        doc.text(labelPart, sinteseInnerX + 4, bulletY + 2);
+                        const labelW = doc.getTextWidth(labelPart);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                        doc.text(restPart, sinteseInnerX + 4 + labelW, bulletY + 2);
+                    } else {
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                        doc.text(firstLine, sinteseInnerX + 4, bulletY + 2);
+                    }
+                    bulletY += sinteseLineHeight;
+
+                    // Continuation lines
+                    for (let wl = 1; wl < wrapped.length; wl++) {
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                        doc.text(wrapped[wl], sinteseInnerX + 4, bulletY + 2);
+                        bulletY += sinteseLineHeight;
+                    }
+                    bulletY += 1.5; // gap between bullets
+                }
+
+                startY += sinteseBoxH + 6;
+            }
+
             // ═══════ KPIs ═══════
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
@@ -190,7 +321,7 @@ export default function ClienteRaioXPage({ params }: Props) {
                 { label: 'Ticket Médio', value: `R$ ${data.kpis.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
                 { label: 'Giro Médio', value: `${data.kpis.giroMedioDias} dias` },
                 { label: 'Dias Ausente', value: `${data.kpis.diasAusente} dias` },
-                { label: 'Faturamento Total', value: `R$ ${data.kpis.faturamento12m.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+                { label: `Faturamento ${data.kpis.anoReferencia}`, value: `R$ ${data.kpis.faturamentoAno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
             ];
 
             kpis.forEach((kpi, idx) => {
@@ -442,7 +573,195 @@ export default function ClienteRaioXPage({ params }: Props) {
                 </div>
             </div>
 
-            {/* ═══════ KPIs ═══════ */}
+            {/* ═══════ FILTRO DE ANO + KPIs ═══════ */}
+            <div className="flex items-center justify-between mb-1 animate-in print:hidden" style={{ animationDelay: '0.05s' }}>
+                <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Indicadores de Desempenho</span>
+                <div className="flex items-center gap-2">
+                    <CalendarDays className="h-3.5 w-3.5 text-gray-500" />
+                    <select
+                        id="ano-selector"
+                        value={anoSelecionado}
+                        onChange={(e) => setAnoSelecionado(Number(e.target.value))}
+                        className="bg-white/[0.05] border border-white/10 text-white text-xs font-medium rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 hover:bg-white/10 transition-colors cursor-pointer appearance-none pr-7"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+                    >
+                        {[0, 1, 2, 3].map(offset => {
+                            const year = new Date().getFullYear() - offset;
+                            return <option key={year} value={year} className="bg-gray-900 text-white">{year}</option>;
+                        })}
+                    </select>
+                </div>
+            </div>
+
+            {/* ═══════ SÍNTESE DO DOSSIÊ (Resumo Executivo) ═══════ */}
+            {(() => {
+                const faturamentoFormatado = `R$ ${kpis.faturamentoAno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                const produtoMaisComprado = curvaABC.length > 0 ? curvaABC[0].nome : null;
+                const temDados = kpis.totalPedidos > 0;
+                const statusAtividade = kpis.diasAusente <= 30
+                    ? { label: 'Cliente Ativo', color: 'text-emerald-400', bg: 'bg-emerald-500/10' }
+                    : kpis.diasAusente <= 90
+                        ? { label: 'Risco de Churn', color: 'text-amber-400', bg: 'bg-amber-500/10' }
+                        : { label: 'Cliente Inativo', color: 'text-red-400', bg: 'bg-red-500/10' };
+
+                return (
+                    <div className="bg-slate-800/40 border-l-4 border-l-blue-500 rounded-r-xl p-5 mb-2 animate-in print:border print:border-gray-300 print:bg-gray-50 print:border-l-blue-600" style={{ animationDelay: '0.07s' }}>
+                        <div className="flex items-center gap-2 mb-3 text-slate-300 print:text-gray-700">
+                            <Brain className="w-5 h-5 text-blue-500 print:text-blue-600" />
+                            <h3 className="text-sm font-bold uppercase tracking-wider">Síntese do Dossiê</h3>
+                            <span className={`ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusAtividade.bg} ${statusAtividade.color} print:bg-transparent`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${statusAtividade.color === 'text-emerald-400' ? 'bg-emerald-400' : statusAtividade.color === 'text-amber-400' ? 'bg-amber-400' : 'bg-red-400'} animate-pulse`} />
+                                {temDados ? statusAtividade.label : 'Sem Registro'}
+                            </span>
+                        </div>
+
+                        {temDados ? (
+                            <ul className="space-y-2 text-sm text-slate-400 print:text-gray-600">
+                                <li>
+                                    <strong className="text-slate-200 print:text-black">Desempenho:</strong>{' '}
+                                    No ano de {anoSelecionado}, o cliente acumulou um faturamento total de{' '}
+                                    <span className="text-emerald-400 font-semibold print:text-emerald-700">{faturamentoFormatado}</span>{' '}
+                                    em <span className="text-white font-medium print:text-black">{kpis.totalPedidos}</span> pedido{kpis.totalPedidos !== 1 ? 's' : ''},{' '}
+                                    com ticket médio de <span className="text-white font-medium print:text-black">R$ {kpis.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>.
+                                </li>
+                                <li>
+                                    <strong className="text-slate-200 print:text-black">Comportamento:</strong>{' '}
+                                    {kpis.giroMedioDias > 0
+                                        ? <>O ciclo médio de compras (giro) atual é de <span className="text-cyan-400 font-semibold print:text-cyan-700">{kpis.giroMedioDias} dias</span>.</>
+                                        : <>Apenas 1 compra registrada — giro médio ainda não calculável.</>
+                                    }
+                                    {kpis.diasAusente > 0 && (
+                                        <> Última compra há <span className={`font-semibold ${kpis.diasAusente > 60 ? 'text-red-400 print:text-red-600' : 'text-white print:text-black'}`}>{kpis.diasAusente} dias</span>.</>
+                                    )}
+                                </li>
+                                {produtoMaisComprado && (
+                                    <li>
+                                        <strong className="text-slate-200 print:text-black">Curva A:</strong>{' '}
+                                        O produto de maior tração neste período foi{' '}
+                                        <span className="text-indigo-400 font-semibold print:text-indigo-700">{produtoMaisComprado}</span>,{' '}
+                                        totalizando <span className="text-white font-medium print:text-black">R$ {curvaABC[0].valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>{' '}
+                                        ({curvaABC[0].quantidadeTotal} unidade{curvaABC[0].quantidadeTotal !== 1 ? 's' : ''}).
+                                    </li>
+                                )}
+                                <li>
+                                    <strong className="text-slate-200 print:text-black">Status:</strong>{' '}
+                                    <span className={`font-semibold ${statusAtividade.color} print:font-bold`}>{statusAtividade.label}</span>
+                                    {kpis.diasAusente > 60 && (
+                                        <span className="text-amber-400/80 print:text-amber-600"> — atenção recomendada, cliente ausente há mais de 60 dias.</span>
+                                    )}
+                                </li>
+                            </ul>
+                        ) : (
+                            <div className="flex items-center gap-3 py-2">
+                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                    <FileText className="w-4 h-4 text-blue-400/60" />
+                                </div>
+                                <p className="text-sm text-slate-500 italic">
+                                    Aguardando dados de faturamento para o ano de {anoSelecionado}. Nenhum pedido registrado neste período.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* ═══════ ANÁLISE IA GEMINI ═══════ */}
+                        <div className="mt-4 pt-3 border-t border-white/[0.06] print:border-gray-200">
+                            {!analiseIA && !loadingIA && (
+                                <button
+                                    onClick={async () => {
+                                        if (!data) return;
+                                        setLoadingIA(true);
+                                        setAnaliseIAErro(null);
+                                        setAnaliseIA(null);
+                                        try {
+                                            // Extract best month
+                                            const melhorMes = volumesMensais.reduce((prev, current) => {
+                                                return (prev && prev.valorTotal > current.valorTotal) ? prev : current;
+                                            }, volumesMensais[0] || null);
+                                            const mesMaisForte = melhorMes && melhorMes.valorTotal > 0 ? melhorMes.mes : null;
+
+                                            // Extract top 3 other products
+                                            const top3Produtos = curvaABC.slice(1, 4).map(p => p.nome);
+
+                                            const resultado = await gerarAnaliseClienteIA({
+                                                nomeCliente: cliente.nomeFantasia || cliente.razaoSocial,
+                                                faturamento: `R$ ${kpis.faturamentoAno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                                                giroDias: kpis.giroMedioDias,
+                                                diasAusente: kpis.diasAusente,
+                                                produtoMaisComprado: curvaABC.length > 0 ? curvaABC[0].nome : null,
+                                                totalPedidos: kpis.totalPedidos,
+                                                ticketMedio: `R$ ${kpis.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                                                status: cliente.status,
+                                                ano: anoSelecionado,
+                                                mesMaisForte,
+                                                top3Produtos
+                                            });
+                                            if ('texto' in resultado) {
+                                                setAnaliseIA(resultado.texto);
+                                            } else {
+                                                setAnaliseIAErro(resultado.erro);
+                                            }
+                                        } catch {
+                                            setAnaliseIAErro('Erro inesperado ao conectar com a IA.');
+                                        } finally {
+                                            setLoadingIA(false);
+                                        }
+                                    }}
+                                    disabled={!temDados}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600/80 to-indigo-600/80 px-4 py-2 text-xs font-semibold text-white hover:from-violet-500 hover:to-indigo-500 transition-all shadow-lg shadow-violet-900/20 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed print:hidden"
+                                >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    Gerar Análise com IA
+                                </button>
+                            )}
+
+                            {loadingIA && (
+                                <div className="space-y-2.5 animate-pulse print:hidden">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Sparkles className="w-3.5 h-3.5 text-violet-400 animate-spin" />
+                                        <span className="text-xs text-violet-400 font-medium">Gemini está analisando...</span>
+                                    </div>
+                                    <div className="h-3 bg-white/[0.06] rounded-full w-full" />
+                                    <div className="h-3 bg-white/[0.06] rounded-full w-[92%]" />
+                                    <div className="h-3 bg-white/[0.06] rounded-full w-[78%]" />
+                                </div>
+                            )}
+
+                            {analiseIA && (
+                                <div className="relative print:break-inside-avoid">
+                                    <div className="rounded-lg bg-gradient-to-br from-violet-500/[0.08] to-indigo-500/[0.05] border border-violet-500/20 p-4 print:bg-violet-50 print:border-violet-200">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Sparkles className="w-3.5 h-3.5 text-violet-400 print:text-violet-600" />
+                                            <span className="text-[11px] uppercase font-bold tracking-wider text-violet-400 print:text-violet-700">Análise Gemini AI</span>
+                                            <button
+                                                onClick={() => { setAnaliseIA(null); setAnaliseIAErro(null); }}
+                                                className="ml-auto text-[10px] text-slate-500 hover:text-white transition-colors print:hidden"
+                                            >
+                                                Refazer
+                                            </button>
+                                        </div>
+                                        <p className="text-sm text-slate-300 leading-relaxed italic whitespace-pre-wrap print:text-gray-700">
+                                            {analiseIA}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {analiseIAErro && !loadingIA && (
+                                <div className="flex items-center gap-2 mt-2 print:hidden">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                                    <p className="text-xs text-red-400/80">{analiseIAErro}</p>
+                                    <button
+                                        onClick={() => { setAnaliseIAErro(null); }}
+                                        className="text-[10px] text-slate-500 hover:text-white ml-2 transition-colors"
+                                    >
+                                        Tentar novamente
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in" style={{ animationDelay: '0.1s' }}>
                 <div className="bg-white/[0.02] p-4 rounded-xl border border-white/5 shadow-lg shadow-black/10 print:border-gray-200 print:bg-gray-50 print:shadow-none">
                     <div className="flex items-center gap-2 mb-2 text-indigo-400 print:text-indigo-600">
@@ -478,11 +797,12 @@ export default function ClienteRaioXPage({ params }: Props) {
                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent pointer-events-none" />
                     <div className="flex items-center gap-2 mb-2 text-emerald-400 print:text-emerald-600 relative z-10">
                         <BarChart3 className="h-4 w-4" />
-                        <span className="text-[11px] uppercase font-bold tracking-wider text-gray-400 print:text-gray-600">Faturamento (12m)</span>
+                        <span className="text-[11px] uppercase font-bold tracking-wider text-gray-400 print:text-gray-600">Faturamento ({anoSelecionado})</span>
                     </div>
                     <div className="text-2xl font-bold text-emerald-400 print:text-emerald-600 tabular-nums relative z-10">
-                        R$ {kpis.faturamento12m.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {kpis.faturamentoAno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </div>
+                    <p className="text-[10px] text-gray-500 mt-1 relative z-10">Ref. ano {anoSelecionado}</p>
                 </div>
             </div>
 
@@ -493,7 +813,7 @@ export default function ClienteRaioXPage({ params }: Props) {
                         <div className="flex items-center gap-2 mb-1">
                             <div className="w-1 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600 print:bg-emerald-600" />
                             <h3 className="text-base font-semibold text-white/90 tracking-tight print:text-black">
-                                Evolução Financeira — Últimos 12 Meses
+                                Evolução Financeira — {anoSelecionado}
                             </h3>
                         </div>
                     </div>
@@ -546,13 +866,13 @@ export default function ClienteRaioXPage({ params }: Props) {
             <div className="glass-panel rounded-xl overflow-hidden animate-in print:border print:border-gray-300 print:bg-white" style={{ animationDelay: '0.3s' }}>
                 <div className="flex items-center gap-2 p-4 pb-3 border-b border-white/5 print:border-gray-200">
                     <Package className="h-4 w-4 text-indigo-400 print:text-indigo-600" />
-                    <span className="text-sm font-medium text-white print:text-black">Curva ABC Interna (Produtos Consumidos - 12m)</span>
+                    <span className="text-sm font-medium text-white print:text-black">Curva ABC Interna (Produtos Consumidos - {anoSelecionado})</span>
                     <span className="text-xs text-gray-500 ml-auto">{curvaABC.length} produto{curvaABC.length !== 1 ? 's' : ''}</span>
                 </div>
 
                 {curvaABC.length === 0 ? (
                     <div className="p-8 text-center text-gray-500 text-sm">
-                        Nenhuma compra registrada nos últimos 12 meses.
+                        Nenhuma compra registrada em {anoSelecionado}.
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
