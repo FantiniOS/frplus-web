@@ -467,6 +467,8 @@ async function generateRelatorioCampanhaPDF(data: CampanhaData, periodoStr: stri
   const totalAlvo = data.clientes.reduce((a, c) => a + c.quantidadeFaturar, 0);
   const totalRealizado = data.clientes.reduce((a, c) => a + c.realizado, 0);
   const totalBonif = data.clientes.reduce((a, c) => a + c.bonificacaoVinagre, 0);
+  const totalBonifConquistada = data.clientes.reduce((a, c) => a + c.bonificacaoConquistada, 0);
+  const totalEmitida = data.clientes.reduce((a, c) => a + c.bonificacaoEmitida, 0);
   const progressoGeral = totalAlvo > 0 ? Math.round((totalRealizado / totalAlvo) * 100) : 0;
   const clientesAtingidos = data.clientes.filter(c => c.progresso >= 100).length;
 
@@ -654,6 +656,7 @@ async function generateRelatorioCampanhaPDF(data: CampanhaData, periodoStr: stri
     startY: y,
     head: [['#', 'CLIENTE', 'LOCALIDADE', 'ALVO (CX)', 'REALIZ. (CX)', 'PROGRESSO', 'BONIF. (CX)', 'EMITIDA (CX)']],
     body: tableData,
+    foot: [['', 'TOTAIS', '', `${totalAlvo}`, `${totalRealizado}`, `${progressoGeral}%`, `${totalBonifConquistada}`, `${totalEmitida}`]],
     theme: 'plain',
     styles: {
       fontSize: 6.5,
@@ -663,6 +666,13 @@ async function generateRelatorioCampanhaPDF(data: CampanhaData, periodoStr: stri
       lineWidth: 0.2,
     },
     headStyles: {
+      fillColor: C.dark,
+      textColor: C.white,
+      fontStyle: 'bold',
+      fontSize: 6,
+      cellPadding: { top: 3, bottom: 3, left: 2.5, right: 2.5 },
+    },
+    footStyles: {
       fillColor: C.dark,
       textColor: C.white,
       fontStyle: 'bold',
