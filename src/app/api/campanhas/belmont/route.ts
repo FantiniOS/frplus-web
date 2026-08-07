@@ -184,7 +184,7 @@ export async function GET() {
             const mediaBase = mediaAtual < 50 ? 50 : mediaAtual
             const metaCampanha = Math.ceil(mediaBase * 0.25)
             const quantidadeFaturar = Math.ceil(mediaBase + metaCampanha)
-            const bonificacaoVinagre = Math.floor((quantidadeFaturar / 63) * 5)
+            const bonificacaoVinagre = Math.ceil((quantidadeFaturar / 63) * 5)
 
             // Tracking e Conciliação
             const realizado = realizadoPorCliente.get(cliente.id) || 0
@@ -196,7 +196,7 @@ export async function GET() {
             if (clientOrders && quantidadeFaturar > 0) {
                 for (const volumePedido of Array.from(clientOrders.values())) {
                     if (volumePedido >= quantidadeFaturar) {
-                        const bonusDoPedido = Math.floor((volumePedido / 63) * 5)
+                        const bonusDoPedido = Math.ceil((volumePedido / 63) * 5)
                         bonificacaoConquistada += bonusDoPedido
                     }
                 }
