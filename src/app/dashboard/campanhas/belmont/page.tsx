@@ -555,7 +555,7 @@ async function generateRelatorioCampanhaPDF(data: CampanhaData, periodoStr: stri
     { label: 'CLIENTES ATIVOS', value: String(data.totalClientes), sub: `${data.totalZerados} sem historico`, color: C.blue },
     { label: 'VOLUME PROJETADO', value: `${totalAlvo.toLocaleString('pt-BR')} cx`, sub: 'Meta total da campanha', color: C.cyan },
     { label: 'REALIZADO', value: `${totalRealizado.toLocaleString('pt-BR')} cx`, sub: `${progressoGeral}% do alvo`, color: C.green },
-    { label: 'BONIFICACOES', value: `${totalBonif.toLocaleString('pt-BR')} cx`, sub: 'Vinagre a conceder', color: C.purple },
+    { label: 'BONIFICACOES', value: `${totalBonif.toLocaleString('pt-BR')} cx`, sub: totalEmitida > 0 ? `Total previsto (Já entregues: ${totalEmitida})` : 'Provisão total da campanha', color: C.purple },
   ];
 
   kpis.forEach((kpi, i) => {
@@ -1414,8 +1414,8 @@ export default function CampanhaBelmontPage() {
             <h3 className="text-[11px] font-bold uppercase tracking-wider">Bonificações</h3>
           </div>
           <div>
-            <p className="text-3xl font-extrabold text-purple-500">{vinagrePendente.toLocaleString('pt-BR')} <span className="text-xl font-bold text-purple-600">cx</span></p>
-            <p className="text-xs text-slate-500 mt-1">Vinagre a conceder{vinagreEntregue > 0 ? ` (Já entregues: ${vinagreEntregue})` : ''}</p>
+            <p className="text-3xl font-extrabold text-purple-500">{provisaoVinagres.toLocaleString('pt-BR')} <span className="text-xl font-bold text-purple-600">cx</span></p>
+            <p className="text-xs text-slate-500 mt-1">{vinagreEntregue > 0 ? `Total previsto (Já entregues: ${vinagreEntregue})` : 'Provisão total da campanha'}</p>
           </div>
         </div>
       </div>
