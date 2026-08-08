@@ -896,8 +896,9 @@ export default function AIInsightsClient() {
                                                                     <div className="space-y-1.5 bg-black/20 p-2 rounded-lg border border-white/5">
                                                                         <div className="flex justify-between items-center text-xs">
                                                                             <span className="text-gray-500">Última Compra:</span>
-                                                                            <span className="text-gray-200 font-medium ml-2">
+                                                                            <span className="text-gray-200 font-medium ml-2 text-right">
                                                                                 {client.ultimaCompra ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca'}
+                                                                                {client.diasInativo !== null && <span className="text-slate-500 block text-[10px]">há {client.diasInativo} dias</span>}
                                                                             </span>
                                                                         </div>
                                                                         <div className="flex justify-between items-center text-xs">
@@ -906,10 +907,16 @@ export default function AIInsightsClient() {
                                                                                 {client.valorUltimaCompra !== undefined && client.valorUltimaCompra !== null ? formatCurrency(client.valorUltimaCompra) : '-'}
                                                                             </span>
                                                                         </div>
-                                                                        <div className="flex justify-between items-center text-xs">
-                                                                            <span className="text-gray-500">Dias Ausente:</span>
-                                                                            <span className="text-orange-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
-                                                                        </div>
+                                                                        {client.diasInativo !== null && (
+                                                                            <div className="flex justify-between items-center text-xs">
+                                                                                <span className="text-gray-500">Status Comercial:</span>
+                                                                                {client.diasInativo - client.cicloMedioDias > 0 ? (
+                                                                                    <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasInativo - client.cicloMedioDias} dias</span>
+                                                                                ) : (
+                                                                                    <span className="text-green-400 font-medium ml-2">No prazo (Faltam {Math.abs(client.diasInativo - client.cicloMedioDias)} dias)</span>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
                                                                         <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
                                                                             <span className="text-gray-500">Giro Médio Atual:</span>
                                                                             <div className="flex items-center gap-1.5 ml-2">
@@ -1041,8 +1048,9 @@ export default function AIInsightsClient() {
                                                             <div className="space-y-1.5 bg-black/20 p-2 rounded-lg border border-white/5">
                                                                 <div className="flex justify-between items-center text-xs">
                                                                     <span className="text-gray-500">Última Compra:</span>
-                                                                    <span className="text-gray-200 font-medium ml-2">
+                                                                    <span className="text-gray-200 font-medium ml-2 text-right">
                                                                         {client.ultimaCompra ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca'}
+                                                                        {client.diasInativo !== null && <span className="text-slate-500 block text-[10px]">há {client.diasInativo} dias</span>}
                                                                     </span>
                                                                 </div>
                                                                 <div className="flex justify-between items-center text-xs">
@@ -1051,10 +1059,16 @@ export default function AIInsightsClient() {
                                                                         {client.valorUltimaCompra !== undefined && client.valorUltimaCompra !== null ? formatCurrency(client.valorUltimaCompra) : '-'}
                                                                     </span>
                                                                 </div>
-                                                                <div className="flex justify-between items-center text-xs">
-                                                                    <span className="text-gray-500">Dias Ausente:</span>
-                                                                    <span className="text-orange-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
-                                                                </div>
+                                                                {client.diasInativo !== null && (
+                                                                    <div className="flex justify-between items-center text-xs">
+                                                                        <span className="text-gray-500">Status Comercial:</span>
+                                                                        {client.diasInativo - client.cicloMedioDias > 0 ? (
+                                                                            <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasInativo - client.cicloMedioDias} dias</span>
+                                                                        ) : (
+                                                                            <span className="text-green-400 font-medium ml-2">No prazo (Faltam {Math.abs(client.diasInativo - client.cicloMedioDias)} dias)</span>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                                 <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
                                                                     <span className="text-gray-500">Giro Médio Atual:</span>
                                                                     <div className="flex items-center gap-1.5 ml-2">
@@ -1165,8 +1179,9 @@ export default function AIInsightsClient() {
                                                                 <div className="space-y-1.5 bg-black/20 p-2 rounded-lg border border-red-500/10">
                                                                     <div className="flex justify-between items-center text-xs">
                                                                         <span className="text-gray-500">Última Compra:</span>
-                                                                        <span className="text-gray-200 font-medium ml-2">
+                                                                        <span className="text-gray-200 font-medium ml-2 text-right">
                                                                             {client.ultimaCompra ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca'}
+                                                                            {client.diasInativo !== null && <span className="text-slate-500 block text-[10px]">há {client.diasInativo} dias</span>}
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex justify-between items-center text-xs">
@@ -1175,10 +1190,16 @@ export default function AIInsightsClient() {
                                                                             {client.valorUltimaCompra !== undefined && client.valorUltimaCompra !== null ? formatCurrency(client.valorUltimaCompra) : '-'}
                                                                         </span>
                                                                     </div>
-                                                                    <div className="flex justify-between items-center text-xs">
-                                                                        <span className="text-gray-500">Dias Ausente:</span>
-                                                                        <span className="text-red-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
-                                                                    </div>
+                                                                    {client.diasInativo !== null && (
+                                                                        <div className="flex justify-between items-center text-xs">
+                                                                            <span className="text-gray-500">Status Comercial:</span>
+                                                                            {client.diasInativo - client.cicloMedioDias > 0 ? (
+                                                                                <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasInativo - client.cicloMedioDias} dias</span>
+                                                                            ) : (
+                                                                                <span className="text-green-400 font-medium ml-2">No prazo (Faltam {Math.abs(client.diasInativo - client.cicloMedioDias)} dias)</span>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
                                                                     <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
                                                                         <span className="text-gray-500">Giro Médio Atual:</span>
                                                                         <span className="text-blue-400 font-medium ml-2">a cada {client.cicloMedioDias} dias</span>
