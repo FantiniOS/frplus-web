@@ -478,12 +478,20 @@ export default function AIInsightsClient() {
     const LIMITE_RECUPERACAO_DIAS = 100;
 
     const clientesRadarQuente = useMemo(() =>
-        prestesAComprarClients.filter(c => (c.diasInativo ?? 0) <= LIMITE_RECUPERACAO_DIAS),
+        prestesAComprarClients.filter(c => {
+            const diasInativo = c.diasInativo ?? 0;
+            const isChurn = diasInativo > LIMITE_RECUPERACAO_DIAS && diasInativo > c.cicloMedioDias;
+            return !isChurn;
+        }),
         [prestesAComprarClients]
     );
 
     const clientesRecuperacao = useMemo(() =>
-        prestesAComprarClients.filter(c => (c.diasInativo ?? 0) > LIMITE_RECUPERACAO_DIAS),
+        prestesAComprarClients.filter(c => {
+            const diasInativo = c.diasInativo ?? 0;
+            const isChurn = diasInativo > LIMITE_RECUPERACAO_DIAS && diasInativo > c.cicloMedioDias;
+            return isChurn;
+        }),
         [prestesAComprarClients]
     );
 
