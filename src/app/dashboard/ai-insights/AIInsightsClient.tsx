@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users, Download, Eye, FileDown } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users, Download, Eye, FileDown, Activity } from 'lucide-react';
 import { MessageModal } from '@/components/dashboard/MessageModal';
 import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
 import ExpansionProposalGenerator from './ExpansionProposalGenerator';
@@ -26,6 +26,7 @@ interface PrestesAComprarClient {
     cicloMedioDias: number;
     cicloAjustado?: number;
     diasAteProximaCompra?: number;
+    diasDeAntecedencia?: number;
     confiancaCiclo: 'alta' | 'media' | 'baixa';
     totalGasto: number;
     totalPedidos: number;
@@ -473,8 +474,21 @@ export default function AIInsightsClient() {
         baixa: 'bg-green-500/10 text-green-400 border-green-500/20'
     };
 
+    // ---- SPLIT: Radar Quente (≤100d) vs Recuperação (>100d) ----
+    const LIMITE_RECUPERACAO_DIAS = 100;
+
+    const clientesRadarQuente = useMemo(() =>
+        prestesAComprarClients.filter(c => (c.diasInativo ?? 0) <= LIMITE_RECUPERACAO_DIAS),
+        [prestesAComprarClients]
+    );
+
+    const clientesRecuperacao = useMemo(() =>
+        prestesAComprarClients.filter(c => (c.diasInativo ?? 0) > LIMITE_RECUPERACAO_DIAS),
+        [prestesAComprarClients]
+    );
+
     const tabs = [
-        { id: 'prestesAComprar' as const, label: 'Prestes a Comprar', icon: Sparkles, color: 'text-green-400', count: summaries.prestesAComprar.total },
+        { id: 'prestesAComprar' as const, label: 'Prestes a Comprar', icon: Sparkles, color: 'text-green-400', count: clientesRadarQuente.length + clientesRecuperacao.length },
         { id: 'opportunities' as const, label: 'Oportunidades', icon: Lightbulb, color: 'text-yellow-400', count: summaries.opportunities.total },
         { id: 'campaigns' as const, label: 'Campanhas', icon: Megaphone, color: 'text-purple-400', count: 0 },
         { id: 'expansion' as const, label: 'Propostas VIP', icon: Target, color: 'text-blue-400', count: 0 },
@@ -739,7 +753,7 @@ export default function AIInsightsClient() {
                                         <span className="text-sm font-semibold text-white uppercase tracking-wider">Regra de Exibição</span>
                                     </div>
                                     <p className="text-sm text-gray-400">
-                                        Esta lista é <strong className="text-white">100% baseada em matemática</strong> e não possui limite de quantidade. Exibimos clientes <strong className="text-white">Ativos</strong> que estão há <strong>mais dias sem comprar do que 90% do seu Giro Médio</strong> (margem de 10% de antecedência). O giro é calculado com <strong className="text-cyan-400">Média Móvel Ponderada</strong> — pedidos recentes (≤90 dias) têm peso 3× maior.
+                                        Esta lista é <strong className="text-white">100% baseada em matemática</strong> e não possui limite de quantidade. O giro é calculado com <strong className="text-cyan-400">Média Simples</strong> dos últimos <strong className="text-white">3-4 pedidos</strong> (adaptação rápida). O cliente aparece quando: <strong className="text-white">dias ausente ≥ (giro − antecedência)</strong>. A antecedência é <strong className="text-cyan-400">15% do giro, máximo 7 dias</strong>.
                                     </p>
                                 </div>
 
@@ -907,6 +921,10 @@ export default function AIInsightsClient() {
                                                                                 <span className="text-purple-400 font-medium ml-2">{client.cicloAjustado} dias</span>
                                                                             </div>
                                                                         )}
+                                                                        <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
+                                                                            <span className="text-gray-500">Antecedência Radar:</span>
+                                                                            <span className="text-cyan-400 font-medium ml-2">{client.diasDeAntecedencia ?? Math.min(Math.floor(client.cicloMedioDias * 0.15), 7)} dias</span>
+                                                                        </div>
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-4 py-3 text-center hidden md:table-cell">
@@ -915,24 +933,32 @@ export default function AIInsightsClient() {
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-4 py-3 text-right">
-                                                                    <button
-                                                                        onClick={() => handleGenerateAIMessage(
-                                                                            client.id,
-                                                                            client.contextoParaIA,
-                                                                            client.diasInativo !== null ? client.diasInativo : undefined,
-                                                                            client.nomeCliente,
-                                                                            client.nomeRepresentada
-                                                                        )}
-                                                                        disabled={generatingMessageFor === client.id}
-                                                                        className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
-                                                                    >
-                                                                        {generatingMessageFor === client.id ? (
-                                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                                        ) : (
-                                                                            <Bot className="h-4 w-4" />
-                                                                        )}
-                                                                        Gerar Lembrete de Pedido
-                                                                    </button>
+                                                                    <div className="flex flex-col items-end gap-2">
+                                                                        <Link href={`/dashboard/clientes/${client.id}/raio-x`}>
+                                                                            <button className="px-4 py-1.5 rounded-lg bg-cyan-600/20 text-cyan-400 text-sm font-medium hover:bg-cyan-600/30 transition-colors inline-flex items-center gap-2">
+                                                                                <Activity className="h-4 w-4" />
+                                                                                Raio X
+                                                                            </button>
+                                                                        </Link>
+                                                                        <button
+                                                                            onClick={() => handleGenerateAIMessage(
+                                                                                client.id,
+                                                                                client.contextoParaIA,
+                                                                                client.diasInativo !== null ? client.diasInativo : undefined,
+                                                                                client.nomeCliente,
+                                                                                client.nomeRepresentada
+                                                                            )}
+                                                                            disabled={generatingMessageFor === client.id}
+                                                                            className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+                                                                        >
+                                                                            {generatingMessageFor === client.id ? (
+                                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                                            ) : (
+                                                                                <Bot className="h-4 w-4" />
+                                                                            )}
+                                                                            Gerar Lembrete de Pedido
+                                                                        </button>
+                                                                    </div>
                                                                 </td>
                                                             </tr>
                                                         );
@@ -951,14 +977,18 @@ export default function AIInsightsClient() {
                                 {/* Normal radar view (show when no individual client is selected, or when selected client IS in radar) */}
                                 {!consultaIndividualLoading && (clienteIdSelecionado === '' || prestesAComprarClients.some(c => c.id === clienteIdSelecionado)) && (
                                     <>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="p-3 rounded-lg bg-white/5 text-center">
-                                        <p className="text-2xl font-bold text-white">{summaries.prestesAComprar.total}</p>
+                                        <p className="text-2xl font-bold text-white">{clientesRadarQuente.length + clientesRecuperacao.length}</p>
                                         <p className="text-xs text-gray-400">Total na Janela</p>
                                     </div>
                                     <div className="p-3 rounded-lg bg-green-500/10 text-center">
-                                        <p className="text-2xl font-bold text-green-400">{summaries.prestesAComprar.total}</p>
-                                        <p className="text-xs text-gray-400">Prontos para Comprar</p>
+                                        <p className="text-2xl font-bold text-green-400">{clientesRadarQuente.length}</p>
+                                        <p className="text-xs text-gray-400">Radar Quente (≤100d)</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-red-500/10 text-center">
+                                        <p className="text-2xl font-bold text-red-400">{clientesRecuperacao.length}</p>
+                                        <p className="text-xs text-gray-400">Recuperação (+100d)</p>
                                     </div>
                                 </div>
 
@@ -975,7 +1005,7 @@ export default function AIInsightsClient() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
-                                            {(clienteIdSelecionado === '' ? prestesAComprarClients : prestesAComprarClients.filter(c => c.id === clienteIdSelecionado)).map(client => {
+                                            {(clienteIdSelecionado === '' ? clientesRadarQuente : clientesRadarQuente.filter(c => c.id === clienteIdSelecionado)).map(client => {
                                                 const maxWindow = client.cicloMedioDias + 5;
                                                 const diasRestantes = client.diasInativo !== null ? maxWindow - client.diasInativo : 0;
                                                 const alertaColor = diasRestantes <= 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-green-500/20 text-green-400 border-green-500/40';
@@ -1036,6 +1066,10 @@ export default function AIInsightsClient() {
                                                                         <span className="text-purple-400 font-medium ml-2">{client.cicloAjustado} dias</span>
                                                                     </div>
                                                                 )}
+                                                                <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
+                                                                    <span className="text-gray-500">Antecedência Radar:</span>
+                                                                    <span className="text-cyan-400 font-medium ml-2">{client.diasDeAntecedencia ?? Math.min(Math.floor(client.cicloMedioDias * 0.15), 7)} dias</span>
+                                                                </div>
                                                             </div>
                                                         </td>
                                                         <td className="px-4 py-3 text-center hidden md:table-cell">
@@ -1044,34 +1078,140 @@ export default function AIInsightsClient() {
                                                             </span>
                                                         </td>
                                                         <td className="px-4 py-3 text-right">
-                                                            <button
-                                                                onClick={() => handleGenerateAIMessage(
-                                                                    client.id, 
-                                                                    client.contextoParaIA, 
-                                                                    client.diasInativo !== null ? client.diasInativo : undefined, 
-                                                                    client.nomeCliente, 
-                                                                    client.nomeRepresentada
-                                                                )}
-                                                                disabled={generatingMessageFor === client.id}
-                                                                className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
-                                                            >
-                                                                {generatingMessageFor === client.id ? (
-                                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                                ) : (
-                                                                    <Bot className="h-4 w-4" />
-                                                                )}
-                                                                Gerar Lembrete de Pedido
-                                                            </button>
+                                                            <div className="flex flex-col items-end gap-2">
+                                                                <Link href={`/dashboard/clientes/${client.id}/raio-x`}>
+                                                                    <button className="px-4 py-1.5 rounded-lg bg-cyan-600/20 text-cyan-400 text-sm font-medium hover:bg-cyan-600/30 transition-colors inline-flex items-center gap-2">
+                                                                        <Activity className="h-4 w-4" />
+                                                                        Raio X
+                                                                    </button>
+                                                                </Link>
+                                                                <button
+                                                                    onClick={() => handleGenerateAIMessage(
+                                                                        client.id, 
+                                                                        client.contextoParaIA, 
+                                                                        client.diasInativo !== null ? client.diasInativo : undefined, 
+                                                                        client.nomeCliente, 
+                                                                        client.nomeRepresentada
+                                                                    )}
+                                                                    disabled={generatingMessageFor === client.id}
+                                                                    className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+                                                                >
+                                                                    {generatingMessageFor === client.id ? (
+                                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Bot className="h-4 w-4" />
+                                                                    )}
+                                                                    Gerar Lembrete de Pedido
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 );
                                             })}
                                         </tbody>
                                     </table>
-                                    {prestesAComprarClients.length === 0 && (
-                                        <p className="text-center text-gray-500 py-8">Nenhum cliente prestes a comprar no momento</p>
+                                    {clientesRadarQuente.length === 0 && (
+                                        <p className="text-center text-gray-500 py-8">Nenhum cliente no radar quente no momento</p>
                                     )}
                                 </div>
+
+                                {/* ====== BLOCO 2: ALERTA DE CHURN — RECUPERAÇÃO (+100 DIAS) ====== */}
+                                {clienteIdSelecionado === '' && clientesRecuperacao.length > 0 && (
+                                    <div className="mt-8 space-y-4">
+                                        <div className="flex flex-col gap-2 pb-4 border-b border-red-500/30">
+                                            <div className="flex items-center gap-2">
+                                                <AlertTriangle className="h-5 w-5 text-red-400" />
+                                                <span className="text-sm font-semibold text-red-400 uppercase tracking-wider">Alerta de Churn: Clientes Inativos (+100 dias)</span>
+                                            </div>
+                                            <p className="text-sm text-gray-400">
+                                                Clientes abaixo estão há <strong className="text-red-400">mais de 100 dias</strong> sem comprar. Estes contatos têm caráter de <strong className="text-white">recuperação de carteira</strong>, não de rotina comercial.
+                                            </p>
+                                        </div>
+
+                                        <div className="overflow-x-auto rounded-xl border border-red-500/20 bg-red-900/10">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-red-500/10 text-xs uppercase text-red-300">
+                                                    <tr>
+                                                        <th className="px-4 py-3 text-left">Cliente</th>
+                                                        <th className="px-4 py-3 text-left hidden lg:table-cell">Vendedor</th>
+                                                        <th className="px-4 py-3 text-left hidden sm:table-cell">Região</th>
+                                                        <th className="px-4 py-3 text-left">Situação</th>
+                                                        <th className="px-4 py-3 text-center">Ações</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-red-500/10">
+                                                    {clientesRecuperacao.map(client => (
+                                                        <tr key={client.id} className="hover:bg-red-500/5">
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                    <p className="font-medium text-white">{client.nomeFantasia}</p>
+                                                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-500/20 text-red-400 border border-red-500/30 break-normal whitespace-nowrap">
+                                                                        Inativo há {client.diasInativo} dias
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-gray-500">{client.razaoSocial}</p>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-gray-300 hidden lg:table-cell text-xs">{client.vendedorNome || 'Sem Vendedor Vinculado'}</td>
+                                                            <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="space-y-1.5 bg-black/20 p-2 rounded-lg border border-red-500/10">
+                                                                    <div className="flex justify-between items-center text-xs">
+                                                                        <span className="text-gray-500">Última Compra:</span>
+                                                                        <span className="text-gray-200 font-medium ml-2">
+                                                                            {client.ultimaCompra ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center text-xs">
+                                                                        <span className="text-gray-500">Valor Última Venda:</span>
+                                                                        <span className="text-green-400 font-medium ml-2">
+                                                                            {client.valorUltimaCompra !== undefined && client.valorUltimaCompra !== null ? formatCurrency(client.valorUltimaCompra) : '-'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center text-xs">
+                                                                        <span className="text-gray-500">Dias Ausente:</span>
+                                                                        <span className="text-red-400 font-bold ml-2">{client.diasInativo !== null ? client.diasInativo : '∞'} dias</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
+                                                                        <span className="text-gray-500">Giro Médio Atual:</span>
+                                                                        <span className="text-blue-400 font-medium ml-2">a cada {client.cicloMedioDias} dias</span>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <div className="flex flex-col items-end gap-2">
+                                                                    <Link href={`/dashboard/clientes/${client.id}/raio-x`}>
+                                                                        <button className="px-4 py-1.5 rounded-lg bg-cyan-600/20 text-cyan-400 text-sm font-medium hover:bg-cyan-600/30 transition-colors inline-flex items-center gap-2">
+                                                                            <Activity className="h-4 w-4" />
+                                                                            Raio X
+                                                                        </button>
+                                                                    </Link>
+                                                                    <button
+                                                                        onClick={() => handleGenerateAIMessage(
+                                                                            client.id,
+                                                                            client.contextoParaIA,
+                                                                            client.diasInativo !== null ? client.diasInativo : undefined,
+                                                                            client.nomeCliente,
+                                                                            client.nomeRepresentada
+                                                                        )}
+                                                                        disabled={generatingMessageFor === client.id}
+                                                                        className="px-4 py-1.5 rounded-lg bg-red-600/20 text-red-400 text-sm font-medium hover:bg-red-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+                                                                    >
+                                                                        {generatingMessageFor === client.id ? (
+                                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                                        ) : (
+                                                                            <Bot className="h-4 w-4" />
+                                                                        )}
+                                                                        Recuperar Cliente
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                                     </>
                                 )}
                             </div>

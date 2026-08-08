@@ -11,6 +11,7 @@ interface PrestesClient {
     telefone: string;
     cicloMedioDias: number;
     diasInativo: number;
+    diasDeAntecedencia?: number;
 }
 
 interface Opportunity {
