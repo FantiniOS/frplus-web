@@ -910,10 +910,10 @@ export default function AIInsightsClient() {
                                                                         {client.diasInativo !== null && (
                                                                             <div className="flex justify-between items-center text-xs">
                                                                                 <span className="text-gray-500">Status Comercial:</span>
-                                                                                {client.diasInativo - client.cicloMedioDias > 0 ? (
-                                                                                    <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasInativo - client.cicloMedioDias} dias</span>
+                                                                                {client.statusCiclo === 'ATRASADO' ? (
+                                                                                    <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasDeAtraso} dias</span>
                                                                                 ) : (
-                                                                                    <span className="text-green-400 font-medium ml-2">No prazo (Faltam {Math.abs(client.diasInativo - client.cicloMedioDias)} dias)</span>
+                                                                                    <span className="text-green-400 font-medium ml-2">No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - client.diasInativo)} dias)</span>
                                                                                 )}
                                                                             </div>
                                                                         )}
@@ -1062,10 +1062,10 @@ export default function AIInsightsClient() {
                                                                 {client.diasInativo !== null && (
                                                                     <div className="flex justify-between items-center text-xs">
                                                                         <span className="text-gray-500">Status Comercial:</span>
-                                                                        {client.diasInativo - client.cicloMedioDias > 0 ? (
-                                                                            <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasInativo - client.cicloMedioDias} dias</span>
+                                                                        {client.statusCiclo === 'ATRASADO' ? (
+                                                                            <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasDeAtraso} dias</span>
                                                                         ) : (
-                                                                            <span className="text-green-400 font-medium ml-2">No prazo (Faltam {Math.abs(client.diasInativo - client.cicloMedioDias)} dias)</span>
+                                                                            <span className="text-green-400 font-medium ml-2">No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - client.diasInativo)} dias)</span>
                                                                         )}
                                                                     </div>
                                                                 )}
@@ -1193,10 +1193,10 @@ export default function AIInsightsClient() {
                                                                     {client.diasInativo !== null && (
                                                                         <div className="flex justify-between items-center text-xs">
                                                                             <span className="text-gray-500">Status Comercial:</span>
-                                                                            {client.diasInativo - client.cicloMedioDias > 0 ? (
-                                                                                <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasInativo - client.cicloMedioDias} dias</span>
+                                                                            {client.statusCiclo === 'ATRASADO' ? (
+                                                                                <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasDeAtraso} dias</span>
                                                                             ) : (
-                                                                                <span className="text-green-400 font-medium ml-2">No prazo (Faltam {Math.abs(client.diasInativo - client.cicloMedioDias)} dias)</span>
+                                                                                <span className="text-green-400 font-medium ml-2">No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - client.diasInativo)} dias)</span>
                                                                             )}
                                                                         </div>
                                                                     )}
