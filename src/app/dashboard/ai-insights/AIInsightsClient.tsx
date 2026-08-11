@@ -880,7 +880,7 @@ export default function AIInsightsClient() {
                                                                         <p className="font-medium text-white">{client.nomeFantasia}</p>
                                                                         {client.statusCiclo === 'ATRASADO' ? (
                                                                             <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 break-normal whitespace-nowrap">
-                                                                                Atrasado {client.diasDeAtraso} {client.diasDeAtraso === 1 ? 'dia' : 'dias'}
+                                                                                Ausente {client.diasDeAtraso} {client.diasDeAtraso === 1 ? 'dia' : 'dias'}
                                                                             </span>
                                                                         ) : (
                                                                             <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-green-500/20 text-green-400 border border-green-500/30 break-normal whitespace-nowrap">
@@ -911,7 +911,7 @@ export default function AIInsightsClient() {
                                                                             <div className="flex justify-between items-center text-xs">
                                                                                 <span className="text-gray-500">Status Comercial:</span>
                                                                                 {client.statusCiclo === 'ATRASADO' ? (
-                                                                                    <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasDeAtraso} dias</span>
+                                                                                    <span className="text-red-400 font-bold ml-2">Ausente há {client.diasDeAtraso} dias</span>
                                                                                 ) : (
                                                                                     <span className="text-green-400 font-medium ml-2">No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - client.diasInativo)} dias)</span>
                                                                                 )}
@@ -1032,7 +1032,7 @@ export default function AIInsightsClient() {
                                                                 <p className="font-medium text-white">{client.nomeFantasia}</p>
                                                                 {client.statusCiclo === 'ATRASADO' ? (
                                                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 break-normal whitespace-nowrap">
-                                                                        Atrasado {client.diasDeAtraso} {client.diasDeAtraso === 1 ? 'dia' : 'dias'}
+                                                                        Ausente {client.diasDeAtraso} {client.diasDeAtraso === 1 ? 'dia' : 'dias'}
                                                                     </span>
                                                                 ) : (
                                                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 break-normal whitespace-nowrap">
@@ -1063,7 +1063,7 @@ export default function AIInsightsClient() {
                                                                     <div className="flex justify-between items-center text-xs">
                                                                         <span className="text-gray-500">Status Comercial:</span>
                                                                         {client.statusCiclo === 'ATRASADO' ? (
-                                                                            <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasDeAtraso} dias</span>
+                                                                            <span className="text-red-400 font-bold ml-2">Ausente há {client.diasDeAtraso} dias</span>
                                                                         ) : (
                                                                             <span className="text-green-400 font-medium ml-2">No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - client.diasInativo)} dias)</span>
                                                                         )}
@@ -1194,7 +1194,7 @@ export default function AIInsightsClient() {
                                                                         <div className="flex justify-between items-center text-xs">
                                                                             <span className="text-gray-500">Status Comercial:</span>
                                                                             {client.statusCiclo === 'ATRASADO' ? (
-                                                                                <span className="text-red-400 font-bold ml-2">Atrasado há {client.diasDeAtraso} dias</span>
+                                                                                <span className="text-red-400 font-bold ml-2">Ausente há {client.diasDeAtraso} dias</span>
                                                                             ) : (
                                                                                 <span className="text-green-400 font-medium ml-2">No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - client.diasInativo)} dias)</span>
                                                                             )}
