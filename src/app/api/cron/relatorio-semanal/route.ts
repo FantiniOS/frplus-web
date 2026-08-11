@@ -58,10 +58,10 @@ export async function GET(request: Request) {
         
         const totalPedidosSemana = qtdePedidosVenda + qtdePedidosBonif;
 
-        // Produto Mais Vendido (Curva A da Semana) - Apenas Vendas
+        // Top 3 Produtos Mais Vendidos (Curva ABC da Semana) - Apenas Vendas
         const itensGroup = await prisma.itemPedido.groupBy({
             by: ['produtoId'],
-            _sum: { quantidade: true },
+            _sum: { quantidade: true, total: true },
             where: {
                 pedido: {
                     dataFaturamento: { gte: startOfWeek, lte: now },
@@ -70,15 +70,19 @@ export async function GET(request: Request) {
                 }
             },
             orderBy: { _sum: { quantidade: 'desc' } },
-            take: 1
+            take: 3
         });
 
-        let nomeProdutoDestaque = 'Nenhum produto vendido';
-        let qtdeProdutoDestaque = 0;
-        if (itensGroup.length > 0) {
-            const prod = await prisma.produto.findUnique({ where: { id: itensGroup[0].produtoId } });
-            nomeProdutoDestaque = prod ? prod.nome : '-';
-            qtdeProdutoDestaque = itensGroup[0]._sum.quantidade || 0;
+        const topProdutos = [];
+        for (const p of itensGroup) {
+            const prod = await prisma.produto.findUnique({ where: { id: p.produtoId } });
+            if (prod) {
+                topProdutos.push({
+                    nome: prod.nome,
+                    quantidade: p._sum.quantidade || 0,
+                    valor: p._sum.total ? Number(p._sum.total) : 0
+                });
+            }
         }
 
         // Top 3 Clientes da Semana - Apenas Vendas
@@ -216,16 +220,23 @@ export async function GET(request: Request) {
                         </table>
                     ` : '<p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">Nenhuma venda registrada na semana.</p>'}
 
-                    <!-- Curva A -->
-                    <h3 style="margin: 0 0 15px 0; color: #f8fafc; font-size: 16px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; display: inline-block;">🔥 Curva A (Mais Vendido)</h3>
-                    <table width="100%" cellpadding="15" cellspacing="0" border="0" style="margin-bottom: 20px; background-color: #0f172a; border-left: 4px solid #3b82f6; border-radius: 0 4px 4px 0; border-top: 1px solid #334155; border-right: 1px solid #334155; border-bottom: 1px solid #334155;">
-                        <tr>
-                            <td>
-                                <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: bold; color: #f8fafc;">${nomeProdutoDestaque}</p>
-                                <p style="margin: 0; font-size: 13px; color: #94a3b8;">${qtdeProdutoDestaque} unidades vendidas na semana</p>
-                            </td>
-                        </tr>
-                    </table>
+                    <!-- Curva ABC -->
+                    <h3 style="margin: 0 0 15px 0; color: #f8fafc; font-size: 16px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; display: inline-block;">🔥 Curva ABC (Mais Vendidos)</h3>
+                    ${topProdutos.length > 0 ? `
+                        <table width="100%" cellpadding="12" cellspacing="0" border="0" style="margin-bottom: 20px; border-collapse: collapse; background-color: #0f172a; border-radius: 6px; overflow: hidden; border: 1px solid #334155;">
+                            ${topProdutos.map((p, i) => `
+                                <tr>
+                                    <td style="border-bottom: ${i === topProdutos.length - 1 ? 'none' : '1px solid #334155'}; color: #cbd5e1; font-size: 14px;">
+                                        <strong style="color: #3b82f6;">#${i + 1}</strong> &nbsp;${p.nome}<br/>
+                                        <span style="font-size: 12px; color: #94a3b8; margin-left: 20px;">${p.quantidade} caixas</span>
+                                    </td>
+                                    <td style="border-bottom: ${i === topProdutos.length - 1 ? 'none' : '1px solid #334155'}; text-align: right; color: #f8fafc; font-weight: bold; font-size: 14px; vertical-align: middle;">
+                                        ${formatCurrency(p.valor)}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    ` : '<p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">Nenhum produto vendido na semana.</p>'}
 
                     <!-- Rodapé Profissional -->
                     <div style="margin-top: 40px; text-align: center; border-top: 1px solid #334155; padding-top: 25px;">
