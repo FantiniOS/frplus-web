@@ -13,8 +13,11 @@ export async function GET(request: Request) {
 
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(startOfWeek.getDate() - 7);
+        
+        // Calculo da Segunda-feira da semana corrente (00:00:00)
+        const dayOfWeek = now.getDay();
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday, 0, 0, 0, 0);
 
         // BLOCO 1: Termômetro Mensal (Apenas Vendas)
         const aggregateMes = await prisma.pedido.aggregate({
@@ -61,6 +64,14 @@ export async function GET(request: Request) {
         const formatDate = (date: Date) => 
             new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(date);
 
+        const formatDateWithDay = (date: Date) => {
+            const shortDate = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(date);
+            const dayName = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(date);
+            // dayName vira "seg.", capitalizamos a primeira letra e tiramos o ponto
+            const cleanDay = dayName.replace('.', '').charAt(0).toUpperCase() + dayName.replace('.', '').slice(1);
+            return `${cleanDay}, ${shortDate}`;
+        };
+
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://frplus-web.vercel.app';
 
         // HTML Email Template
@@ -96,7 +107,7 @@ export async function GET(request: Request) {
 
                     <!-- BLOCO 3: Nota Explicativa (Subtitulo da Semana) -->
                     <h3 style="margin: 0 0 15px 0; color: #f8fafc; font-size: 18px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; display: inline-block;">
-                        Desempenho da Semana <span style="font-size: 14px; font-weight: normal; color: #94a3b8; margin-left: 10px;">(${formatDate(startOfWeek)} a ${formatDate(now)})</span>
+                        Desempenho da Semana <span style="font-size: 14px; font-weight: normal; color: #94a3b8; margin-left: 10px;">(${formatDateWithDay(startOfWeek)} a ${formatDateWithDay(now)})</span>
                     </h3>
 
                     <!-- BLOCO 2: Resumo da Semana -->
