@@ -13,63 +13,47 @@ export async function GET(request: Request) {
 
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        
-        // Define common filter for "Fechamento Mensal" exactly as Dashboard
-        const filterWhere = {
-            dataFaturamento: { gte: startOfMonth, lte: now },
-            status: { in: ['Faturado', 'Concluido'] },
-            tipo: { not: 'Bonificacao' }
-        };
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(startOfWeek.getDate() - 7);
 
-        // 1. Pedidos (Total Faturado e Quantidade)
-        const aggregatePedidos = await prisma.pedido.aggregate({
+        // BLOCO 1: Termômetro Mensal (Apenas Vendas)
+        const aggregateMes = await prisma.pedido.aggregate({
+            _sum: { valorTotal: true },
+            where: {
+                dataFaturamento: { gte: startOfMonth, lte: now },
+                status: { in: ['Faturado', 'Concluido'] },
+                tipo: 'Venda'
+            }
+        });
+        const totalFaturadoMes = aggregateMes._sum.valorTotal ? Number(aggregateMes._sum.valorTotal) : 0;
+
+        // BLOCO 2: Faturamento da Semana (Apenas Vendas)
+        const aggregateSemanaVendas = await prisma.pedido.aggregate({
             _sum: { valorTotal: true },
             _count: { id: true },
-            where: filterWhere
-        });
-
-        const totalFaturado = aggregatePedidos._sum.valorTotal ? Number(aggregatePedidos._sum.valorTotal) : 0;
-        const qtdePedidos = aggregatePedidos._count.id;
-        const ticketMedio = qtdePedidos > 0 ? totalFaturado / qtdePedidos : 0;
-
-        // 2. Produto Mais Vendido (Curva A) - Alinhado
-        const itensGroup = await prisma.itemPedido.groupBy({
-            by: ['produtoId'],
-            _sum: { quantidade: true },
             where: {
-                pedido: filterWhere
-            },
-            orderBy: { _sum: { quantidade: 'desc' } },
-            take: 1
-        });
-
-        let nomeProdutoDestaque = 'Nenhum produto vendido';
-        let qtdeProdutoDestaque = 0;
-        if (itensGroup.length > 0) {
-            const prod = await prisma.produto.findUnique({ where: { id: itensGroup[0].produtoId } });
-            nomeProdutoDestaque = prod ? prod.nome : '-';
-            qtdeProdutoDestaque = itensGroup[0]._sum.quantidade || 0;
-        }
-
-        // 3. Top 3 Clientes - Alinhado
-        const clientesGroup = await prisma.pedido.groupBy({
-            by: ['clienteId'],
-            _sum: { valorTotal: true },
-            where: filterWhere,
-            orderBy: { _sum: { valorTotal: 'desc' } },
-            take: 3
-        });
-
-        const topClientes = [];
-        for (const c of clientesGroup) {
-            const cli = await prisma.cliente.findUnique({ where: { id: c.clienteId } });
-            if (cli) {
-                topClientes.push({
-                    nome: cli.nomeFantasia || cli.razaoSocial,
-                    valor: c._sum.valorTotal ? Number(c._sum.valorTotal) : 0
-                });
+                dataFaturamento: { gte: startOfWeek, lte: now },
+                status: { in: ['Faturado', 'Concluido'] },
+                tipo: 'Venda'
             }
-        }
+        });
+        const totalFaturadoSemana = aggregateSemanaVendas._sum.valorTotal ? Number(aggregateSemanaVendas._sum.valorTotal) : 0;
+        const qtdePedidosVenda = aggregateSemanaVendas._count.id;
+
+        // BLOCO 2: Bonificações da Semana
+        const aggregateSemanaBonif = await prisma.pedido.aggregate({
+            _sum: { valorTotal: true },
+            _count: { id: true },
+            where: {
+                dataFaturamento: { gte: startOfWeek, lte: now },
+                status: { in: ['Faturado', 'Concluido'] },
+                tipo: 'Bonificacao'
+            }
+        });
+        const totalBonificacaoSemana = aggregateSemanaBonif._sum.valorTotal ? Number(aggregateSemanaBonif._sum.valorTotal) : 0;
+        const qtdePedidosBonif = aggregateSemanaBonif._count.id;
+        
+        const totalPedidosSemana = qtdePedidosVenda + qtdePedidosBonif;
 
         const formatCurrency = (val: number) => 
             new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -79,13 +63,13 @@ export async function GET(request: Request) {
 
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://frplus-web.vercel.app';
 
-        // HTML Mini-Dashboard (Dark Theme, Table-based)
+        // HTML Email Template
         const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resumo do Mês Atual - FRPlus</title>
+    <title>Resumo Semanal - FRPlus</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #0f172a; -webkit-font-smoothing: antialiased;">
     <div style="background-color: #0f172a; padding: 30px 10px;">
@@ -95,73 +79,63 @@ export async function GET(request: Request) {
                     <!-- Cabecalho -->
                     <div style="text-align: center; border-bottom: 1px solid #334155; padding-bottom: 25px; margin-bottom: 25px;">
                         <img src="${baseUrl}/logo.png" alt="FRPlus Logo" style="max-height: 50px; margin-bottom: 20px; display: inline-block;" />
-                        <h2 style="margin: 0; color: #f8fafc; font-size: 24px; font-weight: normal;">Resumo do Mês Atual <span style="color: #3b82f6;">FRPlus</span></h2>
-                        <p style="margin: 10px 0 0 0; color: #94a3b8; font-size: 14px;">Período: ${formatDate(startOfMonth)} a ${formatDate(now)}</p>
+                        <h2 style="margin: 0; color: #f8fafc; font-size: 24px; font-weight: normal;">Relatório Semanal <span style="color: #3b82f6;">FRPlus</span></h2>
                     </div>
 
-                    <!-- Faturamento Único e Consolidado -->
-                    <table width="100%" cellpadding="15" cellspacing="0" border="0" style="margin-bottom: 20px; background-color: #0f172a; border-radius: 6px; border: 1px solid #334155; text-align: center;">
+                    <!-- BLOCO 1: Termômetro Mensal -->
+                    <table width="100%" cellpadding="15" cellspacing="0" border="0" style="margin-bottom: 30px; background-color: #0f172a; border-radius: 6px; border: 1px solid #334155; border-left: 4px solid #10b981; text-align: left;">
                         <tr>
                             <td>
-                                <p style="margin: 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Faturamento Total do Mês</p>
-                                <p style="margin: 8px 0 0 0; font-size: 26px; font-weight: bold; color: #3b82f6;">${formatCurrency(totalFaturado)}</p>
+                                <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Termômetro Mensal</p>
+                                <p style="margin: 8px 0 0 0; font-size: 22px; font-weight: bold; color: #f8fafc;">
+                                    Faturamento Acumulado: <span style="color: #10b981;">${formatCurrency(totalFaturadoMes)}</span>
+                                </p>
                             </td>
                         </tr>
                     </table>
 
-                    <!-- Caixas Secundárias -->
+                    <!-- BLOCO 3: Nota Explicativa (Subtitulo da Semana) -->
+                    <h3 style="margin: 0 0 15px 0; color: #f8fafc; font-size: 18px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; display: inline-block;">
+                        Desempenho da Semana <span style="font-size: 14px; font-weight: normal; color: #94a3b8; margin-left: 10px;">(${formatDate(startOfWeek)} a ${formatDate(now)})</span>
+                    </h3>
+
+                    <!-- BLOCO 2: Resumo da Semana -->
                     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 30px;">
                         <tr>
-                            <!-- Pedidos -->
-                            <td width="49%" valign="top">
+                            <!-- Vendas -->
+                            <td width="32%" valign="top">
                                 <table width="100%" cellpadding="15" cellspacing="0" border="0" style="background-color: #0f172a; border-radius: 6px; border: 1px solid #334155;">
                                     <tr>
                                         <td align="center">
-                                            <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Pedidos Faturados</p>
-                                            <p style="margin: 8px 0 0 0; font-size: 18px; font-weight: bold; color: #f8fafc;">${qtdePedidos}</p>
+                                            <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">💰 Vendas</p>
+                                            <p style="margin: 8px 0 0 0; font-size: 16px; font-weight: bold; color: #3b82f6;">${formatCurrency(totalFaturadoSemana)}</p>
                                         </td>
                                     </tr>
                                 </table>
                             </td>
                             <td width="2%">&nbsp;</td> <!-- Espacador -->
-                            <!-- Ticket Medio -->
-                            <td width="49%" valign="top">
+                            <!-- Bonificações -->
+                            <td width="32%" valign="top">
                                 <table width="100%" cellpadding="15" cellspacing="0" border="0" style="background-color: #0f172a; border-radius: 6px; border: 1px solid #334155;">
                                     <tr>
                                         <td align="center">
-                                            <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Ticket Médio</p>
-                                            <p style="margin: 8px 0 0 0; font-size: 18px; font-weight: bold; color: #f8fafc;">${formatCurrency(ticketMedio)}</p>
+                                            <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">🎁 Bonificações</p>
+                                            <p style="margin: 8px 0 0 0; font-size: 16px; font-weight: bold; color: #f43f5e;">${formatCurrency(totalBonificacaoSemana)}</p>
                                         </td>
                                     </tr>
                                 </table>
                             </td>
-                        </tr>
-                    </table>
-
-                    <!-- Top Clientes -->
-                    <h3 style="margin: 0 0 15px 0; color: #f8fafc; font-size: 16px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; display: inline-block;">🏆 Top 3 Clientes</h3>
-                    ${topClientes.length > 0 ? `
-                        <table width="100%" cellpadding="12" cellspacing="0" border="0" style="margin-bottom: 30px; border-collapse: collapse; background-color: #0f172a; border-radius: 6px; overflow: hidden; border: 1px solid #334155;">
-                            ${topClientes.map((c, i) => `
-                                <tr>
-                                    <td style="border-bottom: ${i === topClientes.length - 1 ? 'none' : '1px solid #334155'}; color: #cbd5e1; font-size: 14px;">
-                                        <strong style="color: #3b82f6;">#${i + 1}</strong> &nbsp;${c.nome}
-                                    </td>
-                                    <td style="border-bottom: ${i === topClientes.length - 1 ? 'none' : '1px solid #334155'}; text-align: right; color: #f8fafc; font-weight: bold; font-size: 14px;">
-                                        ${formatCurrency(c.valor)}
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </table>
-                    ` : '<p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">Nenhum pedido faturado no período.</p>'}
-
-                    <!-- Curva A -->
-                    <h3 style="margin: 0 0 15px 0; color: #f8fafc; font-size: 16px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; display: inline-block;">🔥 Curva A (Produto Mais Vendido)</h3>
-                    <table width="100%" cellpadding="15" cellspacing="0" border="0" style="margin-bottom: 20px; background-color: #0f172a; border-left: 4px solid #3b82f6; border-radius: 0 4px 4px 0; border-top: 1px solid #334155; border-right: 1px solid #334155; border-bottom: 1px solid #334155;">
-                        <tr>
-                            <td>
-                                <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: bold; color: #f8fafc;">${nomeProdutoDestaque}</p>
-                                <p style="margin: 0; font-size: 13px; color: #94a3b8;">${qtdeProdutoDestaque} unidades vendidas no mês</p>
+                            <td width="2%">&nbsp;</td> <!-- Espacador -->
+                            <!-- Pedidos -->
+                            <td width="32%" valign="top">
+                                <table width="100%" cellpadding="15" cellspacing="0" border="0" style="background-color: #0f172a; border-radius: 6px; border: 1px solid #334155;">
+                                    <tr>
+                                        <td align="center">
+                                            <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">📦 Pedidos</p>
+                                            <p style="margin: 8px 0 0 0; font-size: 18px; font-weight: bold; color: #f8fafc;">${totalPedidosSemana}</p>
+                                        </td>
+                                    </tr>
+                                </table>
                             </td>
                         </tr>
                     </table>
@@ -201,7 +175,7 @@ export async function GET(request: Request) {
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: emailsArray,
-            subject: `Resumo Mensal FRPLUS (${formatDate(startOfMonth)} a ${formatDate(now)})`,
+            subject: `Resumo Semanal FRPLUS (${formatDate(startOfWeek)} a ${formatDate(now)})`,
             html: html
         };
 
