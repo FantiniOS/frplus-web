@@ -15,6 +15,17 @@ export async function GET(request: Request) {
         const startOfPeriod = new Date(now);
         startOfPeriod.setDate(startOfPeriod.getDate() - 7);
 
+        // Pedidos do Mês (Total Faturado no Mês)
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const aggregateMes = await prisma.pedido.aggregate({
+            _sum: { valorTotal: true },
+            where: {
+                data: { gte: startOfMonth, lte: now },
+                status: { not: 'Cancelado' }
+            }
+        });
+        const totalFaturadoMes = aggregateMes._sum.valorTotal ? Number(aggregateMes._sum.valorTotal) : 0;
+
         // 1. Pedidos (Total Faturado e Quantidade)
         const aggregatePedidos = await prisma.pedido.aggregate({
             _sum: { valorTotal: true },
@@ -167,6 +178,16 @@ export async function GET(request: Request) {
                             <td>
                                 <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: bold; color: #f8fafc;">${nomeProdutoDestaque}</p>
                                 <p style="margin: 0; font-size: 13px; color: #94a3b8;">${qtdeProdutoDestaque} unidades vendidas na semana</p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Acumulado do Mês -->
+                    <table width="100%" cellpadding="15" cellspacing="0" border="0" style="margin-bottom: 20px; background-color: #0f172a; border-radius: 6px; border: 1px solid #334155; text-align: center;">
+                        <tr>
+                            <td>
+                                <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Acumulado no Mês Atual</p>
+                                <p style="margin: 8px 0 0 0; font-size: 20px; font-weight: bold; color: #f8fafc;">${formatCurrency(totalFaturadoMes)}</p>
                             </td>
                         </tr>
                     </table>
