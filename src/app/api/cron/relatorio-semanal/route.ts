@@ -65,9 +65,10 @@ export async function GET(request: Request) {
             new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(date);
 
         const formatDateWithDay = (date: Date) => {
-            const shortDate = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(date);
+            const dayStr = String(date.getDate()).padStart(2, '0');
+            const monthStr = String(date.getMonth() + 1).padStart(2, '0');
+            const shortDate = `${dayStr}/${monthStr}`;
             const dayName = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(date);
-            // dayName vira "seg.", capitalizamos a primeira letra e tiramos o ponto
             const cleanDay = dayName.replace('.', '').charAt(0).toUpperCase() + dayName.replace('.', '').slice(1);
             return `${cleanDay}, ${shortDate}`;
         };
