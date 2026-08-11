@@ -206,7 +206,7 @@ export async function GET(request: Request) {
 </body>
 </html>`;
 
-        const emailsListStr = process.env.EMAILS_RELATORIO_SEMANAL || '';
+        const emailsListStr = process.env.EMAILS_RELATORIO_SEMANAL || 'fantinirepresentacoes@gmail.com';
         const emailsArray = emailsListStr.split(',').map(e => e.trim()).filter(e => e);
 
         if (emailsArray.length === 0) {
