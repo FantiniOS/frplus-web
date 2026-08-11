@@ -1,17 +1,11 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../src/lib/prisma';
 import nodemailer from 'nodemailer';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
-export const dynamic = 'force-dynamic';
-
-export async function GET(request: Request) {
+async function run() {
     try {
-        const authHeader = request.headers.get('authorization');
-        if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const now = new Date();
+        const now = new Date("2026-08-07T18:00:00Z"); // Simulando uma execução de sexta-feira passada
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         
         // Calculo da Segunda-feira da semana corrente (00:00:00)
@@ -108,9 +102,6 @@ export async function GET(request: Request) {
         const formatCurrency = (val: number) => 
             new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-        const formatDate = (date: Date) => 
-            new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(date);
-
         const formatDateWithDay = (date: Date) => {
             const dayStr = String(date.getDate()).padStart(2, '0');
             const monthStr = String(date.getMonth() + 1).padStart(2, '0');
@@ -123,7 +114,7 @@ export async function GET(request: Request) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://frplus-web.vercel.app';
 
         // HTML Email Template
-        const html = `<!DOCTYPE html>
+        const html = \`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -137,7 +128,7 @@ export async function GET(request: Request) {
                 <td style="padding: 30px;">
                     <!-- Cabecalho -->
                     <div style="text-align: center; border-bottom: 1px solid #334155; padding-bottom: 25px; margin-bottom: 25px;">
-                        <img src="${baseUrl}/logo.png" alt="FRPlus Logo" style="max-height: 50px; margin-bottom: 20px; display: inline-block;" />
+                        <img src="\${baseUrl}/logo.png" alt="FRPlus Logo" style="max-height: 50px; margin-bottom: 20px; display: inline-block;" />
                         <h2 style="margin: 0; color: #f8fafc; font-size: 24px; font-weight: normal;">Relatório Semanal <span style="color: #3b82f6;">FRPlus</span></h2>
                     </div>
 
@@ -147,7 +138,7 @@ export async function GET(request: Request) {
                             <td>
                                 <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Termômetro Mensal</p>
                                 <p style="margin: 8px 0 0 0; font-size: 22px; font-weight: bold; color: #f8fafc;">
-                                    Faturamento Acumulado: <span style="color: #10b981;">${formatCurrency(totalFaturadoMes)}</span>
+                                    Faturamento Acumulado: <span style="color: #10b981;">\${formatCurrency(totalFaturadoMes)}</span>
                                 </p>
                             </td>
                         </tr>
@@ -155,7 +146,7 @@ export async function GET(request: Request) {
 
                     <!-- BLOCO 3: Nota Explicativa (Subtitulo da Semana) -->
                     <h3 style="margin: 0 0 15px 0; color: #f8fafc; font-size: 18px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; display: inline-block;">
-                        Desempenho da Semana <span style="font-size: 14px; font-weight: normal; color: #94a3b8; margin-left: 10px;">(${formatDateWithDay(startOfWeek)} a ${formatDateWithDay(now)})</span>
+                        Desempenho da Semana <span style="font-size: 14px; font-weight: normal; color: #94a3b8; margin-left: 10px;">(\${formatDateWithDay(startOfWeek)} a \${formatDateWithDay(now)})</span>
                     </h3>
 
                     <!-- BLOCO 2: Resumo da Semana -->
@@ -167,7 +158,7 @@ export async function GET(request: Request) {
                                     <tr>
                                         <td align="center">
                                             <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">💰 Vendas</p>
-                                            <p style="margin: 8px 0 0 0; font-size: 16px; font-weight: bold; color: #3b82f6;">${formatCurrency(totalFaturadoSemana)}</p>
+                                            <p style="margin: 8px 0 0 0; font-size: 16px; font-weight: bold; color: #3b82f6;">\${formatCurrency(totalFaturadoSemana)}</p>
                                         </td>
                                     </tr>
                                 </table>
@@ -179,7 +170,7 @@ export async function GET(request: Request) {
                                     <tr>
                                         <td align="center">
                                             <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">🎁 Bonificações</p>
-                                            <p style="margin: 8px 0 0 0; font-size: 16px; font-weight: bold; color: #f43f5e;">${formatCurrency(totalBonificacaoSemana)}</p>
+                                            <p style="margin: 8px 0 0 0; font-size: 16px; font-weight: bold; color: #f43f5e;">\${formatCurrency(totalBonificacaoSemana)}</p>
                                         </td>
                                     </tr>
                                 </table>
@@ -191,7 +182,7 @@ export async function GET(request: Request) {
                                     <tr>
                                         <td align="center">
                                             <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">📦 Pedidos</p>
-                                            <p style="margin: 8px 0 0 0; font-size: 18px; font-weight: bold; color: #f8fafc;">${totalPedidosSemana}</p>
+                                            <p style="margin: 8px 0 0 0; font-size: 18px; font-weight: bold; color: #f8fafc;">\${totalPedidosSemana}</p>
                                         </td>
                                     </tr>
                                 </table>
@@ -201,28 +192,28 @@ export async function GET(request: Request) {
 
                     <!-- Top Clientes -->
                     <h3 style="margin: 0 0 15px 0; color: #f8fafc; font-size: 16px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; display: inline-block;">🏆 Top 3 Clientes da Semana</h3>
-                    ${topClientes.length > 0 ? `
+                    \${topClientes.length > 0 ? \`
                         <table width="100%" cellpadding="12" cellspacing="0" border="0" style="margin-bottom: 30px; border-collapse: collapse; background-color: #0f172a; border-radius: 6px; overflow: hidden; border: 1px solid #334155;">
-                            ${topClientes.map((c, i) => `
+                            \${topClientes.map((c, i) => \`
                                 <tr>
-                                    <td style="border-bottom: ${i === topClientes.length - 1 ? 'none' : '1px solid #334155'}; color: #cbd5e1; font-size: 14px;">
-                                        <strong style="color: #3b82f6;">#${i + 1}</strong> &nbsp;${c.nome}
+                                    <td style="border-bottom: \${i === topClientes.length - 1 ? 'none' : '1px solid #334155'}; color: #cbd5e1; font-size: 14px;">
+                                        <strong style="color: #3b82f6;">#\${i + 1}</strong> &nbsp;\${c.nome}
                                     </td>
-                                    <td style="border-bottom: ${i === topClientes.length - 1 ? 'none' : '1px solid #334155'}; text-align: right; color: #f8fafc; font-weight: bold; font-size: 14px;">
-                                        ${formatCurrency(c.valor)}
+                                    <td style="border-bottom: \${i === topClientes.length - 1 ? 'none' : '1px solid #334155'}; text-align: right; color: #f8fafc; font-weight: bold; font-size: 14px;">
+                                        \${formatCurrency(c.valor)}
                                     </td>
                                 </tr>
-                            `).join('')}
+                            \`).join('')}
                         </table>
-                    ` : '<p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">Nenhuma venda registrada na semana.</p>'}
+                    \` : '<p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">Nenhuma venda registrada na semana.</p>'}
 
                     <!-- Curva A -->
                     <h3 style="margin: 0 0 15px 0; color: #f8fafc; font-size: 16px; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; display: inline-block;">🔥 Curva A (Mais Vendido)</h3>
                     <table width="100%" cellpadding="15" cellspacing="0" border="0" style="margin-bottom: 20px; background-color: #0f172a; border-left: 4px solid #3b82f6; border-radius: 0 4px 4px 0; border-top: 1px solid #334155; border-right: 1px solid #334155; border-bottom: 1px solid #334155;">
                         <tr>
                             <td>
-                                <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: bold; color: #f8fafc;">${nomeProdutoDestaque}</p>
-                                <p style="margin: 0; font-size: 13px; color: #94a3b8;">${qtdeProdutoDestaque} unidades vendidas na semana</p>
+                                <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: bold; color: #f8fafc;">\${nomeProdutoDestaque}</p>
+                                <p style="margin: 0; font-size: 13px; color: #94a3b8;">\${qtdeProdutoDestaque} unidades vendidas na semana</p>
                             </td>
                         </tr>
                     </table>
@@ -239,15 +230,7 @@ export async function GET(request: Request) {
         </table>
     </div>
 </body>
-</html>`;
-
-        const emailsListStr = process.env.EMAILS_RELATORIO_SEMANAL || 'fantinirepresentacoes@gmail.com,pedidosbelmont@gmail.com';
-        const emailsArray = emailsListStr.split(',').map(e => e.trim()).filter(e => e);
-
-        if (emailsArray.length === 0) {
-            console.log("Nenhum e-mail configurado em EMAILS_RELATORIO_SEMANAL.");
-            return NextResponse.json({ success: true, message: 'Nenhum destinatário configurado.' });
-        }
+</html>\`;
 
         const transporter = nodemailer.createTransport({
             host: 'smtp.gmail.com',
@@ -261,17 +244,16 @@ export async function GET(request: Request) {
 
         const mailOptions = {
             from: process.env.EMAIL_USER,
-            to: emailsArray,
-            subject: `Resumo Semanal FRPLUS (${formatDate(startOfWeek)} a ${formatDate(now)})`,
+            to: 'cfantinibr@gmail.com',
+            subject: \`[TESTE FINAL COM CLIENTES] Resumo Semanal FRPLUS\`,
             html: html
         };
 
-        await transporter.sendMail(mailOptions);
-
-        return NextResponse.json({ success: true, message: 'Relatório enviado com sucesso!' });
-        
-    } catch (error: any) {
-        console.error("Erro ao enviar relatório semanal:", error);
-        return NextResponse.json({ error: error.message || 'Falha ao processar relatório.' }, { status: 500 });
+        const result = await transporter.sendMail(mailOptions);
+        console.log("E-mail enviado com sucesso:", result.messageId);
+    } catch (error) {
+        console.error("Erro ao enviar:", error);
     }
 }
+
+run();
