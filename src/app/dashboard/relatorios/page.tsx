@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getClientesAtendidos, ClienteAtendido } from '@/app/actions/atendidos';
+import { useReactToPrint } from 'react-to-print';
+import { PrintHeader } from '@/components/ui/PrintHeader';
+import { getHitListVinagre, ApuracaoDashboardData } from '@/app/actions/apuracaoVinagre';
 
 export default function RelatoriosPage() {
     const { orders, clients, products, fabricas, refreshData } = useData();
@@ -21,7 +24,10 @@ export default function RelatoriosPage() {
         refreshData();
     }, [refreshData]);
 
-    const [tipoRelatorio, setTipoRelatorio] = useState<'vendas' | 'produtos' | 'clientes' | 'tabela' | 'atendidos'>((tipoQuery as any) || 'vendas');
+    const [hitListData, setHitListData] = useState<ApuracaoDashboardData | null>(null);
+    const [loadingHitList, setLoadingHitList] = useState(false);
+
+    const [tipoRelatorio, setTipoRelatorio] = useState<'vendas' | 'produtos' | 'clientes' | 'tabela' | 'atendidos' | 'campanhaVinagre'>((tipoQuery as any) || 'vendas');
     const [tabelaSelecionada, setTabelaSelecionada] = useState<string>('');
     const [clientesAtendidos, setClientesAtendidos] = useState<ClienteAtendido[]>([]);
     const [loadingAtendidos, setLoadingAtendidos] = useState(false);
@@ -84,6 +90,19 @@ export default function RelatoriosPage() {
 
     const [periodoInicio, setPeriodoInicio] = useState(getLastMonthDate());
     const [periodoFim, setPeriodoFim] = useState(getLocalDate());
+
+    useEffect(() => {
+        if (tipoRelatorio === 'campanhaVinagre') {
+            setLoadingHitList(true);
+            getHitListVinagre(periodoInicio, periodoFim).then(data => {
+                setHitListData(data);
+                setLoadingHitList(false);
+            }).catch(err => {
+                console.error(err);
+                setLoadingHitList(false);
+            });
+        }
+    }, [tipoRelatorio, periodoInicio, periodoFim]);
     const [exportando, setExportando] = useState(false);
     const [tabelaPrecoSelecionada, setTabelaPrecoSelecionada] = useState<'todas' | '50a199' | '200a699' | 'atacado' | 'avista' | 'redes'>('todas');
     const [fabricaSelecionada, setFabricaSelecionada] = useState<string>('todas');
@@ -91,6 +110,13 @@ export default function RelatoriosPage() {
     const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
     const [expandedClientOrderId, setExpandedClientOrderId] = useState<string | null>(null);
     const relatorioRef = useRef<HTMLDivElement>(null);
+    
+    // Motor de PDF (react-to-print) para a campanha
+    const printCampanhaRef = useRef<HTMLDivElement>(null);
+    const handlePrintCampanha = useReactToPrint({
+        contentRef: printCampanhaRef,
+        documentTitle: 'Apuracao_Vinagre_10_OFF'
+    });
 
     // Filter orders by date
     const pedidosFiltrados = useMemo(() => {
@@ -742,14 +768,24 @@ export default function RelatoriosPage() {
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <button
-                        onClick={handleExportPDF}
-                        disabled={exportando}
-                        className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500 transition-all shadow-lg shadow-green-600/20 disabled:opacity-50"
-                    >
-                        <FileDown className="h-4 w-4" />
-                        {exportando ? 'Gerando...' : 'Exportar PDF'}
-                    </button>
+                    {tipoRelatorio === 'campanhaVinagre' ? (
+                        <button
+                            onClick={handlePrintCampanha}
+                            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500 transition-all shadow-lg shadow-green-600/20"
+                        >
+                            <FileDown className="h-4 w-4" />
+                            Exportar PDF
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleExportPDF}
+                            disabled={exportando}
+                            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500 transition-all shadow-lg shadow-green-600/20 disabled:opacity-50"
+                        >
+                            <FileDown className="h-4 w-4" />
+                            {exportando ? 'Gerando...' : 'Exportar PDF'}
+                        </button>
+                    )}
                     <button
                         onClick={handlePrint}
                         className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
@@ -772,7 +808,8 @@ export default function RelatoriosPage() {
                                 { id: 'produtos', label: 'Produtos', icon: Package },
                                 { id: 'clientes', label: 'Relatório Clientes', icon: Users },
                                 { id: 'tabela', label: 'Tabela de Preços', icon: DollarSign },
-                                { id: 'atendidos', label: 'Clientes Atendidos', icon: Check }
+                                { id: 'atendidos', label: 'Clientes Atendidos', icon: Check },
+                                { id: 'campanhaVinagre', label: 'Apuração 10% OFF', icon: DollarSign }
                             ].map(tipo => (
                                 <button
                                     key={tipo.id}
@@ -1462,6 +1499,189 @@ export default function RelatoriosPage() {
                                     </table>
                                 </div>
                             )}
+                        </div>
+                    )
+                }
+
+                {
+                    tipoRelatorio === 'campanhaVinagre' && (
+                        <div className="space-y-6">
+                            {loadingHitList ? (
+                                <div className="py-20 flex justify-center items-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                </div>
+                            ) : hitListData ? (
+                                <>
+                                    {/* PROGRESS BAR DE CONVERSÃO */}
+                                    <div className="bg-[#1a1a24] p-5 rounded-xl border border-white/10">
+                                        <div className="flex justify-between items-end mb-2">
+                                            <div>
+                                                <h3 className="text-gray-400 font-medium text-sm uppercase tracking-wider">Conversão da Base Atacadista</h3>
+                                                <p className="text-2xl font-bold text-white mt-1">
+                                                    {hitListData.clientesConvertidos} <span className="text-gray-500 text-lg font-normal">de {hitListData.clientesAtacadistasBase} atacadistas</span>
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-3xl font-black text-blue-500">{hitListData.taxaConversao}%</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-full bg-black/50 rounded-full h-4 mt-4 overflow-hidden border border-white/5">
+                                            <div 
+                                                className="bg-gradient-to-r from-blue-600 to-cyan-400 h-4 rounded-full transition-all duration-1000" 
+                                                style={{ width: `${hitListData.taxaConversao}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="bg-[#1a1a24] p-5 rounded-xl border border-emerald-500/20 flex flex-col justify-between">
+                                            <h3 className="text-gray-400 font-medium text-sm">Volume Total Escoado (Cx)</h3>
+                                            <p className="text-3xl font-bold text-emerald-400 mt-2">{hitListData.volumeTotalEscoado}</p>
+                                        </div>
+                                        <div className="bg-[#1a1a24] p-5 rounded-xl border border-purple-500/20 flex flex-col justify-between">
+                                            <h3 className="text-gray-400 font-medium text-sm">Receita Total Gerada</h3>
+                                            <p className="text-3xl font-bold text-purple-400 mt-2">
+                                                R$ {hitListData.receitaTotalGerada.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                            </p>
+                                        </div>
+                                        <div className="bg-[#1a1a24] p-5 rounded-xl border border-amber-500/20 flex flex-col justify-between">
+                                            <h3 className="text-gray-400 font-medium text-sm">Base Pendente</h3>
+                                            <p className="text-3xl font-bold text-amber-400 mt-2">{hitListData.clientesAtacadistasBase - hitListData.clientesConvertidos}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* HIT LIST TABLE */}
+                                    <div className="bg-[#1a1a24] rounded-xl border border-white/10 overflow-hidden">
+                                        <div className="p-5 border-b border-white/10 flex justify-between items-center">
+                                            <h3 className="text-lg font-semibold text-white">Mapa de Caça (Atacadistas)</h3>
+                                            <span className="text-xs text-gray-400 bg-black/30 px-3 py-1 rounded-full border border-white/5">
+                                                Ordenado por pendentes
+                                            </span>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm text-left text-gray-300">
+                                                <thead className="text-xs uppercase bg-black/40 text-gray-400 border-b border-white/10">
+                                                    <tr>
+                                                        <th className="px-6 py-3 font-medium">Cliente</th>
+                                                        <th className="px-6 py-3 font-medium">Cidade</th>
+                                                        <th className="px-6 py-3 font-medium text-center">Status na Campanha</th>
+                                                        <th className="px-6 py-3 font-medium text-right">Volume (cx)</th>
+                                                        <th className="px-6 py-3 font-medium text-right">Última Ação</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {hitListData.hitList.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                                                Nenhum cliente atacadista encontrado na base.
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        hitListData.hitList.map(cliente => (
+                                                            <tr key={cliente.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                                                <td className="px-6 py-4">
+                                                                    <div className="font-medium text-white">{cliente.nomeFantasia}</div>
+                                                                    <div className="text-xs text-gray-500 mt-0.5">{cliente.razaoSocial}</div>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-gray-400">{cliente.cidade}</td>
+                                                                <td className="px-6 py-4 text-center">
+                                                                    {cliente.statusCampanha === 'Pendente' ? (
+                                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                                                            ⏳ Pendente
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                                            ✅ Aproveitou
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-right">
+                                                                    {cliente.volumeComprado > 0 ? (
+                                                                        <span className="text-emerald-400 font-bold">{cliente.volumeComprado} cx</span>
+                                                                    ) : (
+                                                                        <span className="text-gray-600">-</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-right text-gray-400 text-xs">
+                                                                    {cliente.ultimaAcao ? new Date(cliente.ultimaAcao).toLocaleDateString('pt-BR') : '-'}
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    {/* COMPONENTE DE IMPRESSÃO ESCONDIDO PARA A CAMPANHA (react-to-print) */}
+                                    <div className="hidden">
+                                        <div ref={printCampanhaRef} className="p-8 bg-white text-black min-h-screen">
+                                            <PrintHeader titulo="Apuração da Campanha 10% OFF - Hit List Atacado" />
+                                            
+                                            <div className="mt-4 mb-8">
+                                                <p className="text-gray-600 mb-2"><strong>Período Analisado:</strong> {new Date(periodoInicio).toLocaleDateString('pt-BR')} a {new Date(periodoFim).toLocaleDateString('pt-BR')}</p>
+                                            </div>
+
+                                            <div className="grid grid-cols-4 gap-4 mb-8">
+                                                <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
+                                                    <p className="text-sm text-gray-600 font-bold uppercase mb-1">Base Convertida</p>
+                                                    <p className="text-2xl font-black text-blue-600">{hitListData.taxaConversao}%</p>
+                                                    <p className="text-xs text-gray-500 mt-1">{hitListData.clientesConvertidos} de {hitListData.clientesAtacadistasBase}</p>
+                                                </div>
+                                                <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
+                                                    <p className="text-sm text-gray-600 font-bold uppercase mb-1">Base Pendente</p>
+                                                    <p className="text-2xl font-black text-amber-600">{hitListData.clientesAtacadistasBase - hitListData.clientesConvertidos}</p>
+                                                </div>
+                                                <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
+                                                    <p className="text-sm text-gray-600 font-bold uppercase mb-1">Volume (Cx)</p>
+                                                    <p className="text-2xl font-black text-gray-900">{hitListData.volumeTotalEscoado}</p>
+                                                </div>
+                                                <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
+                                                    <p className="text-sm text-gray-600 font-bold uppercase mb-1">Receita Gerada</p>
+                                                    <p className="text-2xl font-black text-gray-900">R$ {hitListData.receitaTotalGerada.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                                </div>
+                                            </div>
+
+                                            <h4 className="font-bold text-gray-900 mb-3 border-b border-gray-300 pb-2">Mapa de Caça (Relação de Atacadistas)</h4>
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="bg-gray-100 border-y border-gray-300 text-gray-800">
+                                                    <tr>
+                                                        <th className="py-2 px-3 font-bold">Cliente</th>
+                                                        <th className="py-2 px-3 font-bold">Cidade</th>
+                                                        <th className="py-2 px-3 font-bold text-center">Status</th>
+                                                        <th className="py-2 px-3 font-bold text-right">Volume (Cx)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {hitListData.hitList.map(cliente => (
+                                                        <tr key={cliente.id} className="border-b border-gray-200">
+                                                            <td className="py-2 px-3 font-medium">{cliente.nomeFantasia}</td>
+                                                            <td className="py-2 px-3">{cliente.cidade}</td>
+                                                            <td className="py-2 px-3 text-center">
+                                                                {cliente.statusCampanha === 'Pendente' ? (
+                                                                    <span className="text-amber-600 font-bold">Pendente</span>
+                                                                ) : (
+                                                                    <span className="text-green-600 font-bold">Aproveitou</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-2 px-3 text-right">
+                                                                {cliente.volumeComprado > 0 ? cliente.volumeComprado : '-'}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {hitListData.hitList.length === 0 && (
+                                                        <tr>
+                                                            <td colSpan={4} className="py-4 px-3 text-center text-gray-500">
+                                                                Nenhum cliente atacadista encontrado.
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : null}
                         </div>
                     )
                 }

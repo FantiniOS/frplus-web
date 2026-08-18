@@ -92,6 +92,8 @@ export async function GET(request: Request) {
                 vendedorId: true,
                 nomeVendedorImport: true,
                 notaFiscal: true,
+                pagoAoVendedor: true,
+                dataPagamentoAoVendedor: true,
                 vendedor: {
                     select: {
                         id: true,
@@ -121,6 +123,8 @@ export async function GET(request: Request) {
         // Calculate totals
         let totalVendido = 0
         let totalComissoes = 0
+        let totalComissoesPago = 0
+        let totalComissoesAPagar = 0
         let totalDescontoIR = 0
         let totalDescontoISSQN = 0
 
@@ -165,6 +169,11 @@ export async function GET(request: Request) {
 
             totalVendido += valorVenda
             totalComissoes += comissao
+            if (p.pagoAoVendedor) {
+                totalComissoesPago += comissao
+            } else {
+                totalComissoesAPagar += comissao
+            }
 
             return {
                 id: p.id,
@@ -175,6 +184,8 @@ export async function GET(request: Request) {
                 valorComissao: comissao,
                 percentualAplicado,
                 notaFiscal: p.notaFiscal,
+                pagoAoVendedor: p.pagoAoVendedor,
+                dataPagamentoAoVendedor: p.dataPagamentoAoVendedor,
             }
         })
 
@@ -185,6 +196,8 @@ export async function GET(request: Request) {
         return NextResponse.json({
             totalVendido,
             totalComissoes,
+            totalComissoesPago,
+            totalComissoesAPagar,
             totalDescontoIR,
             totalDescontoISSQN,
             totalLiquido,

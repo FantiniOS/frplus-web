@@ -146,6 +146,13 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Campanha não encontrada' }, { status: 404 });
     }
 
+    if (campanha.status === 'ENCERRADA') {
+      return NextResponse.json(
+        { error: 'Ação bloqueada: Não é possível alterar uma campanha encerrada.' },
+        { status: 403 }
+      );
+    }
+
     await prisma.$transaction(async (tx) => {
       if (vincular && vincular.length > 0) {
         await tx.pedido.updateMany({

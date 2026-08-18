@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { getPerfilEmpresa } from "@/app/actions/perfilEmpresa";
 
 export default function NovoPedidoPage() {
     const { clients, products, addOrder, showToast, fabricas } = useData();
@@ -39,6 +40,15 @@ export default function NovoPedidoPage() {
 
     // --- State: Pricing History ---
     const [priceHistory, setPriceHistory] = useState<Record<string, number>>({});
+
+    // --- State: Campaign config ---
+    const [campanhaVinagreAtiva, setCampanhaVinagreAtiva] = useState(false);
+
+    useEffect(() => {
+        getPerfilEmpresa().then(p => {
+            setCampanhaVinagreAtiva(p.campanhaAlcool10OffAtiva || false);
+        });
+    }, []);
 
     // --- Helper: Get Current Factory ---
     const fabricaSelecionada = fabricas.find(f => f.id === selectedFabricaId);
@@ -92,7 +102,14 @@ export default function NovoPedidoPage() {
             case 'redes': preco = produto.precoRedes; break;
             case '50a199': default: preco = produto.preco50a199; break;
         }
-        return Number(preco || produto.preco50a199);
+        let finalPreco = Number(preco || produto.preco50a199);
+        
+        // Aplica campanha Vinagre 10% se ativa e se for atacado
+        if (campanhaVinagreAtiva && (tabelaPreco === 'atacado' || tabelaPreco === 'atacadoAVista') && (produto.nome.toLowerCase().includes('vinagre') && produto.nome.toLowerCase().includes('álcool') && produto.nome.includes('750'))) {
+            finalPreco = finalPreco * 0.90;
+        }
+
+        return finalPreco;
     };
 
     // --- Handlers: Order Items ---
@@ -210,6 +227,9 @@ export default function NovoPedidoPage() {
             return;
         }
 
+        // Verifica se houve item com desconto aplicado (Vinagre) na tabela Atacado
+        const isCampanhaAplicada = campanhaVinagreAtiva && (tabelaPreco === 'atacado' || tabelaPreco === 'atacadoAVista') && itens.some(i => i.nomeProduto.toLowerCase().includes('vinagre') && i.nomeProduto.toLowerCase().includes('álcool') && i.nomeProduto.includes('750'));
+
         try {
             const success = await addOrder({
                 clienteId,
@@ -222,6 +242,7 @@ export default function NovoPedidoPage() {
                 tabelaPreco,
                 condicaoPagamento,
                 observacoes,
+                campanha10OffAplicada: isCampanhaAplicada,
                 itens: itens.map(i => ({
                     produtoId: i.produtoId,
                     nomeProduto: i.nomeProduto,

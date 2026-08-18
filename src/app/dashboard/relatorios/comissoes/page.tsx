@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import {
     DollarSign,
     TrendingUp,
@@ -12,7 +12,10 @@ import {
     Download,
     Receipt,
     FileDown,
+    CheckCircle2,
+    Clock,
 } from 'lucide-react';
+import { togglePagamentoComissao } from '@/app/actions/comissaoPagamento';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -31,11 +34,15 @@ interface DetalhePedido {
     valorComissao: number;
     percentualAplicado: number;
     notaFiscal: string | null;
+    pagoAoVendedor: boolean;
+    dataPagamentoAoVendedor: string | null;
 }
 
 interface ReportData {
     totalVendido: number;
     totalComissoes: number;
+    totalComissoesPago: number;
+    totalComissoesAPagar: number;
     totalDescontoIR: number;
     totalDescontoISSQN: number;
     totalLiquido: number;
@@ -60,6 +67,7 @@ export default function ComissoesPage() {
     const [loading, setLoading] = useState(false);
     const [loadingVendedores, setLoadingVendedores] = useState(true);
     const [exportando, setExportando] = useState(false);
+    const [isPending, startTransition] = useTransition();
 
     // Filters
     const [vendedorId, setVendedorId] = useState('todos');
@@ -149,6 +157,43 @@ export default function ComissoesPage() {
     const percentualComissaoMedia = report && report.totalVendido > 0
         ? ((report.totalComissoes / report.totalVendido) * 100).toFixed(1)
         : '0.0';
+
+    const handleTogglePagamento = (pedidoId: string) => {
+        if (!report) return;
+        // Optimistic update
+        setReport(prev => {
+            if (!prev) return prev;
+            const updatedDetalhamento = prev.detalhamento.map(item => {
+                if (item.id !== pedidoId) return item;
+                const novoStatus = !item.pagoAoVendedor;
+                return {
+                    ...item,
+                    pagoAoVendedor: novoStatus,
+                    dataPagamentoAoVendedor: novoStatus ? new Date().toISOString() : null,
+                };
+            });
+            let pago = 0;
+            let aPagar = 0;
+            updatedDetalhamento.forEach(d => {
+                if (d.pagoAoVendedor) pago += d.valorComissao;
+                else aPagar += d.valorComissao;
+            });
+            return {
+                ...prev,
+                detalhamento: updatedDetalhamento,
+                totalComissoesPago: pago,
+                totalComissoesAPagar: aPagar,
+            };
+        });
+        startTransition(async () => {
+            try {
+                await togglePagamentoComissao(pedidoId);
+            } catch {
+                // Revert on error
+                fetchReport();
+            }
+        });
+    };
 
     const exportPDF = async () => {
         setExportando(true);
@@ -516,28 +561,40 @@ export default function ComissoesPage() {
             {!loading && report && (
                 <>
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="rounded-xl border border-white/[0.06] bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-5">
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 rounded-xl bg-blue-500/15">
-                                    <TrendingUp className="h-5 w-5 text-blue-400" />
+                                    <DollarSign className="h-5 w-5 text-blue-400" />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-400 mb-0.5">Total Vendido no Período</p>
-                                    <p className="text-xl font-bold text-white">{formatCurrency(report.totalVendido)}</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">{report.totalPedidos} pedidos</p>
+                                    <p className="text-xs text-gray-400 mb-0.5">Total da Equipe</p>
+                                    <p className="text-xl font-bold text-white">{formatCurrency(report.totalComissoes)}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{report.totalPedidos} pedidos • {percentualComissaoMedia}% média</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="rounded-xl border border-white/[0.06] bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 p-5">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-xl bg-emerald-500/15">
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400 mb-0.5">Pago</p>
+                                    <p className="text-xl font-bold text-emerald-400">{formatCurrency(report.totalComissoesPago)}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">Comissões já acertadas</p>
                                 </div>
                             </div>
                         </div>
                         <div className="rounded-xl border border-white/[0.06] bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-5">
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 rounded-xl bg-amber-500/15">
-                                    <DollarSign className="h-5 w-5 text-amber-400" />
+                                    <Clock className="h-5 w-5 text-amber-400" />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-400 mb-0.5">Total de Comissões a Pagar</p>
-                                    <p className="text-xl font-bold text-amber-400">{formatCurrency(report.totalComissoes)}</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">{percentualComissaoMedia}% média</p>
+                                    <p className="text-xs text-gray-400 mb-0.5">A Pagar</p>
+                                    <p className="text-xl font-bold text-amber-400">{formatCurrency(report.totalComissoesAPagar)}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">Passivo pendente de acerto</p>
                                 </div>
                             </div>
                         </div>
@@ -585,6 +642,9 @@ export default function ComissoesPage() {
                                             <th className="text-right px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                                                 Comissão
                                             </th>
+                                            <th className="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                                Acerto
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/[0.04]">
@@ -623,6 +683,27 @@ export default function ComissoesPage() {
                                                         {formatCurrency(item.valorComissao)}
                                                     </span>
                                                 </td>
+                                                <td className="px-5 py-3 text-center">
+                                                    <button
+                                                        onClick={() => handleTogglePagamento(item.id)}
+                                                        disabled={isPending}
+                                                        title={item.pagoAoVendedor && item.dataPagamentoAoVendedor
+                                                            ? `Pago em ${formatDate(item.dataPagamentoAoVendedor)}`
+                                                            : 'Clique para marcar como pago'
+                                                        }
+                                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50 ${
+                                                            item.pagoAoVendedor
+                                                                ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
+                                                                : 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25'
+                                                        }`}
+                                                    >
+                                                        {item.pagoAoVendedor ? (
+                                                            <><CheckCircle2 className="h-3.5 w-3.5" /> Pago</>
+                                                        ) : (
+                                                            <><Clock className="h-3.5 w-3.5" /> Pendente</>
+                                                        )}
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -637,6 +718,7 @@ export default function ComissoesPage() {
                                             <td className="px-5 py-3 text-sm text-right font-bold text-amber-400">
                                                 {formatCurrency(report.totalComissoes)}
                                             </td>
+                                            <td></td>
                                         </tr>
                                     </tfoot>
                                 </table>

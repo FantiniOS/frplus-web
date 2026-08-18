@@ -96,10 +96,13 @@ model Pedido {
   valorComissao      Decimal?     @db.Decimal(10, 2)
   nomeVendedorImport String?
   campanhaId         String?
-  campanha           Campanha?    @relation(fields: [campanhaId], references: [id])
-  itens             ItemPedido[]
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  campanha                 Campanha?    @relation(fields: [campanhaId], references: [id])
+  pagoAoVendedor           Boolean   @default(false)
+  dataPagamentoAoVendedor  DateTime?
+  campanha10OffAplicada    Boolean   @default(false)
+  itens                    ItemPedido[]
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
 }
 
 model ItemPedido {
@@ -187,11 +190,12 @@ model HistoricoTabela {
 }
 
 model PerfilEmpresa {
-  id          String   @id @default("fixo")
-  nomeEmpresa String
-  email       String
-  telefone    String
-  updatedAt   DateTime @updatedAt
+  id                       String   @id @default("fixo")
+  nomeEmpresa              String
+  email                    String
+  telefone                 String
+  campanhaAlcool10OffAtiva Boolean  @default(false)
+  updatedAt                DateTime @updatedAt
 }
 
 model Vendedor {

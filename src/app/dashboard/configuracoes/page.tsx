@@ -37,14 +37,15 @@ export default function ConfiguracoesPage() {
     // Perfil Global FRPlus
     const [perfilGlobLoading, setPerfilGlobLoading] = useState(true);
     const [perfilGlobSaving, setPerfilGlobSaving] = useState(false);
-    const [perfilGlob, setPerfilGlob] = useState({nomeEmpresa: '', email: '', telefone: ''});
+    const [perfilGlob, setPerfilGlob] = useState({nomeEmpresa: '', email: '', telefone: '', campanhaAlcool10OffAtiva: false});
 
     useEffect(() => {
-        getPerfilEmpresa().then(data => {
+        getPerfilEmpresa().then((data) => {
             setPerfilGlob({
                 nomeEmpresa: data.nomeEmpresa || '',
                 email: data.email || '',
-                telefone: data.telefone || ''
+                telefone: data.telefone || '',
+                campanhaAlcool10OffAtiva: data.campanhaAlcool10OffAtiva || false
             });
             setPerfilGlobLoading(false);
         });

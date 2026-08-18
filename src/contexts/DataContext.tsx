@@ -90,6 +90,7 @@ export interface Order {
     dataEntregaProgramada?: string | null;
     notaFiscal?: string;
     itens: OrderItem[];
+    campanha10OffAplicada?: boolean;
 }
 
 interface DashboardStats {

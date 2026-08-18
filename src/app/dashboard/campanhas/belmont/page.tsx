@@ -26,7 +26,8 @@ import {
   X,
   Gift,
   Settings,
-  Presentation
+  Presentation,
+  Lock
 } from 'lucide-react';
 
 interface ClienteCampanha {
@@ -1253,6 +1254,7 @@ export default function CampanhaBelmontPage() {
 
   const periodoInicio = new Date(data.periodoInicio).toLocaleDateString('pt-BR');
   const periodoFim = new Date(data.periodoFim).toLocaleDateString('pt-BR');
+  const isEncerrada = data.campanha.status === 'ENCERRADA';
 
   const totalMetaBatida = data.clientes.filter(c => c.progresso >= 100).length;
   const volumeTotalFaturado = data.clientes.reduce((acc, c) => acc + c.realizado, 0);
@@ -1339,7 +1341,8 @@ export default function CampanhaBelmontPage() {
           </button>
           <button
             onClick={openConfigModal}
-            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
+            disabled={isEncerrada}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg transition-colors ${isEncerrada ? 'bg-white/5 border border-white/10 text-gray-600 cursor-not-allowed' : 'bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20'}`}
           >
             <Settings className="h-3 w-3" />
             Configurações
@@ -1353,6 +1356,17 @@ export default function CampanhaBelmontPage() {
           </button>
         </div>
       </div>
+
+      {/* ═══ BANNER CAMPANHA ENCERRADA ═══ */}
+      {isEncerrada && (
+        <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-3 print:hidden">
+          <Lock className="h-5 w-5 text-amber-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-400">Campanha Encerrada — Somente Leitura</p>
+            <p className="text-xs text-gray-400 mt-0.5">Nenhuma alteração pode ser feita. Use "Reativar Campanha" para desbloquear.</p>
+          </div>
+        </div>
+      )}
 
       {/* ═══ PRODUTOS DETECTADOS ═══ */}
       {data.produtosEncontrados.length > 0 && (
@@ -1533,11 +1547,12 @@ export default function CampanhaBelmontPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setConciliacaoClient(cliente)}
-                          className="font-medium text-white hover:text-amber-400 transition-colors inline-flex items-center gap-1.5 group/link text-left print:text-black"
+                          onClick={() => !isEncerrada && setConciliacaoClient(cliente)}
+                          disabled={isEncerrada}
+                          className={`font-medium transition-colors inline-flex items-center gap-1.5 group/link text-left print:text-black ${isEncerrada ? 'text-gray-400 cursor-default' : 'text-white hover:text-amber-400'}`}
                         >
                           <span className="truncate">{cliente.nomeFantasia || cliente.razaoSocial}</span>
-                          <Gift className="h-3 w-3 text-gray-600 group-hover/link:text-amber-400 flex-shrink-0 transition-colors" />
+                          {!isEncerrada && <Gift className="h-3 w-3 text-gray-600 group-hover/link:text-amber-400 flex-shrink-0 transition-colors" />}
                         </button>
                         <Link href={`/dashboard/clientes/${cliente.clienteId}/raio-x`} title="Raio-X do Cliente" className="print:hidden">
                            <ExternalLink className="h-3 w-3 text-gray-500 hover:text-blue-400 transition-colors" />
@@ -1726,13 +1741,20 @@ export default function CampanhaBelmontPage() {
               </button>
             </div>
             <div className="p-4 space-y-4">
+              {isEncerrada && (
+                <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
+                  <Lock className="h-4 w-4 text-amber-400" />
+                  <span className="text-xs text-amber-400 font-medium">Campanha encerrada — edição bloqueada</span>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Data de Início</label>
                 <input
                   type="date"
                   value={configDataInicio}
                   onChange={(e) => setConfigDataInicio(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  disabled={isEncerrada}
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -1741,7 +1763,8 @@ export default function CampanhaBelmontPage() {
                   type="date"
                   value={configDataEncerramento}
                   onChange={(e) => setConfigDataEncerramento(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  disabled={isEncerrada}
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -1755,8 +1778,8 @@ export default function CampanhaBelmontPage() {
               </button>
               <button
                 onClick={handleSaveConfig}
-                disabled={savingConfig || !configDataInicio}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                disabled={savingConfig || !configDataInicio || isEncerrada}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {savingConfig ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar Alterações'}
               </button>

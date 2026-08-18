@@ -8,6 +8,7 @@ export interface PerfilEmpresaData {
     nomeEmpresa: string;
     email: string;
     telefone: string;
+    campanhaAlcool10OffAtiva: boolean;
 }
 
 export async function getPerfilEmpresa(): Promise<PerfilEmpresaData> {
@@ -30,14 +31,16 @@ export async function getPerfilEmpresa(): Promise<PerfilEmpresaData> {
         return {
             nomeEmpresa: perfil.nomeEmpresa,
             email: perfil.email,
-            telefone: perfil.telefone
+            telefone: perfil.telefone,
+            campanhaAlcool10OffAtiva: perfil.campanhaAlcool10OffAtiva
         };
     } catch (error) {
         console.error('[PerfilEmpresa] Erro ao buscar:', error);
         return {
             nomeEmpresa: 'Fantini Representações',
             email: '',
-            telefone: ''
+            telefone: '',
+            campanhaAlcool10OffAtiva: false
         };
     }
 }
@@ -55,12 +58,14 @@ export async function savePerfilEmpresa(data: PerfilEmpresaData): Promise<{ suce
                 id: 'fixo',
                 nomeEmpresa: data.nomeEmpresa,
                 email: data.email,
-                telefone: data.telefone
+                telefone: data.telefone,
+                campanhaAlcool10OffAtiva: data.campanhaAlcool10OffAtiva
             },
             update: {
                 nomeEmpresa: data.nomeEmpresa,
                 email: data.email,
-                telefone: data.telefone
+                telefone: data.telefone,
+                campanhaAlcool10OffAtiva: data.campanhaAlcool10OffAtiva
             }
         });
 

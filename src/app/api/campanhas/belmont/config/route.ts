@@ -8,6 +8,18 @@ export async function PATCH(request: Request) {
     
     const { dataInicio, dataEncerramento } = body;
 
+    const campanhaAtual = await prisma.campanha.findUnique({
+      where: { slug: 'belmont' },
+      select: { status: true },
+    });
+
+    if (campanhaAtual?.status === 'ENCERRADA') {
+      return NextResponse.json(
+        { error: 'Ação bloqueada: Não é possível alterar uma campanha encerrada.' },
+        { status: 403 }
+      );
+    }
+
     if (!dataInicio) {
       return NextResponse.json({ error: 'dataInicio é obrigatório' }, { status: 400 });
     }

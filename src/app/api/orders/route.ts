@@ -59,6 +59,7 @@ export async function GET(request: Request) {
             tabelaPreco: o.tabelaPreco,
             condicaoPagamento: o.condicaoPagamento,
             observacoes: o.observacoes,
+            campanha10OffAplicada: o.campanha10OffAplicada,
             dataEntregaProgramada: (o as any).dataEntregaProgramada?.toISOString() || null,
             notaFiscal: o.notaFiscal,
             createdAt: o.createdAt.toISOString(),
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
                 tabelaPreco: body.tabelaPreco,
                 condicaoPagamento: body.condicaoPagamento,
                 observacoes: body.observacoes,
+                campanha10OffAplicada: body.campanha10OffAplicada || false,
                 itens: {
                     create: body.itens.map((item: { produtoId: string; quantidade: number; precoUnitario: number }) => ({
                         produtoId: item.produtoId,
@@ -127,6 +129,10 @@ export async function POST(request: Request) {
             }
         })
 
+        // Revalidate relatorios page so Hit List updates instantly
+        const { revalidatePath } = require('next/cache');
+        revalidatePath('/dashboard/relatorios');
+
         return NextResponse.json({
             id: order.id,
             clienteId: order.clienteId,
@@ -135,6 +141,7 @@ export async function POST(request: Request) {
             status: order.status,
             tipo: order.tipo, // Added: Ensure order type is returned
             valorTotal: Number(order.valorTotal),
+            campanha10OffAplicada: order.campanha10OffAplicada,
             itens: order.itens.map(item => ({
                 id: item.id,
                 produtoId: item.produtoId,
