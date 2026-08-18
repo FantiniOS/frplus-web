@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { PrintHeader } from '@/components/ui/PrintHeader';
 import { useReactToPrint } from 'react-to-print';
 import { getHitListVinagre, ApuracaoDashboardData } from '@/app/actions/apuracaoVinagre';
+import { salvarMetaCampanha } from '@/app/actions/salvarMetaCampanha';
 
 export default function CampanhaVinagreDashboard() {
     const [hitListData, setHitListData] = useState<ApuracaoDashboardData | null>(null);
@@ -19,6 +20,25 @@ export default function CampanhaVinagreDashboard() {
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleMetaChange = async (clienteId: string, metaCaixas: number) => {
+        // Optimistic update
+        setHitListData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                hitList: prev.hitList.map(c => 
+                    c.id === clienteId ? { ...c, metaCaixas, metaAlcancada: metaCaixas > 0 && c.volumeComprado >= metaCaixas } : c
+                )
+            };
+        });
+        
+        try {
+            await salvarMetaCampanha(clienteId, 'vinagre-10-off', metaCaixas);
+        } catch (err) {
+            console.error('Erro ao salvar meta', err);
+        }
     };
 
     useEffect(() => {
@@ -141,6 +161,7 @@ export default function CampanhaVinagreDashboard() {
                                     <th className="px-6 py-3 font-medium">Cliente</th>
                                     <th className="px-6 py-3 font-medium">Cidade</th>
                                     <th className="px-6 py-3 font-medium text-center">Status na Campanha</th>
+                                    <th className="px-6 py-3 font-medium text-center">Meta (cx)</th>
                                     <th className="px-6 py-3 font-medium text-right">Volume (cx)</th>
                                     <th className="px-6 py-3 font-medium text-right">Última Ação</th>
                                 </tr>
@@ -148,7 +169,7 @@ export default function CampanhaVinagreDashboard() {
                             <tbody>
                                 {hitListData.hitList.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                                             Nenhum cliente atacadista encontrado na base.
                                         </td>
                                     </tr>
@@ -166,14 +187,39 @@ export default function CampanhaVinagreDashboard() {
                                                         ⏳ Pendente
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                        ✅ Aproveitou
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${cliente.metaCaixas > 0 && !cliente.metaAlcancada ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                                                        {cliente.metaCaixas > 0 && !cliente.metaAlcancada ? '🔄 Em Andamento' : '✅ Aproveitou'}
                                                     </span>
                                                 )}
                                             </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <input 
+                                                    type="number" 
+                                                    defaultValue={cliente.metaCaixas > 0 ? cliente.metaCaixas : ''}
+                                                    placeholder="0"
+                                                    onBlur={(e) => handleMetaChange(cliente.id, Number(e.target.value))}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            handleMetaChange(cliente.id, Number((e.target as HTMLInputElement).value));
+                                                            (e.target as HTMLInputElement).blur();
+                                                        }
+                                                    }}
+                                                    className="w-16 bg-gray-800 border border-gray-700 rounded text-center text-xs p-1 text-white focus:outline-none focus:border-blue-500"
+                                                />
+                                            </td>
                                             <td className="px-6 py-4 text-right">
                                                 {cliente.volumeComprado > 0 ? (
-                                                    <span className="text-emerald-400 font-bold">{cliente.volumeComprado} cx</span>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className={`${cliente.metaAlcancada ? 'text-emerald-400' : 'text-blue-400'} font-bold`}>{cliente.volumeComprado} cx</span>
+                                                        {cliente.metaCaixas > 0 && (
+                                                            <div className="w-16 bg-black/50 rounded-full h-1 mt-1 overflow-hidden">
+                                                                <div 
+                                                                    className={`h-1 rounded-full ${cliente.metaAlcancada ? 'bg-emerald-500' : 'bg-blue-500'}`} 
+                                                                    style={{ width: `${Math.min(100, (cliente.volumeComprado / cliente.metaCaixas) * 100)}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <span className="text-gray-600">-</span>
                                                 )}

@@ -15,6 +15,8 @@ export interface HitListClient {
     receitaGerada: number;
     ultimaAcao: string | null;
     pedidosDaCampanha: any[];
+    metaCaixas: number;
+    metaAlcancada: boolean;
 }
 
 export interface ApuracaoDashboardData {
@@ -49,6 +51,11 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
         },
         // Faça um "Left Join" para trazer os pedidos desse cliente ONDE campanha10OffAplicada === true
         include: {
+            metasCampanhas: {
+                where: {
+                    campanha: { slug: 'vinagre-10-off' }
+                }
+            },
             pedidos: {
                 where: {
                     campanha10OffAplicada: true,
@@ -101,6 +108,9 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
             clientesConvertidos++;
         }
 
+        const metaCaixas = cliente.metasCampanhas?.[0]?.metaCaixas || 0;
+        const metaAlcancada = metaCaixas > 0 && volumeComprado >= metaCaixas;
+
         return {
             id: cliente.id,
             nomeFantasia: cliente.nomeFantasia || 'Sem Nome',
@@ -112,7 +122,9 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
             volumeComprado,
             receitaGerada,
             ultimaAcao: comprou ? cliente.pedidos[0].data.toISOString() : null,
-            pedidosDaCampanha: cliente.pedidos
+            pedidosDaCampanha: cliente.pedidos,
+            metaCaixas,
+            metaAlcancada
         };
     });
 
