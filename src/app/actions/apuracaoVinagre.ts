@@ -44,7 +44,7 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
         where: {
             status: 'Ativo',
             tabelaPreco: {
-                in: ['atacado', 'avista']
+                in: ['atacado', 'atacadoAVista', 'avista', 'atacado a vista', 'Atacado a Vista', 'Atacado A Vista']
             }
         },
         // Faça um "Left Join" para trazer os pedidos desse cliente ONDE campanha10OffAplicada === true

@@ -98,14 +98,20 @@ export default function NovoPedidoPage() {
         switch (tabelaPreco) {
             case '200a699': preco = produto.preco200a699; break;
             case 'atacado': preco = produto.precoAtacado; break;
-            case 'atacadoAVista': preco = produto.precoAtacadoAVista; break;
+            case 'atacadoAVista': 
+            case 'avista':
+            case 'atacado a vista':
+            case 'Atacado a Vista':
+            case 'Atacado A Vista':
+                preco = produto.precoAtacadoAVista; break;
             case 'redes': preco = produto.precoRedes; break;
             case '50a199': default: preco = produto.preco50a199; break;
         }
         let finalPreco = Number(preco || produto.preco50a199);
         
         // Aplica campanha Vinagre 10% se ativa e se for atacado
-        if (campanhaVinagreAtiva && (tabelaPreco === 'atacado' || tabelaPreco === 'atacadoAVista') && (produto.nome.toLowerCase().includes('vinagre') && produto.nome.toLowerCase().includes('álcool') && produto.nome.includes('750'))) {
+        const isAtacado = ['atacado', 'atacadoAVista', 'avista', 'atacado a vista', 'Atacado a Vista', 'Atacado A Vista'].includes(tabelaPreco);
+        if (campanhaVinagreAtiva && isAtacado && (produto.nome.toLowerCase().includes('vinagre') && produto.nome.toLowerCase().includes('álcool') && produto.nome.includes('750'))) {
             finalPreco = finalPreco * 0.90;
         }
 
@@ -228,7 +234,8 @@ export default function NovoPedidoPage() {
         }
 
         // Verifica se houve item com desconto aplicado (Vinagre) na tabela Atacado
-        const isCampanhaAplicada = campanhaVinagreAtiva && (tabelaPreco === 'atacado' || tabelaPreco === 'atacadoAVista') && itens.some(i => i.nomeProduto.toLowerCase().includes('vinagre') && i.nomeProduto.toLowerCase().includes('álcool') && i.nomeProduto.includes('750'));
+        const isAtacado = ['atacado', 'atacadoAVista', 'avista', 'atacado a vista', 'Atacado a Vista', 'Atacado A Vista'].includes(tabelaPreco);
+        const isCampanhaAplicada = campanhaVinagreAtiva && isAtacado && itens.some(i => i.nomeProduto.toLowerCase().includes('vinagre') && i.nomeProduto.toLowerCase().includes('álcool') && i.nomeProduto.includes('750'));
 
         try {
             const success = await addOrder({
