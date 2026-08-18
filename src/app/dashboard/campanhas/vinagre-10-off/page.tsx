@@ -67,7 +67,16 @@ export default function CampanhaVinagreDashboard() {
     if (!hitListData) {
         return (
             <div className="flex h-64 items-center justify-center text-gray-400">
-                <p>Erro ao carregar os dados.</p>
+                <p>Carregando ou erro ao processar dados...</p>
+            </div>
+        );
+    }
+
+    if ('error' in hitListData) {
+        return (
+            <div className="flex flex-col h-64 items-center justify-center text-red-400">
+                <p className="font-bold text-lg">Erro ao carregar os dados</p>
+                <p className="text-sm">{(hitListData as any).error}</p>
             </div>
         );
     }
