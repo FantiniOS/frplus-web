@@ -9,7 +9,7 @@ import { getHitListVinagre, ApuracaoDashboardData } from '@/app/actions/apuracao
 import { salvarMetaCampanha } from '@/app/actions/salvarMetaCampanha';
 
 export default function CampanhaVinagreDashboard() {
-    const [hitListData, setHitListData] = useState<ApuracaoDashboardData | null>(null);
+    const [hitListData, setHitListData] = useState<ApuracaoDashboardData | { error: string, details?: any } | null>(null);
     const [loading, setLoading] = useState(true);
 
     const printCampanhaRef = useRef<HTMLDivElement>(null);
@@ -25,7 +25,7 @@ export default function CampanhaVinagreDashboard() {
     const handleMetaChange = async (clienteId: string, metaCaixas: number) => {
         // Optimistic update
         setHitListData(prev => {
-            if (!prev) return prev;
+            if (!prev || 'error' in prev) return prev;
             return {
                 ...prev,
                 hitList: prev.hitList.map(c => 

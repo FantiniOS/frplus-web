@@ -24,7 +24,7 @@ export default function RelatoriosPage() {
         refreshData();
     }, [refreshData]);
 
-    const [hitListData, setHitListData] = useState<ApuracaoDashboardData | null>(null);
+    const [hitListData, setHitListData] = useState<ApuracaoDashboardData | { error: string, details?: any } | null>(null);
     const [loadingHitList, setLoadingHitList] = useState(false);
 
     const [tipoRelatorio, setTipoRelatorio] = useState<'vendas' | 'produtos' | 'clientes' | 'tabela' | 'atendidos' | 'campanhaVinagre'>((tipoQuery as any) || 'vendas');
@@ -1511,6 +1511,12 @@ export default function RelatoriosPage() {
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                                 </div>
                             ) : hitListData ? (
+                                'error' in hitListData ? (
+                                    <div className="py-20 flex flex-col justify-center items-center text-red-400">
+                                        <p className="font-bold text-lg">Erro ao carregar os dados</p>
+                                        <p className="text-sm">{(hitListData as any).error}</p>
+                                    </div>
+                                ) : (
                                 <>
                                     {/* PROGRESS BAR DE CONVERSÃO */}
                                     <div className="bg-[#1a1a24] p-5 rounded-xl border border-white/10">
@@ -1681,6 +1687,7 @@ export default function RelatoriosPage() {
                                         </div>
                                     </div>
                                 </>
+                                )
                             ) : null}
                         </div>
                     )

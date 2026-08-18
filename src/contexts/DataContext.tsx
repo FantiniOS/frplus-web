@@ -156,7 +156,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     // Force version update
     useEffect(() => {
-        console.log("FRPlus App Version: 2026-02-11-v2");
+        console.log("FRPlus App Version: 2026-08-18-v3");
     }, []);
 
     // Toast state
