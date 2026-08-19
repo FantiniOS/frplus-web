@@ -1586,7 +1586,7 @@ export default function RelatoriosPage() {
                                                         hitListData.hitList.map(cliente => (
                                                             <tr key={cliente.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                                                 <td className="px-6 py-4">
-                                                                    <div className="font-medium text-white">{cliente.nomeFantasia}</div>
+                                                                    <div className="font-medium text-white">{cliente.cnpj}</div>
                                                                     <div className="text-xs text-gray-500 mt-0.5">{cliente.razaoSocial}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-gray-400">{cliente.cidade}</td>
@@ -1621,63 +1621,116 @@ export default function RelatoriosPage() {
 
                                     {/* COMPONENTE DE IMPRESSÃO ESCONDIDO PARA A CAMPANHA (react-to-print) */}
                                     <div className="hidden">
-                                        <div ref={printCampanhaRef} className="p-8 bg-white text-black min-h-screen">
-                                            <PrintHeader titulo="Apuração da Campanha 10% OFF - Hit List Atacado" />
-                                            
-                                            <div className="mt-4 mb-8">
-                                                <p className="text-gray-600 mb-2"><strong>Período Analisado:</strong> {new Date(periodoInicio).toLocaleDateString('pt-BR')} a {new Date(periodoFim).toLocaleDateString('pt-BR')}</p>
-                                            </div>
-
-                                            <div className="grid grid-cols-4 gap-4 mb-8">
-                                                <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
-                                                    <p className="text-sm text-gray-600 font-bold uppercase mb-1">Base Convertida</p>
-                                                    <p className="text-2xl font-black text-blue-600">{hitListData.taxaConversao}%</p>
-                                                    <p className="text-xs text-gray-500 mt-1">{hitListData.clientesConvertidos} de {hitListData.clientesAtacadistasBase}</p>
+                                        <div ref={printCampanhaRef} className="p-8 bg-white min-h-screen font-sans">
+                                            {/* Header Escuro */}
+                                            <div className="bg-slate-900 rounded-t-xl p-6 flex justify-between items-center mb-0">
+                                                <div className="flex items-center gap-4">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src="/logo.png" alt="FRPlus" className="h-12 w-auto object-contain brightness-0 invert print:block" />
+                                                    <div>
+                                                        <h1 className="text-2xl font-bold text-white uppercase">RELATÓRIO GERENCIAL DE ANDAMENTO</h1>
+                                                        <p className="text-gray-400 font-medium">Campanha 10% OFF Vinagre de Álcool (Atacado)</p>
+                                                    </div>
                                                 </div>
-                                                <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
-                                                    <p className="text-sm text-gray-600 font-bold uppercase mb-1">Base Pendente</p>
-                                                    <p className="text-2xl font-black text-amber-600">{hitListData.clientesAtacadistasBase - hitListData.clientesConvertidos}</p>
-                                                </div>
-                                                <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
-                                                    <p className="text-sm text-gray-600 font-bold uppercase mb-1">Volume (Cx)</p>
-                                                    <p className="text-2xl font-black text-gray-900">{hitListData.volumeTotalEscoado}</p>
-                                                </div>
-                                                <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
-                                                    <p className="text-sm text-gray-600 font-bold uppercase mb-1">Receita Gerada</p>
-                                                    <p className="text-2xl font-black text-gray-900">R$ {hitListData.receitaTotalGerada.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                                <div className="text-right text-sm text-gray-400">
+                                                    <p>Emitido em: {new Date().toLocaleDateString('pt-BR')}</p>
                                                 </div>
                                             </div>
+                                            <div className="h-2 w-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-b-xl mb-6"></div>
 
-                                            <h4 className="font-bold text-gray-900 mb-3 border-b border-gray-300 pb-2">Mapa de Caça (Relação de Atacadistas)</h4>
-                                            <table className="w-full text-sm text-left">
-                                                <thead className="bg-gray-100 border-y border-gray-300 text-gray-800">
+                                            {/* Dashboard Top Cards */}
+                                            <div className="grid grid-cols-4 gap-4 mb-6">
+                                                <div className="bg-white border border-gray-200 border-l-4 border-l-blue-500 p-4 rounded-lg shadow-sm">
+                                                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">CLIENTES ATIVOS</p>
+                                                    <p className="text-2xl font-black text-gray-900">{hitListData.clientesAtacadistasBase}</p>
+                                                    <p className="text-xs text-gray-400 mt-1">{hitListData.clientesAtacadistasBase - hitListData.clientesConvertidos} pendentes</p>
+                                                </div>
+                                                <div className="bg-white border border-gray-200 border-l-4 border-l-cyan-500 p-4 rounded-lg shadow-sm">
+                                                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">VOLUME BASE</p>
+                                                    <p className="text-2xl font-black text-gray-900">{hitListData.hitList.reduce((acc, c) => acc + (c.volumeAnterior || 0), 0)} cx</p>
+                                                    <p className="text-xs text-gray-400 mt-1">Histórico faturado</p>
+                                                </div>
+                                                <div className="bg-white border border-gray-200 border-l-4 border-l-green-500 p-4 rounded-lg shadow-sm">
+                                                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">META CALCULADA</p>
+                                                    <p className="text-2xl font-black text-gray-900">{hitListData.hitList.reduce((acc, c) => acc + (c.metaCaixas || 0), 0)} cx</p>
+                                                    <p className="text-xs text-gray-400 mt-1">+50% sobre a base</p>
+                                                </div>
+                                                <div className="bg-white border border-gray-200 border-l-4 border-l-purple-500 p-4 rounded-lg shadow-sm">
+                                                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">REALIZADO</p>
+                                                    <p className="text-2xl font-black text-gray-900">{hitListData.volumeTotalEscoado} cx</p>
+                                                    <p className="text-xs text-gray-400 mt-1">Total campanha</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Barra de Progresso Geral Escura */}
+                                            <div className="bg-slate-900 rounded-xl p-5 mb-8">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <h3 className="text-white font-bold text-sm uppercase">Taxa de Conversão da Base</h3>
+                                                    <span className="text-cyan-400 font-bold text-lg">{hitListData.taxaConversao}%</span>
+                                                </div>
+                                                <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
+                                                    <div 
+                                                        className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full"
+                                                        style={{ width: `${Math.min(100, Math.max(0, hitListData.taxaConversao))}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+
+                                            {/* Tabela Detalhada com Cabeçalho Preto */}
+                                            <table className="w-full text-sm text-left border-collapse">
+                                                <thead className="bg-slate-900 text-white">
                                                     <tr>
-                                                        <th className="py-2 px-3 font-bold">Cliente</th>
-                                                        <th className="py-2 px-3 font-bold">Cidade</th>
-                                                        <th className="py-2 px-3 font-bold text-center">Status</th>
-                                                        <th className="py-2 px-3 font-bold text-right">Volume (Cx)</th>
+                                                        <th className="py-3 px-3 font-bold border-b-2 border-slate-700">#</th>
+                                                        <th className="py-3 px-3 font-bold border-b-2 border-slate-700">CLIENTE</th>
+                                                        <th className="py-3 px-3 font-bold border-b-2 border-slate-700">LOCALIDADE</th>
+                                                        <th className="py-3 px-3 font-bold text-right border-b-2 border-slate-700">BASE (CX)</th>
+                                                        <th className="py-3 px-3 font-bold text-right border-b-2 border-slate-700">META (CX)</th>
+                                                        <th className="py-3 px-3 font-bold text-right border-b-2 border-slate-700">REALIZ. (CX)</th>
+                                                        <th className="py-3 px-3 font-bold text-center border-b-2 border-slate-700">PROGRESSO</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {hitListData.hitList.map(cliente => (
-                                                        <tr key={cliente.id} className="border-b border-gray-200">
-                                                            <td className="py-2 px-3 font-medium">{cliente.nomeFantasia}</td>
-                                                            <td className="py-2 px-3">{cliente.cidade}</td>
-                                                            <td className="py-2 px-3 text-center">
-                                                                {cliente.statusCampanha === 'Pendente' ? (
-                                                                    <span className="text-amber-600 font-bold">Pendente</span>
-                                                                ) : (
-                                                                    <span className="text-green-600 font-bold">Aproveitou</span>
-                                                                )}
-                                                            </td>
-                                                            <td className="py-2 px-3 text-right">
-                                                                {cliente.volumeComprado > 0 ? cliente.volumeComprado : '-'}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
+                                                    {hitListData.hitList.map((cliente, i) => {
+                                                        const progresso = cliente.metaCaixas > 0 ? Math.round((cliente.volumeComprado / cliente.metaCaixas) * 100) : (cliente.volumeComprado > 0 ? 100 : 0);
+                                                        return (
+                                                            <tr key={cliente.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                                <td className="py-2 px-3 border-b border-gray-200 text-gray-500 text-xs">{i + 1}</td>
+                                                                <td className="py-2 px-3 border-b border-gray-200">
+                                                                    <div className="font-bold text-gray-900">{cliente.cnpj}</div>
+                                                                    <div className="text-xs text-gray-500 mt-0.5">{cliente.razaoSocial}</div>
+                                                                </td>
+                                                                <td className="py-2 px-3 border-b border-gray-200 text-gray-600 text-xs">{cliente.cidade}</td>
+                                                                <td className="py-2 px-3 border-b border-gray-200 text-right font-mono text-gray-700 text-xs">
+                                                                    {cliente.volumeAnterior}
+                                                                </td>
+                                                                <td className="py-2 px-3 border-b border-gray-200 text-right font-mono font-bold text-gray-900 text-xs">
+                                                                    {cliente.metaCaixas}
+                                                                </td>
+                                                                <td className="py-2 px-3 border-b border-gray-200 text-right font-mono font-bold text-cyan-600 text-xs">
+                                                                    {cliente.volumeComprado}
+                                                                </td>
+                                                                <td className="py-2 px-3 border-b border-gray-200 text-center">
+                                                                    <div className="flex flex-col items-center gap-1 w-16 mx-auto">
+                                                                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                                                            <div 
+                                                                                className={`h-full rounded-full ${
+                                                                                    progresso >= 100 ? 'bg-emerald-500' :
+                                                                                    progresso >= 50 ? 'bg-amber-400' : 'bg-red-400'
+                                                                                }`}
+                                                                                style={{ width: `${Math.min(100, Math.max(5, progresso))}%` }}
+                                                                            ></div>
+                                                                        </div>
+                                                                        <span className="text-[10px] font-bold text-gray-600">
+                                                                            {progresso}%
+                                                                        </span>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
                                                     {hitListData.hitList.length === 0 && (
                                                         <tr>
-                                                            <td colSpan={4} className="py-4 px-3 text-center text-gray-500">
+                                                            <td colSpan={7} className="py-6 text-center text-gray-500 border-b border-gray-200">
                                                                 Nenhum cliente atacadista encontrado.
                                                             </td>
                                                         </tr>

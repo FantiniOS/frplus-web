@@ -7,6 +7,7 @@ export interface HitListClient {
     id: string;
     nomeFantasia: string;
     razaoSocial: string;
+    cnpj: string;
     cidade: string;
     telefone: string;
     celular: string;
@@ -260,6 +261,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 id: cliente.id ?? '',
                 nomeFantasia: cliente.nomeFantasia || 'Sem Nome',
                 razaoSocial: cliente.razaoSocial || 'Sem Nome',
+                cnpj: cliente.cnpj || '-',
                 cidade: cliente.cidade || '-',
                 telefone: cliente.telefone || '',
                 celular: cliente.celular || '',
