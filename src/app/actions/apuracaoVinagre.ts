@@ -31,13 +31,10 @@ export interface ApuracaoDashboardData {
     hitList: HitListClient[];
 }
 
-// Helper: verifica se o nome do produto corresponde a "Vinagre de Álcool 750ml"
-function isVinagre750ml(nomeProduto: string | null | undefined): boolean {
-    if (!nomeProduto) return false;
-    const lower = nomeProduto.toLowerCase();
-    return lower.includes('vinagre') &&
-           (lower.includes('álcool') || lower.includes('alcool') || lower.includes('lcool')) &&
-           nomeProduto.includes('750');
+// Helper: verifica se o código do produto corresponde a "Vinagre de Álcool 750ml"
+function isVinagre750ml(codigoProduto: string | null | undefined): boolean {
+    if (!codigoProduto) return false;
+    return codigoProduto === '10.01.03.10';
 }
 
 // Helper: converte Date para ISO string de forma segura
@@ -139,7 +136,7 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
                     itens: {
                         some: {
                             produto: {
-                                nome: { contains: 'Vinagre', mode: 'insensitive' }
+                                codigo: '10.01.03.10'
                             }
                         }
                     }
@@ -175,8 +172,8 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
                 const itens = pedido?.itens;
                 if (Array.isArray(itens)) {
                     for (const item of itens) {
-                        const nomeProduto = item?.produto?.nome ?? '';
-                        if (isVinagre750ml(nomeProduto)) {
+                        const codigoProduto = item?.produto?.codigo ?? '';
+                        if (isVinagre750ml(codigoProduto)) {
                             qtdVinagre += (Number(item?.quantidade) || 0);
                         }
                     }
@@ -209,8 +206,8 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
                 receitaGerada += (Number(pedido?.valorTotal) || 0);
                 const itensPedido = Array.isArray(pedido?.itens) ? pedido.itens : [];
                 itensPedido.forEach((item: any) => {
-                    const nomeProduto = item?.produto?.nome ?? '';
-                    if (isVinagre750ml(nomeProduto)) {
+                    const codigoProduto = item?.produto?.codigo ?? '';
+                    if (isVinagre750ml(codigoProduto)) {
                         volumeComprado += (Number(item?.quantidade) || 0);
                     }
                 });
