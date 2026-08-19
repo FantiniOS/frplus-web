@@ -244,6 +244,80 @@ export default function CampanhaVinagreDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* COMPONENTE DE IMPRESSÃO ESCONDIDO PARA A CAMPANHA (react-to-print) */}
+            <div className="hidden">
+                <div ref={printCampanhaRef} className="p-8 bg-white text-black min-h-screen">
+                    <PrintHeader titulo="Apuração da Campanha 10% OFF - Hit List Atacado" />
+                    
+                    <div className="mt-4 mb-8">
+                        <p className="text-gray-600 mb-2"><strong>Período Analisado:</strong> Ano vigente até a data de hoje</p>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-4 mb-8">
+                        <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
+                            <p className="text-sm text-gray-600 font-bold uppercase mb-1">Base Convertida</p>
+                            <p className="text-2xl font-black text-blue-600">{hitListData.taxaConversao}%</p>
+                            <p className="text-xs text-gray-500 mt-1">{hitListData.clientesConvertidos} de {hitListData.clientesAtacadistasBase}</p>
+                        </div>
+                        <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
+                            <p className="text-sm text-gray-600 font-bold uppercase mb-1">Base Pendente</p>
+                            <p className="text-2xl font-black text-amber-600">{hitListData.clientesAtacadistasBase - hitListData.clientesConvertidos}</p>
+                        </div>
+                        <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
+                            <p className="text-sm text-gray-600 font-bold uppercase mb-1">Volume (Cx)</p>
+                            <p className="text-2xl font-black text-gray-900">{hitListData.volumeTotalEscoado}</p>
+                        </div>
+                        <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
+                            <p className="text-sm text-gray-600 font-bold uppercase mb-1">Receita Gerada</p>
+                            <p className="text-2xl font-black text-gray-900">R$ {hitListData.receitaTotalGerada.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                    </div>
+
+                    <h4 className="font-bold text-gray-900 mb-3 border-b border-gray-300 pb-2">Mapa de Caça (Relação de Atacadistas)</h4>
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-100 border-y border-gray-300 text-gray-800">
+                            <tr>
+                                <th className="py-2 px-3 font-bold">Cliente</th>
+                                <th className="py-2 px-3 font-bold">Cidade</th>
+                                <th className="py-2 px-3 font-bold text-center">Status</th>
+                                <th className="py-2 px-3 font-bold text-center">Meta (Cx)</th>
+                                <th className="py-2 px-3 font-bold text-right">Volume (Cx)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {hitListData.hitList.map(cliente => (
+                                <tr key={cliente.id} className="border-b border-gray-200">
+                                    <td className="py-2 px-3 font-medium">{cliente.nomeFantasia}</td>
+                                    <td className="py-2 px-3">{cliente.cidade}</td>
+                                    <td className="py-2 px-3 text-center">
+                                        {cliente.statusCampanha === 'Pendente' ? (
+                                            <span className="text-amber-600 font-bold">Pendente</span>
+                                        ) : cliente.metaCaixas > 0 && !cliente.metaAlcancada ? (
+                                            <span className="text-blue-600 font-bold">Em Andamento</span>
+                                        ) : (
+                                            <span className="text-green-600 font-bold">Aproveitou</span>
+                                        )}
+                                    </td>
+                                    <td className="py-2 px-3 text-center">
+                                        {cliente.metaCaixas > 0 ? cliente.metaCaixas : '-'}
+                                    </td>
+                                    <td className="py-2 px-3 text-right">
+                                        {cliente.volumeComprado > 0 ? cliente.volumeComprado : '-'}
+                                    </td>
+                                </tr>
+                            ))}
+                            {hitListData.hitList.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="py-4 px-3 text-center text-gray-500">
+                                        Nenhum cliente atacadista encontrado.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     );
 }
