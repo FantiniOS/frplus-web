@@ -1586,8 +1586,9 @@ export default function RelatoriosPage() {
                                                         hitListData.hitList.map(cliente => (
                                                             <tr key={cliente.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                                                 <td className="px-6 py-4">
-                                                                    <div className="font-medium text-white">{cliente.cnpj}</div>
-                                                                    <div className="text-xs text-gray-500 mt-0.5">{cliente.razaoSocial}</div>
+                                                                    <div className="font-medium text-white">{cliente.razaoSocial || 'Sem Nome'}</div>
+                                                                    <div className="text-xs text-gray-500 mt-0.5">{cliente.cnpj || 'Sem CNPJ'}</div>
+                                                                    {cliente.comprador && <div className="text-xs text-gray-500 mt-0.5">{cliente.comprador}</div>}
                                                                 </td>
                                                                 <td className="px-6 py-4 text-gray-400">{cliente.cidade}</td>
                                                                 <td className="px-6 py-4 text-center">
@@ -1696,8 +1697,9 @@ export default function RelatoriosPage() {
                                                             <tr key={cliente.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                                                 <td className="py-2 px-3 border-b border-gray-200 text-gray-500 text-xs">{i + 1}</td>
                                                                 <td className="py-2 px-3 border-b border-gray-200">
-                                                                    <div className="font-bold text-gray-900">{cliente.cnpj}</div>
-                                                                    <div className="text-xs text-gray-500 mt-0.5">{cliente.razaoSocial}</div>
+                                                                    <div className="font-bold text-gray-900">{cliente.razaoSocial || 'Sem Nome'}</div>
+                                                                    <div className="text-xs text-gray-500 mt-0.5">{cliente.cnpj || 'Sem CNPJ'}</div>
+                                                                    {cliente.comprador && <div className="text-xs text-gray-500 mt-0.5">{cliente.comprador}</div>}
                                                                 </td>
                                                                 <td className="py-2 px-3 border-b border-gray-200 text-gray-600 text-xs">{cliente.cidade}</td>
                                                                 <td className="py-2 px-3 border-b border-gray-200 text-right font-mono text-gray-700 text-xs">

@@ -529,21 +529,21 @@ export default function CampanhaVinagre10OffDashboard() {
                     <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-white print:text-black truncate">
-                              {cliente.cnpj || 'Sem CNPJ'}
-                            </span>
-                            <span className="text-xs text-gray-400 truncate">
-                              {cliente.razaoSocial}
-                            </span>
-                          </div>
-                          <Link href={`/dashboard/clientes/${cliente.id}/raio-x`} title="Raio-X do Cliente" className="print:hidden mt-1">
+                          <span className="font-medium text-white print:text-black truncate">
+                            {cliente.razaoSocial || 'Sem Nome'}
+                          </span>
+                          <Link href={`/dashboard/clientes/${cliente.id}/raio-x`} title="Raio-X do Cliente" className="print:hidden">
                             <ExternalLink className="h-3 w-3 text-gray-500 hover:text-blue-400 transition-colors" />
                           </Link>
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5 truncate print:text-gray-600">
-                          {cliente.razaoSocial || ''}
+                        <div className="text-xs text-gray-400 truncate mt-0.5">
+                          {cliente.cnpj || 'Sem CNPJ'}
                         </div>
+                        {cliente.comprador && (
+                          <div className="text-xs text-gray-500 truncate mt-0.5 flex items-center gap-1">
+                            {cliente.comprador}
+                          </div>
+                        )}
                         <div className="flex items-center gap-3 mt-0.5">
                           {cliente.cidade && (
                             <span className="text-xs text-gray-500 flex items-center gap-1 md:hidden">
@@ -730,8 +730,9 @@ export default function CampanhaVinagre10OffDashboard() {
                 return (
                   <tr key={cliente.id} className="border-b border-gray-200">
                     <td className="py-2 px-3">
-                      <div className="font-medium text-gray-900">{cliente.cnpj || 'Sem CNPJ'}</div>
-                      <div className="text-xs text-gray-500">{cliente.razaoSocial}</div>
+                      <div className="font-medium text-gray-900">{cliente.razaoSocial || 'Sem Nome'}</div>
+                      <div className="text-xs text-gray-500">{cliente.cnpj || 'Sem CNPJ'}</div>
+                      {cliente.comprador && <div className="text-xs text-gray-500">{cliente.comprador}</div>}
                     </td>
                     <td className="py-2 px-3">{cliente.cidade || '-'}</td>
                     <td className="py-2 px-3 text-center">
