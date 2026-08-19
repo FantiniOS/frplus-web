@@ -4,7 +4,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { PrintHeader } from '@/components/ui/PrintHeader';
-import { useReactToPrint } from 'react-to-print';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -65,14 +66,55 @@ export default function CampanhaVinagre10OffDashboard() {
   const [campanhaAtiva, setCampanhaAtiva] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
 
-  const printRef = useRef<HTMLDivElement>(null);
-  const handleExportPDF = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: '10pct_OFF_Vinagre_Alcool_HitList'
-  });
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
-  const handlePrint = () => {
-    window.print();
+  const gerarPDF = async () => {
+    if (!reportRef.current) return;
+    setGerandoPdf(true);
+    try {
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#0a0a0a' // Fundo escuro do dashboard
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgRatio = imgProps.width / imgProps.height;
+      
+      const renderWidth = pdfWidth;
+      const renderHeight = pdfWidth / imgRatio;
+
+      let heightLeft = renderHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, renderWidth, renderHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft >= 0) {
+          position = heightLeft - renderHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, renderWidth, renderHeight);
+          heightLeft -= pdfHeight;
+      }
+
+      pdf.save('Relatorio_Gerencial_Vinagre.pdf');
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Não foi possível gerar o PDF. Tente novamente.');
+    } finally {
+      setGerandoPdf(false);
+    }
   };
 
   const handleMetaChange = async (clienteId: string, metaCaixas: number) => {
@@ -269,7 +311,7 @@ export default function CampanhaVinagre10OffDashboard() {
   const basePendente = totalElegiveis - totalConvertidos;
 
   return (
-    <div className="space-y-6 print:h-auto print:overflow-visible print:bg-white" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
+    <div ref={reportRef} className="space-y-6 print:h-auto print:overflow-visible print:bg-white" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
       {/* ═══ PRINT HEADER ═══ */}
       <div className="hidden print:block mb-8">
         <PrintHeader titulo="10% OFF Vinagre de Álcool — Hit List Atacado" />
@@ -328,18 +370,12 @@ export default function CampanhaVinagre10OffDashboard() {
             {isTogglingStatus ? 'Atualizando...' : campanhaAtiva ? 'Encerrar Campanha' : 'Reativar Campanha'}
           </button>
           <button
-            onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <Printer className="h-3 w-3" />
-            Imprimir
-          </button>
-          <button
-            onClick={() => handleExportPDF()}
-            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
+            onClick={gerarPDF}
+            disabled={gerandoPdf}
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors disabled:opacity-50"
           >
             <FileDown className="h-3 w-3" />
-            Exportar PDF
+            {gerandoPdf ? 'Gerando PDF...' : 'Exportar PDF'}
           </button>
         </div>
       </div>
@@ -671,88 +707,6 @@ export default function CampanhaVinagre10OffDashboard() {
         <div className="flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-400/60"></span>
           <span>10% OFF Liberado = Meta atingida (Última compra × 1.5)</span>
-        </div>
-      </div>
-
-      {/* ═══ COMPONENTE DE IMPRESSÃO (react-to-print) ═══ */}
-      <div className="hidden">
-        <div ref={printRef} className="p-8 bg-white text-black min-h-screen">
-          <PrintHeader titulo="10% OFF Vinagre de Álcool — Mapa de Caça (Atacado)" />
-
-          <div className="mt-4 mb-8">
-            <p className="text-gray-600 mb-2"><strong>Período Analisado:</strong> Ano vigente até a data de hoje</p>
-          </div>
-
-          <div className="grid grid-cols-4 gap-4 mb-8">
-            <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
-              <p className="text-sm text-gray-600 font-bold uppercase mb-1">Conversão</p>
-              <p className="text-2xl font-black text-blue-600">{taxaConversao}%</p>
-              <p className="text-xs text-gray-500 mt-1">{totalConvertidos} de {totalElegiveis}</p>
-            </div>
-            <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
-              <p className="text-sm text-gray-600 font-bold uppercase mb-1">Base Pendente</p>
-              <p className="text-2xl font-black text-amber-600">{basePendente}</p>
-            </div>
-            <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
-              <p className="text-sm text-gray-600 font-bold uppercase mb-1">Volume (Cx)</p>
-              <p className="text-2xl font-black text-gray-900">{volumeTotal.toLocaleString('pt-BR')}</p>
-            </div>
-            <div className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-center">
-              <p className="text-sm text-gray-600 font-bold uppercase mb-1">Receita Gerada</p>
-              <p className="text-2xl font-black text-gray-900">R$ {receitaTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-            </div>
-          </div>
-
-          <h4 className="font-bold text-gray-900 mb-3 border-b border-gray-300 pb-2">Mapa de Caça (Relação de Atacadistas)</h4>
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-100 border-y border-gray-300 text-gray-800">
-              <tr>
-                <th className="py-2 px-3 font-bold">Cliente</th>
-                <th className="py-2 px-3 font-bold">Cidade</th>
-                <th className="py-2 px-3 font-bold text-center">Status</th>
-                <th className="py-2 px-3 font-bold text-right">Últ. Compra (Cx)</th>
-                <th className="py-2 px-3 font-bold text-right">Meta (Cx)</th>
-                <th className="py-2 px-3 font-bold text-right">Vol. Campanha (Cx)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(hitListData?.hitList ?? []).map(cliente => {
-                const va = cliente.volumeAnterior ?? 0;
-                const m = cliente.metaCaixas ?? 0;
-                const vc = cliente.volumeComprado ?? 0;
-
-                let statusText = 'Pendente';
-                let statusColor = 'text-amber-600';
-                if (vc > 0 && m > 0 && vc < m) { statusText = 'Insuficiente'; statusColor = 'text-orange-600'; }
-                if (m > 0 && vc >= m) { statusText = '10% OFF Liberado'; statusColor = 'text-green-600'; }
-                if (vc > 0 && m === 0) { statusText = 'Comprou'; statusColor = 'text-blue-600'; }
-
-                return (
-                  <tr key={cliente.id} className="border-b border-gray-200">
-                    <td className="py-2 px-3">
-                      <div className="font-medium text-gray-900">{cliente.razaoSocial || 'Sem Nome'}</div>
-                      <div className="text-xs text-gray-500">{cliente.cnpj || 'Sem CNPJ'}</div>
-                      {cliente.comprador && <div className="text-xs text-gray-500">{cliente.comprador}</div>}
-                    </td>
-                    <td className="py-2 px-3">{cliente.cidade || '-'}</td>
-                    <td className="py-2 px-3 text-center">
-                      <span className={`${statusColor} font-bold`}>{statusText}</span>
-                    </td>
-                    <td className="py-2 px-3 text-right">{cliente.volumeAnterior ?? 0} cx</td>
-                    <td className="py-2 px-3 text-right">{m > 0 ? m : '-'}</td>
-                    <td className="py-2 px-3 text-right">{vc > 0 ? vc : '-'}</td>
-                  </tr>
-                );
-              })}
-              {(!hitListData?.hitList || hitListData.hitList.length === 0) && (
-                <tr>
-                  <td colSpan={6} className="py-4 px-3 text-center text-gray-500">
-                    Nenhum cliente atacadista encontrado.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
