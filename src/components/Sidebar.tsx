@@ -21,7 +21,6 @@ import {
   ChevronDown,
   Truck,
   Target,
-  Wine,
 } from "lucide-react";
 import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -81,7 +80,6 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       title: "Campanhas",
       items: [
         { icon: Target, label: "Composto Belmont", href: "/dashboard/campanhas/belmont" },
-        { icon: Wine, label: "Vinagre 10% OFF", href: "/dashboard/campanhas/vinagre-10-off" },
       ]
     },
   ];
