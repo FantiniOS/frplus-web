@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { PrintHeader } from '@/components/ui/PrintHeader';
-import { generateRelatorioVinagrePDF } from './pdf-generator';
+import { generateRelatorioVinagrePDF, generatePropostaVinagrePDF } from './pdf-generator';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -78,6 +78,15 @@ export default function CampanhaVinagre10OffDashboard() {
       alert('Não foi possível gerar o PDF. Tente novamente.');
     } finally {
       setGerandoPdf(false);
+    }
+  };
+
+  const gerarProposta = async (cliente: HitListClient) => {
+    try {
+      await generatePropostaVinagrePDF(cliente, campanhaAtiva);
+    } catch (error) {
+      console.error('Erro ao gerar proposta:', error);
+      alert('Não foi possível gerar a proposta.');
     }
   };
 
@@ -492,12 +501,13 @@ export default function CampanhaVinagre10OffDashboard() {
                 <span className="text-emerald-400">Meta (cx)</span> <SortIcon field="metaCaixas" />
               </th>
               <th
-                className="px-3 py-4 font-medium text-right cursor-pointer hover:text-white transition-colors select-none"
+                className="px-3 py-4 font-medium text-right cursor-pointer hover:bg-white/5 transition-colors group/th"
                 onClick={() => handleSort('volumeComprado')}
               >
                 <span className="text-cyan-400">Volume na Campanha (cx)</span> <SortIcon field="volumeComprado" />
               </th>
               <th className="px-3 py-4 font-medium text-right">Última Ação</th>
+              <th className="px-3 py-4 font-medium text-center print:hidden">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5 print:divide-gray-200">
@@ -631,6 +641,17 @@ export default function CampanhaVinagre10OffDashboard() {
                       : cliente.ultimaAcao
                         ? new Date(cliente.ultimaAcao).toLocaleDateString('pt-BR')
                         : '-'}
+                  </td>
+
+                  {/* Ações */}
+                  <td className="px-3 py-3 text-center print:hidden">
+                    <button
+                      onClick={() => gerarProposta(cliente)}
+                      title="Gerar Proposta Comercial"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 transition-colors border border-blue-500/20"
+                    >
+                      <FileDown className="h-4 w-4" />
+                    </button>
                   </td>
                 </motion.tr>
               );
