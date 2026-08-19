@@ -4,8 +4,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { PrintHeader } from '@/components/ui/PrintHeader';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { generateRelatorioVinagrePDF } from './pdf-generator';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -70,45 +69,10 @@ export default function CampanhaVinagre10OffDashboard() {
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
   const gerarPDF = async () => {
-    if (!reportRef.current) return;
+    if (!hitListData) return;
     setGerandoPdf(true);
     try {
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#0a0a0a' // Fundo escuro do dashboard
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgRatio = imgProps.width / imgProps.height;
-      
-      const renderWidth = pdfWidth;
-      const renderHeight = pdfWidth / imgRatio;
-
-      let heightLeft = renderHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, renderWidth, renderHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft >= 0) {
-          position = heightLeft - renderHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, renderWidth, renderHeight);
-          heightLeft -= pdfHeight;
-      }
-
-      pdf.save('Relatorio_Gerencial_Vinagre.pdf');
+      await generateRelatorioVinagrePDF(hitListData);
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       alert('Não foi possível gerar o PDF. Tente novamente.');
