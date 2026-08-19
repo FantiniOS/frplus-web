@@ -113,10 +113,58 @@ export default function RelatoriosPage() {
     
     // Motor de PDF (react-to-print) para a campanha
     const printCampanhaRef = useRef<HTMLDivElement>(null);
-    const handlePrintCampanha = useReactToPrint({
-        contentRef: printCampanhaRef,
-        documentTitle: 'Apuracao_Vinagre_10_OFF'
-    });
+    const [exportandoVinagre, setExportandoVinagre] = useState(false);
+
+    const handleExportVinagrePDF = async () => {
+        if (!printCampanhaRef.current) return;
+        setExportandoVinagre(true);
+        try {
+            const html2canvas = (await import('html2canvas')).default;
+            const jsPDF = (await import('jspdf')).default;
+
+            const canvas = await html2canvas(printCampanhaRef.current, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            
+            const imgProps = pdf.getImageProperties(imgData);
+            const imgRatio = imgProps.width / imgProps.height;
+            
+            const renderWidth = pdfWidth;
+            const renderHeight = pdfWidth / imgRatio;
+
+            let heightLeft = renderHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, renderWidth, renderHeight);
+            heightLeft -= pdfHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - renderHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, renderWidth, renderHeight);
+                heightLeft -= pdfHeight;
+            }
+
+            pdf.save('Relatorio_Gerencial_Vinagre.pdf');
+        } catch (error) {
+            console.error('Erro ao gerar PDF da campanha:', error);
+            alert('Não foi possível gerar o PDF. Tente novamente.');
+        } finally {
+            setExportandoVinagre(false);
+        }
+    };
 
     // Filter orders by date
     const pedidosFiltrados = useMemo(() => {
@@ -770,11 +818,12 @@ export default function RelatoriosPage() {
                 <div className="flex gap-2">
                     {tipoRelatorio === 'campanhaVinagre' ? (
                         <button
-                            onClick={handlePrintCampanha}
-                            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500 transition-all shadow-lg shadow-green-600/20"
+                            onClick={handleExportVinagrePDF}
+                            disabled={exportandoVinagre}
+                            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500 transition-all shadow-lg shadow-green-600/20 disabled:opacity-50"
                         >
                             <FileDown className="h-4 w-4" />
-                            Exportar PDF
+                            {exportandoVinagre ? 'Gerando PDF...' : 'Exportar PDF'}
                         </button>
                     ) : (
                         <button
@@ -1621,7 +1670,7 @@ export default function RelatoriosPage() {
                                     </div>
 
                                     {/* COMPONENTE DE IMPRESSÃO ESCONDIDO PARA A CAMPANHA (react-to-print) */}
-                                    <div className="hidden">
+                                    <div className="absolute opacity-0 -left-[9999px] -top-[9999px] z-[-1] pointer-events-none w-[1200px]" aria-hidden="true">
                                         <div ref={printCampanhaRef} className="p-8 bg-white min-h-screen font-sans">
                                             {/* Header Escuro */}
                                             <div className="bg-slate-900 rounded-t-xl p-6 flex justify-between items-center mb-0">
