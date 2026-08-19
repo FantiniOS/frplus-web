@@ -536,11 +536,8 @@ export default function CampanhaVinagre10OffDashboard() {
                   </td>
 
                   {/* Última Compra (cx) */}
-                  <td className="px-3 py-3 text-right">
-                    <span className={`font-mono text-sm ${volumeAnterior === 0 ? 'text-gray-600 print:text-gray-400' : 'text-gray-300 print:text-gray-800'}`}>
-                      {volumeAnterior > 0 ? volumeAnterior : '-'}
-                    </span>
-                    {volumeAnterior > 0 && <span className="text-xs text-gray-600 ml-1">cx</span>}
+                  <td className="px-3 py-3 text-right text-gray-300 print:text-gray-800">
+                    {cliente.volumeAnterior ?? 0} cx
                   </td>
 
                   {/* Meta (cx) */}
@@ -700,7 +697,7 @@ export default function CampanhaVinagre10OffDashboard() {
                     <td className="py-2 px-3 text-center">
                       <span className={`${statusColor} font-bold`}>{statusText}</span>
                     </td>
-                    <td className="py-2 px-3 text-right">{va > 0 ? va : '-'}</td>
+                    <td className="py-2 px-3 text-right">{cliente.volumeAnterior ?? 0} cx</td>
                     <td className="py-2 px-3 text-right">{m > 0 ? m : '-'}</td>
                     <td className="py-2 px-3 text-right">{vc > 0 ? vc : '-'}</td>
                   </tr>
