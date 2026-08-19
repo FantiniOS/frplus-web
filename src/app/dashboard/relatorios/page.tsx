@@ -94,7 +94,7 @@ export default function RelatoriosPage() {
     useEffect(() => {
         if (tipoRelatorio === 'campanhaVinagre') {
             setLoadingHitList(true);
-            getHitListVinagre(periodoInicio, periodoFim).then(data => {
+            getHitListVinagre().then(data => {
                 setHitListData(data);
                 setLoadingHitList(false);
             }).catch(err => {

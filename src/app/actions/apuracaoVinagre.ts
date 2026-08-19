@@ -120,7 +120,8 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 taxaConversao: 0,
                 volumeTotalEscoado: 0,
                 receitaTotalGerada: 0,
-                hitList: []
+                hitList: [],
+                campanhaAtiva
             };
         }
 
