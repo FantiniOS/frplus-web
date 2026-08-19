@@ -29,10 +29,7 @@ export interface ApuracaoDashboardData {
     volumeTotalEscoado: number;
     receitaTotalGerada: number;
     hitList: HitListClient[];
-    campanhaVigencia?: {
-        dataInicio: string;
-        dataFim: string;
-    };
+    campanhaAtiva: boolean;
 }
 
 // Helper: verifica se o código do produto corresponde a "Vinagre de Álcool 750ml"
@@ -52,7 +49,7 @@ function safeToISOString(date: Date | string | null | undefined): string | null 
     }
 }
 
-export async function getHitListVinagre(dataInicio: string, dataFim: string): Promise<ApuracaoDashboardData | { error: string, details?: any }> {
+export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { error: string, details?: any }> {
     try {
         const user = await getServerUser();
         if (!user) {
@@ -60,11 +57,7 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
         }
 
         const campanhaDb = await prisma.campanha.findUnique({ where: { slug: 'vinagre-10-off' } });
-
-        const start = campanhaDb?.dataInicio ? new Date(campanhaDb.dataInicio) : new Date(dataInicio);
-        start.setHours(0, 0, 0, 0);
-        const end = campanhaDb?.dataEncerramento ? new Date(campanhaDb.dataEncerramento) : new Date(dataFim);
-        end.setHours(23, 59, 59, 999);
+        const campanhaAtiva = campanhaDb?.status === 'ATIVA';
 
         // ===================================================================
         // PASSO 1: Filtro Exclusivo de Segmento
@@ -90,10 +83,6 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
                         where: {
                             campanha10OffAplicada: true,
                             tipo: 'Venda',
-                            data: {
-                                gte: start,
-                                lte: end
-                            },
                             itens: {
                                 some: { 
                                     produto: { codigo: '10.01.03.10' },
@@ -311,10 +300,7 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
             volumeTotalEscoado,
             receitaTotalGerada,
             hitList,
-            campanhaVigencia: {
-                dataInicio: safeToISOString(start) ?? '',
-                dataFim: safeToISOString(end) ?? ''
-            }
+            campanhaAtiva
         };
     } catch (error: any) {
         console.error("SERVER ACTION ERROR:", error?.message || error);
