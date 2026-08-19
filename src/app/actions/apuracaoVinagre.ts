@@ -83,6 +83,7 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
                     pedidos: {
                         where: {
                             campanha10OffAplicada: true,
+                            tipo: 'Venda',
                             data: {
                                 gte: start,
                                 lte: end
@@ -139,6 +140,7 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
                 where: {
                     clienteId: { in: clienteIds },
                     status: { notIn: ['Cancelado'] },
+                    tipo: 'Venda',
                     itens: {
                         some: {
                             produto: {
