@@ -29,6 +29,10 @@ export interface ApuracaoDashboardData {
     volumeTotalEscoado: number;
     receitaTotalGerada: number;
     hitList: HitListClient[];
+    campanhaVigencia?: {
+        dataInicio: string;
+        dataFim: string;
+    };
 }
 
 // Helper: verifica se o código do produto corresponde a "Vinagre de Álcool 750ml"
@@ -55,9 +59,11 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
             throw new Error("Não autorizado");
         }
 
-        const start = new Date(dataInicio);
+        const campanhaDb = await prisma.campanha.findUnique({ where: { slug: 'vinagre-10-off' } });
+
+        const start = campanhaDb?.dataInicio ? new Date(campanhaDb.dataInicio) : new Date(dataInicio);
         start.setHours(0, 0, 0, 0);
-        const end = new Date(dataFim);
+        const end = campanhaDb?.dataEncerramento ? new Date(campanhaDb.dataEncerramento) : new Date(dataFim);
         end.setHours(23, 59, 59, 999);
 
         // ===================================================================
@@ -89,13 +95,17 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
                                 lte: end
                             },
                             itens: {
-                                some: { produto: { codigo: '10.01.03.10' } }
+                                some: { 
+                                    produto: { codigo: '10.01.03.10' },
+                                    precoUnitario: { gt: 0 }
+                                }
                             }
                         },
                         include: {
                             itens: {
                                 where: {
-                                    produto: { codigo: '10.01.03.10' }
+                                    produto: { codigo: '10.01.03.10' },
+                                    precoUnitario: { gt: 0 }
                                 },
                                 include: {
                                     produto: true
@@ -300,7 +310,11 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
             taxaConversao,
             volumeTotalEscoado,
             receitaTotalGerada,
-            hitList
+            hitList,
+            campanhaVigencia: {
+                dataInicio: safeToISOString(start) ?? '',
+                dataFim: safeToISOString(end) ?? ''
+            }
         };
     } catch (error: any) {
         console.error("SERVER ACTION ERROR:", error?.message || error);

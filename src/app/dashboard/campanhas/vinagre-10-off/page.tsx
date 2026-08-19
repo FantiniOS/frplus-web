@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { getHitListVinagre, ApuracaoDashboardData, HitListClient } from '@/app/actions/apuracaoVinagre';
 import { salvarMetaCampanha } from '@/app/actions/salvarMetaCampanha';
+import { updateCampanhaDatas } from '@/app/actions/updateCampanhaDatas';
 
 // ═══════════════════════════════════════════════════════
 // UTILIDADES
@@ -60,6 +61,10 @@ export default function CampanhaVinagre10OffDashboard() {
   const [showPendentesOnly, setShowPendentesOnly] = useState(false);
   const [sortField, setSortField] = useState<SortField>('nome');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  
+  const [dataInicioInput, setDataInicioInput] = useState('');
+  const [dataFimInput, setDataFimInput] = useState('');
+  const [isSavingDates, setIsSavingDates] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
   const handleExportPDF = useReactToPrint({
@@ -89,29 +94,49 @@ export default function CampanhaVinagre10OffDashboard() {
     }
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const now = new Date();
-        const start = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-        const end = now.toISOString().split('T')[0];
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const now = new Date();
+      const fallbackStart = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+      const fallbackEnd = now.toISOString().split('T')[0];
 
-        const data = await getHitListVinagre(start, end);
-        if (data && 'error' in data) {
-          setError((data as any).error);
-        } else {
-          setHitListData(data as ApuracaoDashboardData);
+      // Pass empty strings to use backend DB dates, but if it's the first time, backend will use these fallbacks
+      const data = await getHitListVinagre(fallbackStart, fallbackEnd);
+      if (data && 'error' in data) {
+        setError((data as any).error);
+      } else {
+        const apuracao = data as ApuracaoDashboardData;
+        setHitListData(apuracao);
+        if (apuracao.campanhaVigencia) {
+          setDataInicioInput(apuracao.campanhaVigencia.dataInicio.split('T')[0]);
+          setDataFimInput(apuracao.campanhaVigencia.dataFim.split('T')[0]);
         }
-      } catch (err: any) {
-        console.error(err);
-        setError(err?.message || 'Erro desconhecido');
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || 'Erro desconhecido');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  const handleSaveDates = async () => {
+    if (!dataInicioInput || !dataFimInput) return;
+    try {
+      setIsSavingDates(true);
+      await updateCampanhaDatas('vinagre-10-off', dataInicioInput, dataFimInput);
+      await fetchData();
+    } catch (err) {
+      console.error('Erro ao salvar datas', err);
+    } finally {
+      setIsSavingDates(false);
+    }
+  };
 
   // ═══ SORTING ═══
   const handleSort = (field: SortField) => {
@@ -312,12 +337,40 @@ export default function CampanhaVinagre10OffDashboard() {
         </div>
       </div>
 
-      {/* ═══ PRODUTO DETECTADO ═══ */}
-      <div className="flex flex-wrap gap-2 print:hidden">
-        <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium bg-white/5 text-gray-300 border border-white/10">
-          <Wine className="h-3 w-3 text-blue-400" />
-          Vinagre de Álcool 750ml
-        </span>
+      {/* ═══ PRODUTO DETECTADO & VIGÊNCIA ═══ */}
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between print:hidden">
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium bg-white/5 text-gray-300 border border-white/10">
+            <Wine className="h-3 w-3 text-blue-400" />
+            Vinagre de Álcool 750ml
+          </span>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2 bg-slate-900/40 p-2 rounded-xl border border-slate-800/80">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">Vigência:</span>
+          <div className="flex items-center gap-2">
+            <input 
+              type="date" 
+              value={dataInicioInput}
+              onChange={(e) => setDataInicioInput(e.target.value)}
+              className="bg-white border border-gray-300 text-slate-800 text-sm rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-gray-500 text-sm">até</span>
+            <input 
+              type="date" 
+              value={dataFimInput}
+              onChange={(e) => setDataFimInput(e.target.value)}
+              className="bg-white border border-gray-300 text-slate-800 text-sm rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button 
+              onClick={handleSaveDates}
+              disabled={isSavingDates}
+              className="ml-2 inline-flex items-center justify-center px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {isSavingDates ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ═══ BARRA DE CONVERSÃO ═══ */}
