@@ -86,10 +86,16 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
                             data: {
                                 gte: start,
                                 lte: end
+                            },
+                            itens: {
+                                some: { produto: { codigo: '10.01.03.10' } }
                             }
                         },
                         include: {
                             itens: {
+                                where: {
+                                    produto: { codigo: '10.01.03.10' }
+                                },
                                 include: {
                                     produto: true
                                 }
@@ -143,6 +149,9 @@ export async function getHitListVinagre(dataInicio: string, dataFim: string): Pr
                 },
                 include: {
                     itens: {
+                        where: {
+                            produto: { codigo: '10.01.03.10' }
+                        },
                         include: {
                             produto: true
                         }
