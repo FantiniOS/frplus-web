@@ -420,11 +420,11 @@ export default function CampanhaVinagre10OffDashboard() {
           </div>
         </div>
 
-        {/* Card 4: Base Pendente */}
+        {/* Card 4: Totais em Andamento */}
         <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-5 flex flex-col justify-between">
           <div className="flex items-center gap-2 mb-3 text-amber-500">
             <Target className="w-4 h-4" />
-            <h3 className="text-[11px] font-bold uppercase tracking-wider">Base Pendente</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider">Totais em Andamento</h3>
           </div>
           <div>
             <p className="text-3xl font-extrabold text-amber-500">{basePendente}</p>
