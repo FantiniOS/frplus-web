@@ -402,16 +402,23 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
   const vc = cliente.volumeComprado || 0;
 
   const showFinance = precoBase > 0 && m > 0;
+  
+  const fmtBRL = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  
   let economiaFormatada = "";
+  let custoNormal = 0;
+  let valorComDesconto = 0;
+  let economia = 0;
+
   if (showFinance) {
-    const custoNormal = m * precoBase;
-    const valorComDesconto = custoNormal * 0.9;
-    const economia = custoNormal - valorComDesconto;
-    economiaFormatada = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(economia);
+    custoNormal = m * precoBase;
+    valorComDesconto = custoNormal * 0.9;
+    economia = custoNormal - valorComDesconto;
+    economiaFormatada = fmtBRL(economia);
   }
 
   // SECTION: PROPOSTA HIGHLIGHT
-  const highlightBoxH = showFinance ? 48 : 40;
+  const highlightBoxH = showFinance ? 108 : 40;
   doc.setFillColor(C.dark[0], C.dark[1], C.dark[2]);
   doc.roundedRect(margin.left, y, contentW, highlightBoxH, 2, 2, 'F');
   
@@ -427,10 +434,62 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
   doc.text('proximo pedido precisa superar a sua ultima compra em 50%.', pageWidth / 2, y + 31, { align: 'center' });
 
   if (showFinance) {
+    // 1. Gatilho
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(C.amber[0], C.amber[1], C.amber[2]); // Yellow-ish highlight
+    doc.setTextColor(C.amber[0], C.amber[1], C.amber[2]);
     doc.text(`Economia imediata estimada de ${economiaFormatada} na compra da meta!`, pageWidth / 2, y + 41, { align: 'center' });
+
+    // 2. Receipt Box (Memória de Cálculo)
+    const rx = margin.left + 15;
+    const rw = contentW - 30;
+    const ry = y + 48;
+    const rh = 50;
+
+    doc.setFillColor(30, 41, 59); // slate-800
+    doc.roundedRect(rx, ry, rw, rh, 2, 2, 'F');
+
+    const leftX = rx + 8;
+    const rightX = rx + rw - 8;
+    let lineY = ry + 8;
+
+    doc.setFontSize(9);
+    
+    // Line 1: Volume
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(C.textLight[0], C.textLight[1], C.textLight[2]);
+    doc.text('Volume Meta:', leftX, lineY);
+    doc.text(`${m} cx`, rightX, lineY, { align: 'right' });
+    lineY += 7;
+
+    // Line 2: Preço Unitário
+    doc.text('Preco Unitario Estimado:', leftX, lineY);
+    doc.text(fmtBRL(precoBase), rightX, lineY, { align: 'right' });
+    lineY += 7;
+
+    // Line 3: Total sem desconto
+    doc.text('Total sem desconto:', leftX, lineY);
+    doc.text(fmtBRL(custoNormal), rightX, lineY, { align: 'right' });
+    lineY += 7;
+
+    // Line 4: Desconto
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(239, 68, 68); // red-500
+    doc.text('(-) Desconto de 10%:', leftX, lineY);
+    doc.text(fmtBRL(economia), rightX, lineY, { align: 'right' });
+    
+    // Separator line
+    lineY += 4;
+    doc.setDrawColor(71, 85, 105); // slate-600
+    doc.setLineWidth(0.2);
+    doc.line(rx + 5, lineY, rx + rw - 5, lineY);
+
+    // Line 5: Total com desconto
+    lineY += 8;
+    doc.setFontSize(11);
+    doc.setTextColor(16, 185, 129); // emerald-500 (C.green)
+    doc.text('INVESTIMENTO FINAL:', leftX, lineY);
+    doc.text(fmtBRL(valorComDesconto), rightX, lineY, { align: 'right' });
   }
 
   y += highlightBoxH + 6;
