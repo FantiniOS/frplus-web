@@ -88,12 +88,11 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                             campanha: { slug: 'vinagre-10-off' }
                         }
                     },
-                    // Pedidos da campanha (Realizado)
-                    // Garantimos que seja EXATAMENTE APÓS a data de ativação (dataCorte)
+                    // Garantimos que a evolução é baseada EXCLUSIVAMENTE na alocação manual.
+                    // Nada de soma automática por datas.
                     pedidos: {
                         where: {
                             campanha10OffAplicada: true,
-                            data: { gte: dataCorte },
                             tipo: 'Venda',
                             itens: {
                                 some: { 

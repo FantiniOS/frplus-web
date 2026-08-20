@@ -27,11 +27,13 @@ import {
   CheckCircle2,
   ArrowLeft,
   Edit2,
+  Link2,
 } from 'lucide-react';
 import { getHitListVinagre, ApuracaoDashboardData, HitListClient } from '@/app/actions/apuracaoVinagre';
 import { salvarMetaCampanha } from '@/app/actions/salvarMetaCampanha';
 import { toggleCampanhaVinagre } from '@/app/actions/toggleCampanhaVinagre';
 import ModalSelecionarPedidoBase from './ModalSelecionarPedidoBase';
+import ModalConciliacaoVinagre from './ModalConciliacaoVinagre';
 
 // ═══════════════════════════════════════════════════════
 // UTILIDADES
@@ -70,6 +72,9 @@ export default function CampanhaVinagre10OffDashboard() {
   const [modalAberto, setModalAberto] = useState(false);
   const [clienteModal, setClienteModal] = useState<{ id: string; nome: string } | null>(null);
 
+  const [modalConciliacaoAberto, setModalConciliacaoAberto] = useState(false);
+  const [clienteConciliacaoModal, setClienteConciliacaoModal] = useState<{ id: string; nome: string } | null>(null);
+
   const reportRef = useRef<HTMLDivElement>(null);
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
@@ -98,6 +103,17 @@ export default function CampanhaVinagre10OffDashboard() {
   const abrirModalOverride = (cliente: HitListClient) => {
     setClienteModal({ id: cliente.id, nome: cliente.razaoSocial || cliente.nomeFantasia || 'Cliente' });
     setModalAberto(true);
+  };
+
+  const abrirModalConciliacao = (cliente: HitListClient) => {
+    setClienteConciliacaoModal({ id: cliente.id, nome: cliente.razaoSocial || cliente.nomeFantasia || 'Cliente' });
+    setModalConciliacaoAberto(true);
+  };
+
+  const handleConciliacaoSaved = () => {
+    setModalConciliacaoAberto(false);
+    setClienteConciliacaoModal(null);
+    fetchData(); // Reloads all data since volumeRealizado relies on db links
   };
 
   const handleOverrideSaved = (clienteId: string, volumeBase: number, meta: number) => {
@@ -638,36 +654,46 @@ export default function CampanhaVinagre10OffDashboard() {
 
                   {/* Volume na Campanha (cx) */}
                   <td className="px-3 py-3 text-right">
-                    {volumeAtual > 0 ? (
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="inline-flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-2 py-1 print:border-cyan-500 print:bg-cyan-50">
-                          <span className="font-bold text-cyan-400 text-sm font-mono print:text-cyan-700">
-                            {volumeAtual}
-                          </span>
-                        </div>
-                        {meta > 0 && (
-                          <div className="flex items-center gap-1.5 w-20">
-                            <div className="flex-1 bg-white/10 rounded-full h-1 overflow-hidden print:bg-gray-200">
-                              <div
-                                className={`h-full rounded-full ${
-                                  progresso >= 100 ? 'bg-emerald-500' :
-                                  progresso >= 50 ? 'bg-amber-400' : 'bg-red-400'
-                                }`}
-                                style={{ width: `${Math.min(100, Math.max(5, progresso))}%` }}
-                              />
-                            </div>
-                            <span className={`text-[10px] font-bold ${
-                              progresso >= 100 ? 'text-emerald-400' :
-                              progresso >= 50 ? 'text-amber-400' : 'text-red-400'
-                            }`}>
-                              {progresso}%
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center justify-end gap-2">
+                        {volumeAtual > 0 ? (
+                          <div className="inline-flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-2 py-1 print:border-cyan-500 print:bg-cyan-50">
+                            <span className="font-bold text-cyan-400 text-sm font-mono print:text-cyan-700">
+                              {volumeAtual}
                             </span>
                           </div>
+                        ) : (
+                          <span className="text-gray-600 text-sm mr-2">-</span>
                         )}
+                        <button
+                          onClick={() => abrirModalConciliacao(cliente)}
+                          title="Vincular pedidos manualmente à campanha"
+                          className="p-1.5 rounded hover:bg-white/10 text-gray-500 hover:text-cyan-400 transition-colors border border-dashed border-gray-600/50 hover:border-cyan-500/50 print:hidden"
+                        >
+                          <Link2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                    ) : (
-                      <span className="text-gray-600 text-sm">-</span>
-                    )}
+
+                      {volumeAtual > 0 && meta > 0 && (
+                        <div className="flex items-center gap-1.5 w-24 justify-end mt-0.5">
+                          <div className="flex-1 bg-white/10 rounded-full h-1.5 overflow-hidden print:bg-gray-200">
+                            <div
+                              className={`h-full rounded-full ${
+                                progresso >= 100 ? 'bg-emerald-500' :
+                                progresso >= 50 ? 'bg-amber-400' : 'bg-red-400'
+                              }`}
+                              style={{ width: `${Math.min(100, Math.max(5, progresso))}%` }}
+                            />
+                          </div>
+                          <span className={`text-[10px] font-bold min-w-[24px] text-right ${
+                            progresso >= 100 ? 'text-emerald-400' :
+                            progresso >= 50 ? 'text-amber-400' : 'text-red-400'
+                          }`}>
+                            {progresso}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </td>
 
                   {/* Última Ação */}
@@ -731,13 +757,23 @@ export default function CampanhaVinagre10OffDashboard() {
         </div>
       </div>
 
-      {/* ═══ MODAL DE OVERRIDE ═══ */}
+      {/* ═══ MODAL DE OVERRIDE (BASE) ═══ */}
       {modalAberto && clienteModal && (
         <ModalSelecionarPedidoBase
           clienteId={clienteModal.id}
           clienteNome={clienteModal.nome}
           onClose={() => { setModalAberto(false); setClienteModal(null); }}
           onSaved={handleOverrideSaved}
+        />
+      )}
+
+      {/* ═══ MODAL DE CONCILIAÇÃO (REALIZADO) ═══ */}
+      {modalConciliacaoAberto && clienteConciliacaoModal && (
+        <ModalConciliacaoVinagre
+          clienteId={clienteConciliacaoModal.id}
+          clienteNome={clienteConciliacaoModal.nome}
+          onClose={() => { setModalConciliacaoAberto(false); setClienteConciliacaoModal(null); }}
+          onSaved={handleConciliacaoSaved}
         />
       )}
     </div>
