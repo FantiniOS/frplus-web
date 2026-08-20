@@ -284,7 +284,7 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
   doc.save("Relatorio_Campanha_Vinagre_Atacado.pdf");
 }
 
-export async function generatePropostaVinagrePDF(cliente: HitListClient, campanhaAtiva: boolean) {
+export async function generatePropostaVinagrePDF(cliente: HitListClient, campanhaAtiva: boolean, precoBase: number = 0) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -397,9 +397,23 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
 
   y += 32;
 
+  const va = cliente.volumeAnterior || 0;
+  const m = cliente.metaCaixas || 0;
+  const vc = cliente.volumeComprado || 0;
+
+  const showFinance = precoBase > 0 && m > 0;
+  let economiaFormatada = "";
+  if (showFinance) {
+    const custoNormal = m * precoBase;
+    const valorComDesconto = custoNormal * 0.9;
+    const economia = custoNormal - valorComDesconto;
+    economiaFormatada = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(economia);
+  }
+
   // SECTION: PROPOSTA HIGHLIGHT
+  const highlightBoxH = showFinance ? 48 : 40;
   doc.setFillColor(C.dark[0], C.dark[1], C.dark[2]);
-  doc.roundedRect(margin.left, y, contentW, 40, 2, 2, 'F');
+  doc.roundedRect(margin.left, y, contentW, highlightBoxH, 2, 2, 'F');
   
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
@@ -412,7 +426,14 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
   doc.text('Para garantir o desconto de 10% no Vinagre de Alcool, o volume do seu', pageWidth / 2, y + 25, { align: 'center' });
   doc.text('proximo pedido precisa superar a sua ultima compra em 50%.', pageWidth / 2, y + 31, { align: 'center' });
 
-  y += 46;
+  if (showFinance) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(C.amber[0], C.amber[1], C.amber[2]); // Yellow-ish highlight
+    doc.text(`Economia imediata estimada de ${economiaFormatada} na compra da meta!`, pageWidth / 2, y + 41, { align: 'center' });
+  }
+
+  y += highlightBoxH + 6;
 
   // SECTION: KPI CARDS
   const cardH = 28;
@@ -420,9 +441,6 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
   const cardCount = 3;
   const cardW = (contentW - cardGap * (cardCount - 1)) / cardCount;
 
-  const va = cliente.volumeAnterior || 0;
-  const m = cliente.metaCaixas || 0;
-  const vc = cliente.volumeComprado || 0;
   let statusText = 'PENDENTE';
   let statusColor = C.amber;
   let statusSub = 'Aguardando pedido';
