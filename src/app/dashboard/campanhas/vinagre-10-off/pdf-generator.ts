@@ -207,9 +207,9 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
   y += 9;
 
   const tableData = (data.hitList || []).map((c, i) => {
-    const va = c.volumeAnterior ?? 0;
-    const m = c.metaCaixas ?? 0;
-    const vc = c.volumeComprado ?? 0;
+    const va = c.volumeBase ?? 0;
+    const m = c.meta ?? 0;
+    const vc = c.volumeRealizado ?? 0;
 
     let statusText = "Pendente";
     if (vc > 0 && m > 0 && vc < m) statusText = "Insuficiente";
@@ -397,9 +397,9 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
 
   y += 32;
 
-  const va = cliente.volumeAnterior || 0;
-  const m = cliente.metaCaixas || 0;
-  const vc = cliente.volumeComprado || 0;
+  const va = cliente.volumeBase || 0;
+  const m = cliente.meta || 0;
+  const vc = cliente.volumeRealizado || 0;
   
   const precoBase = cliente.precoTabela || 0;
 

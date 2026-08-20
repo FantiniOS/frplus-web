@@ -49,7 +49,7 @@ function toTitleCase(str: string): string {
 // ═══════════════════════════════════════════════════════
 // TIPOS
 // ═══════════════════════════════════════════════════════
-type SortField = 'nome' | 'volumeAnterior' | 'metaCaixas' | 'volumeComprado';
+type SortField = 'nome' | 'volumeBase' | 'meta' | 'volumeRealizado';
 type SortDir = 'asc' | 'desc';
 
 // ═══════════════════════════════════════════════════════
@@ -100,33 +100,33 @@ export default function CampanhaVinagre10OffDashboard() {
     setModalAberto(true);
   };
 
-  const handleOverrideSaved = (clienteId: string, volumeAnterior: number, metaCaixas: number) => {
+  const handleOverrideSaved = (clienteId: string, volumeBase: number, meta: number) => {
     setHitListData(prev => {
       if (!prev) return prev;
       return {
         ...prev,
         hitList: prev.hitList.map(c =>
           c.id === clienteId
-            ? { ...c, volumeAnterior, metaCaixas, metaAlcancada: metaCaixas > 0 && c.volumeComprado >= metaCaixas }
+            ? { ...c, volumeBase, meta, metaAlcancada: meta > 0 && c.volumeRealizado >= meta }
             : c
         )
       };
     });
   };
 
-  const handleMetaChange = async (clienteId: string, metaCaixas: number) => {
+  const handleMetaChange = async (clienteId: string, meta: number) => {
     setHitListData(prev => {
       if (!prev) return prev;
       return {
         ...prev,
         hitList: prev.hitList.map(c =>
-          c.id === clienteId ? { ...c, metaCaixas, metaAlcancada: metaCaixas > 0 && c.volumeComprado >= metaCaixas } : c
+          c.id === clienteId ? { ...c, meta, metaAlcancada: meta > 0 && c.volumeRealizado >= meta } : c
         )
       };
     });
 
     try {
-      await salvarMetaCampanha(clienteId, 'vinagre-10-off', metaCaixas);
+      await salvarMetaCampanha(clienteId, 'vinagre-10-off', meta);
     } catch (err) {
       console.error('Erro ao salvar meta', err);
     }
@@ -188,8 +188,8 @@ export default function CampanhaVinagre10OffDashboard() {
 
   // ═══ STATUS BADGE ═══
   const renderStatusBadge = (cliente: HitListClient) => {
-    const volumeAtual = cliente.volumeComprado ?? 0;
-    const meta = cliente.metaCaixas ?? 0;
+    const volumeAtual = cliente.volumeRealizado ?? 0;
+    const meta = cliente.meta ?? 0;
 
     if (volumeAtual === 0) {
       return (
@@ -239,7 +239,7 @@ export default function CampanhaVinagre10OffDashboard() {
 
     // Filtro de pendentes
     if (showPendentesOnly) {
-      list = list.filter(c => (c.volumeComprado ?? 0) === 0);
+      list = list.filter(c => (c.volumeRealizado ?? 0) === 0);
     }
 
     // Sort
@@ -252,17 +252,17 @@ export default function CampanhaVinagre10OffDashboard() {
           valB = (b.nomeFantasia || b.razaoSocial || '').toLowerCase();
           if (sortDir === 'desc') return valB > valA ? 1 : valB < valA ? -1 : 0;
           return valA > valB ? 1 : valA < valB ? -1 : 0;
-        case 'volumeAnterior':
-          valA = a.volumeAnterior ?? 0;
-          valB = b.volumeAnterior ?? 0;
+        case 'volumeBase':
+          valA = a.volumeBase ?? 0;
+          valB = b.volumeBase ?? 0;
           break;
-        case 'metaCaixas':
-          valA = a.metaCaixas ?? 0;
-          valB = b.metaCaixas ?? 0;
+        case 'meta':
+          valA = a.meta ?? 0;
+          valB = b.meta ?? 0;
           break;
-        case 'volumeComprado':
-          valA = a.volumeComprado ?? 0;
-          valB = b.volumeComprado ?? 0;
+        case 'volumeRealizado':
+          valA = a.volumeRealizado ?? 0;
+          valB = b.volumeRealizado ?? 0;
           break;
       }
       if (sortDir === 'desc') return (valB as number) - (valA as number);
@@ -305,6 +305,8 @@ export default function CampanhaVinagre10OffDashboard() {
   const taxaConversao = hitListData.taxaConversao ?? 0;
   const volumeTotal = hitListData.volumeTotalEscoado ?? 0;
   const receitaTotal = hitListData.receitaTotalGerada ?? 0;
+  const volumeTotalBase = hitListData.volumeTotalBase ?? 0;
+  const metaGlobal = hitListData.metaGlobal ?? 0;
   const basePendente = totalElegiveis - totalConvertidos;
 
   return (
@@ -406,21 +408,45 @@ export default function CampanhaVinagre10OffDashboard() {
         </div>
       </div>
 
-      {/* ═══ CARDS DE RESUMO (Padrão Belmont - Dark Mode) ═══ */}
+      {/* ═══ CARDS DE RESUMO (Arquitetura Revisada) ═══ */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {/* Card 1: Clientes Elegíveis */}
+        {/* Card 1: Total Base */}
         <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-5 flex flex-col justify-between">
-          <div className="flex items-center gap-2 mb-3 text-blue-500">
+          <div className="flex items-center gap-2 mb-3 text-slate-400">
             <Users className="w-4 h-4" />
-            <h3 className="text-[11px] font-bold uppercase tracking-wider">Clientes Elegíveis</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider">Total Base</h3>
           </div>
           <div>
-            <p className="text-3xl font-extrabold text-blue-500">{totalElegiveis}</p>
-            <p className="text-xs text-slate-500 mt-1">Atacado e Atacado à Vista</p>
+            <p className="text-3xl font-extrabold text-white">{volumeTotalBase.toLocaleString('pt-BR')} <span className="text-xl font-bold text-slate-500">cx</span></p>
+            <p className="text-xs text-slate-500 mt-1">Histórico congelado</p>
           </div>
         </div>
 
-        {/* Card 2: Convertidos */}
+        {/* Card 2: Meta Global */}
+        <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-5 flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-3 text-blue-500">
+            <Target className="w-4 h-4" />
+            <h3 className="text-[11px] font-bold uppercase tracking-wider">Meta Global</h3>
+          </div>
+          <div>
+            <p className="text-3xl font-extrabold text-blue-500">{metaGlobal.toLocaleString('pt-BR')} <span className="text-xl font-bold text-blue-600">cx</span></p>
+            <p className="text-xs text-slate-500 mt-1">Base + 50%</p>
+          </div>
+        </div>
+
+        {/* Card 3: Evolução */}
+        <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-5 flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-3 text-cyan-500">
+            <TrendingUp className="w-4 h-4" />
+            <h3 className="text-[11px] font-bold uppercase tracking-wider">Evolução (Realizado)</h3>
+          </div>
+          <div>
+            <p className="text-3xl font-extrabold text-cyan-500">{volumeTotal.toLocaleString('pt-BR')} <span className="text-xl font-bold text-cyan-600">cx</span></p>
+            <p className="text-xs text-slate-500 mt-1">Pedidos novos na campanha</p>
+          </div>
+        </div>
+
+        {/* Card 4: Convertidos */}
         <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-5 flex flex-col justify-between">
           <div className="flex items-center gap-2 mb-3 text-emerald-500">
             <CheckCircle2 className="w-4 h-4" />
@@ -428,31 +454,7 @@ export default function CampanhaVinagre10OffDashboard() {
           </div>
           <div>
             <p className="text-3xl font-extrabold text-emerald-500">{totalConvertidos}</p>
-            <p className="text-xs text-slate-500 mt-1">{taxaConversao}% da base</p>
-          </div>
-        </div>
-
-        {/* Card 3: Volume Escoado */}
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-5 flex flex-col justify-between">
-          <div className="flex items-center gap-2 mb-3 text-cyan-500">
-            <TrendingUp className="w-4 h-4" />
-            <h3 className="text-[11px] font-bold uppercase tracking-wider">Volume Total</h3>
-          </div>
-          <div>
-            <p className="text-3xl font-extrabold text-cyan-500">{volumeTotal.toLocaleString('pt-BR')} <span className="text-xl font-bold text-cyan-600">cx</span></p>
-            <p className="text-xs text-slate-500 mt-1">Vinagre de Álcool 750ml</p>
-          </div>
-        </div>
-
-        {/* Card 4: Totais em Andamento */}
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-5 flex flex-col justify-between">
-          <div className="flex items-center gap-2 mb-3 text-amber-500">
-            <Target className="w-4 h-4" />
-            <h3 className="text-[11px] font-bold uppercase tracking-wider">Totais em Andamento</h3>
-          </div>
-          <div>
-            <p className="text-3xl font-extrabold text-amber-500">{basePendente}</p>
-            <p className="text-xs text-slate-500 mt-1">Não compraram ainda</p>
+            <p className="text-xs text-slate-500 mt-1">{taxaConversao}% da base ({totalElegiveis} clientes)</p>
           </div>
         </div>
       </div>
@@ -515,21 +517,21 @@ export default function CampanhaVinagre10OffDashboard() {
               <th className="px-3 py-4 font-medium text-center">Status na Campanha</th>
               <th
                 className="px-3 py-4 font-medium text-right cursor-pointer hover:text-white transition-colors select-none"
-                onClick={() => handleSort('volumeAnterior')}
+                onClick={() => handleSort('volumeBase')}
               >
-                Última Compra (cx) <SortIcon field="volumeAnterior" />
+                Última Compra (cx) <SortIcon field="volumeBase" />
               </th>
               <th
                 className="px-3 py-4 font-medium text-right cursor-pointer hover:text-white transition-colors select-none"
-                onClick={() => handleSort('metaCaixas')}
+                onClick={() => handleSort('meta')}
               >
-                <span className="text-emerald-400">Meta (cx)</span> <SortIcon field="metaCaixas" />
+                <span className="text-emerald-400">Meta (cx)</span> <SortIcon field="meta" />
               </th>
               <th
                 className="px-3 py-4 font-medium text-right cursor-pointer hover:bg-white/5 transition-colors group/th"
-                onClick={() => handleSort('volumeComprado')}
+                onClick={() => handleSort('volumeRealizado')}
               >
-                <span className="text-cyan-400">Volume na Campanha (cx)</span> <SortIcon field="volumeComprado" />
+                <span className="text-cyan-400">Volume na Campanha (cx)</span> <SortIcon field="volumeRealizado" />
               </th>
               <th className="px-3 py-4 font-medium text-right">Última Ação</th>
               <th className="px-3 py-4 font-medium text-center print:hidden">Ações</th>
@@ -537,9 +539,9 @@ export default function CampanhaVinagre10OffDashboard() {
           </thead>
           <tbody className="divide-y divide-white/5 print:divide-gray-200">
             {filteredClients.map((cliente, idx) => {
-              const volumeAnterior = cliente.volumeAnterior ?? 0;
-              const meta = cliente.metaCaixas ?? 0;
-              const volumeAtual = cliente.volumeComprado ?? 0;
+              const volumeBase = cliente.volumeBase ?? 0;
+              const meta = cliente.meta ?? 0;
+              const volumeAtual = cliente.volumeRealizado ?? 0;
               const progresso = meta > 0 ? Math.min(100, Math.round((volumeAtual / meta) * 100)) : 0;
 
               return (
@@ -610,7 +612,7 @@ export default function CampanhaVinagre10OffDashboard() {
                   {/* Última Compra (cx) */}
                   <td className="px-3 py-3 text-right text-gray-300 print:text-gray-800">
                     <div className="inline-flex items-center gap-1.5">
-                      <span>{cliente.volumeAnterior ?? 0} cx</span>
+                      <span>{cliente.volumeBase ?? 0} cx</span>
                       <button
                         onClick={() => abrirModalOverride(cliente)}
                         title="Selecionar pedido-base manualmente"

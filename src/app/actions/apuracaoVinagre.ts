@@ -13,23 +13,26 @@ export interface HitListClient {
     telefone: string;
     celular: string;
     statusCampanha: 'Pendente' | 'Aproveitou';
-    volumeComprado: number;
     receitaGerada: number;
     ultimaAcao: string | null;
     pedidosDaCampanha: any[];
-    metaCaixas: number;
     metaAlcancada: boolean;
-    // Novos campos de dados da regra de negócio
-    volumeAnterior: number;       // Qtd de Vinagre 750ml no ÚLTIMO pedido do cliente
-    dataUltimaCompra: string | null; // Data do último pedido que continha Vinagre 750ml
-    precoTabela: number;          // Preço dinâmico recuperado da Tabela de Preços (Produto)
+    // VARIÁVEIS ARQUITETURAIS ISOLADAS
+    volumeBase: number;       
+    meta: number;
+    volumeRealizado: number;
+    //
+    dataUltimaCompra: string | null; 
+    precoTabela: number;          
 }
 
 export interface ApuracaoDashboardData {
     clientesAtacadistasBase: number;
     clientesConvertidos: number;
     taxaConversao: number;
-    volumeTotalEscoado: number;
+    volumeTotalBase: number;      // NOVO: Soma de todo o histórico congelado
+    metaGlobal: number;           // NOVO: Soma de todas as metas projetadas
+    volumeTotalEscoado: number;   // EVOLUÇÃO (volumeRealizado global)
     receitaTotalGerada: number;
     hitList: HitListClient[];
     campanhaAtiva: boolean;
@@ -41,7 +44,6 @@ function isVinagre750ml(codigoProduto: string | null | undefined): boolean {
     return codigoProduto === '10.01.03.10';
 }
 
-// Helper: converte Date para ISO string de forma segura
 function safeToISOString(date: Date | string | null | undefined): string | null {
     if (!date) return null;
     try {
@@ -60,10 +62,15 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
         }
 
         const campanhaDb = await prisma.campanha.findUnique({ where: { slug: 'vinagre-10-off' } });
-        const campanhaAtiva = campanhaDb?.status === 'ATIVA';
+        if (!campanhaDb) {
+            throw new Error("Campanha não encontrada no banco de dados.");
+        }
+        
+        const campanhaAtiva = campanhaDb.status === 'ATIVA';
+        const dataCorte = campanhaDb.dataInicio; // O MARCO ZERO DA CAMPANHA
 
         // ===================================================================
-        // PASSO 1: Filtro Exclusivo de Segmento
+        // PASSO 1: Filtro Exclusivo de Segmento + EVOLUÇÃO (volumeRealizado)
         // Busca APENAS clientes ativos com tabelaPreco = ATACADO ou ATACADO A VISTA
         // ===================================================================
         let clientesAtacado: any[] = [];
@@ -81,10 +88,12 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                             campanha: { slug: 'vinagre-10-off' }
                         }
                     },
-                    // Pedidos da campanha (com flag campanha10OffAplicada) no período
+                    // Pedidos da campanha (Realizado)
+                    // Garantimos que seja EXATAMENTE APÓS a data de ativação (dataCorte)
                     pedidos: {
                         where: {
                             campanha10OffAplicada: true,
+                            data: { gte: dataCorte },
                             tipo: 'Venda',
                             itens: {
                                 some: { 
@@ -115,12 +124,13 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
             clientesAtacado = [];
         }
 
-        // Se não encontrou clientes, retorna dados zerados sem quebrar
         if (!clientesAtacado || clientesAtacado.length === 0) {
             return {
                 clientesAtacadistasBase: 0,
                 clientesConvertidos: 0,
                 taxaConversao: 0,
+                volumeTotalBase: 0,
+                metaGlobal: 0,
                 volumeTotalEscoado: 0,
                 receitaTotalGerada: 0,
                 hitList: [],
@@ -128,23 +138,20 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
             };
         }
 
-        // ===================================================================
-        // PASSO 2: Para cada cliente, buscar o ÚLTIMO pedido (qualquer pedido,
-        // não apenas da campanha) que contenha Vinagre de Álcool 750ml.
-        // Isso nos dá o "Volume Anterior" para calcular a meta.
-        // ===================================================================
         const clienteIds = clientesAtacado.map(c => c.id);
 
+        // ===================================================================
+        // PASSO 2: CONGELAMENTO DO HISTÓRICO (volumeBase)
+        // ===================================================================
         let pedidosComVinagre: any[] = [];
         try {
-            // Busca pedidos HISTÓRICOS (ANTERIORES à campanha) que contenham Vinagre 750ml.
-            // EXCLUI pedidos da campanha atual (campanha10OffAplicada = true) para que
-            // o volume base nunca seja contaminado pelo volume realizado na campanha.
+            // Busca pedidos HISTÓRICOS (ANTERIORES à dataCorte)
             pedidosComVinagre = await prisma.pedido.findMany({
                 where: {
                     clienteId: { in: clienteIds },
                     status: { notIn: ['Cancelado'] },
                     tipo: 'Venda',
+                    data: { lt: dataCorte }, // REQUISITO: ANTES DA DATA DE ATIVAÇÃO
                     campanha10OffAplicada: { not: true },
                     itens: {
                         some: {
@@ -173,17 +180,14 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
             pedidosComVinagre = [];
         }
 
-        // Mapa: clienteId -> { volumeAnterior, dataUltimaCompra }
-        // Pegamos APENAS o primeiro pedido encontrado (o mais recente) por cliente
-        const mapaUltimaCompra = new Map<string, { volumeAnterior: number; dataUltimaCompra: string | null }>();
+        const mapaUltimaCompra = new Map<string, { volumeBase: number; dataUltimaCompra: string | null }>();
 
         if (pedidosComVinagre && pedidosComVinagre.length > 0) {
             for (const pedido of pedidosComVinagre) {
                 const pedidoClienteId = pedido?.clienteId;
                 if (!pedidoClienteId) continue;
-                if (mapaUltimaCompra.has(pedidoClienteId)) continue; // Já encontramos o mais recente
+                if (mapaUltimaCompra.has(pedidoClienteId)) continue; 
 
-                // Isolar APENAS os itens de Vinagre de Álcool 750ml nesse pedido
                 let qtdVinagre = 0;
                 const itens = pedido?.itens;
                 if (Array.isArray(itens)) {
@@ -197,30 +201,27 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
 
                 if (qtdVinagre > 0) {
                     mapaUltimaCompra.set(pedidoClienteId, {
-                        volumeAnterior: qtdVinagre,
+                        volumeBase: qtdVinagre,
                         dataUltimaCompra: safeToISOString(pedido?.data)
                     });
                 }
             }
         }
 
-        // ===================================================================
-        // PASSO 3 e 4: Montar a hitList com a meta calculada (+50%)
-        // ===================================================================
-        let volumeTotalEscoado = 0;
+        let volumeTotalEscoado = 0; // Evolução Realizada
         let receitaTotalGerada = 0;
         let clientesConvertidos = 0;
+        let volumeTotalBase = 0;
+        let metaGlobal = 0;
 
-        // FETCH PRODUTO PARA PREÇOS DINÂMICOS
         const produtoVinagre = await prisma.produto.findFirst({
             where: { codigo: '10.01.03.10' }
         });
 
         const hitList: HitListClient[] = clientesAtacado.map(cliente => {
-            let volumeComprado = 0;
+            let volumeRealizado = 0;
             let receitaGerada = 0;
 
-            // Determina o precoTabela com base no segmento do cliente
             let precoTabela = 0;
             if (produtoVinagre) {
                 const tabStr = (cliente.tabelaPreco || '').toLowerCase().trim();
@@ -237,7 +238,6 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 }
             }
 
-            // Calcula volume de vinagre comprado na campanha atual
             const pedidosCliente = Array.isArray(cliente?.pedidos) ? cliente.pedidos : [];
 
             pedidosCliente.forEach((pedido: any) => {
@@ -246,13 +246,12 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 itensPedido.forEach((item: any) => {
                     const codigoProduto = item?.produto?.codigo ?? '';
                     if (isVinagre750ml(codigoProduto)) {
-                        volumeComprado += (Number(item?.quantidade) || 0);
+                        volumeRealizado += (Number(item?.quantidade) || 0);
                     }
                 });
             });
 
-            // Add to global totals
-            volumeTotalEscoado += volumeComprado;
+            volumeTotalEscoado += volumeRealizado;
             receitaTotalGerada += receitaGerada;
 
             const comprou = pedidosCliente.length > 0;
@@ -260,28 +259,24 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 clientesConvertidos++;
             }
 
-            // ---- LÓGICA DE META (com proteção de nulos) ----
             const dadosUltimaCompra = mapaUltimaCompra.get(cliente.id) ?? null;
             const metasCampanhas = Array.isArray(cliente?.metasCampanhas) ? cliente.metasCampanhas : [];
             const overrideVolume = metasCampanhas?.[0]?.volumeAnteriorOverride;
 
-            // Se houver override manual, prevalece sobre o automático
-            const volumeAnterior = overrideVolume != null
+            const volumeBase = overrideVolume != null
                 ? Number(overrideVolume)
-                : (dadosUltimaCompra?.volumeAnterior ?? 0);
+                : (dadosUltimaCompra?.volumeBase ?? 0);
             const dataUltimaCompra = dadosUltimaCompra?.dataUltimaCompra ?? null;
 
-            // Meta = Volume Anterior * 1.5, arredondado para cima
-            // Se volumeAnterior === 0 (cliente nunca comprou), meta = 0
-            const metaCalculada = volumeAnterior > 0 ? Math.ceil(volumeAnterior * 1.5) : 0;
-
-            // Se houver meta manual salva no banco (metasCampanhas.metaCaixas), prevalece como fallback.
+            const metaCalculada = volumeBase > 0 ? Math.ceil(volumeBase * 1.5) : 0;
             const metaManual = Number(metasCampanhas?.[0]?.metaCaixas) || 0;
-            const metaCaixas = metaCalculada > 0 ? metaCalculada : metaManual;
+            const meta = metaCalculada > 0 ? metaCalculada : metaManual;
 
-            const metaAlcancada = metaCaixas > 0 && volumeComprado >= metaCaixas;
+            volumeTotalBase += volumeBase;
+            metaGlobal += meta;
 
-            // ultimaAcao: data do primeiro pedido (mais recente) da campanha
+            const metaAlcancada = meta > 0 && volumeRealizado >= meta;
+
             let ultimaAcao: string | null = null;
             if (comprou && pedidosCliente[0]?.data) {
                 ultimaAcao = safeToISOString(pedidosCliente[0].data);
@@ -297,21 +292,18 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 telefone: cliente.telefone || '',
                 celular: cliente.celular || '',
                 statusCampanha: comprou ? 'Aproveitou' as const : 'Pendente' as const,
-                volumeComprado,
+                volumeRealizado,
                 receitaGerada,
                 ultimaAcao,
                 pedidosDaCampanha: pedidosCliente,
-                metaCaixas,
+                meta,
                 metaAlcancada,
-                // Novos campos
-                volumeAnterior,
+                volumeBase,
                 dataUltimaCompra,
                 precoTabela
             };
         });
 
-        // Ordenar: Pendentes no TOPO, e secundariamente por ordem alfabética.
-        // Entre os que aproveitaram, quem comprou mais primeiro.
         hitList.sort((a, b) => {
             if (a.statusCampanha === 'Pendente' && b.statusCampanha === 'Aproveitou') return -1;
             if (a.statusCampanha === 'Aproveitou' && b.statusCampanha === 'Pendente') return 1;
@@ -319,7 +311,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
             if (a.statusCampanha === 'Pendente') {
                 return (a.nomeFantasia || '').localeCompare(b.nomeFantasia || '');
             } else {
-                return (b.volumeComprado || 0) - (a.volumeComprado || 0);
+                return (b.volumeRealizado || 0) - (a.volumeRealizado || 0);
             }
         });
 
@@ -332,6 +324,8 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
             clientesAtacadistasBase,
             clientesConvertidos,
             taxaConversao,
+            volumeTotalBase,
+            metaGlobal,
             volumeTotalEscoado,
             receitaTotalGerada,
             hitList,

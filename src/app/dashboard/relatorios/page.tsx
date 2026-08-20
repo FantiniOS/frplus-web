@@ -1652,8 +1652,8 @@ export default function RelatoriosPage() {
                                                                     )}
                                                                 </td>
                                                                 <td className="px-6 py-4 text-right">
-                                                                    {cliente.volumeComprado > 0 ? (
-                                                                        <span className="text-emerald-400 font-bold">{cliente.volumeComprado} cx</span>
+                                                                    {cliente.volumeRealizado > 0 ? (
+                                                                        <span className="text-emerald-400 font-bold">{cliente.volumeRealizado} cx</span>
                                                                     ) : (
                                                                         <span className="text-gray-600">-</span>
                                                                     )}
@@ -1697,12 +1697,12 @@ export default function RelatoriosPage() {
                                                 </div>
                                                 <div className="bg-white border border-gray-200 border-l-4 border-l-cyan-500 p-4 rounded-lg shadow-sm">
                                                     <p className="text-xs text-gray-500 font-bold uppercase mb-1">VOLUME BASE</p>
-                                                    <p className="text-2xl font-black text-gray-900">{hitListData.hitList.reduce((acc, c) => acc + (c.volumeAnterior || 0), 0)} cx</p>
+                                                    <p className="text-2xl font-black text-gray-900">{hitListData.hitList.reduce((acc, c) => acc + (c.volumeBase || 0), 0)} cx</p>
                                                     <p className="text-xs text-gray-400 mt-1">Histórico faturado</p>
                                                 </div>
                                                 <div className="bg-white border border-gray-200 border-l-4 border-l-green-500 p-4 rounded-lg shadow-sm">
                                                     <p className="text-xs text-gray-500 font-bold uppercase mb-1">META CALCULADA</p>
-                                                    <p className="text-2xl font-black text-gray-900">{hitListData.hitList.reduce((acc, c) => acc + (c.metaCaixas || 0), 0)} cx</p>
+                                                    <p className="text-2xl font-black text-gray-900">{hitListData.hitList.reduce((acc, c) => acc + (c.meta || 0), 0)} cx</p>
                                                     <p className="text-xs text-gray-400 mt-1">+50% sobre a base</p>
                                                 </div>
                                                 <div className="bg-white border border-gray-200 border-l-4 border-l-purple-500 p-4 rounded-lg shadow-sm">
@@ -1741,7 +1741,7 @@ export default function RelatoriosPage() {
                                                 </thead>
                                                 <tbody>
                                                     {hitListData.hitList.map((cliente, i) => {
-                                                        const progresso = cliente.metaCaixas > 0 ? Math.round((cliente.volumeComprado / cliente.metaCaixas) * 100) : (cliente.volumeComprado > 0 ? 100 : 0);
+                                                        const progresso = cliente.meta > 0 ? Math.round((cliente.volumeRealizado / cliente.meta) * 100) : (cliente.volumeRealizado > 0 ? 100 : 0);
                                                         return (
                                                             <tr key={cliente.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                                                 <td className="py-2 px-3 border-b border-gray-200 text-gray-500 text-xs">{i + 1}</td>
@@ -1752,13 +1752,13 @@ export default function RelatoriosPage() {
                                                                 </td>
                                                                 <td className="py-2 px-3 border-b border-gray-200 text-gray-600 text-xs">{cliente.cidade}</td>
                                                                 <td className="py-2 px-3 border-b border-gray-200 text-right font-mono text-gray-700 text-xs">
-                                                                    {cliente.volumeAnterior}
+                                                                    {cliente.volumeBase}
                                                                 </td>
                                                                 <td className="py-2 px-3 border-b border-gray-200 text-right font-mono font-bold text-gray-900 text-xs">
-                                                                    {cliente.metaCaixas}
+                                                                    {cliente.meta}
                                                                 </td>
                                                                 <td className="py-2 px-3 border-b border-gray-200 text-right font-mono font-bold text-cyan-600 text-xs">
-                                                                    {cliente.volumeComprado}
+                                                                    {cliente.volumeRealizado}
                                                                 </td>
                                                                 <td className="py-2 px-3 border-b border-gray-200 text-center">
                                                                     <div className="flex flex-col items-center gap-1 w-16 mx-auto">
