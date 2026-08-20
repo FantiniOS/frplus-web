@@ -284,7 +284,7 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
   doc.save("Relatorio_Campanha_Vinagre_Atacado.pdf");
 }
 
-export async function generatePropostaVinagrePDF(cliente: HitListClient, campanhaAtiva: boolean, precoBase: number = 0) {
+export async function generatePropostaVinagrePDF(cliente: HitListClient, campanhaAtiva: boolean) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -400,6 +400,8 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
   const va = cliente.volumeAnterior || 0;
   const m = cliente.metaCaixas || 0;
   const vc = cliente.volumeComprado || 0;
+  
+  const precoBase = cliente.precoTabela || 0;
 
   const showFinance = precoBase > 0 && m > 0;
   

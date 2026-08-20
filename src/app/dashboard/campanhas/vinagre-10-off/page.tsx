@@ -59,7 +59,6 @@ export default function CampanhaVinagre10OffDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showPendentesOnly, setShowPendentesOnly] = useState(false);
-  const [precoBase, setPrecoBase] = useState<number>(35.00);
   const [sortField, setSortField] = useState<SortField>('nome');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   
@@ -84,7 +83,7 @@ export default function CampanhaVinagre10OffDashboard() {
 
   const gerarProposta = async (cliente: HitListClient) => {
     try {
-      await generatePropostaVinagrePDF(cliente, campanhaAtiva, precoBase);
+      await generatePropostaVinagrePDF(cliente, campanhaAtiva);
     } catch (error) {
       console.error('Erro ao gerar proposta:', error);
       alert('Não foi possível gerar a proposta.');
@@ -459,17 +458,6 @@ export default function CampanhaVinagre10OffDashboard() {
           Apenas Pendentes
         </button>
 
-        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-1">
-          <span className="text-xs text-gray-400 whitespace-nowrap">Preço Base (Cx):</span>
-          <input
-            type="number"
-            step="0.01"
-            value={precoBase}
-            onChange={e => setPrecoBase(Number(e.target.value))}
-            className="w-20 bg-transparent border-none focus:ring-0 text-sm font-mono text-cyan-400 p-0 text-right"
-            title="Preço Unitário da Caixa para a Proposta"
-          />
-        </div>
 
         <span className="text-xs text-gray-500 whitespace-nowrap">
           {filteredClients.length} cliente{filteredClients.length !== 1 ? 's' : ''}

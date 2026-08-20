@@ -22,6 +22,7 @@ export interface HitListClient {
     // Novos campos de dados da regra de negócio
     volumeAnterior: number;       // Qtd de Vinagre 750ml no ÚLTIMO pedido do cliente
     dataUltimaCompra: string | null; // Data do último pedido que continha Vinagre 750ml
+    precoTabela: number;          // Preço dinâmico recuperado da Tabela de Preços (Produto)
 }
 
 export interface ApuracaoDashboardData {
@@ -208,9 +209,31 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
         let receitaTotalGerada = 0;
         let clientesConvertidos = 0;
 
+        // FETCH PRODUTO PARA PREÇOS DINÂMICOS
+        const produtoVinagre = await prisma.produto.findFirst({
+            where: { codigo: '10.01.03.10' }
+        });
+
         const hitList: HitListClient[] = clientesAtacado.map(cliente => {
             let volumeComprado = 0;
             let receitaGerada = 0;
+
+            // Determina o precoTabela com base no segmento do cliente
+            let precoTabela = 0;
+            if (produtoVinagre) {
+                const tabStr = (cliente.tabelaPreco || '').toLowerCase().trim();
+                if (tabStr === 'atacado a vista' || tabStr === 'atacadoavista' || tabStr === 'avista') {
+                    precoTabela = Number(produtoVinagre.precoAtacadoAVista || 0);
+                } else if (tabStr.includes('atacado')) {
+                    precoTabela = Number(produtoVinagre.precoAtacado || 0);
+                } else if (tabStr.includes('rede')) {
+                    precoTabela = Number(produtoVinagre.precoRedes || 0);
+                } else if (tabStr.includes('200a699')) {
+                    precoTabela = Number(produtoVinagre.preco200a699 || 0);
+                } else {
+                    precoTabela = Number(produtoVinagre.preco50a199 || 0);
+                }
+            }
 
             // Calcula volume de vinagre comprado na campanha atual
             const pedidosCliente = Array.isArray(cliente?.pedidos) ? cliente.pedidos : [];
@@ -276,7 +299,8 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 metaAlcancada,
                 // Novos campos
                 volumeAnterior,
-                dataUltimaCompra
+                dataUltimaCompra,
+                precoTabela
             };
         });
 
