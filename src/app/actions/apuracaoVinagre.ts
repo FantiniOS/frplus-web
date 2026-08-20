@@ -137,13 +137,15 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
 
         let pedidosComVinagre: any[] = [];
         try {
-            // Busca TODOS os pedidos desses clientes que contenham Vinagre 750ml,
-            // ordenados por data DESC para pegar o mais recente primeiro.
+            // Busca pedidos HISTÓRICOS (ANTERIORES à campanha) que contenham Vinagre 750ml.
+            // EXCLUI pedidos da campanha atual (campanha10OffAplicada = true) para que
+            // o volume base nunca seja contaminado pelo volume realizado na campanha.
             pedidosComVinagre = await prisma.pedido.findMany({
                 where: {
                     clienteId: { in: clienteIds },
                     status: { notIn: ['Cancelado'] },
                     tipo: 'Venda',
+                    campanha10OffAplicada: { not: true },
                     itens: {
                         some: {
                             produto: {
