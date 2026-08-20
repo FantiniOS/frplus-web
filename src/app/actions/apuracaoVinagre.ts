@@ -260,16 +260,20 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
 
             // ---- LÓGICA DE META (com proteção de nulos) ----
             const dadosUltimaCompra = mapaUltimaCompra.get(cliente.id) ?? null;
-            const volumeAnterior = (dadosUltimaCompra?.volumeAnterior ?? 0);
+            const metasCampanhas = Array.isArray(cliente?.metasCampanhas) ? cliente.metasCampanhas : [];
+            const overrideVolume = metasCampanhas?.[0]?.volumeAnteriorOverride;
+
+            // Se houver override manual, prevalece sobre o automático
+            const volumeAnterior = overrideVolume != null
+                ? Number(overrideVolume)
+                : (dadosUltimaCompra?.volumeAnterior ?? 0);
             const dataUltimaCompra = dadosUltimaCompra?.dataUltimaCompra ?? null;
 
             // Meta = Volume Anterior * 1.5, arredondado para cima
             // Se volumeAnterior === 0 (cliente nunca comprou), meta = 0
             const metaCalculada = volumeAnterior > 0 ? Math.ceil(volumeAnterior * 1.5) : 0;
 
-            // Usa a meta calculada automaticamente.
-            // Se houver meta manual salva no banco (metasCampanhas), prevalece como fallback.
-            const metasCampanhas = Array.isArray(cliente?.metasCampanhas) ? cliente.metasCampanhas : [];
+            // Se houver meta manual salva no banco (metasCampanhas.metaCaixas), prevalece como fallback.
             const metaManual = Number(metasCampanhas?.[0]?.metaCaixas) || 0;
             const metaCaixas = metaCalculada > 0 ? metaCalculada : metaManual;
 

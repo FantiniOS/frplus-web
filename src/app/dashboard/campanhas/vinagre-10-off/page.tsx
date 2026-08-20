@@ -26,10 +26,12 @@ import {
   Printer,
   CheckCircle2,
   ArrowLeft,
+  Edit2,
 } from 'lucide-react';
 import { getHitListVinagre, ApuracaoDashboardData, HitListClient } from '@/app/actions/apuracaoVinagre';
 import { salvarMetaCampanha } from '@/app/actions/salvarMetaCampanha';
 import { toggleCampanhaVinagre } from '@/app/actions/toggleCampanhaVinagre';
+import ModalSelecionarPedidoBase from './ModalSelecionarPedidoBase';
 
 // ═══════════════════════════════════════════════════════
 // UTILIDADES
@@ -65,6 +67,9 @@ export default function CampanhaVinagre10OffDashboard() {
   const [campanhaAtiva, setCampanhaAtiva] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
 
+  const [modalAberto, setModalAberto] = useState(false);
+  const [clienteModal, setClienteModal] = useState<{ id: string; nome: string } | null>(null);
+
   const reportRef = useRef<HTMLDivElement>(null);
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
@@ -88,6 +93,25 @@ export default function CampanhaVinagre10OffDashboard() {
       console.error('Erro ao gerar proposta:', error);
       alert('Não foi possível gerar a proposta.');
     }
+  };
+
+  const abrirModalOverride = (cliente: HitListClient) => {
+    setClienteModal({ id: cliente.id, nome: cliente.razaoSocial || cliente.nomeFantasia || 'Cliente' });
+    setModalAberto(true);
+  };
+
+  const handleOverrideSaved = (clienteId: string, volumeAnterior: number, metaCaixas: number) => {
+    setHitListData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        hitList: prev.hitList.map(c =>
+          c.id === clienteId
+            ? { ...c, volumeAnterior, metaCaixas, metaAlcancada: metaCaixas > 0 && c.volumeComprado >= metaCaixas }
+            : c
+        )
+      };
+    });
   };
 
   const handleMetaChange = async (clienteId: string, metaCaixas: number) => {
@@ -585,7 +609,16 @@ export default function CampanhaVinagre10OffDashboard() {
 
                   {/* Última Compra (cx) */}
                   <td className="px-3 py-3 text-right text-gray-300 print:text-gray-800">
-                    {cliente.volumeAnterior ?? 0} cx
+                    <div className="inline-flex items-center gap-1.5">
+                      <span>{cliente.volumeAnterior ?? 0} cx</span>
+                      <button
+                        onClick={() => abrirModalOverride(cliente)}
+                        title="Selecionar pedido-base manualmente"
+                        className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-blue-400 transition-colors print:hidden"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   </td>
 
                   {/* Meta (cx) */}
@@ -695,6 +728,16 @@ export default function CampanhaVinagre10OffDashboard() {
           <span>10% OFF Liberado = Meta atingida (Última compra × 1.5)</span>
         </div>
       </div>
+
+      {/* ═══ MODAL DE OVERRIDE ═══ */}
+      {modalAberto && clienteModal && (
+        <ModalSelecionarPedidoBase
+          clienteId={clienteModal.id}
+          clienteNome={clienteModal.nome}
+          onClose={() => { setModalAberto(false); setClienteModal(null); }}
+          onSaved={handleOverrideSaved}
+        />
+      )}
     </div>
   );
 }

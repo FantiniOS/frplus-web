@@ -239,14 +239,16 @@ model Campanha {
 }
 
 model MetaCampanha {
-  id         String   @id @default(cuid())
-  clienteId  String
-  cliente    Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  campanhaId String
-  campanha   Campanha @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
-  metaCaixas Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  clienteId              String
+  cliente                Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  campanhaId             String
+  campanha               Campanha @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
+  metaCaixas             Int      @default(0)
+  volumeAnteriorOverride Int?
+  pedidoBaseId           String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   @@unique([clienteId, campanhaId])
 }
