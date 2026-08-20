@@ -487,31 +487,7 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
 
   y += cardH + 12;
 
-  // REGRAS
-  doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
-  doc.rect(margin.left, y, 3, 5, 'F');
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
-  doc.text('REGRAS DA CAMPANHA', margin.left + 6, y + 4);
-  y += 10;
 
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(C.textBody[0], C.textBody[1], C.textBody[2]);
-  
-  const regras = [
-      '- Produto Elegivel: Vinagre de Alcool 750ml (Cod: 10.01.03.10)',
-      '- Pedidos que contiverem bonificacao (Preco = 0) ou cujo tipo nao seja "Venda" serao ignorados no calculo.',
-      '- O desconto so sera aplicado ao faturar o pedido se a meta individual proposta acima for alcancada.',
-      '- Esta condicao e valida apenas para o canal atacado e para o CNPJ destacado neste documento.',
-      '- Sujeito a analise de credito e validade da campanha (consultar prazo de vigencia).'
-  ];
-
-  regras.forEach(r => {
-      doc.text(r, margin.left, y);
-      y += 5;
-  });
 
   drawFooter();
   
