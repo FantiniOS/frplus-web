@@ -83,42 +83,43 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
     }
     
     doc.setFontSize(14);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(C.white[0], C.white[1], C.white[2]);
-    doc.text('RELATORIO GERENCIAL DE ANDAMENTO', pageWidth - margin.right, 14, { align: 'right' });
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(C.textLight[0], C.textLight[1], C.textLight[2]);
-    doc.text('Campanha 10% OFF Vinagre de Alcool', pageWidth - margin.right, 20, { align: 'right' });
-    
-    doc.setFontSize(7);
-    doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text('Periodo: Ano vigente ate a data de hoje | Emitido em ' + dateStr, pageWidth - margin.right, 28, { align: 'right' });
+    doc.text('RELATORIO GERENCIAL DE ANDAMENTO', pageWidth - margin.right, 10, { align: 'right' });
     
     doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(C.textLight[0], C.textLight[1], C.textLight[2]);
+    doc.text('Campanha 10% OFF Vinagre de Alcool', pageWidth - margin.right, 15, { align: 'right' });
+    
+    doc.setFontSize(6);
+    doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+    doc.text('Periodo: Ano vigente ate a data de hoje | Emitido em ' + dateStr, pageWidth - margin.right, 20, { align: 'right' });
+    
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     if (campanhaAtiva) {
         doc.setTextColor(C.green[0], C.green[1], C.green[2]);
-        doc.text('STATUS: EM ANDAMENTO', pageWidth - margin.right, 34, { align: 'right' });
+        doc.text('STATUS: EM ANDAMENTO', pageWidth - margin.right, 25, { align: 'right' });
     } else {
         doc.setTextColor(C.orange[0], C.orange[1], C.orange[2]);
-        doc.text('STATUS: ENCERRADA', pageWidth - margin.right, 34, { align: 'right' });
+        doc.text('STATUS: ENCERRADA', pageWidth - margin.right, 25, { align: 'right' });
     }
     
     doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
-    doc.rect(0, 42, pageWidth * 0.5, 2.5, 'F');
+    doc.rect(0, 28, pageWidth * 0.5, 1.5, 'F');
     doc.setFillColor(C.cyan[0], C.cyan[1], C.cyan[2]);
-    doc.rect(pageWidth * 0.5, 42, pageWidth * 0.5, 2.5, 'F');
+    doc.rect(pageWidth * 0.5, 28, pageWidth * 0.5, 1.5, 'F');
     
-    return 54;
+    return 34; // Reduced header height
   };
 
   const drawFooter = (pageNum: number, totalPages: number) => {
-    const fY = pageHeight - 10;
+    const fY = pageHeight - 8;
     doc.setFillColor(C.border[0], C.border[1], C.border[2]);
-    doc.rect(margin.left, fY - 4, contentW, 0.3, 'F');
-    doc.setFontSize(6);
+    doc.rect(margin.left, fY - 3, contentW, 0.3, 'F');
+    doc.setFontSize(5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
     doc.text('FRPlus - Gestao Comercial Inteligente', margin.left, fY);
@@ -129,84 +130,93 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
 
   y = drawHeader();
 
-  const cardH = 28;
-  const cardGap = 5;
+  const cardH = 18;
+  const cardGap = 3;
   const cardCount = 4;
   const cardW = (contentW - cardGap * (cardCount - 1)) / cardCount;
 
   const kpis = [
     { label: 'CLIENTES ATIVOS', value: String(totalElegiveis), sub: 'Atacadistas base', color: C.blue },
     { label: 'CONVERSAO', value: String(totalConvertidos), sub: String(taxaConversao) + '% da base', color: C.cyan },
-    { label: 'VOLUME ESCOADO', value: volumeTotal.toLocaleString('pt-BR') + ' cx', sub: 'Escoamento da campanha', color: C.green },
-    { label: 'RECEITA GERADA', value: 'R$ ' + receitaTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }), sub: 'Faturamento extra', color: C.purple },
+    { label: 'VOLUME ESCOADO', value: volumeTotal.toLocaleString('pt-BR') + ' cx', sub: 'Escoamento', color: C.green },
+    { label: 'RECEITA GERADA', value: 'R$ ' + receitaTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }), sub: 'Faturamento', color: C.purple },
   ];
 
   kpis.forEach((kpi, i) => {
     const cx = margin.left + i * (cardW + cardGap);
     doc.setFillColor(C.bgLight[0], C.bgLight[1], C.bgLight[2]);
-    doc.roundedRect(cx, y, cardW, cardH, 2, 2, 'F');
+    doc.roundedRect(cx, y, cardW, cardH, 1.5, 1.5, 'F');
     doc.setFillColor(kpi.color[0], kpi.color[1], kpi.color[2]);
-    doc.rect(cx, y, 2.5, cardH, 'F');
-    doc.setFontSize(6);
+    doc.rect(cx, y, 2, cardH, 'F');
+    doc.setFontSize(5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text(kpi.label, cx + 7, y + 7);
-    doc.setFontSize(14);
+    doc.text(kpi.label, cx + 5, y + 5);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
-    doc.text(kpi.value, cx + 7, y + 17);
-    doc.setFontSize(5.5);
+    doc.text(kpi.value, cx + 5, y + 11);
+    doc.setFontSize(4.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text(kpi.sub, cx + 7, y + 23);
+    doc.text(kpi.sub, cx + 5, y + 15);
   });
 
-  y += cardH + 6;
+  y += cardH + 4;
 
-  const barOuterH = 14;
+  const barOuterH = 10;
   doc.setFillColor(C.dark[0], C.dark[1], C.dark[2]);
-  doc.roundedRect(margin.left, y, contentW, barOuterH, 2, 2, 'F');
+  doc.roundedRect(margin.left, y, contentW, barOuterH, 1.5, 1.5, 'F');
 
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.textLight[0], C.textLight[1], C.textLight[2]);
-  doc.text('PROGRESSO DA CONVERSAO (CLIENTES ATINGIRAM A META)', margin.left + 6, y + 5.5);
+  doc.text('PROGRESSO DA CONVERSAO (CLIENTES ATINGIRAM A META)', margin.left + 5, y + 4);
 
-  const barX = margin.left + 6;
-  const barY = y + 8;
-  const barW = contentW - 70;
-  const barH = 3.5;
+  const barX = margin.left + 5;
+  const barY = y + 6.5;
+  const barW = contentW - 50;
+  const barH = 2.5;
   doc.setFillColor(40, 40, 55);
-  doc.roundedRect(barX, barY, barW, barH, 1.5, 1.5, 'F');
+  doc.roundedRect(barX, barY, barW, barH, 1, 1, 'F');
 
   const fillW = Math.min(barW, barW * (taxaConversao / 100));
   if (fillW > 0) {
     doc.setFillColor(C.green[0], C.green[1], C.green[2]);
-    doc.roundedRect(barX, barY, fillW, barH, 1.5, 1.5, 'F');
+    doc.roundedRect(barX, barY, fillW, barH, 1, 1, 'F');
   }
 
-  doc.setFontSize(11);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.green[0], C.green[1], C.green[2]);
-  doc.text(String(taxaConversao) + '%', pageWidth - margin.right - 6, y + 9, { align: 'right' });
+  doc.text(String(taxaConversao) + '%', pageWidth - margin.right - 5, y + 7, { align: 'right' });
 
-  y += barOuterH + 6;
+  y += barOuterH + 4;
 
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
   doc.text(String(totalConvertidos) + ' de ' + String(totalElegiveis) + ' clientes atingiram a meta (+50% de volume da ultima compra)', margin.left, y);
-  y += 7;
+  y += 5;
 
   doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
-  doc.rect(margin.left, y, 3, 5, 'F');
-  doc.setFontSize(9);
+  doc.rect(margin.left, y, 2.5, 4, 'F');
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
-  doc.text('DETALHAMENTO POR CLIENTE', margin.left + 6, y + 4);
-  y += 9;
+  doc.text('DETALHAMENTO POR CLIENTE', margin.left + 5, y + 3.5);
+  y += 6;
 
-  const tableData = (data.hitList || []).map((c, i) => {
+  // Garante que ocupe no máximo 1 página limitando os dados
+  const maxRows = 38;
+  let hitListLimited = data.hitList || [];
+  const exceedsOnePage = hitListLimited.length > maxRows;
+  
+  if (exceedsOnePage) {
+    hitListLimited = hitListLimited.slice(0, maxRows);
+  }
+
+  const tableData = hitListLimited.map((c, i) => {
     const va = c.volumeBase ?? 0;
     const m = c.meta ?? 0;
     const vc = c.volumeRealizado ?? 0;
@@ -227,34 +237,46 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
     ];
   });
 
+  if (exceedsOnePage) {
+    tableData.push([
+      "-",
+      `+ ${data.hitList.length - maxRows} clientes ocultos...`,
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]);
+  }
+
   autoTable(doc, {
     startY: y,
     head: [["#", "CLIENTE", "LOCALIDADE", "STATUS", "ULT. COMPRA", "META", "VOL. CAMPANHA"]],
     body: tableData,
     theme: "plain",
     styles: {
-      fontSize: 6.5,
-      cellPadding: { top: 2.5, bottom: 2.5, left: 2.5, right: 2.5 },
+      fontSize: 5.5,
+      cellPadding: { top: 1.5, bottom: 1.5, left: 1.5, right: 1.5 },
       textColor: C.textBody,
       lineColor: C.border,
-      lineWidth: 0.2,
+      lineWidth: 0.1,
     },
     headStyles: {
       fillColor: C.dark,
       textColor: C.white,
       fontStyle: "bold",
-      fontSize: 6,
-      cellPadding: { top: 3, bottom: 3, left: 2.5, right: 2.5 },
+      fontSize: 5,
+      cellPadding: { top: 1.8, bottom: 1.8, left: 1.5, right: 1.5 },
     },
     alternateRowStyles: {
       fillColor: C.rowAlt,
     },
     columnStyles: {
-      0: { cellWidth: 8, halign: "center", fontStyle: "bold", textColor: C.textMuted },
+      0: { cellWidth: 7, halign: "center", fontStyle: "bold", textColor: C.textMuted },
       1: { cellWidth: 50, fontStyle: "bold" },
       2: { cellWidth: 28 },
       3: { cellWidth: 26, fontStyle: "bold" },
-      4: { halign: "right", cellWidth: 20 },
+      4: { halign: "right", cellWidth: 22 },
       5: { halign: "right", cellWidth: 20 },
       6: { halign: "right", cellWidth: 25, fontStyle: "bold", textColor: C.blue },
     },
@@ -268,11 +290,9 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
         }
     },
     didDrawPage: (pageData: any) => {
-      if (pageData.pageNumber > 1) {
-        drawHeader();
-      }
+      // Impede header/footer duplicados se vazar
     },
-    margin: { top: 44, left: margin.left, right: margin.right, bottom: 16 },
+    margin: { top: 30, left: margin.left, right: margin.right, bottom: 10 },
   });
 
   const pageCount = doc.getNumberOfPages();
