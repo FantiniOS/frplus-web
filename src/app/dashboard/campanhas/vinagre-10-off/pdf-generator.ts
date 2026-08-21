@@ -82,44 +82,43 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
       doc.addImage(logoBase64.data, 'PNG', margin.left, 8, 40, (40 * logoBase64.height) / logoBase64.width);
     }
     
-    doc.setFontSize(14);
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(C.white[0], C.white[1], C.white[2]);
-    doc.text('RELATORIO GERENCIAL DE ANDAMENTO', pageWidth - margin.right, 10, { align: 'right' });
+    doc.text('RELATORIO GERENCIAL DE ANDAMENTO', pageWidth - margin.right, 14, { align: 'right' });
     
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(C.textLight[0], C.textLight[1], C.textLight[2]);
-    doc.text('Campanha 10% OFF Vinagre de Alcool', pageWidth - margin.right, 15, { align: 'right' });
-    
-    doc.setFontSize(6);
-    doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text('Periodo: Ano vigente ate a data de hoje | Emitido em ' + dateStr, pageWidth - margin.right, 20, { align: 'right' });
+    doc.text('Campanha 10% OFF Vinagre de Alcool', pageWidth - margin.right, 20, { align: 'right' });
     
     doc.setFontSize(7);
+    doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+    doc.text('Periodo: Ano vigente ate a data de hoje | Emitido em ' + dateStr, pageWidth - margin.right, 26, { align: 'right' });
+    
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     if (campanhaAtiva) {
         doc.setTextColor(C.green[0], C.green[1], C.green[2]);
-        doc.text('STATUS: EM ANDAMENTO', pageWidth - margin.right, 25, { align: 'right' });
+        doc.text('STATUS: EM ANDAMENTO', pageWidth - margin.right, 32, { align: 'right' });
     } else {
         doc.setTextColor(C.orange[0], C.orange[1], C.orange[2]);
-        doc.text('STATUS: ENCERRADA', pageWidth - margin.right, 25, { align: 'right' });
+        doc.text('STATUS: ENCERRADA', pageWidth - margin.right, 32, { align: 'right' });
     }
     
     doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
-    doc.rect(0, 28, pageWidth * 0.5, 1.5, 'F');
+    doc.rect(0, 38, pageWidth * 0.5, 2, 'F');
     doc.setFillColor(C.cyan[0], C.cyan[1], C.cyan[2]);
-    doc.rect(pageWidth * 0.5, 28, pageWidth * 0.5, 1.5, 'F');
+    doc.rect(pageWidth * 0.5, 38, pageWidth * 0.5, 2, 'F');
     
-    return 34; // Reduced header height
+    return 46;
   };
 
   const drawFooter = (pageNum: number, totalPages: number) => {
     const fY = pageHeight - 8;
     doc.setFillColor(C.border[0], C.border[1], C.border[2]);
     doc.rect(margin.left, fY - 3, contentW, 0.3, 'F');
-    doc.setFontSize(5);
+    doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
     doc.text('FRPlus - Gestao Comercial Inteligente', margin.left, fY);
@@ -130,8 +129,8 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
 
   y = drawHeader();
 
-  const cardH = 18;
-  const cardGap = 3;
+  const cardH = 22;
+  const cardGap = 4;
   const cardCount = 4;
   const cardW = (contentW - cardGap * (cardCount - 1)) / cardCount;
 
@@ -145,38 +144,38 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
   kpis.forEach((kpi, i) => {
     const cx = margin.left + i * (cardW + cardGap);
     doc.setFillColor(C.bgLight[0], C.bgLight[1], C.bgLight[2]);
-    doc.roundedRect(cx, y, cardW, cardH, 1.5, 1.5, 'F');
+    doc.roundedRect(cx, y, cardW, cardH, 2, 2, 'F');
     doc.setFillColor(kpi.color[0], kpi.color[1], kpi.color[2]);
     doc.rect(cx, y, 2, cardH, 'F');
-    doc.setFontSize(5);
+    doc.setFontSize(6);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text(kpi.label, cx + 5, y + 5);
-    doc.setFontSize(10);
+    doc.text(kpi.label, cx + 5, y + 6);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
-    doc.text(kpi.value, cx + 5, y + 11);
-    doc.setFontSize(4.5);
+    doc.text(kpi.value, cx + 5, y + 14);
+    doc.setFontSize(5.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text(kpi.sub, cx + 5, y + 15);
+    doc.text(kpi.sub, cx + 5, y + 19);
   });
 
-  y += cardH + 4;
+  y += cardH + 5;
 
-  const barOuterH = 10;
+  const barOuterH = 12;
   doc.setFillColor(C.dark[0], C.dark[1], C.dark[2]);
-  doc.roundedRect(margin.left, y, contentW, barOuterH, 1.5, 1.5, 'F');
+  doc.roundedRect(margin.left, y, contentW, barOuterH, 2, 2, 'F');
 
-  doc.setFontSize(6);
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.textLight[0], C.textLight[1], C.textLight[2]);
-  doc.text('PROGRESSO DA CONVERSAO (CLIENTES ATINGIRAM A META)', margin.left + 5, y + 4);
+  doc.text('PROGRESSO DA CONVERSAO (CLIENTES ATINGIRAM A META)', margin.left + 5, y + 5);
 
   const barX = margin.left + 5;
-  const barY = y + 6.5;
-  const barW = contentW - 50;
-  const barH = 2.5;
+  const barY = y + 7.5;
+  const barW = contentW - 55;
+  const barH = 3;
   doc.setFillColor(40, 40, 55);
   doc.roundedRect(barX, barY, barW, barH, 1, 1, 'F');
 
@@ -186,35 +185,44 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
     doc.roundedRect(barX, barY, fillW, barH, 1, 1, 'F');
   }
 
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.green[0], C.green[1], C.green[2]);
-  doc.text(String(taxaConversao) + '%', pageWidth - margin.right - 5, y + 7, { align: 'right' });
+  doc.text(String(taxaConversao) + '%', pageWidth - margin.right - 5, y + 8.5, { align: 'right' });
 
-  y += barOuterH + 4;
+  y += barOuterH + 5;
 
-  doc.setFontSize(6);
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
   doc.text(String(totalConvertidos) + ' de ' + String(totalElegiveis) + ' clientes atingiram a meta (+50% de volume da ultima compra)', margin.left, y);
-  y += 5;
-
-  doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
-  doc.rect(margin.left, y, 2.5, 4, 'F');
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
-  doc.text('DETALHAMENTO POR CLIENTE', margin.left + 5, y + 3.5);
   y += 6;
 
-  // Garante que ocupe no máximo 1 página limitando os dados
-  const maxRows = 38;
+  doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
+  doc.rect(margin.left, y, 2.5, 4.5, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
+  doc.text('DETALHAMENTO POR CLIENTE', margin.left + 5, y + 4);
+  y += 7;
+
+  // Lógica Dinâmica para não deixar espaços em branco
+  const startTableY = y;
+  const maxTableHeight = pageHeight - startTableY - 14; 
+  
+  // Limite razoável para caber bem em uma página
+  const maxRows = 28;
   let hitListLimited = data.hitList || [];
   const exceedsOnePage = hitListLimited.length > maxRows;
   
   if (exceedsOnePage) {
     hitListLimited = hitListLimited.slice(0, maxRows);
   }
+
+  // Preenche a página expandindo as células se houver poucos dados
+  const totalItems = hitListLimited.length + (exceedsOnePage ? 2 : 1);
+  const dynamicCellHeight = Math.min(10, Math.max(5, maxTableHeight / totalItems));
+  const dynamicFontSize = Math.min(7.5, Math.max(6, dynamicCellHeight * 0.7));
 
   const tableData = hitListLimited.map((c, i) => {
     const va = c.volumeBase ?? 0;
@@ -250,13 +258,15 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
   }
 
   autoTable(doc, {
-    startY: y,
+    startY: startTableY,
     head: [["#", "CLIENTE", "LOCALIDADE", "STATUS", "ULT. COMPRA", "META", "VOL. CAMPANHA"]],
     body: tableData,
     theme: "plain",
     styles: {
-      fontSize: 5.5,
-      cellPadding: { top: 1.5, bottom: 1.5, left: 1.5, right: 1.5 },
+      fontSize: dynamicFontSize,
+      minCellHeight: dynamicCellHeight,
+      valign: 'middle',
+      cellPadding: { top: 1, bottom: 1, left: 1.5, right: 1.5 },
       textColor: C.textBody,
       lineColor: C.border,
       lineWidth: 0.1,
@@ -265,8 +275,8 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
       fillColor: C.dark,
       textColor: C.white,
       fontStyle: "bold",
-      fontSize: 5,
-      cellPadding: { top: 1.8, bottom: 1.8, left: 1.5, right: 1.5 },
+      fontSize: Math.max(5, dynamicFontSize - 0.5),
+      valign: 'middle',
     },
     alternateRowStyles: {
       fillColor: C.rowAlt,
