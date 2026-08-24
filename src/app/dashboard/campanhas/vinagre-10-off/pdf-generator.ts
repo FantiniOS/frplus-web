@@ -301,17 +301,28 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
       0: { cellWidth: 7, halign: "center", fontStyle: "bold", textColor: C.textMuted },
       1: { cellWidth: 78, fontStyle: "bold" },
       2: { cellWidth: 26, fontStyle: "bold" },
-      3: { halign: "right", cellWidth: 22 },
-      4: { halign: "right", cellWidth: 20 },
-      5: { halign: "right", cellWidth: 25, fontStyle: "bold", textColor: C.blue },
+      3: { halign: "center", cellWidth: 22 },
+      4: { halign: "center", cellWidth: 20 },
+      5: { halign: "center", cellWidth: 25, fontStyle: "bold", textColor: C.blue },
     },
     didParseCell: (hookData: any) => {
+        // Alinhamento forçado para garantir centralização em todas as sessões (head, body, foot)
+        if (hookData.column.index >= 3) {
+            hookData.cell.styles.halign = 'center';
+        }
+        
+        // Formatação de cores do Status
         if (hookData.section === "body" && hookData.column.index === 2) {
             const rawStatus = hookData.cell.raw;
             if (rawStatus === "10% OFF Liberado") hookData.cell.styles.textColor = C.green;
             else if (rawStatus === "Insuficiente") hookData.cell.styles.textColor = C.orange;
             else if (rawStatus === "Pendente") hookData.cell.styles.textColor = C.amber;
             else if (rawStatus === "Comprou") hookData.cell.styles.textColor = C.blue;
+        }
+
+        // Alinhar o texto "TOTAIS DA CAMPANHA" à direita
+        if (hookData.section === "foot" && hookData.column.index === 1) {
+            hookData.cell.styles.halign = 'right';
         }
     },
     didDrawPage: (pageData: any) => {
