@@ -240,12 +240,18 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
             const pedidosCliente = Array.isArray(cliente?.pedidos) ? cliente.pedidos : [];
 
             pedidosCliente.forEach((pedido: any) => {
-                receitaGerada += (Number(pedido?.valorTotal) || 0);
                 const itensPedido = Array.isArray(pedido?.itens) ? pedido.itens : [];
                 itensPedido.forEach((item: any) => {
                     const codigoProduto = item?.produto?.codigo ?? '';
                     if (isVinagre750ml(codigoProduto)) {
-                        volumeRealizado += (Number(item?.quantidade) || 0);
+                        const qtd = Number(item?.quantidade) || 0;
+                        volumeRealizado += qtd;
+                        
+                        let valorItem = Number(item?.total) || 0;
+                        if (valorItem === 0) {
+                            valorItem = qtd * (Number(item?.precoUnitario) || precoTabela);
+                        }
+                        receitaGerada += valorItem;
                     }
                 });
             });
