@@ -219,10 +219,20 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
     hitListLimited = hitListLimited.slice(0, maxRows);
   }
 
-  // Preenche a página expandindo as células se houver poucos dados
-  const totalItems = hitListLimited.length + (exceedsOnePage ? 2 : 1);
+  // Preenche a página expandindo as células se houver poucos dados (considerando +1 row do foot)
+  const totalItems = hitListLimited.length + (exceedsOnePage ? 2 : 1) + 1;
   const dynamicCellHeight = Math.min(10, Math.max(5, maxTableHeight / totalItems));
   const dynamicFontSize = Math.min(7.5, Math.max(6, dynamicCellHeight * 0.7));
+
+  let totalVolumeBase = 0;
+  let totalMeta = 0;
+  let totalVolumeRealizado = 0;
+
+  (data.hitList || []).forEach(c => {
+    totalVolumeBase += c.volumeBase ?? 0;
+    totalMeta += c.meta ?? 0;
+    totalVolumeRealizado += c.volumeRealizado ?? 0;
+  });
 
   const tableData = hitListLimited.map((c, i) => {
     const va = c.volumeBase ?? 0;
@@ -237,7 +247,6 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
     return [
       String(i + 1),
       toTitleCase(c.razaoSocial || c.nomeFantasia || ""),
-      c.cidade || "-",
       statusText,
       String(va),
       m > 0 ? String(m) : "-",
@@ -252,15 +261,15 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
       "-",
       "-",
       "-",
-      "-",
       "-"
     ]);
   }
 
   autoTable(doc, {
     startY: startTableY,
-    head: [["#", "CLIENTE", "LOCALIDADE", "STATUS", "ULT. COMPRA", "META", "VOL. CAMPANHA"]],
+    head: [["#", "CLIENTE", "STATUS", "ULT. COMPRA", "META", "VOL. CAMPANHA"]],
     body: tableData,
+    foot: [["", "TOTAIS DA CAMPANHA", "", String(totalVolumeBase), String(totalMeta), String(totalVolumeRealizado)]],
     theme: "plain",
     styles: {
       fontSize: dynamicFontSize,
@@ -278,20 +287,26 @@ export async function generateRelatorioVinagrePDF(data: ApuracaoDashboardData) {
       fontSize: Math.max(5, dynamicFontSize - 0.5),
       valign: 'middle',
     },
+    footStyles: {
+      fillColor: C.border,
+      textColor: C.textDark,
+      fontStyle: "bold",
+      fontSize: Math.max(5.5, dynamicFontSize - 0.5),
+      valign: 'middle',
+    },
     alternateRowStyles: {
       fillColor: C.rowAlt,
     },
     columnStyles: {
       0: { cellWidth: 7, halign: "center", fontStyle: "bold", textColor: C.textMuted },
-      1: { cellWidth: 50, fontStyle: "bold" },
-      2: { cellWidth: 28 },
-      3: { cellWidth: 26, fontStyle: "bold" },
-      4: { halign: "right", cellWidth: 22 },
-      5: { halign: "right", cellWidth: 20 },
-      6: { halign: "right", cellWidth: 25, fontStyle: "bold", textColor: C.blue },
+      1: { cellWidth: 78, fontStyle: "bold" },
+      2: { cellWidth: 26, fontStyle: "bold" },
+      3: { halign: "right", cellWidth: 22 },
+      4: { halign: "right", cellWidth: 20 },
+      5: { halign: "right", cellWidth: 25, fontStyle: "bold", textColor: C.blue },
     },
     didParseCell: (hookData: any) => {
-        if (hookData.section === "body" && hookData.column.index === 3) {
+        if (hookData.section === "body" && hookData.column.index === 2) {
             const rawStatus = hookData.cell.raw;
             if (rawStatus === "10% OFF Liberado") hookData.cell.styles.textColor = C.green;
             else if (rawStatus === "Insuficiente") hookData.cell.styles.textColor = C.orange;
