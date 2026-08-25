@@ -20,6 +20,7 @@ export async function buscarPedidosConciliacaoVinagre(clienteId: string): Promis
         where: {
             clienteId,
             status: { not: 'Cancelado' },
+            tipo: { notIn: ['Bonificacao', 'Bonificação', 'bonificacao', 'bonificação', 'BONIFICACAO', 'BONIFICAÇÃO'] },
             itens: {
                 some: {
                     produto: { codigo: '10.01.03.10' }

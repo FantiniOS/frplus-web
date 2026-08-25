@@ -20,6 +20,7 @@ export async function buscarPedidosVinagre(clienteId: string): Promise<PedidoVin
         where: {
             clienteId,
             status: { not: 'Cancelado' },
+            tipo: { notIn: ['Bonificacao', 'Bonificação', 'bonificacao', 'bonificação', 'BONIFICACAO', 'BONIFICAÇÃO'] },
             itens: {
                 some: {
                     produto: { codigo: '10.01.03.10' }
