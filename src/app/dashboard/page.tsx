@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { Loader2, Phone } from "lucide-react";
 import { VisitasCalendar } from "@/components/dashboard/VisitasCalendar";
 import { YoySalesCard } from "@/components/dashboard/YoySalesCard";
+import { YtdSalesCard } from "@/components/dashboard/YtdSalesCard";
 import { getLembretesProspeccao } from "@/app/actions/prospects";
 import { getDashboardChartData, getAvailableYears, ChartDataResponse, ChartViewMode } from "@/app/actions/dashboard";
 import { getBonificacaoComissao, BonificacaoComissaoResult } from "@/app/actions/bonificacaoComissao";
@@ -149,6 +150,41 @@ export default function DashboardPage() {
 
     return faturamentoOrders.reduce((acc, o) => acc + Number(o.valorTotal), 0);
   }, [orders, chartView, filterMonth, filterYear, selectedYear]);
+
+  // ====== VENDAS ACUMULADAS DO ANO (YTD) — para YtdSalesCard ======
+  const ytdData = useMemo(() => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const previousYear = currentYear - 1;
+
+    // Mesmo dia/mês no ano anterior (teto do período comparativo)
+    const todayUTC = Date.UTC(currentYear, today.getMonth(), today.getDate(), 23, 59, 59);
+    const sameDatePrevYearUTC = Date.UTC(previousYear, today.getMonth(), today.getDate(), 23, 59, 59);
+
+    const startCurrentYear = Date.UTC(currentYear, 0, 1, 0, 0, 0);
+    const startPreviousYear = Date.UTC(previousYear, 0, 1, 0, 0, 0);
+
+    const isValidOrder = (o: typeof orders[0]) =>
+      o.tipo !== 'Bonificacao' && (o.status || '').toLowerCase() !== 'cancelado';
+
+    const currentYtd = orders
+      .filter(o => {
+        if (!isValidOrder(o)) return false;
+        const d = new Date(o.data).getTime();
+        return d >= startCurrentYear && d <= todayUTC;
+      })
+      .reduce((acc, o) => acc + Number(o.valorTotal), 0);
+
+    const previousYtd = orders
+      .filter(o => {
+        if (!isValidOrder(o)) return false;
+        const d = new Date(o.data).getTime();
+        return d >= startPreviousYear && d <= sameDatePrevYearUTC;
+      })
+      .reduce((acc, o) => acc + Number(o.valorTotal), 0);
+
+    return { currentYtd, previousYtd };
+  }, [orders]);
 
   const maxSale = Math.max(...chartData.map(d => d.value), 100);
   const chartTotalSales = chartData.reduce((acc, curr) => acc + curr.value, 0);
@@ -447,44 +483,11 @@ export default function DashboardPage() {
           previousValue={faturamentoAnoAnterior}
         />
 
-        {/* ===== CARD ACORDOS COMERCIAIS (layout customizado) ===== */}
-        <div
-          onClick={() => setShowBonifDetails(true)}
-          className="group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br from-rose-500/20 to-rose-500/[0.02] p-4 transition-all duration-300 hover:border-rose-500/30 shadow-lg shadow-black/20 group-hover:shadow-rose-500/10 cursor-pointer overflow-hidden h-[140px] flex flex-col"
-        >
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
-          <div className="relative z-10 flex flex-col h-full">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Acordos Comerciais</span>
-              <div className="p-1.5 rounded-lg bg-rose-500/15">
-                <Gift className="h-3.5 w-3.5 text-rose-400" />
-              </div>
-            </div>
-
-            {/* Main value */}
-            <div className="text-xl font-bold text-white tracking-tight leading-tight">
-              R$ {bonificacaoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <span className="text-[11px] text-gray-500 mt-0.5">{bonificacoes} pedidos no período</span>
-
-            {/* Footer: Anual + Comissão */}
-            <div className="mt-auto flex items-end justify-between border-t border-white/[0.06] pt-2">
-              <div className="flex flex-col">
-                <span className="text-[10px] text-gray-600 uppercase tracking-wider leading-tight">Acum. Ano</span>
-                <span className="text-xs font-semibold text-white/80 tabular-nums">
-                  R$ {bonificacaoAnual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] text-gray-600 uppercase tracking-wider leading-tight">Comissão ({bonifComissao.taxaPeriodo}%)</span>
-                <span className="text-xs font-semibold text-rose-400 tabular-nums">
-                  -R$ {bonifComissao.comissaoPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* ===== CARD YTD ACUMULADO DO ANO ===== */}
+        <YtdSalesCard
+          currentYtdValue={ytdData.currentYtd}
+          previousYtdValue={ytdData.previousYtd}
+        />
       </div>
 
       {/* ===== MODAL DETALHAMENTO BONIFICAÇÕES ===== */}
