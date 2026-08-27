@@ -955,24 +955,7 @@ export default function AIInsightsClient() {
                                                                                 Raio X
                                                                             </button>
                                                                         </Link>
-                                                                        <button
-                                                                            onClick={() => handleGenerateAIMessage(
-                                                                                client.id,
-                                                                                client.contextoParaIA,
-                                                                                client.diasInativo !== null ? client.diasInativo : undefined,
-                                                                                client.nomeCliente,
-                                                                                client.nomeRepresentada
-                                                                            )}
-                                                                            disabled={generatingMessageFor === client.id}
-                                                                            className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
-                                                                        >
-                                                                            {generatingMessageFor === client.id ? (
-                                                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                                            ) : (
-                                                                                <Bot className="h-4 w-4" />
-                                                                            )}
-                                                                            Gerar Lembrete de Pedido
-                                                                        </button>
+
                                                                     </div>
                                                                 </td>
                                                             </tr>
@@ -1107,24 +1090,7 @@ export default function AIInsightsClient() {
                                                                         Raio X
                                                                     </button>
                                                                 </Link>
-                                                                <button
-                                                                    onClick={() => handleGenerateAIMessage(
-                                                                        client.id, 
-                                                                        client.contextoParaIA, 
-                                                                        client.diasInativo !== null ? client.diasInativo : undefined, 
-                                                                        client.nomeCliente, 
-                                                                        client.nomeRepresentada
-                                                                    )}
-                                                                    disabled={generatingMessageFor === client.id}
-                                                                    className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
-                                                                >
-                                                                    {generatingMessageFor === client.id ? (
-                                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                                    ) : (
-                                                                        <Bot className="h-4 w-4" />
-                                                                    )}
-                                                                    Gerar Lembrete de Pedido
-                                                                </button>
+
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -1214,24 +1180,7 @@ export default function AIInsightsClient() {
                                                                             Raio X
                                                                         </button>
                                                                     </Link>
-                                                                    <button
-                                                                        onClick={() => handleGenerateAIMessage(
-                                                                            client.id,
-                                                                            client.contextoParaIA,
-                                                                            client.diasInativo !== null ? client.diasInativo : undefined,
-                                                                            client.nomeCliente,
-                                                                            client.nomeRepresentada
-                                                                        )}
-                                                                        disabled={generatingMessageFor === client.id}
-                                                                        className="px-4 py-1.5 rounded-lg bg-red-600/20 text-red-400 text-sm font-medium hover:bg-red-600/30 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
-                                                                    >
-                                                                        {generatingMessageFor === client.id ? (
-                                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                                        ) : (
-                                                                            <Bot className="h-4 w-4" />
-                                                                        )}
-                                                                        Recuperar Cliente
-                                                                    </button>
+
                                                                 </div>
                                                             </td>
                                                         </tr>
