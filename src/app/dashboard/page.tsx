@@ -119,6 +119,37 @@ export default function DashboardPage() {
     };
   }, [orders, chartView, filterMonth, filterYear, selectedYear, selectedMonth]);
 
+  // ====== FATURAMENTO ANO ANTERIOR (mesmo mês, ano -1) — para YoySalesCard ======
+  const faturamentoAnoAnterior = useMemo(() => {
+    let startOfPeriod: Date | null = null;
+    let endOfPeriod: Date | null = null;
+
+    if (chartView === 'Mensal' && filterYear !== null && filterMonth !== null) {
+      startOfPeriod = new Date(Date.UTC(filterYear - 1, filterMonth, 1, 0, 0, 0));
+      endOfPeriod = new Date(Date.UTC(filterYear - 1, filterMonth + 1, 1, 0, 0, 0));
+    } else if (chartView === 'Anual' && selectedYear !== null) {
+      startOfPeriod = new Date(Date.UTC(selectedYear - 1, 0, 1, 0, 0, 0));
+      endOfPeriod = new Date(Date.UTC(selectedYear, 0, 1, 0, 0, 0));
+    }
+
+    const faturamentoOrders = orders.filter(o => {
+      if (o.tipo === 'Bonificacao' || (o.status || '').toLowerCase() === 'cancelado') return false;
+      const status = (o.status || '').toLowerCase();
+      if (status !== 'faturado' && status !== 'concluido') return false;
+      if (!o.dataFaturamento) return false;
+
+      const fDate = new Date(o.dataFaturamento);
+
+      if (startOfPeriod && endOfPeriod) {
+        return fDate.getTime() >= startOfPeriod.getTime() && fDate.getTime() < endOfPeriod.getTime();
+      }
+
+      return true;
+    });
+
+    return faturamentoOrders.reduce((acc, o) => acc + Number(o.valorTotal), 0);
+  }, [orders, chartView, filterMonth, filterYear, selectedYear]);
+
   const maxSale = Math.max(...chartData.map(d => d.value), 100);
   const chartTotalSales = chartData.reduce((acc, curr) => acc + curr.value, 0);
 
@@ -411,7 +442,10 @@ export default function DashboardPage() {
         ))}
 
         {/* ===== CARD YOY COMPARATIVO ===== */}
-        <YoySalesCard />
+        <YoySalesCard
+          currentValue={faturamentoData.total}
+          previousValue={faturamentoAnoAnterior}
+        />
 
         {/* ===== CARD ACORDOS COMERCIAIS (layout customizado) ===== */}
         <div

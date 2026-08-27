@@ -4,30 +4,19 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 
 // ——— Types ———
 export interface YoySalesCardProps {
-  /** Faturamento do mês atual (em R$). Quando omitido, usa mock. */
-  currentValue?: number;
-  /** Faturamento do mesmo mês no ano anterior (em R$). Quando omitido, usa mock. */
-  previousValue?: number;
-  /** Label do período anterior (ex: "Ago 2025"). Quando omitido, gera automaticamente. */
-  previousLabel?: string;
+  /** Faturamento do mês/período atual (em R$). */
+  currentValue: number;
+  /** Faturamento do mesmo mês/período no ano anterior (em R$). */
+  previousValue: number;
   /** Label do período atual  (ex: "Ago 2026"). Quando omitido, gera automaticamente. */
   currentLabel?: string;
+  /** Label do período anterior (ex: "Ago 2025"). Quando omitido, gera automaticamente. */
+  previousLabel?: string;
 }
 
 // ——— Helpers ———
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 0,
-  }).format(v);
-
 const getMonthLabel = (date: Date) =>
   date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
-
-// ——— Mock data (remover quando plugar API) ———
-const MOCK_CURRENT = 184_320;
-const MOCK_PREVIOUS = 160_280;
 
 // ——— Component ———
 export function YoySalesCard({
@@ -36,22 +25,25 @@ export function YoySalesCard({
   currentLabel,
   previousLabel,
 }: YoySalesCardProps) {
-  const current = currentValue ?? MOCK_CURRENT;
-  const previous = previousValue ?? MOCK_PREVIOUS;
-
   const now = new Date();
   const cLabel = currentLabel ?? `${getMonthLabel(now)} ${now.getFullYear()}`;
   const pLabel =
     previousLabel ?? `${getMonthLabel(now)} ${now.getFullYear() - 1}`;
 
-  // Cálculo YoY
-  const diff = previous === 0 ? (current > 0 ? 100 : 0) : ((current - previous) / previous) * 100;
+  // Fórmula YoY: ((ValorAtual - ValorAnoAnterior) / ValorAnoAnterior) * 100
+  const diff =
+    previousValue === 0
+      ? currentValue > 0
+        ? 100
+        : 0
+      : ((currentValue - previousValue) / previousValue) * 100;
+
   const isPositive = diff >= 0;
 
   // Altura proporcional das mini-barras (a maior = 100%)
-  const maxVal = Math.max(current, previous, 1);
-  const currentBarPct = (current / maxVal) * 100;
-  const previousBarPct = (previous / maxVal) * 100;
+  const maxVal = Math.max(currentValue, previousValue, 1);
+  const currentBarPct = (currentValue / maxVal) * 100;
+  const previousBarPct = (previousValue / maxVal) * 100;
 
   return (
     <div
