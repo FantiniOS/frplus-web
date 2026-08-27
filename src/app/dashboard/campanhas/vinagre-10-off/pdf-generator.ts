@@ -602,7 +602,7 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
     doc.text(kpi.sub, cx + 7, y + 23);
   });
 
-  y += cardH + 8;
+  y += cardH + 6;
 
   // ═══════════════════════════════════════════════════════
   // BLOCO DE PARABENIZAÇÃO PREMIUM (somente quando meta batida)
@@ -610,15 +610,16 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
   const metaBatida = m > 0 && vc >= m;
 
   if (metaBatida) {
-    const congratsH = 62;
+    // Calcula espaço disponível até o footer
+    const spaceLeft = pageHeight - y - 16;
+    const congratsH = Math.min(50, spaceLeft);
     const gold: [number, number, number] = [234, 179, 8];
-    const goldDark: [number, number, number] = [161, 98, 7];
     
-    // Fundo gradiente escuro premium
-    doc.setFillColor(15, 23, 42); // slate-900
+    // Fundo escuro premium
+    doc.setFillColor(15, 23, 42);
     doc.roundedRect(margin.left, y, contentW, congratsH, 3, 3, 'F');
 
-    // Borda dourada sutil
+    // Borda dourada
     doc.setDrawColor(gold[0], gold[1], gold[2]);
     doc.setLineWidth(0.8);
     doc.roundedRect(margin.left + 0.4, y + 0.4, contentW - 0.8, congratsH - 0.8, 2.5, 2.5, 'S');
@@ -633,57 +634,46 @@ export async function generatePropostaVinagrePDF(cliente: HitListClient, campanh
     doc.setTextColor(15, 23, 42);
     doc.text('DESCONTO GARANTIDO COM SUCESSO', pageWidth / 2, y + 4.5, { align: 'center' });
 
-    // Estrela decorativa (simulada com texto)
-    doc.setFontSize(22);
-    doc.setTextColor(gold[0], gold[1], gold[2]);
-    doc.text('\u2605', margin.left + 12, y + 19);
-
-    // Título Principal
-    doc.setFontSize(16);
+    // Título PARABÉNS
+    doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(gold[0], gold[1], gold[2]);
-    doc.text('PARABENS!', margin.left + 24, y + 18);
+    doc.text('PARABENS!', margin.left + 12, y + 15);
 
     // Subtítulo
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(C.textLight[0], C.textLight[1], C.textLight[2]);
-    doc.text('Sua empresa atingiu a meta da campanha e garantiu o desconto exclusivo de 10%.', margin.left + 24, y + 25);
+    doc.text('Sua empresa atingiu a meta da campanha e garantiu o desconto exclusivo de 10%.', margin.left + 12, y + 22);
 
     // Nome do cliente em destaque
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(255, 255, 255);
     const nomeCliente = toTitleCase(cliente.nomeFantasia || cliente.razaoSocial || 'Cliente');
-    doc.text(nomeCliente, margin.left + 12, y + 36);
+    doc.text(nomeCliente, margin.left + 12, y + 30);
 
     // Linha divisória elegante
     doc.setDrawColor(gold[0], gold[1], gold[2]);
     doc.setLineWidth(0.3);
-    doc.line(margin.left + 12, y + 39, margin.left + contentW - 12, y + 39);
+    doc.line(margin.left + 12, y + 33, margin.left + contentW - 12, y + 33);
 
-    // Detalhes da conquista
-    doc.setFontSize(8);
+    // Detalhes da conquista + mensagem final na mesma linha
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(C.textLight[0], C.textLight[1], C.textLight[2]);
-    
-    const conquista1 = `Meta exigida: ${m} cx`;
-    const conquista2 = `Volume realizado: ${vc} cx`;
-    const conquista3 = showFinance ? `Economia gerada: ${economiaFormatada}` : '';
-
-    doc.text(conquista1, margin.left + 12, y + 46);
-    doc.text(conquista2, margin.left + 70, y + 46);
-    if (conquista3) {
-      doc.text(conquista3, margin.left + 130, y + 46);
+    doc.text(`Meta: ${m} cx`, margin.left + 12, y + 39);
+    doc.text(`Realizado: ${vc} cx`, margin.left + 55, y + 39);
+    if (showFinance) {
+      doc.text(`Economia: ${economiaFormatada}`, margin.left + 100, y + 39);
     }
 
-    // Mensagem final motivacional
-    doc.setFontSize(8);
+    // Mensagem final
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(gold[0], gold[1], gold[2]);
-    doc.text('O desconto de 10% sera aplicado automaticamente no seu proximo pedido de Vinagre de Alcool.', pageWidth / 2, y + 56, { align: 'center' });
+    doc.text('Desconto de 10% aplicado no Vinagre de Alcool.', pageWidth - margin.right, y + 39, { align: 'right' });
 
-    y += congratsH + 6;
+    y += congratsH + 4;
   }
 
   drawFooter();
