@@ -11,6 +11,7 @@ import { useState, useMemo, Suspense, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, Phone } from "lucide-react";
 import { VisitasCalendar } from "@/components/dashboard/VisitasCalendar";
+import { YoySalesCard } from "@/components/dashboard/YoySalesCard";
 import { getLembretesProspeccao } from "@/app/actions/prospects";
 import { getDashboardChartData, getAvailableYears, ChartDataResponse, ChartViewMode } from "@/app/actions/dashboard";
 import { getBonificacaoComissao, BonificacaoComissaoResult } from "@/app/actions/bonificacaoComissao";
@@ -331,45 +332,6 @@ export default function DashboardPage() {
       borderHover: 'hover:border-emerald-500/30',
       glow: 'group-hover:shadow-emerald-500/10'
     },
-
-    {
-      label: 'Lembretes de Prospecção',
-      value: lembretes.length > 0 ? (
-        <div className="flex flex-col gap-1 mt-1 max-h-[48px] overflow-y-auto pr-1 custom-scrollbar">
-          {lembretes.map((p, i) => {
-             let colorClass = 'text-white/90';
-             if (p.dataProximoContato) {
-                const data = new Date(p.dataProximoContato);
-                const hoje = new Date();
-                hoje.setHours(0,0,0,0);
-                const diffTime = data.getTime() - hoje.getTime();
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                if (diffDays < 0) colorClass = 'text-rose-500'; // Atrasado
-                else if (diffDays === 0) colorClass = 'text-rose-400'; // Hoje
-                else if (diffDays <= 3) colorClass = 'text-amber-400'; // Próximo
-                else colorClass = 'text-emerald-400'; // Seguro
-             }
-
-             return (
-               <span key={i} className={`text-sm font-semibold truncate leading-tight ${colorClass}`}>
-                 • {p.nomeEmpresa}
-               </span>
-             );
-          })}
-        </div>
-      ) : (
-        <span className="text-xl font-bold text-white tracking-tight">0</span>
-      ),
-      sub: `${lembretes.length} contatos nos próximos 10 dias`,
-      icon: Phone,
-      gradient: 'from-blue-500/20 to-blue-500/[0.02]',
-      iconBg: 'bg-blue-500/15',
-      iconColor: 'text-blue-400',
-      borderHover: 'hover:border-violet-500/30',
-      glow: 'group-hover:shadow-violet-500/10',
-      onClick: () => { window.location.href = '/dashboard/prospects'; }
-    }
   ];
 
   return (
@@ -432,8 +394,7 @@ export default function DashboardPage() {
         {kpis.map((kpi, i) => (
           <div
             key={i}
-            onClick={'onClick' in kpi && kpi.onClick ? kpi.onClick : undefined}
-            className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} ${'onClick' in kpi && kpi.onClick ? 'cursor-pointer' : 'cursor-default'} overflow-hidden h-[140px] flex flex-col justify-center`}
+            className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} cursor-default overflow-hidden h-[140px] flex flex-col justify-center`}
           >
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
             <div className="relative z-10 h-full flex flex-col">
@@ -448,6 +409,9 @@ export default function DashboardPage() {
             </div>
           </div>
         ))}
+
+        {/* ===== CARD YOY COMPARATIVO ===== */}
+        <YoySalesCard />
 
         {/* ===== CARD ACORDOS COMERCIAIS (layout customizado) ===== */}
         <div
