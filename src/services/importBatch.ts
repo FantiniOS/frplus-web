@@ -153,24 +153,29 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
     // --- 3. Orders (OPTIMIZED UPSERT) ---
     const ordersMap = new Map<string, any[]>();
     for (const row of rows) {
-        const orderNum = row['Numero']?.toString().trim();
-        if (!orderNum) continue;
-        if (!ordersMap.has(orderNum)) {
-            ordersMap.set(orderNum, []);
+        const numero = row['Numero']?.toString().trim();
+        const notaFiscal = row['Nota_Fiscal']?.toString().trim() || '';
+        
+        if (!numero) continue;
+        
+        const chavePedido = `${numero}_${notaFiscal}`;
+        
+        if (!ordersMap.has(chavePedido)) {
+            ordersMap.set(chavePedido, []);
         }
-        ordersMap.get(orderNum)?.push(row);
+        ordersMap.get(chavePedido)?.push(row);
     }
 
-    const orderNums = Array.from(ordersMap.keys());
+    const orderKeys = Array.from(ordersMap.keys());
 
-    if (orderNums.length === 0) {
+    if (orderKeys.length === 0) {
         return stats;
     }
 
     // ====== BATCH PRE-FETCH (3 queries instead of N*3) ======
     const existingOrderIds = new Set(
         (await prisma.pedido.findMany({
-            where: { id: { in: orderNums } },
+            where: { id: { in: orderKeys } },
             select: { id: true }
         })).map(o => o.id)
     );
@@ -187,7 +192,7 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
     });
     const productByCode = new Map(allProducts.map(p => [p.codigo, p]));
 
-    console.log(`[Batch Import] ${orderNums.length} orders in chunk. ${existingOrderIds.size} already exist (update). ${orderNums.length - existingOrderIds.size} new.`);
+    console.log(`[Batch Import] ${orderKeys.length} orders in chunk. ${existingOrderIds.size} already exist (update). ${orderKeys.length - existingOrderIds.size} new.`);
 
     // Pre-fetch vendedores for seller matching
     const allVendedores = await prisma.vendedor.findMany({
@@ -199,8 +204,8 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
     );
 
     // ====== SEQUENTIAL UPDATE existing orders (fix: race condition) ======
-    for (const [orderNum, docRows] of Array.from(ordersMap.entries())) {
-        if (!existingOrderIds.has(orderNum)) continue;
+    for (const [chavePedido, docRows] of Array.from(ordersMap.entries())) {
+        if (!existingOrderIds.has(chavePedido)) continue;
 
         const firstRow = docRows[0];
         const notaFiscal = firstRow['Nota_Fiscal']?.toString().trim() || null;
@@ -256,9 +261,9 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
         try {
             // Delete old items and update header + recreate items atomically
             await prisma.$transaction(async (tx) => {
-                await tx.itemPedido.deleteMany({ where: { pedidoId: orderNum } });
+                await tx.itemPedido.deleteMany({ where: { pedidoId: chavePedido } });
                 await tx.pedido.update({
-                    where: { id: orderNum },
+                    where: { id: chavePedido },
                     data: {
                         notaFiscal,
                         condicaoPagamento: condPagto,
@@ -276,13 +281,13 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
             });
             stats.ordersUpdated++;
         } catch (e) {
-            stats.errors.push(`Erro ao atualizar Pedido ${orderNum}: ${e}`);
+            stats.errors.push(`Erro ao atualizar Pedido ${chavePedido}: ${e}`);
         }
     }
 
     // ====== INSERT new orders ======
-    for (const [orderNum, docRows] of Array.from(ordersMap.entries())) {
-        if (existingOrderIds.has(orderNum)) continue;
+    for (const [chavePedido, docRows] of Array.from(ordersMap.entries())) {
+        if (existingOrderIds.has(chavePedido)) continue;
 
         const firstRow = docRows[0];
         const cnpj = cleanDocument(firstRow['Cliente'] || '');
@@ -296,7 +301,7 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
 
         const clientId = clientByCnpj.get(cnpj);
         if (!clientId) {
-            stats.errors.push(`Pedido ${orderNum}: Cliente ${cnpj} não encontrado.`);
+            stats.errors.push(`Pedido ${chavePedido}: Cliente ${cnpj} não encontrado.`);
             stats.ordersSkipped++;
             continue;
         }
@@ -347,7 +352,7 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
             try {
                 await prisma.pedido.create({
                     data: {
-                        id: orderNum,
+                        id: chavePedido,
                         clienteId: clientId,
                         fabricaId: targetFabricaId,
                         status: 'Concluido',
@@ -367,12 +372,12 @@ export async function importSalesBatch(rows: any[], targetFabricaId: string) {
                 });
                 stats.ordersCreated++;
             } catch (e) {
-                console.error(`Erro do prisma ao criar Pedido ${orderNum}:`, e);
-                stats.errors.push(`Erro ao criar Pedido ${orderNum}: ${(e as Error).message}`);
+                console.error(`Erro do prisma ao criar Pedido ${chavePedido}:`, e);
+                stats.errors.push(`Erro ao criar Pedido ${chavePedido}: ${(e as Error).message}`);
                 stats.ordersSkipped++;
             }
         } else {
-            stats.errors.push(`Pedido ${orderNum}: Sem itens válidos para importar.`);
+            stats.errors.push(`Pedido ${chavePedido}: Sem itens válidos para importar.`);
             stats.ordersSkipped++;
         }
     }
