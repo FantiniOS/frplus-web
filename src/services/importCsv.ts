@@ -229,8 +229,7 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                         allVendedores.map(v => [v.nome.trim().toLowerCase(), v])
                     );
 
-                    // ====== BATCH UPDATE existing orders ======
-                    const updatePromises: Promise<any>[] = [];
+                    // ====== SEQUENTIAL UPDATE existing orders (fix: race condition) ======
                     for (const [orderNum, rows] of Array.from(ordersMap.entries())) {
                         if (!existingOrderIds.has(orderNum)) continue;
 
@@ -252,29 +251,63 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                         const nomeVendedorRaw = firstRow['Nome_Vendedor']?.trim() || '';
                         const vendedorMatch = vendedorByName.get(nomeVendedorRaw.toLowerCase());
 
-                        updatePromises.push(
-                            prisma.pedido.update({
-                                where: { id: orderNum },
-                                data: {
-                                    notaFiscal,
-                                    condicaoPagamento: condPagto,
-                                    tipo: tipoPedido,
-                                    data: parseDate(firstRow['DT_Emissao']),
-                                    ...(dataNotaFiscal ? { dataFaturamento: dataNotaFiscal } : {}),
-                                    fabricaId: targetFabricaId,
-                                    nomeVendedorImport: nomeVendedorRaw || null,
-                                    ...(vendedorMatch ? {
-                                        vendedorId: vendedorMatch.id,
-                                    } : {}),
-                                }
-                            }).then(() => { stats.ordersUpdated++; })
-                                .catch((e) => { stats.errors.push(`Erro ao atualizar Pedido ${orderNum}: ${e}`); })
-                        );
-                    }
+                        // Rebuild items from CSV rows (block-scoped to avoid leaking state)
+                        const itemsData: { produtoId: string; quantidade: number; precoUnitario: number; total: number }[] = [];
+                        let totalOrder = 0;
+                        for (const row of rows) {
+                            const prodCode = row['Produto'];
+                            const product = productByCode.get(prodCode);
 
-                    // Execute updates in parallel batches of 20
-                    for (let i = 0; i < updatePromises.length; i += 20) {
-                        await Promise.all(updatePromises.slice(i, i + 20));
+                            if (product) {
+                                const qty = parseFloat(row['Quantidade'].replace(',', '.')) || 0;
+                                let unitPrice = parseBrlFloat(row['Prc_Unitario']);
+
+                                if (unitPrice === 0) {
+                                    unitPrice = Number(product.precoAtacado) || 0;
+                                }
+
+                                const total = parseBrlFloat(row['Vlr_Total']) || (unitPrice * qty);
+                                totalOrder += total;
+
+                                itemsData.push({
+                                    produtoId: product.id,
+                                    quantidade: Math.round(qty),
+                                    precoUnitario: unitPrice,
+                                    total: total
+                                });
+                            }
+                        }
+
+                        // Calculate commission if vendedor found
+                        const valorComissao = vendedorMatch
+                            ? totalOrder * (Number(vendedorMatch.percentualComissao) / 100)
+                            : null;
+
+                        try {
+                            // Delete old items and update header + recreate items atomically
+                            await prisma.$transaction(async (tx) => {
+                                await tx.itemPedido.deleteMany({ where: { pedidoId: orderNum } });
+                                await tx.pedido.update({
+                                    where: { id: orderNum },
+                                    data: {
+                                        notaFiscal,
+                                        condicaoPagamento: condPagto,
+                                        tipo: tipoPedido,
+                                        valorTotal: totalOrder,
+                                        data: parseDate(firstRow['DT_Emissao']),
+                                        ...(dataNotaFiscal ? { dataFaturamento: dataNotaFiscal } : {}),
+                                        fabricaId: targetFabricaId,
+                                        nomeVendedorImport: nomeVendedorRaw || null,
+                                        ...(vendedorMatch ? { vendedorId: vendedorMatch.id } : {}),
+                                        ...(valorComissao !== null ? { valorComissao: valorComissao } : {}),
+                                        itens: { create: itemsData }
+                                    }
+                                });
+                            });
+                            stats.ordersUpdated++;
+                        } catch (e) {
+                            stats.errors.push(`Erro ao atualizar Pedido ${orderNum}: ${e}`);
+                        }
                     }
 
                     // ====== INSERT new orders ======
