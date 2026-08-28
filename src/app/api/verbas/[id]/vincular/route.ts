@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request, { params }: { params: { id: string } }) {
     try {
         const user = await getServerUser()
-        if (!user) return NextResponse.json({ error: 'NÃ£o autorizado' }, { status: 401 })
+        if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
         const verba = await prisma.verba.findUnique({
             where: { id: params.id },
@@ -16,7 +16,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         })
 
         if (!verba) {
-            return NextResponse.json({ error: 'Verba nÃ£o encontrada' }, { status: 404 })
+            return NextResponse.json({ error: 'Verba não encontrada' }, { status: 404 })
         }
 
         // Only pedidos: same client, type Bonificacao, verbaId is null
@@ -53,12 +53,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
             }))
         })
     } catch (error) {
-        console.error('Error fetching pedidos disponÃ­veis:', error)
+        console.error('Error fetching pedidos disponíveis:', error)
         return NextResponse.json({ error: 'Failed to fetch pedidos' }, { status: 500 })
     }
 }
 
-// POST /api/verbas/[id]/vincular - Link pedidos to verba (the isolated server action)
+// POST /api/verbas/[id]/vincular - Link pedidos to verba
 export async function POST(request: Request, { params }: { params: { id: string } }) {
     try {
         const user = await getServerUser()
@@ -70,7 +70,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         const { pedidoIds } = body
 
         if (!Array.isArray(pedidoIds) || pedidoIds.length === 0) {
-            return NextResponse.json({ error: 'pedidoIds Ã© obrigatÃ³rio e deve ser um array' }, { status: 400 })
+            return NextResponse.json({ error: 'pedidoIds é obrigatório e deve ser um array' }, { status: 400 })
         }
 
         // Verify verba exists
@@ -80,14 +80,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
         })
 
         if (!verba) {
-            return NextResponse.json({ error: 'Verba nÃ£o encontrada' }, { status: 404 })
+            return NextResponse.json({ error: 'Verba não encontrada' }, { status: 404 })
         }
 
         if (verba.status === 'CANCELADA') {
-            return NextResponse.json({ error: 'NÃ£o Ã© possÃ­vel vincular pedidos a uma verba cancelada' }, { status: 400 })
+            return NextResponse.json({ error: 'Não é possível vincular pedidos a uma verba cancelada' }, { status: 400 })
         }
 
-        // UPDATE pedidos setting verbaId â€” the isolated action
+        // UPDATE pedidos setting verbaId
         const result = await prisma.pedido.updateMany({
             where: {
                 id: { in: pedidoIds },
@@ -104,3 +104,42 @@ export async function POST(request: Request, { params }: { params: { id: string 
         return NextResponse.json({ error: 'Failed to link pedidos' }, { status: 500 })
     }
 }
+
+// DELETE /api/verbas/[id]/vincular - Unlink a pedido from a verba
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+    try {
+        const user = await getServerUser()
+        if (!user || user.role === 'industria') {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+
+        const body = await request.json()
+        const { pedidoId } = body
+
+        if (!pedidoId) {
+            return NextResponse.json({ error: 'pedidoId é obrigatório' }, { status: 400 })
+        }
+
+        const verba = await prisma.verba.findUnique({
+            where: { id: params.id }
+        })
+
+        if (!verba) {
+            return NextResponse.json({ error: 'Verba não encontrada' }, { status: 404 })
+        }
+
+        await prisma.pedido.updateMany({
+            where: {
+                id: pedidoId,
+                verbaId: params.id
+            },
+            data: { verbaId: null }
+        })
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error('Error unlinking pedido to verba:', error)
+        return NextResponse.json({ error: 'Failed to unlink pedido' }, { status: 500 })
+    }
+}
+

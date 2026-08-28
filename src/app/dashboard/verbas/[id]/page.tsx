@@ -105,6 +105,28 @@ export default function VerbaDetailPage() {
         }
     };
 
+    const handleDesvincular = async (pedidoId: string) => {
+        if (!confirm('Deseja realmente remover este pedido do vínculo com a verba?')) return;
+        setSaving(true);
+        try {
+            const res = await fetch(`/api/verbas/${verbaId}/vincular`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pedidoId })
+            });
+            if (res.ok) {
+                fetchVerba();
+            } else {
+                alert('Erro ao desvincular pedido.');
+            }
+        } catch (e) {
+            console.error('Error unlinking pedido:', e);
+            alert('Erro ao desvincular pedido.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleStatusChange = async (newStatus: string) => {
         try {
             await fetch(`/api/verbas/${verbaId}`, {
@@ -459,17 +481,18 @@ export default function VerbaDetailPage() {
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Nota Fiscal</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Nº Pedido</th>
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Valor Abatido</th>
+                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
                             {verba.pedidos.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="text-center py-12 text-gray-600">
+                                    <td colSpan={6} className="text-center py-12 text-gray-600">
                                         <Package className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                         <p className="text-sm">Nenhum pedido vinculado ainda</p>
                                         {!isIndustria && verba.status === 'ATIVA' && (
                                             <button onClick={openVincular} className="text-blue-400 text-xs mt-2 hover:underline">
-                                                Vincular pedidos de bonificação →
+                                                Vincular pedidos de bonificação ↗
                                             </button>
                                         )}
                                     </td>
@@ -499,6 +522,18 @@ export default function VerbaDetailPage() {
                                                     R$ {p.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </span>
                                             </td>
+                                            <td className="px-3 py-2.5 text-center">
+                                                {!isIndustria && verba.status === 'ATIVA' && (
+                                                    <button
+                                                        onClick={() => handleDesvincular(p.id)}
+                                                        disabled={saving}
+                                                        className="text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                                                        title="Remover vínculo"
+                                                    >
+                                                        <X className="h-4 w-4 mx-auto" />
+                                                    </button>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                     {/* Total Row */}
@@ -509,6 +544,7 @@ export default function VerbaDetailPage() {
                                         <td className="px-3 py-2.5 text-right">
                                             <span className="text-base text-amber-400 font-bold">R$ {verba.consumido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                         </td>
+                                        <td></td>
                                     </tr>
                                 </>
                             )}
