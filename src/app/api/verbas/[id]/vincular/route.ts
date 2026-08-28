@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request, { params }: { params: { id: string } }) {
     try {
         const user = await getServerUser()
-        if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+        if (!user) return NextResponse.json({ error: 'Nï¿½o autorizado' }, { status: 401 })
 
         const verba = await prisma.verba.findUnique({
             where: { id: params.id },
@@ -16,7 +16,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         })
 
         if (!verba) {
-            return NextResponse.json({ error: 'Verba não encontrada' }, { status: 404 })
+            return NextResponse.json({ error: 'Verba nï¿½o encontrada' }, { status: 404 })
         }
 
         // Only pedidos: same client, type Bonificacao, verbaId is null
@@ -53,7 +53,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             }))
         })
     } catch (error) {
-        console.error('Error fetching pedidos disponíveis:', error)
+        console.error('Error fetching pedidos disponï¿½veis:', error)
         return NextResponse.json({ error: 'Failed to fetch pedidos' }, { status: 500 })
     }
 }
@@ -70,7 +70,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         const { pedidoIds } = body
 
         if (!Array.isArray(pedidoIds) || pedidoIds.length === 0) {
-            return NextResponse.json({ error: 'pedidoIds é obrigatório e deve ser um array' }, { status: 400 })
+            return NextResponse.json({ error: 'pedidoIds ï¿½ obrigatï¿½rio e deve ser um array' }, { status: 400 })
         }
 
         // Verify verba exists
@@ -80,11 +80,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
         })
 
         if (!verba) {
-            return NextResponse.json({ error: 'Verba não encontrada' }, { status: 404 })
+            return NextResponse.json({ error: 'Verba nï¿½o encontrada' }, { status: 404 })
         }
 
         if (verba.status === 'CANCELADA') {
-            return NextResponse.json({ error: 'Não é possível vincular pedidos a uma verba cancelada' }, { status: 400 })
+            return NextResponse.json({ error: 'Nï¿½o ï¿½ possï¿½vel vincular pedidos a uma verba cancelada' }, { status: 400 })
         }
 
         // UPDATE pedidos setting verbaId
@@ -117,7 +117,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         const { pedidoId } = body
 
         if (!pedidoId) {
-            return NextResponse.json({ error: 'pedidoId é obrigatório' }, { status: 400 })
+            return NextResponse.json({ error: 'pedidoId ï¿½ obrigatï¿½rio' }, { status: 400 })
         }
 
         const verba = await prisma.verba.findUnique({
@@ -125,7 +125,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         })
 
         if (!verba) {
-            return NextResponse.json({ error: 'Verba não encontrada' }, { status: 404 })
+            return NextResponse.json({ error: 'Verba nï¿½o encontrada' }, { status: 404 })
         }
 
         await prisma.pedido.updateMany({
