@@ -194,25 +194,20 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                     // --- 3. Orders (OPTIMIZED UPSERT) ---
                     const ordersMap = new Map<string, any[]>();
                     for (const row of results) {
-                        const numero = row['Numero']?.toString().trim();
-                        const notaFiscal = row['Nota_Fiscal']?.toString().trim() || '';
-                        
-                        if (!numero) continue;
-                        
-                        const chavePedido = `${numero}_${notaFiscal}`;
-                        
-                        if (!ordersMap.has(chavePedido)) {
-                            ordersMap.set(chavePedido, []);
+                        const orderNum = row['Numero'];
+                        if (!orderNum) continue;
+                        if (!ordersMap.has(orderNum)) {
+                            ordersMap.set(orderNum, []);
                         }
-                        ordersMap.get(chavePedido)?.push(row);
+                        ordersMap.get(orderNum)?.push(row);
                     }
 
-                    const orderKeys = Array.from(ordersMap.keys());
+                    const orderNums = Array.from(ordersMap.keys());
 
                     // ====== BATCH PRE-FETCH (3 queries instead of N*3) ======
                     const existingOrderIds = new Set(
                         (await prisma.pedido.findMany({
-                            where: { id: { in: orderKeys } },
+                            where: { id: { in: orderNums } },
                             select: { id: true }
                         })).map(o => o.id)
                     );
@@ -223,7 +218,7 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                     const allProducts = await prisma.produto.findMany({ select: { id: true, codigo: true, precoAtacado: true, fabricaId: true } });
                     const productByCode = new Map(allProducts.map(p => [p.codigo, p]));
 
-                    console.log(`[CSV Import] ${orderKeys.length} orders to process. ${existingOrderIds.size} already exist (will update). ${orderKeys.length - existingOrderIds.size} new.`);
+                    console.log(`[CSV Import] ${orderNums.length} orders to process. ${existingOrderIds.size} already exist (will update). ${orderNums.length - existingOrderIds.size} new.`);
 
                     // Pre-fetch vendedores for seller matching
                     const allVendedores = await prisma.vendedor.findMany({
@@ -235,8 +230,8 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                     );
 
                     // ====== SEQUENTIAL UPDATE existing orders (fix: race condition) ======
-                    for (const [chavePedido, rows] of Array.from(ordersMap.entries())) {
-                        if (!existingOrderIds.has(chavePedido)) continue;
+                    for (const [orderNum, rows] of Array.from(ordersMap.entries())) {
+                        if (!existingOrderIds.has(orderNum)) continue;
 
                         const firstRow = rows[0];
                         const notaFiscal = firstRow['Nota_Fiscal']?.trim() || null;
@@ -291,9 +286,9 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                         try {
                             // Delete old items and update header + recreate items atomically
                             await prisma.$transaction(async (tx) => {
-                                await tx.itemPedido.deleteMany({ where: { pedidoId: chavePedido } });
+                                await tx.itemPedido.deleteMany({ where: { pedidoId: orderNum } });
                                 await tx.pedido.update({
-                                    where: { id: chavePedido },
+                                    where: { id: orderNum },
                                     data: {
                                         notaFiscal,
                                         condicaoPagamento: condPagto,
@@ -311,13 +306,13 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                             });
                             stats.ordersUpdated++;
                         } catch (e) {
-                            stats.errors.push(`Erro ao atualizar Pedido ${chavePedido}: ${e}`);
+                            stats.errors.push(`Erro ao atualizar Pedido ${orderNum}: ${e}`);
                         }
                     }
 
                     // ====== INSERT new orders ======
-                    for (const [chavePedido, rows] of Array.from(ordersMap.entries())) {
-                        if (existingOrderIds.has(chavePedido)) continue;
+                    for (const [orderNum, rows] of Array.from(ordersMap.entries())) {
+                        if (existingOrderIds.has(orderNum)) continue;
 
                         const firstRow = rows[0];
                         const cnpj = cleanDocument(firstRow['Cliente']);
@@ -331,7 +326,7 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
 
                         const clientId = clientByCnpj.get(cnpj);
                         if (!clientId) {
-                            stats.errors.push(`Pedido ${chavePedido}: Cliente ${cnpj} não encontrado.`);
+                            stats.errors.push(`Pedido ${orderNum}: Cliente ${cnpj} não encontrado.`);
                             continue;
                         }
 
@@ -378,7 +373,7 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                             try {
                                 await prisma.pedido.create({
                                     data: {
-                                        id: chavePedido,
+                                        id: orderNum,
                                         clienteId: clientId,
                                         fabricaId: targetFabricaId,
                                         status: 'Concluido',
@@ -399,7 +394,7 @@ export async function importSalesCsv(fileBuffer: Buffer, targetFabricaId: string
                                 stats.ordersCreated++;
                             } catch (e) {
                                 console.error(e);
-                                stats.errors.push(`Erro ao criar Pedido ${chavePedido}: ${e}`);
+                                stats.errors.push(`Erro ao criar Pedido ${orderNum}: ${e}`);
                             }
                         }
                     }
