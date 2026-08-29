@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { Toast, ToastType } from '@/components/ui/Toast';
+import { useAuth } from './AuthContext';
 
 // --- Types ---
 export interface Client {
@@ -147,6 +148,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
+    const { usuario } = useAuth();
     const [clients, setClients] = useState<Client[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
@@ -185,7 +187,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 const data = await ordersRes.json();
                 console.log('[FRONTEND] Pedidos carregados no refreshData:', data.length);
                 setOrders(data);
-            } else {
+            } else if (ordersRes.status !== 401) {
                 console.error('[FRONTEND] Erro ao carregar pedidos:', await ordersRes.text());
             }
             if (fabricasRes.ok) setFabricas(await fabricasRes.json());
@@ -207,7 +209,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 const data = await ordersRes.json();
                 console.log(`[FRONTEND] Pedidos carregados no refreshOrders (${url}):`, data.length);
                 setOrders(data);
-            } else {
+            } else if (ordersRes.status !== 401) {
                 console.error('[FRONTEND] Erro refreshOrders:', await ordersRes.text());
             }
         } catch (error) {
@@ -218,13 +220,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
     }, [showToast]);
 
-    // Load data on mount
+    // Load data only when user is authenticated
     useEffect(() => {
-        refreshData();
-        // Check auth
-        const savedUser = localStorage.getItem('frplus_user');
-        if (savedUser) setUser(savedUser);
-    }, [refreshData]);
+        if (usuario && usuario.role !== 'VENDEDOR' && usuario.role !== 'vendedor') {
+            refreshData();
+        }
+    }, [usuario, refreshData]);
 
     // --- Client CRUD ---
     const addClient = async (client: Omit<Client, 'id'>) => {
