@@ -88,6 +88,19 @@ export default function CaptacaoPage() {
     });
   };
 
+  const handleSetQuantity = (produtoId: string, value: string) => {
+    setCart((prev) => {
+      const next = Math.max(0, parseInt(value) || 0);
+      const newCart = { ...prev };
+      if (next === 0) {
+        delete newCart[produtoId];
+      } else {
+        newCart[produtoId] = next;
+      }
+      return newCart;
+    });
+  };
+
   const valorTotal = useMemo(() => {
     return Object.entries(cart).reduce((acc, [produtoId, quantidade]) => {
       const produto = produtos.find((p) => p.id === produtoId);
@@ -290,9 +303,14 @@ export default function CaptacaoPage() {
                           <Minus className="h-4 w-4" />
                         </button>
                         
-                        <span className="w-6 text-center font-semibold text-white">
-                          {qty}
-                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={qty === 0 ? '' : qty}
+                          onChange={(e) => handleSetQuantity(produto.id, e.target.value)}
+                          className="w-14 text-center font-semibold text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 py-1 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          placeholder="0"
+                        />
                         
                         <button
                           type="button"
