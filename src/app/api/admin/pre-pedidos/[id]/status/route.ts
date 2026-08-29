@@ -26,14 +26,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
         }
 
-        const { status } = await request.json()
+        const { status, motivoRejeicao } = await request.json()
         if (!status) {
             return NextResponse.json({ error: 'Status obrigatório' }, { status: 400 })
         }
 
         const prePedidoAtualizado = await prisma.prePedido.update({
             where: { id: params.id },
-            data: { status }
+            data: { 
+                status, 
+                motivoRejeicao: motivoRejeicao || null 
+            }
         })
 
         return NextResponse.json({ success: true, prePedido: prePedidoAtualizado })

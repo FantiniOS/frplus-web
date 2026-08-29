@@ -14,6 +14,7 @@ type Pedido = {
   id: string;
   data: string;
   status: string;
+  motivoRejeicao?: string | null;
   valorTotal: string | number;
   cliente: Cliente;
   itens: ItemPedido[];
@@ -56,7 +57,10 @@ export default function HistoricoPedidosPage() {
         return <span className="bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Pendente</span>;
       case 'ENVIADO_FABRICA':
       case 'ENVIADO À FÁBRICA':
-        return <span className="bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Enviado à Fábrica</span>;
+      case 'APROVADO':
+        return <span className="bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Aprovado</span>;
+      case 'REJEITADO':
+        return <span className="bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Rejeitado</span>;
       case 'CONCLUIDO':
         return <span className="bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Concluído</span>;
       case 'CANCELADO':
@@ -126,6 +130,12 @@ export default function HistoricoPedidosPage() {
                     </div>
                     {getStatusBadge(pedido.status)}
                   </div>
+
+                  {pedido.status === 'REJEITADO' && pedido.motivoRejeicao && (
+                    <div className="mb-4 bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-400">
+                      <strong>Motivo da Rejeição:</strong> {pedido.motivoRejeicao}
+                    </div>
+                  )}
                   
                   <div className="flex items-start gap-3 mb-4">
                     <div className="bg-white/10 p-2 rounded-lg mt-1">

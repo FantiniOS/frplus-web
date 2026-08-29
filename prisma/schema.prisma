@@ -267,11 +267,12 @@ model PrePedido {
   cliente    Cliente         @relation(fields: [clienteId], references: [id])
   vendedorId String
   vendedor   Vendedor        @relation(fields: [vendedorId], references: [id])
-  status     String          @default("PENDENTE") // PENDENTE, ENVIADO_FABRICA
-  valorTotal Decimal         @db.Decimal(10, 2)
-  itens      ItemPrePedido[]
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  status         String          @default("PENDENTE") // PENDENTE, APROVADO, REJEITADO
+  motivoRejeicao String?         @db.Text
+  valorTotal     Decimal         @db.Decimal(10, 2)
+  itens          ItemPrePedido[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model ItemPrePedido {

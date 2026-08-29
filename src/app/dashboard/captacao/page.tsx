@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronDown, ChevronUp, Check, Loader2, PackageSearch, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, X, Loader2, PackageSearch, RefreshCw } from 'lucide-react';
 
 type Produto = { nome: string; unidade: string | null };
 type ItemPedido = { id: string; quantidade: number; precoUnitario: string | number; produto: Produto };
@@ -12,6 +12,7 @@ type PrePedido = {
   data: string;
   createdAt: string;
   status: string;
+  motivoRejeicao?: string | null;
   valorTotal: string | number;
   cliente: { razaoSocial: string; nomeFantasia: string; cnpj: string };
   vendedor: { nome: string };
@@ -24,6 +25,9 @@ export default function AdminCaptacaoPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [error, setError] = useState('');
+
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const fetchPedidos = async () => {
     setLoading(true);
@@ -44,21 +48,24 @@ export default function AdminCaptacaoPage() {
     fetchPedidos();
   }, []);
 
-  const handleUpdateStatus = async (id: string, novoStatus: string) => {
+  const handleUpdateStatus = async (id: string, novoStatus: string, motivoRejeicao?: string) => {
     setUpdating(id);
     try {
       const res = await fetch(`/api/admin/pre-pedidos/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: novoStatus })
+        body: JSON.stringify({ status: novoStatus, motivoRejeicao })
       });
 
       if (!res.ok) throw new Error('Falha ao atualizar status');
 
       // Update local state
       setPedidos((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, status: novoStatus } : p))
+        prev.map((p) => (p.id === id ? { ...p, status: novoStatus, motivoRejeicao } : p))
       );
+      
+      setRejectingId(null);
+      setRejectionReason('');
     } catch (err) {
       alert('Erro ao atualizar o status do pedido.');
     } finally {
@@ -70,8 +77,11 @@ export default function AdminCaptacaoPage() {
     if (status === 'PENDENTE') {
       return <span className="bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Pendente</span>;
     }
-    if (status === 'ENVIADO_FABRICA') {
-      return <span className="bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Enviado à Fábrica</span>;
+    if (status === 'APROVADO' || status === 'ENVIADO_FABRICA') {
+      return <span className="bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Aprovado</span>;
+    }
+    if (status === 'REJEITADO') {
+      return <span className="bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Rejeitado</span>;
     }
     return <span className="bg-gray-500/20 text-gray-400 border border-gray-500/30 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">{status}</span>;
   };
@@ -152,27 +162,45 @@ export default function AdminCaptacaoPage() {
                       </td>
                       <td className="px-6 py-4">
                         {getStatusBadge(pedido.status)}
+                        {pedido.status === 'REJEITADO' && pedido.motivoRejeicao && (
+                          <div className="text-[10px] text-red-400 mt-1 max-w-[150px] truncate" title={pedido.motivoRejeicao}>
+                            Motivo: {pedido.motivoRejeicao}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {pedido.status === 'PENDENTE' && (
-                            <button
-                              onClick={() => handleUpdateStatus(pedido.id, 'ENVIADO_FABRICA')}
-                              disabled={updating === pedido.id}
-                              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                            >
-                              {updating === pedido.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <Check className="h-4 w-4" /> Enviar
-                                </>
-                              )}
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleUpdateStatus(pedido.id, 'APROVADO')}
+                                disabled={updating === pedido.id}
+                                className="flex items-center gap-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                                title="Aprovar Pedido"
+                              >
+                                {updating === pedido.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Check className="h-4 w-4" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => setRejectingId(pedido.id)}
+                                disabled={updating === pedido.id}
+                                className="flex items-center gap-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                                title="Rejeitar Pedido"
+                              >
+                                {updating === pedido.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <X className="h-4 w-4" />
+                                )}
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={() => setExpandedId(expandedId === pedido.id ? null : pedido.id)}
-                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-colors"
+                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-colors ml-2"
                           >
                             {expandedId === pedido.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </button>
@@ -214,6 +242,51 @@ export default function AdminCaptacaoPage() {
           </table>
         </div>
       </div>
+
+      {/* Reject Modal */}
+      {rejectingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#111] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="p-5 border-b border-white/10">
+              <h3 className="text-lg font-bold text-white">Rejeitar Pré-Pedido</h3>
+            </div>
+            <div className="p-5">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Motivo da Rejeição (Opcional)
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Ex: Produto X fora de estoque. Refazer pedido sem ele."
+                className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 resize-none h-24"
+              />
+            </div>
+            <div className="p-5 border-t border-white/10 flex justify-end gap-3 bg-white/[0.02]">
+              <button
+                onClick={() => {
+                  setRejectingId(null);
+                  setRejectionReason('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                disabled={updating === rejectingId}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleUpdateStatus(rejectingId, 'REJEITADO', rejectionReason)}
+                disabled={updating === rejectingId}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
+              >
+                {updating === rejectingId ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Confirmar Rejeição'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
