@@ -20,8 +20,24 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
     }, [isIndustria, router]);
 
     useEffect(() => {
-        const found = products.find(p => p.id === params.id);
-        if (found) setFormData(found);
+        const fetchProduct = async () => {
+            const found = products.find(p => p.id === params.id);
+            if (found) {
+                setFormData(found);
+            } else {
+                // If not in context (e.g. inactive), fetch directly
+                try {
+                    const res = await fetch(`/api/products/${params.id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setFormData(data);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch inactive product", e);
+                }
+            }
+        };
+        fetchProduct();
     }, [products, params.id]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
