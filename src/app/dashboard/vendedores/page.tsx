@@ -24,6 +24,7 @@ interface Vendedor {
     id: string;
     nome: string;
     telefone: string | null;
+    codigoAcesso?: string | null;
     percentualComissao: number | string;
     taxaRetencaoIR?: number | string;
     taxaRetencaoISSQN?: number | string;
@@ -52,6 +53,8 @@ export default function VendedoresPage() {
     const [editingVendedor, setEditingVendedor] = useState<Vendedor | null>(null);
     const [formNome, setFormNome] = useState('');
     const [formTelefone, setFormTelefone] = useState('');
+    const [formCodigo, setFormCodigo] = useState('');
+    const [formSenha, setFormSenha] = useState('');
     const [formComissao, setFormComissao] = useState('');
     const [formIR, setFormIR] = useState('');
     const [formISSQN, setFormISSQN] = useState('');
@@ -112,6 +115,8 @@ export default function VendedoresPage() {
         setEditingVendedor(null);
         setFormNome('');
         setFormTelefone('');
+        setFormCodigo('');
+        setFormSenha('');
         setFormComissao('');
         setFormIR('');
         setFormISSQN('');
@@ -125,6 +130,8 @@ export default function VendedoresPage() {
         setEditingVendedor(vendedor);
         setFormNome(vendedor.nome);
         setFormTelefone(vendedor.telefone || '');
+        setFormCodigo(vendedor.codigoAcesso || '');
+        setFormSenha(''); // Don't show existing password
         setFormComissao(String(Number(vendedor.percentualComissao) || ''));
         setFormIR(String(Number(vendedor.taxaRetencaoIR) || ''));
         setFormISSQN(String(Number(vendedor.taxaRetencaoISSQN) || ''));
@@ -154,6 +161,8 @@ export default function VendedoresPage() {
                 body: JSON.stringify({
                     nome: formNome.trim(),
                     telefone: formTelefone.trim() || null,
+                    codigoAcesso: formCodigo.trim() || null,
+                    senha: formSenha.trim() || undefined,
                     percentualComissao: parseFloat(formComissao) || 0,
                     taxaRetencaoIR: parseFloat(formIR) || 0,
                     taxaRetencaoISSQN: parseFloat(formISSQN) || 0,
@@ -613,6 +622,32 @@ export default function VendedoresPage() {
                                         placeholder="(00) 90000-0000"
                                         className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                                     />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-gray-300">
+                                            Código de Acesso
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formCodigo}
+                                            onChange={(e) => setFormCodigo(e.target.value)}
+                                            placeholder="Ex: 001"
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-gray-300">
+                                            Senha (PIN)
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={formSenha}
+                                            onChange={(e) => setFormSenha(e.target.value)}
+                                            placeholder={editingVendedor ? "Deixe em branco para manter" : "Ex: 1234"}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-medium text-gray-300">

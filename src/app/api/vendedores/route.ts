@@ -45,10 +45,19 @@ export async function POST(request: Request) {
             )
         }
 
+        // Hash da senha se fornecida
+        let senhaHashed = null;
+        if (body.senha) {
+            const bcrypt = require('bcryptjs');
+            senhaHashed = await bcrypt.hash(body.senha, 10);
+        }
+
         const vendedor = await prisma.vendedor.create({
             data: {
                 nome: body.nome.trim(),
                 telefone: body.telefone?.trim() || null,
+                codigoAcesso: body.codigoAcesso?.trim() || null,
+                senha: senhaHashed,
                 percentualComissao: body.percentualComissao ?? 0,
                 taxaRetencaoIR: body.taxaRetencaoIR ?? 0,
                 taxaRetencaoISSQN: body.taxaRetencaoISSQN ?? 0,

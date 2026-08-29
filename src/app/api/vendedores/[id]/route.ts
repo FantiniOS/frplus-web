@@ -40,11 +40,19 @@ export async function PUT(request: Request, { params }: Params) {
             )
         }
 
+        let senhaHashed = undefined;
+        if (body.senha !== undefined && body.senha !== '') {
+            const bcrypt = require('bcryptjs');
+            senhaHashed = await bcrypt.hash(body.senha, 10);
+        }
+
         const vendedor = await prisma.vendedor.update({
             where: { id: params.id },
             data: {
                 ...(body.nome !== undefined && { nome: body.nome.trim() }),
                 ...(body.telefone !== undefined && { telefone: body.telefone?.trim() || null }),
+                ...(body.codigoAcesso !== undefined && { codigoAcesso: body.codigoAcesso?.trim() || null }),
+                ...(senhaHashed !== undefined && { senha: senhaHashed }),
                 ...(body.percentualComissao !== undefined && { percentualComissao: body.percentualComissao }),
                 ...(body.taxaRetencaoIR !== undefined && { taxaRetencaoIR: body.taxaRetencaoIR }),
                 ...(body.taxaRetencaoISSQN !== undefined && { taxaRetencaoISSQN: body.taxaRetencaoISSQN }),
