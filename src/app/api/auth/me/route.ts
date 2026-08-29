@@ -12,7 +12,7 @@ export async function GET() {
         const token = cookieStore.get('auth_token')?.value
 
         if (!token) {
-            return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+            return NextResponse.json({ authenticated: false, usuario: null })
         }
 
         // Verificar token
@@ -39,10 +39,11 @@ export async function GET() {
             })
 
             if (!vendedor || !vendedor.ativo) {
-                return NextResponse.json({ error: 'Vendedor não encontrado ou desativado' }, { status: 401 })
+                return NextResponse.json({ authenticated: false, usuario: null })
             }
 
             return NextResponse.json({ 
+                authenticated: true,
                 usuario: {
                     id: vendedor.id,
                     nome: vendedor.nome,
@@ -71,13 +72,13 @@ export async function GET() {
         })
 
         if (!usuario || !usuario.ativo) {
-            return NextResponse.json({ error: 'Usuário não encontrado ou desativado' }, { status: 401 })
+            return NextResponse.json({ authenticated: false, usuario: null })
         }
 
-        return NextResponse.json({ usuario })
+        return NextResponse.json({ authenticated: true, usuario })
     } catch (error) {
-        console.error('Auth error:', error)
-        return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+        // We log silently here or just return null for clean consoles
+        return NextResponse.json({ authenticated: false, usuario: null })
     }
 }
 
