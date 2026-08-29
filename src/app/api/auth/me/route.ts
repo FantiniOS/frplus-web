@@ -24,7 +24,38 @@ export async function GET() {
             fabricaId: string | null
         }
 
-        // Buscar usuário atualizado
+        // Se for vendedor, busca na tabela de vendedores
+        if (decoded.role === 'VENDEDOR' || decoded.role === 'vendedor') {
+            const vendedor = await prisma.vendedor.findUnique({
+                where: { id: decoded.id },
+                select: {
+                    id: true,
+                    nome: true,
+                    codigoAcesso: true,
+                    email: true,
+                    role: true,
+                    ativo: true
+                }
+            })
+
+            if (!vendedor || !vendedor.ativo) {
+                return NextResponse.json({ error: 'Vendedor não encontrado ou desativado' }, { status: 401 })
+            }
+
+            return NextResponse.json({ 
+                usuario: {
+                    id: vendedor.id,
+                    nome: vendedor.nome,
+                    username: vendedor.codigoAcesso,
+                    email: vendedor.email,
+                    empresa: null,
+                    role: vendedor.role || 'VENDEDOR',
+                    fabricaId: null
+                }
+            })
+        }
+
+        // Buscar usuário atualizado (Admin, etc)
         const usuario = await prisma.usuario.findUnique({
             where: { id: decoded.id },
             select: {
