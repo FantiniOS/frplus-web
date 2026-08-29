@@ -38,6 +38,7 @@ model Produto {
   fabricaId          String
   fabrica            Fabrica      @relation(fields: [fabricaId], references: [id])
   itensPedido        ItemPedido[]
+  itensPrePedido     ItemPrePedido[]
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 }
@@ -68,6 +69,7 @@ model Cliente {
   visitas           Visita[]
   vendedorId        String?
   vendedor          Vendedor?        @relation(fields: [vendedorId], references: [id])
+  prePedidos        PrePedido[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   contatoClientes   ContatoCliente[]
@@ -203,12 +205,17 @@ model Vendedor {
   id                 String   @id @default(cuid())
   nome               String
   telefone           String?
+  email              String?  @unique
+  codigoAcesso       String?  @unique
+  senha              String?
+  role               String   @default("VENDEDOR") // ADMIN, VENDEDOR
   percentualComissao Decimal  @default(0) @db.Decimal(5, 2)
   taxaRetencaoIR     Decimal  @default(0) @db.Decimal(5, 2)
   taxaRetencaoISSQN  Decimal  @default(0) @db.Decimal(5, 2)
   ativo              Boolean  @default(true)
   clientes           Cliente[]
   pedidos            Pedido[]
+  prePedidos         PrePedido[]
   comissaoVigencias  ComissaoVigencia[]
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -251,4 +258,28 @@ model MetaCampanha {
   updatedAt              DateTime @updatedAt
 
   @@unique([clienteId, campanhaId])
+}
+
+model PrePedido {
+  id         String          @id @default(cuid())
+  data       DateTime        @default(now())
+  clienteId  String
+  cliente    Cliente         @relation(fields: [clienteId], references: [id])
+  vendedorId String
+  vendedor   Vendedor        @relation(fields: [vendedorId], references: [id])
+  status     String          @default("PENDENTE") // PENDENTE, ENVIADO_FABRICA
+  valorTotal Decimal         @db.Decimal(10, 2)
+  itens      ItemPrePedido[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+}
+
+model ItemPrePedido {
+  id            String    @id @default(cuid())
+  prePedidoId   String
+  prePedido     PrePedido @relation(fields: [prePedidoId], references: [id], onDelete: Cascade)
+  produtoId     String
+  produto       Produto   @relation(fields: [produtoId], references: [id])
+  quantidade    Int
+  precoUnitario Decimal   @db.Decimal(10, 2)
 }

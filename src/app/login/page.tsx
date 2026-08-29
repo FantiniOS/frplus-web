@@ -7,10 +7,10 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
-export default function LoginPage() {
+export default function VendedorLoginPage() {
   const { login, usuario, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,33 +26,19 @@ export default function LoginPage() {
     }
   }, [usuario, authLoading, router]);
 
-  // Seed admin user on first load
-  useEffect(() => {
-    const seedAdmin = async () => {
-      try {
-        await fetch('/api/auth/seed', { method: 'GET' });
-      } catch {
-        // Ignore errors
-      }
-    };
-    seedAdmin();
-  }, []);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const result = await login(email, senha);
+    const result = await login(codigo, senha);
 
     if (result.success) {
       router.refresh();
-      router.push('/dashboard');
     } else {
       setError(result.error || 'Erro ao fazer login');
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   if (authLoading) {
@@ -96,7 +82,7 @@ export default function LoginPage() {
               </div>
             </div>
             <p className="text-sm text-gray-400">
-              Acesse seu painel de inteligência comercial
+              Acesso Exclusivo para Vendedores
             </p>
           </div>
 
@@ -113,9 +99,9 @@ export default function LoginPage() {
               <User className="absolute left-3 top-3 h-5 w-5 text-gray-500 transition-colors group-focus-within:text-blue-500" />
               <input
                 type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Usuário ou Email"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value)}
+                placeholder="Código Numérico (ex: 001)"
                 className="w-full rounded-lg bg-black/40 border border-white/10 p-2.5 pl-10 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
               />
             </div>
@@ -126,7 +112,7 @@ export default function LoginPage() {
                 type="password"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
-                placeholder="Sua senha"
+                placeholder="Senha ou PIN"
                 className="w-full rounded-lg bg-black/40 border border-white/10 p-2.5 pl-10 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
               />
             </div>
@@ -146,14 +132,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Footer */}
-          <div className="mt-6 text-center space-y-3">
-
-            <p className="text-xs text-gray-600">
-              Desenvolvido por FID - Fantini Ideias Digitais
-            </p>
-          </div>
         </div>
       </motion.div>
     </div>

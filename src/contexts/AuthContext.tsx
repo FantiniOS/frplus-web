@@ -9,7 +9,7 @@ interface Usuario {
     username: string;
     email: string | null;
     empresa: string | null;
-    role: 'admin' | 'vendedor' | 'industria';
+    role: 'admin' | 'vendedor' | 'industria' | 'VENDEDOR';
     fabricaId: string | null;
 }
 

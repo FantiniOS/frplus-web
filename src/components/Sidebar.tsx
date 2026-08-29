@@ -22,6 +22,7 @@ import {
   Truck,
   Target,
   Wine,
+  PackageSearch,
 } from "lucide-react";
 import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,6 +36,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { usuario, logout, isAdmin, isIndustria } = useAuth();
   const [nomeEmpresa, setNomeEmpresa] = useState<string>("");
   const [relatoriosOpen, setRelatoriosOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -44,6 +46,22 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     getPerfilEmpresa().then(data => setNomeEmpresa(data.nomeEmpresa));
   }, []);
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    const checkPending = async () => {
+      try {
+        const res = await fetch('/api/admin/pre-pedidos/count');
+        if (res.ok) {
+          const data = await res.json();
+          setPendingCount(data.count || 0);
+        }
+      } catch (err) {}
+    };
+    checkPending();
+    const interval = setInterval(checkPending, 60000);
+    return () => clearInterval(interval);
+  }, [isAdmin]);
+
   // Auto expand on load
   useEffect(() => {
     if (pathname?.includes('/dashboard/relatorios')) {
@@ -51,7 +69,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     }
   }, [pathname]);
 
-  const menuGroups: { title: string; items: { icon: any; label: string; href: string; exact?: boolean; separated?: boolean }[] }[] = [
+  const menuGroups: { title: string; items: { icon: any; label: string; href: string; exact?: boolean; separated?: boolean; showBadge?: boolean }[] }[] = [
     {
       title: "Principal",
       items: [
@@ -71,6 +89,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     {
       title: "Gestão",
       items: [
+        { icon: PackageSearch, label: "Captação", href: "/dashboard/captacao", showBadge: true },
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
         { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
         { icon: Filter, label: "Curva ABC", href: "/dashboard/curva-abc" },
@@ -175,7 +194,12 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                           }`}
                         >
                           <item.icon className={`flex-shrink-0 mr-3 h-5 w-5 ${active ? "text-white" : "text-gray-400"}`} />
-                          <span className="block lg:hidden xl:block group-hover:block whitespace-nowrap overflow-hidden transition-opacity duration-300">{item.label}</span>
+                          <span className="block lg:hidden xl:block group-hover:block whitespace-nowrap overflow-hidden transition-opacity duration-300 flex-1">{item.label}</span>
+                          {item.showBadge && pendingCount > 0 && (
+                            <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full block lg:hidden xl:block group-hover:block transition-opacity duration-300 flex-shrink-0">
+                              {pendingCount > 99 ? '99+' : pendingCount}
+                            </span>
+                          )}
                         </Link>
                       </div>
                     )

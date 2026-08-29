@@ -13,8 +13,12 @@ function ProtectedContent({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !usuario) {
-      router.push('/');
+    if (!loading) {
+      if (!usuario) {
+        router.push('/');
+      } else if (usuario.role === 'VENDEDOR' || usuario.role === 'vendedor') {
+        router.push('/captacao');
+      }
     }
   }, [usuario, loading, router]);
 
@@ -26,8 +30,8 @@ function ProtectedContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!usuario) {
-    return null;
+  if (!usuario || usuario.role === 'VENDEDOR' || usuario.role === 'vendedor') {
+    return null; // Return null while redirecting
   }
 
   return (
