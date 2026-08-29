@@ -7,7 +7,7 @@ import { Loader2, Plus, Minus, ShoppingCart, CheckCircle, LogOut, Package } from
 import { motion, AnimatePresence } from 'framer-motion';
 
 type Cliente = { id: string; razaoSocial: string; nomeFantasia: string; cnpj: string };
-type Produto = { id: string; nome: string; preco50a199: string | number };
+type Produto = { id: string; nome: string; precoUnitario: string | number };
 
 export default function CaptacaoPage() {
   const { usuario, logout, loading: authLoading } = useAuth();
@@ -15,7 +15,9 @@ export default function CaptacaoPage() {
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [tabelaCliente, setTabelaCliente] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingProdutos, setLoadingProdutos] = useState(false);
   const [error, setError] = useState('');
 
   const [selectedCliente, setSelectedCliente] = useState<string>('');
@@ -30,21 +32,47 @@ export default function CaptacaoPage() {
   }, [usuario, authLoading, router]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchClientes = async () => {
       try {
         const res = await fetch('/api/captacao');
         if (!res.ok) throw new Error('Falha ao carregar dados');
         const data = await res.json();
         setClientes(data.clientes || []);
-        setProdutos(data.produtos || []);
       } catch (err) {
-        setError('Erro ao carregar dados do sistema.');
+        setError('Erro ao carregar clientes do sistema.');
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchClientes();
   }, []);
+
+  useEffect(() => {
+    if (!selectedCliente) {
+      setProdutos([]);
+      setTabelaCliente('');
+      setCart({});
+      return;
+    }
+
+    const fetchProdutos = async () => {
+      setLoadingProdutos(true);
+      try {
+        const res = await fetch(`/api/captacao?clienteId=${selectedCliente}`);
+        if (!res.ok) throw new Error('Falha ao carregar produtos');
+        const data = await res.json();
+        setProdutos(data.produtos || []);
+        setTabelaCliente(data.tabela || '');
+        setCart({}); // Limpa o carrinho ao trocar de cliente
+      } catch (err) {
+        setError('Erro ao carregar tabela de preços.');
+      } finally {
+        setLoadingProdutos(false);
+      }
+    };
+
+    fetchProdutos();
+  }, [selectedCliente]);
 
   const handleUpdateQuantity = (produtoId: string, delta: number) => {
     setCart((prev) => {
@@ -63,7 +91,7 @@ export default function CaptacaoPage() {
   const valorTotal = useMemo(() => {
     return Object.entries(cart).reduce((acc, [produtoId, quantidade]) => {
       const produto = produtos.find((p) => p.id === produtoId);
-      const preco = produto ? Number(produto.preco50a199) : 0;
+      const preco = produto ? Number(produto.precoUnitario) : 0;
       return acc + preco * quantidade;
     }, 0);
   }, [cart, produtos]);
@@ -91,7 +119,7 @@ export default function CaptacaoPage() {
         return {
           produtoId,
           quantidade,
-          precoUnitario: produto ? Number(produto.preco50a199) : 0
+          precoUnitario: produto ? Number(produto.precoUnitario) : 0
         };
       });
 
@@ -206,64 +234,80 @@ export default function CaptacaoPage() {
         <section className="bg-white/5 border border-white/10 rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider flex justify-between items-center">
             <span>2. Produtos</span>
-            <span className="text-xs bg-blue-600/20 text-blue-400 py-1 px-2 rounded-full">
-              {produtos.length} itens
-            </span>
+            {selectedCliente && !loadingProdutos && (
+              <span className="text-xs bg-blue-600/20 text-blue-400 py-1 px-2 rounded-full">
+                {produtos.length} itens (Tabela: {tabelaCliente})
+              </span>
+            )}
           </h2>
           
-          <div className="grid gap-4 sm:grid-cols-2">
-            {produtos.map((produto) => {
-              const qty = cart[produto.id] || 0;
-              const preco = Number(produto.preco50a199);
-              
-              return (
-                <div
-                  key={produto.id}
-                  className={`flex flex-col p-4 rounded-xl border transition-all ${
-                    qty > 0 
-                      ? 'bg-blue-600/10 border-blue-500/30' 
-                      : 'bg-black/40 border-white/5 hover:border-white/10'
-                  }`}
-                >
-                  <div className="flex-1 mb-3">
-                    <h3 className="font-medium text-gray-200 line-clamp-2">{produto.nome}</h3>
-                    <p className="text-blue-400 font-semibold mt-1">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preco)}
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-auto">
-                    <span className="text-sm text-gray-500">
-                      {qty > 0 ? `Subtotal: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preco * qty)}` : ' '}
-                    </span>
+          {!selectedCliente ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Package className="h-10 w-10 text-gray-600 mb-3" />
+              <p className="text-gray-400 font-medium">Selecione um cliente acima para carregar a tabela de preços.</p>
+            </div>
+          ) : loadingProdutos ? (
+            <div className="flex flex-col items-center justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-3" />
+              <p className="text-gray-500">Carregando tabela de preços do cliente...</p>
+            </div>
+          ) : produtos.length === 0 ? (
+            <p className="text-gray-500 text-center py-6">Nenhum produto disponível.</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {produtos.map((produto) => {
+                const qty = cart[produto.id] || 0;
+                const preco = Number(produto.precoUnitario);
+                
+                return (
+                  <div
+                    key={produto.id}
+                    className={`flex flex-col p-4 rounded-xl border transition-all ${
+                      qty > 0 
+                        ? 'bg-blue-600/10 border-blue-500/30' 
+                        : 'bg-black/40 border-white/5 hover:border-white/10'
+                    }`}
+                  >
+                    <div className="flex-1 mb-3">
+                      <h3 className="font-medium text-gray-200 line-clamp-2">{produto.nome}</h3>
+                      <p className="text-blue-400 font-semibold mt-1">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preco)}
+                      </p>
+                    </div>
                     
-                    <div className="flex items-center gap-3 bg-black/60 rounded-lg p-1 border border-white/10">
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateQuantity(produto.id, -1)}
-                        disabled={qty === 0}
-                        className="p-2 rounded-md hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      
-                      <span className="w-6 text-center font-semibold text-white">
-                        {qty}
+                    <div className="flex items-center justify-between mt-auto">
+                      <span className="text-sm text-gray-500">
+                        {qty > 0 ? `Subtotal: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preco * qty)}` : ' '}
                       </span>
                       
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateQuantity(produto.id, 1)}
-                        className="p-2 rounded-md hover:bg-white/10 text-gray-300 transition-colors"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-3 bg-black/60 rounded-lg p-1 border border-white/10">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateQuantity(produto.id, -1)}
+                          disabled={qty === 0}
+                          className="p-2 rounded-md hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        
+                        <span className="w-6 text-center font-semibold text-white">
+                          {qty}
+                        </span>
+                        
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateQuantity(produto.id, 1)}
+                          className="p-2 rounded-md hover:bg-white/10 text-gray-300 transition-colors"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </main>
 
