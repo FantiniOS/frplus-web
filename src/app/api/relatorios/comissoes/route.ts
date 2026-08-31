@@ -120,9 +120,10 @@ export async function GET(request: Request) {
 
         console.log(`[Comissoes API] ${pedidos.length} pedidos encontrados`)
 
-        // Calculate totals
-        let totalVendido = 0
-        let totalComissoes = 0
+        let totalVendidoBruto = 0 // ALL sales
+        let totalVendido = 0 // ONLY UNPAID sales
+        let totalComissoesBruto = 0 // ALL commissions
+        let totalComissoes = 0 // ONLY UNPAID commissions (A Pagar)
         let totalComissoesPago = 0
         let totalComissoesAPagar = 0
         let totalDescontoIR = 0
@@ -132,12 +133,9 @@ export async function GET(request: Request) {
             const valorVenda = Number(p.valorTotal) || 0
             const dataPedido = new Date(p.data)
 
-            // Dynamic commission calculation using vigência (rate history)
             let comissao = 0
             let vendedorNome = 'N/A'
             let percentualAplicado = 0
-
-            // Resolve the vendedor (prefer client's current vendedor, then order's vendedor, then imported name)
             let resolvedVendedor: typeof allVendedores[0] | undefined = undefined
 
             if (p.cliente?.vendedor) {
@@ -151,8 +149,10 @@ export async function GET(request: Request) {
                 vendedorNome = p.nomeVendedorImport
             }
 
+            let ir = 0
+            let issqn = 0
+
             if (resolvedVendedor) {
-                // Use vigência-based lookup: find the rate active at the pedido's date
                 percentualAplicado = getPercentualVigente(
                     resolvedVendedor.comissaoVigencias,
                     dataPedido,
@@ -160,19 +160,24 @@ export async function GET(request: Request) {
                 )
                 comissao = valorVenda * (percentualAplicado / 100)
                 
-                const ir = comissao * (Number(resolvedVendedor.taxaRetencaoIR) / 100)
-                const issqn = comissao * (Number(resolvedVendedor.taxaRetencaoISSQN) / 100)
+                ir = comissao * (Number(resolvedVendedor.taxaRetencaoIR) / 100)
+                issqn = comissao * (Number(resolvedVendedor.taxaRetencaoISSQN) / 100)
                 
-                totalDescontoIR += ir
-                totalDescontoISSQN += issqn
+                if (!p.pagoAoVendedor) {
+                    totalDescontoIR += ir
+                    totalDescontoISSQN += issqn
+                }
             }
 
-            totalVendido += valorVenda
-            totalComissoes += comissao
+            totalComissoesBruto += comissao
+            totalVendidoBruto += valorVenda
+            
             if (p.pagoAoVendedor) {
                 totalComissoesPago += comissao
             } else {
                 totalComissoesAPagar += comissao
+                totalComissoes += comissao
+                totalVendido += valorVenda 
             }
 
             return {
@@ -186,16 +191,20 @@ export async function GET(request: Request) {
                 notaFiscal: p.notaFiscal,
                 pagoAoVendedor: p.pagoAoVendedor,
                 dataPagamentoAoVendedor: p.dataPagamentoAoVendedor,
+                valorDescontoIR: ir,
+                valorDescontoISSQN: issqn,
             }
         })
 
-        console.log(`[Comissoes API] totalVendido: ${totalVendido}, totalComissoes: ${totalComissoes}`)
+        console.log(`[Comissoes API] totalComissoesBruto: ${totalComissoesBruto}, totalComissoesAPagar: ${totalComissoesAPagar}`)
 
         const totalLiquido = totalComissoes - totalDescontoIR - totalDescontoISSQN
 
         return NextResponse.json({
+            totalVendidoBruto,
             totalVendido,
-            totalComissoes,
+            totalComissoesBruto,
+            totalComissoes, // used for the exported values and resumo financeiro (A pagar only)
             totalComissoesPago,
             totalComissoesAPagar,
             totalDescontoIR,

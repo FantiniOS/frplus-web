@@ -36,10 +36,14 @@ interface DetalhePedido {
     notaFiscal: string | null;
     pagoAoVendedor: boolean;
     dataPagamentoAoVendedor: string | null;
+    valorDescontoIR: number;
+    valorDescontoISSQN: number;
 }
 
 interface ReportData {
+    totalVendidoBruto: number;
     totalVendido: number;
+    totalComissoesBruto: number;
     totalComissoes: number;
     totalComissoesPago: number;
     totalComissoesAPagar: number;
@@ -126,7 +130,7 @@ export default function ComissoesPage() {
     const exportCSV = () => {
         if (!report || report.detalhamento.length === 0) return;
 
-        const headers = ['Data', 'Cliente', 'Vendedor', '% Aplicado', 'Nota Fiscal', 'Valor Venda', 'Valor Comissão'];
+        const headers = ['Data', 'Cliente', 'Vendedor', '% Aplicado', 'Nota Fiscal', 'Valor Venda', 'Valor Comissão', 'Status'];
         const rows = report.detalhamento.map(d => [
             formatDate(d.data),
             d.clienteNome,
@@ -135,10 +139,12 @@ export default function ComissoesPage() {
             d.notaFiscal || '',
             d.valorVenda.toFixed(2).replace('.', ','),
             d.valorComissao.toFixed(2).replace('.', ','),
+            d.pagoAoVendedor ? 'PAGO' : 'PENDENTE'
         ]);
 
         // Add totals row
-        rows.push(['', '', '', '', 'TOTAL', report.totalVendido.toFixed(2).replace('.', ','), report.totalComissoes.toFixed(2).replace('.', ',')]);
+        rows.push(['', '', '', '', 'TOTAL BRUTO', report.totalVendidoBruto.toFixed(2).replace('.', ','), report.totalComissoesBruto.toFixed(2).replace('.', ','), '']);
+        rows.push(['', '', '', '', 'SALDO A PAGAR', report.totalVendido.toFixed(2).replace('.', ','), report.totalComissoes.toFixed(2).replace('.', ','), '']);
 
         const csvContent = [
             headers.join(';'),
@@ -154,8 +160,8 @@ export default function ComissoesPage() {
         URL.revokeObjectURL(url);
     };
 
-    const percentualComissaoMedia = report && report.totalVendido > 0
-        ? ((report.totalComissoes / report.totalVendido) * 100).toFixed(1)
+    const percentualComissaoMedia = report && report.totalVendidoBruto > 0
+        ? ((report.totalComissoesBruto / report.totalVendidoBruto) * 100).toFixed(1)
         : '0.0';
 
     const handleTogglePagamento = (pedidoId: string) => {
@@ -174,15 +180,30 @@ export default function ComissoesPage() {
             });
             let pago = 0;
             let aPagar = 0;
+            let irAPagar = 0;
+            let issqnAPagar = 0;
+            let totalVendidoAPagar = 0;
             updatedDetalhamento.forEach(d => {
-                if (d.pagoAoVendedor) pago += d.valorComissao;
-                else aPagar += d.valorComissao;
+                if (d.pagoAoVendedor) {
+                    pago += d.valorComissao;
+                } else {
+                    aPagar += d.valorComissao;
+                    irAPagar += d.valorDescontoIR;
+                    issqnAPagar += d.valorDescontoISSQN;
+                    totalVendidoAPagar += d.valorVenda;
+                }
             });
             return {
                 ...prev,
                 detalhamento: updatedDetalhamento,
                 totalComissoesPago: pago,
                 totalComissoesAPagar: aPagar,
+                // Make the "totals" reflect ONLY the unpaid ones so the PDF and Resumo Financeiro update automatically
+                totalComissoes: aPagar,
+                totalDescontoIR: irAPagar,
+                totalDescontoISSQN: issqnAPagar,
+                totalLiquido: aPagar - irAPagar - issqnAPagar,
+                totalVendido: totalVendidoAPagar,
             };
         });
         startTransition(async () => {
@@ -431,7 +452,7 @@ export default function ComissoesPage() {
             doc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
             
             let currentY = finalY + 6;
-            doc.text('Comissão Bruta:', pageWidth - margin.right - 80, currentY);
+            doc.text('Comissões Pendentes:', pageWidth - margin.right - 80, currentY);
             doc.text(`R$ ${report.totalComissoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
             
             if (report.totalDescontoIR > 0) {
@@ -569,7 +590,7 @@ export default function ComissoesPage() {
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-400 mb-0.5">Total da Equipe</p>
-                                    <p className="text-xl font-bold text-white">{formatCurrency(report.totalComissoes)}</p>
+                                    <p className="text-xl font-bold text-white">{formatCurrency(report.totalComissoesBruto)}</p>
                                     <p className="text-xs text-gray-500 mt-0.5">{report.totalPedidos} pedidos • {percentualComissaoMedia}% média</p>
                                 </div>
                             </div>
@@ -735,7 +756,7 @@ export default function ComissoesPage() {
                                     </h3>
                                     <div className="space-y-3 text-sm">
                                         <div className="flex justify-between text-gray-300">
-                                            <span>Comissão Bruta</span>
+                                            <span>Comissões Pendentes (A Pagar)</span>
                                             <span className="font-medium text-white">{formatCurrency(report.totalComissoes)}</span>
                                         </div>
                                         {report.totalDescontoIR > 0 && (
