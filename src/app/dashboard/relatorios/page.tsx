@@ -182,15 +182,17 @@ export default function RelatoriosPage() {
     // Estatísticas de Vendas (Geral)
     const estatisticasVendas = useMemo(() => {
         const totalVendas = pedidosFiltrados.reduce((acc: number, order: Order) => {
+            if (order.tipo === 'Bonificacao') return acc;
             return acc + order.valorTotal;
         }, 0);
-        const totalPedidos = pedidosFiltrados.length;
+        const totalPedidos = pedidosFiltrados.filter(order => order.tipo !== 'Bonificacao').length;
         const ticketMedio = totalPedidos > 0 ? totalVendas / totalPedidos : 0;
 
         const vendasPorDia: Record<string, number> = {};
         const clientesPorDia: Record<string, Set<string>> = {};
 
         pedidosFiltrados.forEach((order: Order) => {
+            if (order.tipo === 'Bonificacao') return;
             const date = new Date(order.data).toLocaleDateString('pt-BR');
             vendasPorDia[date] = (vendasPorDia[date] || 0) + order.valorTotal;
 
@@ -210,6 +212,7 @@ export default function RelatoriosPage() {
         const produtosMap = new Map<string, { nome: string; qtd: number; valor: number }>();
 
         pedidosFiltrados.forEach((order: Order) => {
+            if (order.tipo === 'Bonificacao') return;
             order.itens.forEach((item: any) => {
                 const atual = produtosMap.get(item.nomeProduto) || { nome: item.nomeProduto, qtd: 0, valor: 0 };
                 atual.qtd += item.quantidade;
@@ -255,8 +258,10 @@ export default function RelatoriosPage() {
         pedidosFiltrados.forEach(order => {
             const atual = clientesVendas.get(order.clienteId);
             if (atual) {
-                atual.pedidos += 1;
-                atual.valor += Number(order.valorTotal);
+                if (order.tipo !== 'Bonificacao') {
+                    atual.pedidos += 1;
+                    atual.valor += Number(order.valorTotal);
+                }
             }
         });
 
@@ -1305,9 +1310,18 @@ export default function RelatoriosPage() {
                                                                                                     {new Date(order.data).toLocaleDateString('pt-BR')}
                                                                                                 </div>
                                                                                             </td>
-                                                                                            <td className="py-2 text-center text-gray-300 print:text-gray-700 font-mono">#{order.id.slice(-6)}</td>
+                                                                                            <td className="py-2 text-center text-gray-300 print:text-gray-700 font-mono">
+                                                                                                #{order.id.slice(-6)}
+                                                                                                {order.tipo === 'Bonificacao' && (
+                                                                                                    <span className="ml-2 inline-block bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded font-sans tracking-wide">
+                                                                                                        BONIFICAÇÃO
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </td>
                                                                                             <td className="py-2 text-center text-gray-300 print:text-gray-700">{order.itens.length}</td>
-                                                                                            <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">R$ {Number(order.valorTotal).toFixed(2)}</td>
+                                                                                            <td className={`py-2 text-right font-medium ${order.tipo === 'Bonificacao' ? 'text-slate-500 line-through print:text-gray-400' : 'text-green-400 print:text-green-600'}`}>
+                                                                                                R$ {Number(order.valorTotal).toFixed(2)}
+                                                                                            </td>
                                                                                         </tr>
                                                                                         {expandedClientOrderId === order.id && (
                                                                                             <tr className="bg-black/20 print:bg-gray-50">
