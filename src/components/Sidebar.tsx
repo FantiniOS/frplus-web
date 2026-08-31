@@ -89,10 +89,10 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     {
       title: "Gestão",
       items: [
-        { icon: PackageSearch, label: "Captação", href: "/dashboard/captacao", showBadge: true },
         { icon: FileText, label: "Pedidos", href: "/dashboard/pedidos" },
         { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
         { icon: Filter, label: "Curva ABC", href: "/dashboard/curva-abc" },
+        { icon: PackageSearch, label: "Captação", href: "/dashboard/captacao", showBadge: true },
         { icon: Truck, label: "Sugestão de Cargas", href: "/dashboard/cargas", separated: true },
       ]
     },
