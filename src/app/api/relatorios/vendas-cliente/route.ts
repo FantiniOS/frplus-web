@@ -24,12 +24,15 @@ export async function GET(request: Request) {
             )
         }
 
-        // Parse dates — adjust dataFinal to include until 23:59:59.999
-        const startDate = new Date(dataInicial)
-        startDate.setHours(0, 0, 0, 0)
+        // Blindagem de Fuso Horário (UTC-3 Brasil)
+        // O JS Date faz parse de "YYYY-MM-DD" como UTC.
+        // Precisamos garantir que o Range seja 00:00:00 a 23:59:59 no fuso do Brasil,
+        // convertendo para o UTC equivalente (+3 horas).
+        const [yearInicio, monthInicio, dayInicio] = dataInicial.split('-').map(Number)
+        const [yearFim, monthFim, dayFim] = dataFinal.split('-').map(Number)
 
-        const endDate = new Date(dataFinal)
-        endDate.setHours(23, 59, 59, 999)
+        const startDate = new Date(Date.UTC(yearInicio, monthInicio - 1, dayInicio, 3, 0, 0, 0))
+        const endDate = new Date(Date.UTC(yearFim, monthFim - 1, dayFim, 26, 59, 59, 999))
 
         // Fetch client info
         const cliente = await prisma.cliente.findUnique({

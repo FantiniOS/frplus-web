@@ -167,10 +167,11 @@ export default function RelatoriosPage() {
     };
 
     const pedidosFiltrados = useMemo(() => {
-        const start = new Date(periodoInicio);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(periodoFim);
-        end.setHours(23, 59, 59, 999);
+        const [sy, sm, sd] = periodoInicio.split('-').map(Number);
+        const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+        
+        const [ey, em, ed] = periodoFim.split('-').map(Number);
+        const end = new Date(ey, em - 1, ed, 23, 59, 59, 999);
 
         return orders.filter(order => {
             const date = new Date(order.data);
