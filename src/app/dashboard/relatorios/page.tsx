@@ -166,7 +166,6 @@ export default function RelatoriosPage() {
         }
     };
 
-    // Filter orders by date
     const pedidosFiltrados = useMemo(() => {
         const start = new Date(periodoInicio);
         start.setHours(0, 0, 0, 0);
@@ -175,24 +174,23 @@ export default function RelatoriosPage() {
 
         return orders.filter(order => {
             const date = new Date(order.data);
-            return date >= start && date <= end;
+            const isValidStatus = order.status === 'Faturado' || order.status === 'Concluido' || order.status === 'Pendente';
+            return date >= start && date <= end && isValidStatus && order.status !== 'Cancelado' && order.status !== 'Devolucao';
         });
     }, [orders, periodoInicio, periodoFim]);
 
-    // Sales Statistics
+    // Estatísticas de Vendas (Geral)
     const estatisticasVendas = useMemo(() => {
         const totalVendas = pedidosFiltrados.reduce((acc: number, order: Order) => {
-            if (order.tipo === 'Bonificacao') return acc;
             return acc + order.valorTotal;
         }, 0);
-        const totalPedidos = pedidosFiltrados.filter(o => o.tipo !== 'Bonificacao').length;
+        const totalPedidos = pedidosFiltrados.length;
         const ticketMedio = totalPedidos > 0 ? totalVendas / totalPedidos : 0;
 
         const vendasPorDia: Record<string, number> = {};
         const clientesPorDia: Record<string, Set<string>> = {};
 
         pedidosFiltrados.forEach((order: Order) => {
-            if (order.tipo === 'Bonificacao') return;
             const date = new Date(order.data).toLocaleDateString('pt-BR');
             vendasPorDia[date] = (vendasPorDia[date] || 0) + order.valorTotal;
 
@@ -207,19 +205,16 @@ export default function RelatoriosPage() {
         return { totalVendas, totalPedidos, ticketMedio, vendasPorDia, clientesPorDia };
     }, [pedidosFiltrados]);
 
-    // Product Statistics
+    // Estatísticas de Produtos
     const estatisticasProdutos = useMemo(() => {
         const produtosMap = new Map<string, { nome: string; qtd: number; valor: number }>();
 
         pedidosFiltrados.forEach((order: Order) => {
-            if (order.tipo === 'Bonificacao') return;
             order.itens.forEach((item: any) => {
                 const atual = produtosMap.get(item.nomeProduto) || { nome: item.nomeProduto, qtd: 0, valor: 0 };
-                produtosMap.set(item.nomeProduto, {
-                    nome: item.nomeProduto,
-                    qtd: atual.qtd + item.quantidade,
-                    valor: atual.valor + item.total
-                });
+                atual.qtd += item.quantidade;
+                atual.valor += item.total;
+                produtosMap.set(item.nomeProduto, atual);
             });
         });
 
@@ -258,7 +253,6 @@ export default function RelatoriosPage() {
 
         // Somamos os pedidos do período
         pedidosFiltrados.forEach(order => {
-            if (order.tipo === 'Bonificacao') return;
             const atual = clientesVendas.get(order.clienteId);
             if (atual) {
                 atual.pedidos += 1;
