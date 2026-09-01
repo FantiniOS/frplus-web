@@ -125,7 +125,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
 
   y = drawHeader();
 
-  // HEURÍSTICA
+  // HEURÍSTICA AVANÇADA
   const crescFaturamento = data.faturamentoAnoAnterior > 0 
     ? ((data.faturamentoData.total - data.faturamentoAnoAnterior) / data.faturamentoAnoAnterior) * 100 
     : 0;
@@ -134,32 +134,56 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
     ? ((data.ytdData.currentYtd - data.ytdData.previousYtd) / data.ytdData.previousYtd) * 100 
     : 0;
 
+  const ticketMedio = data.faturamentoData.count > 0 
+    ? data.faturamentoData.total / data.faturamentoData.count 
+    : 0;
+
+  const ticketMedioVendas = data.stats.totalOrders > 0 
+    ? data.stats.totalSales / data.stats.totalOrders 
+    : 0;
+
+  const gapFaturamento = data.stats.totalSales - data.faturamentoData.total;
+  const eficienciaFaturamento = data.stats.totalSales > 0 
+    ? (data.faturamentoData.total / data.stats.totalSales) * 100 
+    : 0;
+
   const insights = [];
-  if (crescFaturamento > 15) {
-    insights.push(`Crescimento expressivo no faturamento (+${crescFaturamento.toFixed(1)}%), demonstrando forte tracao comercial e superacao historica.`);
-  } else if (crescFaturamento < -10) {
-    insights.push(`Atencao: Retracao de ${Math.abs(crescFaturamento).toFixed(1)}% no faturamento em relacao ao mesmo periodo base.`);
+  
+  // 1. Desempenho YOY e YTD Combinado
+  if (crescFaturamento > 10 && crescYTD > 5) {
+    insights.push(`Crescimento consistente: Aceleracao de +${crescFaturamento.toFixed(1)}% no periodo atual e sustentacao de alta no ano (+${crescYTD.toFixed(1)}%).`);
+  } else if (crescFaturamento > 0 && crescYTD < 0) {
+    insights.push(`Recuperacao no periodo: O mes apresenta alta de +${crescFaturamento.toFixed(1)}%, ajudando a reverter a retracao acumulada no ano (${crescYTD.toFixed(1)}%).`);
+  } else if (crescFaturamento < 0) {
+    insights.push(`Sinal de alerta: Retracao de ${Math.abs(crescFaturamento).toFixed(1)}% no periodo frente ao mesmo ciclo base anterior.`);
   } else {
-    insights.push(`Desempenho estavel frente ao ano anterior, variacao de ${crescFaturamento.toFixed(1)}%.`);
+    insights.push(`Estabilidade comercial no periodo analisado (+${crescFaturamento.toFixed(1)}%).`);
   }
 
+  // 2. Eficiência de Faturamento e GAP
+  if (eficienciaFaturamento < 70) {
+    insights.push(`Gargalo operacional critico: Apenas ${eficienciaFaturamento.toFixed(1)}% das vendas emitidas foram faturadas neste ciclo (Gap financeiro de ${formatCurrency(gapFaturamento)}).`);
+  } else if (eficienciaFaturamento < 90) {
+    insights.push(`Ponto de atencao no fluxo: Gap entre pedidos emitidos e faturados e de ${formatCurrency(gapFaturamento)} (${(100 - eficienciaFaturamento).toFixed(1)}% pendente).`);
+  } else {
+    insights.push(`Excelente eficiencia operacional: Conversao de faturamento altissima (${eficienciaFaturamento.toFixed(1)}% das vendas).`);
+  }
+
+  // 3. Portfólio
   if (data.topProducts.length > 0) {
     const share = data.faturamentoData.total > 0 ? (data.topProducts[0].total / data.faturamentoData.total) * 100 : 0;
-    if (share > 25) {
-        insights.push(`Concentracao de receita: "${data.topProducts[0].name}" rep. ${share.toFixed(1)}% do total.`);
+    if (share > 30) {
+        insights.push(`Alta dependencia: O item "${data.topProducts[0].name}" responde por ${share.toFixed(1)}% do faturamento global.`);
     } else {
-        insights.push(`Portfolio diversificado liderado por "${data.topProducts[0].name}".`);
+        insights.push(`Curva ABC saudavel: Vendas bem distribuidas, sem concentracao arriscada no item lider.`);
     }
   }
 
-  if (crescYTD !== 0) {
-    insights.push(`Acumulado do ano (YTD): ${crescYTD > 0 ? '+' : ''}${crescYTD.toFixed(1)}% contra o periodo anterior.`);
-  }
-
-  const insightText = insights.join(' | ');
+  const insightText = insights.join(' ');
 
   // INSIGHTS BOX (Dark Premium)
-  const insightH = 18;
+  // Aumentando a altura da caixa para caber um texto mais robusto
+  const insightH = 22;
   doc.setFillColor(15, 23, 42);
   doc.roundedRect(margin.left, y, contentW, insightH, 2, 2, 'F');
   doc.setFillColor(C.cyan[0], C.cyan[1], C.cyan[2]);
@@ -170,47 +194,58 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
   doc.setTextColor(C.cyan[0], C.cyan[1], C.cyan[2]);
   doc.text('INTELIGENCIA HEURISTICA (INSIGHTS)', margin.left + 5, y + 6);
   
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(203, 213, 225);
-  doc.text(insightText, margin.left + 5, y + 12, { maxWidth: contentW - 10 });
+  doc.text(insightText, margin.left + 5, y + 11, { maxWidth: contentW - 10, lineHeightFactor: 1.4 });
 
   y += insightH + 6;
 
   // KPIs
-  const cardH = 22;
+  const cardH = 26;
   const cardGap = 4;
-  const cardCount = 4;
+  const cardCount = 3; // 3 colunas, 2 linhas
   const cardW = (contentW - cardGap * (cardCount - 1)) / cardCount;
 
   const kpis = [
-    { label: 'VENDAS TOTAIS', value: formatCurrency(data.stats.totalSales), sub: String(data.stats.totalOrders) + ' pedidos', color: C.blue },
-    { label: 'FATURAMENTO', value: formatCurrency(data.faturamentoData.total), sub: String(data.faturamentoData.count) + ' pedidos', color: C.green },
-    { label: 'YTD (ANO)', value: formatCurrency(data.ytdData.currentYtd), sub: 'Acumulado base', color: C.purple },
-    { label: 'YTD ANTERIOR', value: formatCurrency(data.ytdData.previousYtd), sub: 'Periodo anterior', color: C.orange },
+    { label: 'VENDAS EMITIDAS (BRUTO)', value: formatCurrency(data.stats.totalSales), sub: String(data.stats.totalOrders) + ' pedidos', color: C.blue },
+    { label: 'FATURAMENTO REALIZADO', value: formatCurrency(data.faturamentoData.total), sub: String(data.faturamentoData.count) + ' nf-es', color: C.green },
+    { label: 'GAP (VENDAS vs FATURADO)', value: formatCurrency(gapFaturamento), sub: (100 - eficienciaFaturamento).toFixed(1) + '% pendente', color: C.amber },
+    { label: 'TICKET MEDIO (FATURADO)', value: formatCurrency(ticketMedio), sub: 'Ticket Vendas: ' + formatCurrency(ticketMedioVendas), color: C.cyan },
+    { label: 'ACUMULADO DO ANO (YTD)', value: formatCurrency(data.ytdData.currentYtd), sub: crescYTD >= 0 ? '+' + crescYTD.toFixed(1) + '% no ano' : crescYTD.toFixed(1) + '% no ano', color: C.purple },
+    { label: 'YTD PERIODO ANTERIOR', value: formatCurrency(data.ytdData.previousYtd), sub: 'Base historica', color: C.textMuted },
   ];
 
   kpis.forEach((kpi, i) => {
-    const cx = margin.left + i * (cardW + cardGap);
+    // Cálculo para 2 linhas (0, 1, 2 na primeira, 3, 4, 5 na segunda)
+    const row = Math.floor(i / cardCount);
+    const col = i % cardCount;
+    
+    const cx = margin.left + col * (cardW + cardGap);
+    const cy = y + row * (cardH + cardGap);
+    
     doc.setFillColor(C.bgLight[0], C.bgLight[1], C.bgLight[2]);
-    doc.roundedRect(cx, y, cardW, cardH, 2, 2, 'F');
+    doc.roundedRect(cx, cy, cardW, cardH, 2, 2, 'F');
     doc.setFillColor(kpi.color[0], kpi.color[1], kpi.color[2]);
-    doc.rect(cx, y, 2, cardH, 'F');
+    doc.rect(cx, cy, 2, cardH, 'F');
+    
     doc.setFontSize(6);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text(kpi.label, cx + 5, y + 6);
-    doc.setFontSize(10);
+    doc.text(kpi.label, cx + 5, cy + 7);
+    
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
-    doc.text(kpi.value, cx + 5, y + 14);
-    doc.setFontSize(5.5);
+    doc.text(kpi.value, cx + 5, cy + 16);
+    
+    doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text(kpi.sub, cx + 5, y + 19);
+    doc.text(kpi.sub, cx + 5, cy + 22);
   });
 
-  y += cardH + 6;
+  y += (cardH * 2) + cardGap + 8;
 
   // TABELA TOP PRODUTOS
   doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
