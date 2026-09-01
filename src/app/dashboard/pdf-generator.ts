@@ -150,31 +150,62 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
 
   const insights = [];
   
+  // Função para sortear um texto e não deixar o relatório repetitivo
+  const pick = (options: string[]) => options[Math.floor(Math.random() * options.length)];
+  
   // 1. Análise Macro: Desempenho e Tendência
   if (crescFaturamento > 10 && crescYTD > 5) {
-    insights.push(`A operação registra um momento de tração vigorosa. O avanço de +${crescFaturamento.toFixed(1)}% neste período consolida uma expansão sustentável ao longo do ano (+${crescYTD.toFixed(1)}% YTD), indicando forte adesão das campanhas comerciais e ganhos massivos de market share.`);
+    insights.push(pick([
+      `A operação registra um momento de tração vigorosa. O avanço de +${crescFaturamento.toFixed(1)}% neste período consolida uma expansão sustentável ao longo do ano (+${crescYTD.toFixed(1)}% YTD), indicando forte adesão das campanhas comerciais e ganhos massivos de market share.`,
+      `Performance de alto impacto confirmada. O salto expressivo de +${crescFaturamento.toFixed(1)}% impulsiona os resultados anuais (+${crescYTD.toFixed(1)}% YTD), demonstrando excelente execução do planejamento de vendas.`,
+      `Ciclo de expansão acelerada: o crescimento no período atinge notáveis +${crescFaturamento.toFixed(1)}%, corroborando o bom momento anual (+${crescYTD.toFixed(1)}% YTD). O ritmo atual coloca a carteira em posição de liderança competitiva.`
+    ]));
   } else if (crescFaturamento > 0 && crescYTD < 0) {
-    insights.push(`Um claro ponto de inflexão: o crescimento isolado de +${crescFaturamento.toFixed(1)}% neste ciclo ajuda a romper o histórico anual negativo (${crescYTD.toFixed(1)}% YTD). O momento exige capitalizar sobre as estratégias recentes para blindar essa trajetória de recuperação.`);
+    insights.push(pick([
+      `Um claro ponto de inflexão: o crescimento isolado de +${crescFaturamento.toFixed(1)}% neste ciclo ajuda a romper o histórico anual negativo (${crescYTD.toFixed(1)}% YTD). O momento exige capitalizar sobre as estratégias recentes para blindar essa trajetória de recuperação.`,
+      `Reação estratégica identificada no período (+${crescFaturamento.toFixed(1)}%), um fôlego vital frente à retração do acumulado anual (${crescYTD.toFixed(1)}% YTD). Manter a agressividade nas pontas de gôndola é crucial para consolidar essa virada.`,
+      `Início de reversão de tendência. A alta de +${crescFaturamento.toFixed(1)}% traz um respiro financeiro importante para mitigar as perdas do YTD (${crescYTD.toFixed(1)}%). Recomenda-se dobrar a aposta nos canais que puxaram esse resultado.`
+    ]));
   } else if (crescFaturamento < 0 && crescYTD > 0) {
-    insights.push(`Apesar da robustez acumulada no ano (+${crescYTD.toFixed(1)}%), o período atual sinaliza uma desaceleração estratégica (${crescFaturamento.toFixed(1)}%). É recomendada uma revisão tática no pipeline de prospecção para retomar o tracionamento do trimestre.`);
+    insights.push(pick([
+      `Apesar da robustez acumulada no ano (+${crescYTD.toFixed(1)}%), o período atual sinaliza uma desaceleração estratégica (${crescFaturamento.toFixed(1)}%). É recomendada uma revisão tática no pipeline de prospecção para retomar o tracionamento do trimestre.`,
+      `O recuo pontual de ${crescFaturamento.toFixed(1)}% acende um alerta de curto prazo, embora o balanço do ano siga superavitário (+${crescYTD.toFixed(1)}% YTD). Medidas corretivas de giro rápido devem ser aplicadas.`,
+      `Freio transacional: a queda de ${crescFaturamento.toFixed(1)}% no mês contrasta com a saúde geral do ano (+${crescYTD.toFixed(1)}% YTD). Fundamental auditar se houve ruptura de estoque ou perda de competitividade em clientes-chave.`
+    ]));
   } else if (crescFaturamento < -5) {
-    insights.push(`Cenário de atenção executiva. A retração de ${Math.abs(crescFaturamento).toFixed(1)}% no ciclo atual, somada ao cenário anual desafiador, exige intervenção imediata nas políticas de precificação e resgate intensivo de carteira inativa.`);
+    insights.push(pick([
+      `Cenário de atenção executiva. A retração de ${Math.abs(crescFaturamento).toFixed(1)}% no ciclo atual, somada ao cenário anual desafiador, exige intervenção imediata nas políticas de precificação e resgate intensivo de carteira inativa.`,
+      `Queda crítica de ${Math.abs(crescFaturamento).toFixed(1)}% no faturamento sinaliza erosão de mercado. O board comercial deve acionar imediatamente planos de contingência e pacotes de incentivo agressivos para estancar o sangramento.`,
+      `Alerta vermelho no volume de vendas (${crescFaturamento.toFixed(1)}%). A performance deficitária exige um pente-fino urgente na base de clientes perdidos e reestruturação da abordagem de campo.`
+    ]));
   } else {
-    insights.push(`Comportamento de estabilidade transacional. A variação suave de ${crescFaturamento.toFixed(1)}% aponta para um cenário conservador, necessitando de ações disruptivas de upsell para inflamar novamente a agressividade nas vendas.`);
+    insights.push(pick([
+      `Comportamento de estabilidade transacional. A variação suave de ${crescFaturamento.toFixed(1)}% aponta para um cenário conservador, necessitando de ações disruptivas de upsell para inflamar novamente a agressividade nas vendas.`,
+      `Manutenção de patamar financeiro (${crescFaturamento.toFixed(1)}%). O volume acompanha a zona de estabilidade térmica do negócio, indicando que novos saltos exigirão inovações no mix ou expansão territorial.`,
+      `Desempenho lateralizado: a oscilação branda de ${crescFaturamento.toFixed(1)}% revela um período sem grandes oscilações sistêmicas, refletindo maturidade mas pouca renovação de base.`
+    ]));
   }
 
   // 2. Risco de Portfólio e Curva ABC
   if (data.topProducts.length > 0) {
     const shareProd = data.faturamentoData.total > 0 ? (data.topProducts[0].total / data.faturamentoData.total) * 100 : 0;
     if (shareProd > 35) {
-        insights.push(`Vulnerabilidade de mix identificada: o item "${data.topProducts[0].name}" concentra alarmantes ${shareProd.toFixed(1)}% da receita. Estratégias de pulverização e cross-sell são vitais para mitigar o risco dessa dependência isolada.`);
+        insights.push(pick([
+          `Vulnerabilidade de mix identificada: o item "${data.topProducts[0].name}" concentra alarmantes ${shareProd.toFixed(1)}% da receita. Estratégias de pulverização e cross-sell são vitais para mitigar o risco dessa dependência isolada.`,
+          `Alta alavancagem em um único SKU ("${data.topProducts[0].name}", representando ${shareProd.toFixed(1)}% das saídas). O portfólio precisa ser oxigenado para evitar flutuações bruscas de receita caso este produto sofra desabastecimento.`,
+          `Risco de curva A extremo: ${shareProd.toFixed(1)}% do caixa atual depende da tração do produto "${data.topProducts[0].name}". Injetar campanhas de venda casada com itens de cauda longa é a recomendação imediata.`
+        ]));
     }
   }
 
   if (data.topClients && data.topClients.length > 0) {
     const shareClient = data.faturamentoData.total > 0 ? (data.topClients[0].total / data.faturamentoData.total) * 100 : 0;
     if (shareClient > 25) {
-        insights.push(`Alerta de key-account: ${shareClient.toFixed(1)}% de todo o volume financeiro gerado está atrelado a um único cliente ("${data.topClients[0].name}"). Reforçar as trincheiras de relacionamento corporativo com esta conta é imperativo.`);
+        insights.push(pick([
+          `Alerta de key-account: ${shareClient.toFixed(1)}% de todo o volume financeiro gerado está atrelado a um único cliente ("${data.topClients[0].name}"). Reforçar as trincheiras de relacionamento corporativo com esta conta é imperativo.`,
+          `Forte concentração de carteira: o cliente "${data.topClients[0].name}" responde por ${shareClient.toFixed(1)}% do giro. A rentabilidade da empresa encontra-se atrelada ao sucesso comercial dessa única operação.`,
+          `Exposição ao risco de cliente âncora ("${data.topClients[0].name}" com ${shareClient.toFixed(1)}% do share). É prioritário criar blindagem contratual com este parceiro, enquanto a prospecção tenta diluir esse peso.`
+        ]));
     }
   }
 
