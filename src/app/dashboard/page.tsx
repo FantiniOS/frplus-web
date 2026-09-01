@@ -190,15 +190,17 @@ export default function DashboardPage() {
   const chartTotalSales = chartData.reduce((acc, curr) => acc + curr.value, 0);
 
   const productSalesMap = new Map<string, { qtd: number; total: number }>();
-  monthlyOrders.forEach(order => {
-    order.itens.forEach(item => {
-      const current = productSalesMap.get(item.produtoId) || { qtd: 0, total: 0 };
-      productSalesMap.set(item.produtoId, {
-        qtd: current.qtd + item.quantidade,
-        total: current.total + Number(item.total || 0)
+  monthlyOrders
+    .filter(order => order.tipo !== 'Bonificacao' && order.status !== 'Cancelado')
+    .forEach(order => {
+      order.itens.forEach(item => {
+        const current = productSalesMap.get(item.produtoId) || { qtd: 0, total: 0 };
+        productSalesMap.set(item.produtoId, {
+          qtd: current.qtd + item.quantidade,
+          total: current.total + Number(item.total || 0)
+        });
       });
     });
-  });
 
   const topProducts = Array.from(productSalesMap.entries())
     .map(([id, data]) => {
@@ -213,14 +215,16 @@ export default function DashboardPage() {
     .slice(0, 8);
 
   const clientSalesMap = new Map<string, { qtd: number; total: number }>();
-  monthlyOrders.forEach(order => {
-    const nome = order.nomeCliente || 'Cliente Desconhecido';
-    const current = clientSalesMap.get(nome) || { qtd: 0, total: 0 };
-    clientSalesMap.set(nome, {
-      qtd: current.qtd + 1,
-      total: current.total + Number(order.valorTotal || 0)
+  monthlyOrders
+    .filter(order => order.tipo !== 'Bonificacao' && order.status !== 'Cancelado')
+    .forEach(order => {
+      const nome = order.nomeCliente || 'Cliente Desconhecido';
+      const current = clientSalesMap.get(nome) || { qtd: 0, total: 0 };
+      clientSalesMap.set(nome, {
+        qtd: current.qtd + 1,
+        total: current.total + Number(order.valorTotal || 0)
+      });
     });
-  });
 
   const topClients = Array.from(clientSalesMap.entries())
     .map(([name, data]) => ({ name, qtd: data.qtd, total: data.total }))
