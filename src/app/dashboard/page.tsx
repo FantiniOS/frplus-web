@@ -212,6 +212,21 @@ export default function DashboardPage() {
     .sort((a, b) => b.total - a.total)
     .slice(0, 8);
 
+  const clientSalesMap = new Map<string, { qtd: number; total: number }>();
+  monthlyOrders.forEach(order => {
+    const nome = order.nomeCliente || 'Cliente Desconhecido';
+    const current = clientSalesMap.get(nome) || { qtd: 0, total: 0 };
+    clientSalesMap.set(nome, {
+      qtd: current.qtd + 1,
+      total: current.total + Number(order.valorTotal || 0)
+    });
+  });
+
+  const topClients = Array.from(clientSalesMap.entries())
+    .map(([name, data]) => ({ name, qtd: data.qtd, total: data.total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Bom dia';
@@ -390,7 +405,8 @@ export default function DashboardPage() {
         faturamentoData,
         ytdData,
         faturamentoAnoAnterior,
-        topProducts
+        topProducts,
+        topClients
       });
       
     } catch (error) {

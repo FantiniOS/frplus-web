@@ -40,6 +40,7 @@ export interface DashboardPDFData {
   ytdData: { currentYtd: number; previousYtd: number };
   faturamentoAnoAnterior: number;
   topProducts: { name: string; qtd: number; total: number }[];
+  topClients: { name: string; qtd: number; total: number }[];
 }
 
 export async function generateDashboardPDF(data: DashboardPDFData) {
@@ -213,7 +214,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
 
   // Card 1: VENDAS TOTAIS
   const cx1 = margin.left;
-  doc.setFillColor(C.darkCard[0], C.darkCard[1], C.darkCard[2]);
+  doc.setFillColor(C.bgLight[0], C.bgLight[1], C.bgLight[2]);
   doc.roundedRect(cx1, y, cardW, cardH, 2, 2, 'F');
   doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
   doc.rect(cx1, y, 2, cardH, 'F');
@@ -224,7 +225,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
   doc.text('VENDAS TOTAIS', cx1 + 5, y + 6);
   
   doc.setFontSize(11);
-  doc.setTextColor(C.white[0], C.white[1], C.white[2]);
+  doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
   doc.text(formatCurrency(data.stats.totalSales), cx1 + 5, y + 14);
   
   doc.setFontSize(5.5);
@@ -234,7 +235,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
 
   // Card 2: FATURAMENTO
   const cx2 = cx1 + cardW + cardGap;
-  doc.setFillColor(C.darkCard[0], C.darkCard[1], C.darkCard[2]);
+  doc.setFillColor(C.bgLight[0], C.bgLight[1], C.bgLight[2]);
   doc.roundedRect(cx2, y, cardW, cardH, 2, 2, 'F');
   doc.setFillColor(C.green[0], C.green[1], C.green[2]);
   doc.rect(cx2, y, 2, cardH, 'F');
@@ -245,7 +246,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
   doc.text('FATURAMENTO', cx2 + 5, y + 6);
   
   doc.setFontSize(11);
-  doc.setTextColor(C.white[0], C.white[1], C.white[2]);
+  doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
   doc.text(formatCurrency(data.faturamentoData.total), cx2 + 5, y + 14);
   
   doc.setFontSize(5.5);
@@ -255,7 +256,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
 
   // Card 3: COMPARAÇÃO ANO ANTERIOR
   const cx3 = cx2 + cardW + cardGap;
-  doc.setFillColor(C.darkCard[0], C.darkCard[1], C.darkCard[2]);
+  doc.setFillColor(C.bgLight[0], C.bgLight[1], C.bgLight[2]);
   doc.roundedRect(cx3, y, cardW, cardH, 2, 2, 'F');
   doc.setFillColor(C.green[0], C.green[1], C.green[2]);
   doc.rect(cx3, y, 2, cardH, 'F');
@@ -286,8 +287,8 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
   const h1 = (data.faturamentoAnoAnterior / maxVal) * maxBarH;
   const h2 = (data.faturamentoData.total / maxVal) * maxBarH;
   
-  // Barra Ano Anterior (Cinza escuro)
-  doc.setFillColor(50, 50, 60);
+  // Barra Ano Anterior (Cinza claro)
+  doc.setFillColor(C.border[0], C.border[1], C.border[2]);
   doc.rect(barRightMargin - barW * 2 - 3, barBaseY - h1, barW, h1, 'F');
   doc.setFontSize(4);
   doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
@@ -300,7 +301,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
 
   // Card 4: ACUMULADO DO ANO (YTD)
   const cx4 = cx3 + cardW + cardGap;
-  doc.setFillColor(C.darkCard[0], C.darkCard[1], C.darkCard[2]);
+  doc.setFillColor(C.bgLight[0], C.bgLight[1], C.bgLight[2]);
   doc.roundedRect(cx4, y, cardW, cardH, 2, 2, 'F');
   doc.setFillColor(C.cyan[0], C.cyan[1], C.cyan[2]);
   doc.rect(cx4, y, 2, cardH, 'F');
@@ -311,7 +312,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
   doc.text('ACUMULADO DO ANO (YTD)', cx4 + 5, y + 6);
   
   doc.setFontSize(11);
-  doc.setTextColor(C.white[0], C.white[1], C.white[2]);
+  doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
   doc.text(formatCurrency(data.ytdData.currentYtd), cx4 + 5, y + 12);
   
   // Indicador de queda/alta logo abaixo do valor
@@ -322,7 +323,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
   doc.text(`${crescYTD > 0 ? '+' : ''}${crescYTD.toFixed(1)}% vs ano anterior`, cx4 + 5, y + 16);
   
   // Linha divisória do rodapé do card
-  doc.setDrawColor(40, 40, 50); // cinza bem escuro para o divisor
+  doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
   doc.setLineWidth(0.2);
   doc.line(cx4 + 5, y + 20, cx4 + cardW - 5, y + 20);
   
@@ -382,6 +383,60 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
       1: { cellWidth: 100, fontStyle: "bold" },
       2: { cellWidth: 25, halign: "center" },
       3: { halign: "right", cellWidth: 47, fontStyle: "bold", textColor: C.blue },
+    },
+    margin: { top: 30, left: margin.left, right: margin.right, bottom: 15 },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 8;
+
+  // TABELA MELHORES CLIENTES DO MÊS
+  doc.setFillColor(C.green[0], C.green[1], C.green[2]);
+  doc.rect(margin.left, y, 2.5, 4.5, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
+  doc.text('MELHORES CLIENTES DO MÊS', margin.left + 5, y + 4);
+  y += 7;
+
+  const tableClientsData = data.topClients.map((c, i) => [
+    String(i + 1),
+    c.name,
+    String(c.qtd),
+    formatCurrency(c.total)
+  ]);
+
+  if (tableClientsData.length === 0) {
+    tableClientsData.push(['-', 'Nenhum dado encontrado para o periodo', '-', '-']);
+  }
+
+  autoTable(doc, {
+    startY: y,
+    head: [["#", "CLIENTE", "PEDIDOS", "TOTAL (R$)"]],
+    body: tableClientsData,
+    theme: "plain",
+    styles: {
+      fontSize: 8,
+      minCellHeight: 8,
+      valign: 'middle',
+      textColor: C.textBody,
+      lineColor: C.border,
+      lineWidth: 0.1,
+    },
+    headStyles: {
+      fillColor: C.dark,
+      textColor: C.white,
+      fontStyle: "bold",
+      fontSize: 7,
+      valign: 'middle',
+    },
+    alternateRowStyles: {
+      fillColor: C.rowAlt,
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: "center", fontStyle: "bold", textColor: C.textMuted },
+      1: { cellWidth: 100, fontStyle: "bold" },
+      2: { cellWidth: 25, halign: "center" },
+      3: { halign: "right", cellWidth: 47, fontStyle: "bold", textColor: C.green },
     },
     margin: { top: 30, left: margin.left, right: margin.right, bottom: 15 },
   });
