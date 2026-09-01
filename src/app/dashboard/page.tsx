@@ -225,7 +225,7 @@ export default function DashboardPage() {
   const topClients = Array.from(clientSalesMap.entries())
     .map(([name, data]) => ({ name, qtd: data.qtd, total: data.total }))
     .sort((a, b) => b.total - a.total)
-    .slice(0, 10);
+    .slice(0, 5);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
