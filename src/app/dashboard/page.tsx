@@ -789,8 +789,8 @@ export default function DashboardPage() {
                   {divergentOrders.map(order => (
                     <div key={order.id} className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4 flex justify-between items-center">
                       <div>
-                        <div className="font-semibold text-white text-sm">Pedido #{order.numeroPedido}</div>
-                        <div className="text-xs text-gray-400 mt-1 truncate max-w-xs">{order.clienteNome}</div>
+                        <div className="font-semibold text-white text-sm">Pedido {order.notaFiscal ? `NF ${order.notaFiscal}` : `#${order.id.slice(0,6).toUpperCase()}`}</div>
+                        <div className="text-xs text-gray-400 mt-1 truncate max-w-xs">{order.nomeCliente}</div>
                         <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500 font-medium">
                           <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded">
                             Emissão: {new Date(order.data).toLocaleDateString('pt-BR')}
@@ -804,7 +804,6 @@ export default function DashboardPage() {
                         <div className="text-lg font-bold text-emerald-400">
                           R$ {Number(order.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
-                        <div className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">{order.fabricaNome}</div>
                       </div>
                     </div>
                   ))}
