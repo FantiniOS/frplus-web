@@ -1,13 +1,13 @@
 'use client';
 
-import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, Gift, X, Wallet, MessageCircle } from "lucide-react";
+import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, Gift, X, Wallet, MessageCircle, Download } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
 import { InteractiveChart } from "@/components/dashboard/InteractiveChart";
 import { MonthSelector } from "@/components/ui/MonthSelector";
-import { useState, useMemo, Suspense, useEffect } from "react";
+import { useState, useMemo, Suspense, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, Phone } from "lucide-react";
 import { VisitasCalendar } from "@/components/dashboard/VisitasCalendar";
@@ -16,6 +16,7 @@ import { YtdSalesCard } from "@/components/dashboard/YtdSalesCard";
 import { getLembretesProspeccao } from "@/app/actions/prospects";
 import { getDashboardChartData, getAvailableYears, ChartDataResponse, ChartViewMode } from "@/app/actions/dashboard";
 import { getBonificacaoComissao, BonificacaoComissaoResult } from "@/app/actions/bonificacaoComissao";
+import { RelatorioExecutivoPDF } from "@/components/dashboard/RelatorioExecutivoPDF";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
@@ -376,6 +377,39 @@ export default function DashboardPage() {
   
   // ====== END DATA LOGIC ======
 
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+  const handleExportPDF = async () => {
+    setIsExportingPDF(true);
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const element = document.getElementById('pdf-report-container');
+      
+      if (!element) return;
+
+      // Ensure it's temporarily visible if it was hidden
+      const originalDisplay = element.style.display;
+      element.style.display = 'block';
+
+      const opt = {
+        margin:       [10, 0, 10, 0], // top, left, bottom, right
+        filename:     `Relatorio_Executivo_${selectedMonth || selectedYear}.pdf`,
+        image:        { type: 'jpeg', quality: 1 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+      
+      // Hide again
+      element.style.display = originalDisplay;
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   const kpis = [
     {
       label: 'Vendas Totais',
@@ -417,8 +451,21 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Chart View Selector & Month Selector */}
+        {/* Export and Filters */}
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportPDF}
+            disabled={isExportingPDF}
+            className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isExportingPDF ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            {isExportingPDF ? 'Gerando...' : 'Exportar PDF'}
+          </button>
+          
           <div className="hidden sm:flex bg-white/[0.04] p-1 rounded-lg border border-white/[0.08]">
             {(['Mensal', 'Anual', 'Global'] as const).map(v => (
               <button
@@ -646,6 +693,19 @@ export default function DashboardPage() {
       }>
         <AIInsightsPanel />
       </Suspense>
+
+      {/* ===== HIDDEN REPORT FOR PDF EXPORT ===== */}
+      <div style={{ display: 'none' }}>
+        <RelatorioExecutivoPDF
+          periodName={chartTitle}
+          usuarioNome={usuario?.nome || 'Usuário'}
+          stats={stats}
+          faturamentoData={faturamentoData}
+          ytdData={ytdData}
+          faturamentoAnoAnterior={faturamentoAnoAnterior}
+          topProducts={topProducts}
+        />
+      </div>
     </div>
   );
 }
