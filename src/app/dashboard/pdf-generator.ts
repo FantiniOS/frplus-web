@@ -163,14 +163,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
     insights.push(`Comportamento de estabilidade transacional. A variacao suave de ${crescFaturamento.toFixed(1)}% aponta para um cenario conservador, necessitando de acoes disruptivas de upsell para inflamar novamente a agressividade nas vendas.`);
   }
 
-  // 2. Análise Micro: Eficiência e Caixa (Gargalo de Faturamento)
-  if (eficienciaFaturamento < 75) {
-    insights.push(`Foi detectada uma forte friccao de esteira: ${formatCurrency(gapFaturamento)} em volume financeiro represado. Uma conversao de apenas ${eficienciaFaturamento.toFixed(1)}% impacta diretamente o fluxo de caixa, exigindo priorizacao logistica e de analise de credito.`);
-  } else if (eficienciaFaturamento >= 95) {
-    insights.push(`Eficiencia maxima de execucao. A conversao de ${eficienciaFaturamento.toFixed(1)}% reflete um fluxo operacional praticamente perfeito entre a emissao de pedidos pela forca de vendas e o efetivo reconhecimento da receita.`);
-  }
-
-  // 3. Risco de Portfólio e Curva ABC
+  // 2. Risco de Portfólio e Curva ABC
   if (data.topProducts.length > 0) {
     const shareProd = data.faturamentoData.total > 0 ? (data.topProducts[0].total / data.faturamentoData.total) * 100 : 0;
     if (shareProd > 35) {
