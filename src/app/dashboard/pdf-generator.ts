@@ -87,7 +87,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(C.white[0], C.white[1], C.white[2]);
-    doc.text('RELATORIO EXECUTIVO DE DESEMPENHO', pageWidth - margin.right, 14, { align: 'right' });
+    doc.text('RELATÓRIO EXECUTIVO DE DESEMPENHO', pageWidth - margin.right, 14, { align: 'right' });
     
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -96,12 +96,12 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
     
     doc.setFontSize(7);
     doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text(`Periodo Selecionado: ${data.periodName}`, pageWidth - margin.right, 26, { align: 'right' });
+    doc.text(`Período Selecionado: ${data.periodName}`, pageWidth - margin.right, 26, { align: 'right' });
     
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(C.cyan[0], C.cyan[1], C.cyan[2]);
-    doc.text(`Gerado por: ${data.usuarioNome} em ${dateStr} as ${timeStr}`, pageWidth - margin.right, 32, { align: 'right' });
+    doc.text(`Gerado por: ${data.usuarioNome} em ${dateStr} às ${timeStr}`, pageWidth - margin.right, 32, { align: 'right' });
     
     doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
     doc.rect(0, 38, pageWidth * 0.5, 2, 'F');
@@ -118,7 +118,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
     doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text('FRPlus - Gestao Comercial Inteligente', margin.left, fY);
+    doc.text('FRPlus - Gestão Comercial Inteligente', margin.left, fY);
     doc.text('Documento gerado automaticamente.', pageWidth / 2, fY, { align: 'center' });
     doc.setFont('helvetica', 'bold');
     doc.text(String(pageNum) + ' / ' + String(totalPages), pageWidth - margin.right, fY, { align: 'right' });
@@ -152,35 +152,35 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
   
   // 1. Análise Macro: Desempenho e Tendência
   if (crescFaturamento > 10 && crescYTD > 5) {
-    insights.push(`A operacao registra um momento de tracao vigorosa. O avanco de +${crescFaturamento.toFixed(1)}% neste periodo consolida uma expansao sustentavel ao longo do ano (+${crescYTD.toFixed(1)}% YTD), indicando forte adesao das campanhas comerciais e ganhos massivos de market share.`);
+    insights.push(`A operação registra um momento de tração vigorosa. O avanço de +${crescFaturamento.toFixed(1)}% neste período consolida uma expansão sustentável ao longo do ano (+${crescYTD.toFixed(1)}% YTD), indicando forte adesão das campanhas comerciais e ganhos massivos de market share.`);
   } else if (crescFaturamento > 0 && crescYTD < 0) {
-    insights.push(`Um claro ponto de inflexao: o crescimento isolado de +${crescFaturamento.toFixed(1)}% neste ciclo ajuda a romper o historico anual negativo (${crescYTD.toFixed(1)}% YTD). O momento exige capitalizar sobre as estrategias recentes para blindar essa trajetoria de recuperacao.`);
+    insights.push(`Um claro ponto de inflexão: o crescimento isolado de +${crescFaturamento.toFixed(1)}% neste ciclo ajuda a romper o histórico anual negativo (${crescYTD.toFixed(1)}% YTD). O momento exige capitalizar sobre as estratégias recentes para blindar essa trajetória de recuperação.`);
   } else if (crescFaturamento < 0 && crescYTD > 0) {
-    insights.push(`Apesar da robustez acumulada no ano (+${crescYTD.toFixed(1)}%), o periodo atual sinaliza uma desaceleracao estrategica (${crescFaturamento.toFixed(1)}%). E recomendada uma revisao tatica no pipeline de prospecao para retomar o tracionamento do trimestre.`);
+    insights.push(`Apesar da robustez acumulada no ano (+${crescYTD.toFixed(1)}%), o período atual sinaliza uma desaceleração estratégica (${crescFaturamento.toFixed(1)}%). É recomendada uma revisão tática no pipeline de prospecção para retomar o tracionamento do trimestre.`);
   } else if (crescFaturamento < -5) {
-    insights.push(`Cenario de atencao executiva. A retracao de ${Math.abs(crescFaturamento).toFixed(1)}% no ciclo atual, somada ao cenario anual desafiador, exige intervencao imediata nas politicas de precificacao e resgate intensivo de carteira inativa.`);
+    insights.push(`Cenário de atenção executiva. A retração de ${Math.abs(crescFaturamento).toFixed(1)}% no ciclo atual, somada ao cenário anual desafiador, exige intervenção imediata nas políticas de precificação e resgate intensivo de carteira inativa.`);
   } else {
-    insights.push(`Comportamento de estabilidade transacional. A variacao suave de ${crescFaturamento.toFixed(1)}% aponta para um cenario conservador, necessitando de acoes disruptivas de upsell para inflamar novamente a agressividade nas vendas.`);
+    insights.push(`Comportamento de estabilidade transacional. A variação suave de ${crescFaturamento.toFixed(1)}% aponta para um cenário conservador, necessitando de ações disruptivas de upsell para inflamar novamente a agressividade nas vendas.`);
   }
 
   // 2. Risco de Portfólio e Curva ABC
   if (data.topProducts.length > 0) {
     const shareProd = data.faturamentoData.total > 0 ? (data.topProducts[0].total / data.faturamentoData.total) * 100 : 0;
     if (shareProd > 35) {
-        insights.push(`Vulnerabilidade de mix identificada: o item "${data.topProducts[0].name}" concentra alarmantes ${shareProd.toFixed(1)}% da receita. Estrategias de pulverizacao e cross-sell sao vitais para mitigar o risco dessa dependencia isolada.`);
+        insights.push(`Vulnerabilidade de mix identificada: o item "${data.topProducts[0].name}" concentra alarmantes ${shareProd.toFixed(1)}% da receita. Estratégias de pulverização e cross-sell são vitais para mitigar o risco dessa dependência isolada.`);
     }
   }
 
   if (data.topClients && data.topClients.length > 0) {
     const shareClient = data.faturamentoData.total > 0 ? (data.topClients[0].total / data.faturamentoData.total) * 100 : 0;
     if (shareClient > 25) {
-        insights.push(`Alerta de key-account: ${shareClient.toFixed(1)}% de todo o volume financeiro gerado esta atrelado a um unico cliente ("${data.topClients[0].name}"). Reforcar as trincheiras de relacionamento corporativo com esta conta e imperativo.`);
+        insights.push(`Alerta de key-account: ${shareClient.toFixed(1)}% de todo o volume financeiro gerado está atrelado a um único cliente ("${data.topClients[0].name}"). Reforçar as trincheiras de relacionamento corporativo com esta conta é imperativo.`);
     }
   }
 
   let insightText = insights.join(' ');
   if (!insightText) {
-      insightText = "O periodo nao apresentou desvios estatisticos significativos que acionassem alertas de intervencao. O volume de operacoes se manteve dentro das margens e margens de seguranca padrao.";
+      insightText = "O período não apresentou desvios estatísticos significativos que acionassem alertas de intervenção. O volume de operações se manteve dentro das margens e faixas de segurança padrão.";
   }
 
   // INSIGHTS BOX (Dark Premium)
@@ -194,7 +194,7 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
   doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.cyan[0], C.cyan[1], C.cyan[2]);
-  doc.text('INTELIGENCIA HEURISTICA (INSIGHTS)', margin.left + 5, y + 6);
+  doc.text('INTELIGÊNCIA HEURÍSTICA (INSIGHTS)', margin.left + 5, y + 6);
   
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
