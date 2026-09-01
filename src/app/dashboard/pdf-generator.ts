@@ -150,62 +150,64 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
 
   const insights = [];
   
-  // Função para sortear um texto e não deixar o relatório repetitivo
+  // Função para sortear fragmentos
   const pick = (options: string[]) => options[Math.floor(Math.random() * options.length)];
   
-  // 1. Análise Macro: Desempenho e Tendência
+  // 1. Análise Macro (Centenas de variações via combinatória)
+  const fFormat = crescFaturamento.toFixed(1);
+  const yFormat = crescYTD.toFixed(1);
+
   if (crescFaturamento > 10 && crescYTD > 5) {
-    insights.push(pick([
-      `A operação registra um momento de tração vigorosa. O avanço de +${crescFaturamento.toFixed(1)}% neste período consolida uma expansão sustentável ao longo do ano (+${crescYTD.toFixed(1)}% YTD), indicando forte adesão das campanhas comerciais e ganhos massivos de market share.`,
-      `Performance de alto impacto confirmada. O salto expressivo de +${crescFaturamento.toFixed(1)}% impulsiona os resultados anuais (+${crescYTD.toFixed(1)}% YTD), demonstrando excelente execução do planejamento de vendas.`,
-      `Ciclo de expansão acelerada: o crescimento no período atinge notáveis +${crescFaturamento.toFixed(1)}%, corroborando o bom momento anual (+${crescYTD.toFixed(1)}% YTD). O ritmo atual coloca a carteira em posição de liderança competitiva.`
-    ]));
+    const opening = pick(["A operação registra um momento de tração vigorosa.", "Performance de alto impacto confirmada.", "Ciclo de expansão acelerada detectado.", "Os indicadores financeiros demonstram força comercial exuberante."]);
+    const dataTxt = pick([`O salto expressivo de +${fFormat}% no período`, `O crescimento isolado de +${fFormat}%`, `O avanço consolidado de +${fFormat}% no ciclo`]);
+    const impact = pick([`impulsiona o acumulado anual para +${yFormat}% (YTD)`, `corrobora a forte alta anual de +${yFormat}%`, `alavanca exponencialmente a meta anual (+${yFormat}% YTD)`]);
+    const action = pick(["indicando execução perfeita das campanhas.", "colocando a distribuidora em posição de dominância.", "refletindo forte adesão do mercado ao mix."]);
+    insights.push(`${opening} ${dataTxt} ${impact}, ${action}`);
   } else if (crescFaturamento > 0 && crescYTD < 0) {
-    insights.push(pick([
-      `Um claro ponto de inflexão: o crescimento isolado de +${crescFaturamento.toFixed(1)}% neste ciclo ajuda a romper o histórico anual negativo (${crescYTD.toFixed(1)}% YTD). O momento exige capitalizar sobre as estratégias recentes para blindar essa trajetória de recuperação.`,
-      `Reação estratégica identificada no período (+${crescFaturamento.toFixed(1)}%), um fôlego vital frente à retração do acumulado anual (${crescYTD.toFixed(1)}% YTD). Manter a agressividade nas pontas de gôndola é crucial para consolidar essa virada.`,
-      `Início de reversão de tendência. A alta de +${crescFaturamento.toFixed(1)}% traz um respiro financeiro importante para mitigar as perdas do YTD (${crescYTD.toFixed(1)}%). Recomenda-se dobrar a aposta nos canais que puxaram esse resultado.`
-    ]));
+    const opening = pick(["Um claro ponto de inflexão na curva.", "Reação estratégica identificada.", "Sinal fortíssimo de reversão de tendência.", "O período marca uma virada tática importante."]);
+    const dataTxt = pick([`A alta de +${fFormat}% neste ciclo`, `O crescimento pontual de +${fFormat}%`, `A resposta positiva de +${fFormat}% nas vendas`]);
+    const impact = pick([`traz um fôlego vital frente à retração acumulada (${yFormat}% YTD).`, `ajuda a estancar o sangramento do ano (${yFormat}% YTD).`, `mitiga significativamente as perdas do histórico anual (${yFormat}% YTD).`]);
+    const action = pick(["É crucial dobrar a aposta nos canais que puxaram esse resultado.", "Manter a agressividade atual é imperativo para consolidar a recuperação.", "A diretoria deve capitalizar imediatamente sobre essas táticas recentes."]);
+    insights.push(`${opening} ${dataTxt} ${impact} ${action}`);
   } else if (crescFaturamento < 0 && crescYTD > 0) {
-    insights.push(pick([
-      `Apesar da robustez acumulada no ano (+${crescYTD.toFixed(1)}%), o período atual sinaliza uma desaceleração estratégica (${crescFaturamento.toFixed(1)}%). É recomendada uma revisão tática no pipeline de prospecção para retomar o tracionamento do trimestre.`,
-      `O recuo pontual de ${crescFaturamento.toFixed(1)}% acende um alerta de curto prazo, embora o balanço do ano siga superavitário (+${crescYTD.toFixed(1)}% YTD). Medidas corretivas de giro rápido devem ser aplicadas.`,
-      `Freio transacional: a queda de ${crescFaturamento.toFixed(1)}% no mês contrasta com a saúde geral do ano (+${crescYTD.toFixed(1)}% YTD). Fundamental auditar se houve ruptura de estoque ou perda de competitividade em clientes-chave.`
-    ]));
+    const opening = pick(["Cenário de alerta de curto prazo.", "Desaceleração estratégica detectada.", "Freio transacional inesperado.", "O radar aponta perda momentânea de tração."]);
+    const dataTxt = pick([`O recuo de ${fFormat}% no mês`, `A contração pontual de ${fFormat}%`, `A variação negativa de ${fFormat}% no faturamento`]);
+    const impact = pick([`contrasta fortemente com a saúde do ano (+${yFormat}% YTD).`, `acende um farol amarelo, mesmo com o ano superavitário (+${yFormat}% YTD).`, `interrompe a curva ascendente do acumulado (+${yFormat}% YTD).`]);
+    const action = pick(["Fundamental auditar imediatamente o pipeline de clientes inativos.", "Medidas corretivas de giro e prospecção devem ser aplicadas.", "É recomendada uma blitz comercial para retomar o ritmo do trimestre."]);
+    insights.push(`${opening} ${dataTxt} ${impact} ${action}`);
   } else if (crescFaturamento < -5) {
-    insights.push(pick([
-      `Cenário de atenção executiva. A retração de ${Math.abs(crescFaturamento).toFixed(1)}% no ciclo atual, somada ao cenário anual desafiador, exige intervenção imediata nas políticas de precificação e resgate intensivo de carteira inativa.`,
-      `Queda crítica de ${Math.abs(crescFaturamento).toFixed(1)}% no faturamento sinaliza erosão de mercado. O board comercial deve acionar imediatamente planos de contingência e pacotes de incentivo agressivos para estancar o sangramento.`,
-      `Alerta vermelho no volume de vendas (${crescFaturamento.toFixed(1)}%). A performance deficitária exige um pente-fino urgente na base de clientes perdidos e reestruturação da abordagem de campo.`
-    ]));
+    const opening = pick(["Cenário de atenção executiva máxima.", "Alerta vermelho acionado nos indicadores.", "Quadro crítico de erosão de mercado.", "Desempenho deficitário alarmante."]);
+    const dataTxt = pick([`A retração expressiva de ${Math.abs(crescFaturamento).toFixed(1)}% no faturamento`, `O tombo de ${Math.abs(crescFaturamento).toFixed(1)}% nas vendas do ciclo`, `A queda severa de ${Math.abs(crescFaturamento).toFixed(1)}% financeira`]);
+    const impact = pick([`agrava o buraco anual que já está em ${yFormat}% (YTD).`, `soma-se ao cenário desafiador do acumulado (${yFormat}% YTD).`, `evidencia uma perda crônica de penetração no ano (${yFormat}% YTD).`]);
+    const action = pick(["O board deve acionar imediatamente planos de contingência e incentivos agressivos.", "Exige-se intervenção cirúrgica nas políticas de precificação e resgate de carteira.", "Um pente-fino urgente na base de clientes perdidos é inegociável."]);
+    insights.push(`${opening} ${dataTxt} ${impact} ${action}`);
   } else {
-    insights.push(pick([
-      `Comportamento de estabilidade transacional. A variação suave de ${crescFaturamento.toFixed(1)}% aponta para um cenário conservador, necessitando de ações disruptivas de upsell para inflamar novamente a agressividade nas vendas.`,
-      `Manutenção de patamar financeiro (${crescFaturamento.toFixed(1)}%). O volume acompanha a zona de estabilidade térmica do negócio, indicando que novos saltos exigirão inovações no mix ou expansão territorial.`,
-      `Desempenho lateralizado: a oscilação branda de ${crescFaturamento.toFixed(1)}% revela um período sem grandes oscilações sistêmicas, refletindo maturidade mas pouca renovação de base.`
-    ]));
+    const opening = pick(["Comportamento de estabilidade transacional.", "Manutenção de patamar financeiro.", "Desempenho amplamente lateralizado.", "Fase de conservadorismo comercial."]);
+    const dataTxt = pick([`A variação suave de ${fFormat}%`, `A leve oscilação de ${fFormat}%`, `O movimento brando de ${fFormat}%`]);
+    const impact = pick(["aponta para a zona de estabilidade térmica do negócio.", "revela um período sem flutuações sistêmicas.", "indica uma manutenção madura da carteira atual."]);
+    const action = pick(["Ações disruptivas de upsell são necessárias para criar novos picos.", "Novos saltos exigirão inovações no portfólio ou expansão territorial.", "Recomenda-se agressividade em campanhas para inflamar o crescimento."]);
+    insights.push(`${opening} ${dataTxt} ${impact} ${action}`);
   }
 
-  // 2. Risco de Portfólio e Curva ABC
+  // 2. Risco de Portfólio (Mix)
   if (data.topProducts.length > 0) {
     const shareProd = data.faturamentoData.total > 0 ? (data.topProducts[0].total / data.faturamentoData.total) * 100 : 0;
     if (shareProd > 35) {
-        insights.push(pick([
-          `Vulnerabilidade de mix identificada: o item "${data.topProducts[0].name}" concentra alarmantes ${shareProd.toFixed(1)}% da receita. Estratégias de pulverização e cross-sell são vitais para mitigar o risco dessa dependência isolada.`,
-          `Alta alavancagem em um único SKU ("${data.topProducts[0].name}", representando ${shareProd.toFixed(1)}% das saídas). O portfólio precisa ser oxigenado para evitar flutuações bruscas de receita caso este produto sofra desabastecimento.`,
-          `Risco de curva A extremo: ${shareProd.toFixed(1)}% do caixa atual depende da tração do produto "${data.topProducts[0].name}". Injetar campanhas de venda casada com itens de cauda longa é a recomendação imediata.`
-        ]));
+        const opening = pick(["Vulnerabilidade de mix identificada:", "Risco de curva A extremo:", "Sinalizador de alta alavancagem em SKU único:", "Perigosa concentração de catálogo:"]);
+        const dataTxt = pick([`o item "${data.topProducts[0].name}" concentra alarmantes ${shareProd.toFixed(1)}% da receita.`, `exatos ${shareProd.toFixed(1)}% de todo o caixa vêm do produto "${data.topProducts[0].name}".`, `o produto "${data.topProducts[0].name}" engoliu ${shareProd.toFixed(1)}% de todas as saídas do período.`]);
+        const action = pick(["Estratégias de pulverização e cross-sell são vitais.", "O portfólio precisa ser oxigenado imediatamente.", "Injetar campanhas de venda casada com itens de cauda longa é a diretriz."]);
+        insights.push(`${opening} ${dataTxt} ${action}`);
     }
   }
 
+  // 3. Risco de Cliente (Key-Account)
   if (data.topClients && data.topClients.length > 0) {
     const shareClient = data.faturamentoData.total > 0 ? (data.topClients[0].total / data.faturamentoData.total) * 100 : 0;
     if (shareClient > 25) {
-        insights.push(pick([
-          `Alerta de key-account: ${shareClient.toFixed(1)}% de todo o volume financeiro gerado está atrelado a um único cliente ("${data.topClients[0].name}"). Reforçar as trincheiras de relacionamento corporativo com esta conta é imperativo.`,
-          `Forte concentração de carteira: o cliente "${data.topClients[0].name}" responde por ${shareClient.toFixed(1)}% do giro. A rentabilidade da empresa encontra-se atrelada ao sucesso comercial dessa única operação.`,
-          `Exposição ao risco de cliente âncora ("${data.topClients[0].name}" com ${shareClient.toFixed(1)}% do share). É prioritário criar blindagem contratual com este parceiro, enquanto a prospecção tenta diluir esse peso.`
-        ]));
+        const opening = pick(["Alerta severo de key-account:", "Forte concentração de risco na carteira:", "Exposição gravíssima ao risco de cliente-âncora:", "Sinal vermelho no compliance comercial:"]);
+        const dataTxt = pick([`${shareClient.toFixed(1)}% do giro financeiro está atrelado a "${data.topClients[0].name}".`, `um único cliente ("${data.topClients[0].name}") responde por ${shareClient.toFixed(1)}% da operação.`, `a dependência sobre a conta "${data.topClients[0].name}" atingiu ${shareClient.toFixed(1)}% do caixa.`]);
+        const action = pick(["Reforçar as trincheiras contratuais com esta conta é imperativo.", "A rentabilidade corporativa exige a diluição imediata desse peso prospectando no mercado.", "Recomenda-se blindagem total de relacionamento com esse parceiro e ações urgentes de pulverização."]);
+        insights.push(`${opening} ${dataTxt} ${action}`);
     }
   }
 
