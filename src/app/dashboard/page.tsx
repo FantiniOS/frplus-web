@@ -170,14 +170,39 @@ export default function DashboardPage() {
   // ====== VENDAS ACUMULADAS DO ANO (YTD) — para YtdSalesCard ======
   const ytdData = useMemo(() => {
     const today = new Date();
-    const currentYear = today.getFullYear();
-    const previousYear = currentYear - 1;
+    
+    // Definimos o "ano alvo" e o "limite superior (data final do período)"
+    let targetYear = today.getFullYear();
+    let limitMonth = today.getMonth(); // 0-11
+    let limitDate = today.getDate();
 
-    // Mesmo dia/mês no ano anterior (teto do período comparativo)
-    const todayUTC = Date.UTC(currentYear, today.getMonth(), today.getDate(), 23, 59, 59);
-    const sameDatePrevYearUTC = Date.UTC(previousYear, today.getMonth(), today.getDate(), 23, 59, 59);
+    if (chartView === 'Mensal' && filterYear !== null && filterMonth !== null) {
+      targetYear = filterYear;
+      if (filterYear === today.getFullYear() && filterMonth === today.getMonth()) {
+        limitMonth = today.getMonth();
+        limitDate = today.getDate();
+      } else {
+        limitMonth = filterMonth;
+        limitDate = new Date(filterYear, filterMonth + 1, 0).getDate(); // Último dia do mês
+      }
+    } else if (chartView === 'Anual' && selectedYear !== null) {
+      targetYear = selectedYear;
+      if (selectedYear === today.getFullYear()) {
+        limitMonth = today.getMonth();
+        limitDate = today.getDate();
+      } else {
+        limitMonth = 11; // Dezembro
+        limitDate = 31;
+      }
+    }
 
-    const startCurrentYear = Date.UTC(currentYear, 0, 1, 0, 0, 0);
+    const previousYear = targetYear - 1;
+
+    // Teto do período comparativo
+    const ceilingCurrentUTC = Date.UTC(targetYear, limitMonth, limitDate, 23, 59, 59);
+    const ceilingPreviousUTC = Date.UTC(previousYear, limitMonth, limitDate, 23, 59, 59);
+
+    const startCurrentYear = Date.UTC(targetYear, 0, 1, 0, 0, 0);
     const startPreviousYear = Date.UTC(previousYear, 0, 1, 0, 0, 0);
 
     const isValidOrder = (o: typeof orders[0]) =>
@@ -187,7 +212,7 @@ export default function DashboardPage() {
       .filter(o => {
         if (!isValidOrder(o)) return false;
         const d = new Date(o.data).getTime();
-        return d >= startCurrentYear && d <= todayUTC;
+        return d >= startCurrentYear && d <= ceilingCurrentUTC;
       })
       .reduce((acc, o) => acc + Number(o.valorTotal), 0);
 
@@ -195,12 +220,12 @@ export default function DashboardPage() {
       .filter(o => {
         if (!isValidOrder(o)) return false;
         const d = new Date(o.data).getTime();
-        return d >= startPreviousYear && d <= sameDatePrevYearUTC;
+        return d >= startPreviousYear && d <= ceilingPreviousUTC;
       })
       .reduce((acc, o) => acc + Number(o.valorTotal), 0);
 
     return { currentYtd, previousYtd };
-  }, [orders]);
+  }, [orders, chartView, filterMonth, filterYear, selectedYear]);
 
   const maxSale = Math.max(...chartData.map(d => d.value), 100);
   const chartTotalSales = chartData.reduce((acc, curr) => acc + curr.value, 0);
