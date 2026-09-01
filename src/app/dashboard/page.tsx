@@ -392,7 +392,7 @@ export default function DashboardPage() {
       element.style.display = 'block';
 
       const opt = {
-        margin:       [10, 0, 10, 0], // top, left, bottom, right
+        margin:       [10, 0, 10, 0] as [number, number, number, number],
         filename:     `Relatorio_Executivo_${selectedMonth || selectedYear}.pdf`,
         image:        { type: 'jpeg', quality: 1 },
         html2canvas:  { scale: 2, useCORS: true, logging: false },
