@@ -150,41 +150,49 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
 
   const insights = [];
   
-  // 1. Desempenho YOY e YTD Combinado
+  // 1. Análise Macro: Desempenho e Tendência
   if (crescFaturamento > 10 && crescYTD > 5) {
-    insights.push(`Crescimento consistente: Aceleracao de +${crescFaturamento.toFixed(1)}% no periodo atual e sustentacao de alta no ano (+${crescYTD.toFixed(1)}%).`);
+    insights.push(`A operacao registra um momento de tracao vigorosa. O avanco de +${crescFaturamento.toFixed(1)}% neste periodo consolida uma expansao sustentavel ao longo do ano (+${crescYTD.toFixed(1)}% YTD), indicando forte adesao das campanhas comerciais e ganhos massivos de market share.`);
   } else if (crescFaturamento > 0 && crescYTD < 0) {
-    insights.push(`Recuperacao no periodo: O mes apresenta alta de +${crescFaturamento.toFixed(1)}%, ajudando a reverter a retracao acumulada no ano (${crescYTD.toFixed(1)}%).`);
-  } else if (crescFaturamento < 0) {
-    insights.push(`Sinal de alerta: Retracao de ${Math.abs(crescFaturamento).toFixed(1)}% no periodo frente ao mesmo ciclo base anterior.`);
+    insights.push(`Um claro ponto de inflexao: o crescimento isolado de +${crescFaturamento.toFixed(1)}% neste ciclo ajuda a romper o historico anual negativo (${crescYTD.toFixed(1)}% YTD). O momento exige capitalizar sobre as estrategias recentes para blindar essa trajetoria de recuperacao.`);
+  } else if (crescFaturamento < 0 && crescYTD > 0) {
+    insights.push(`Apesar da robustez acumulada no ano (+${crescYTD.toFixed(1)}%), o periodo atual sinaliza uma desaceleracao estrategica (${crescFaturamento.toFixed(1)}%). E recomendada uma revisao tatica no pipeline de prospecao para retomar o tracionamento do trimestre.`);
+  } else if (crescFaturamento < -5) {
+    insights.push(`Cenario de atencao executiva. A retracao de ${Math.abs(crescFaturamento).toFixed(1)}% no ciclo atual, somada ao cenario anual desafiador, exige intervencao imediata nas politicas de precificacao e resgate intensivo de carteira inativa.`);
   } else {
-    insights.push(`Estabilidade comercial no periodo analisado (+${crescFaturamento.toFixed(1)}%).`);
+    insights.push(`Comportamento de estabilidade transacional. A variacao suave de ${crescFaturamento.toFixed(1)}% aponta para um cenario conservador, necessitando de acoes disruptivas de upsell para inflamar novamente a agressividade nas vendas.`);
   }
 
-  // 2. Eficiência de Faturamento e GAP
-  if (eficienciaFaturamento < 70) {
-    insights.push(`Gargalo operacional critico: Apenas ${eficienciaFaturamento.toFixed(1)}% das vendas emitidas foram faturadas neste ciclo (Gap financeiro de ${formatCurrency(gapFaturamento)}).`);
-  } else if (eficienciaFaturamento < 90) {
-    insights.push(`Ponto de atencao no fluxo: Gap entre pedidos emitidos e faturados e de ${formatCurrency(gapFaturamento)} (${(100 - eficienciaFaturamento).toFixed(1)}% pendente).`);
-  } else {
-    insights.push(`Excelente eficiencia operacional: Conversao de faturamento altissima (${eficienciaFaturamento.toFixed(1)}% das vendas).`);
+  // 2. Análise Micro: Eficiência e Caixa (Gargalo de Faturamento)
+  if (eficienciaFaturamento < 75) {
+    insights.push(`Foi detectada uma forte friccao de esteira: ${formatCurrency(gapFaturamento)} em volume financeiro represado. Uma conversao de apenas ${eficienciaFaturamento.toFixed(1)}% impacta diretamente o fluxo de caixa, exigindo priorizacao logistica e de analise de credito.`);
+  } else if (eficienciaFaturamento >= 95) {
+    insights.push(`Eficiencia maxima de execucao. A conversao de ${eficienciaFaturamento.toFixed(1)}% reflete um fluxo operacional praticamente perfeito entre a emissao de pedidos pela forca de vendas e o efetivo reconhecimento da receita.`);
   }
 
-  // 3. Portfólio
+  // 3. Risco de Portfólio e Curva ABC
   if (data.topProducts.length > 0) {
-    const share = data.faturamentoData.total > 0 ? (data.topProducts[0].total / data.faturamentoData.total) * 100 : 0;
-    if (share > 30) {
-        insights.push(`Alta dependencia: O item "${data.topProducts[0].name}" responde por ${share.toFixed(1)}% do faturamento global.`);
-    } else {
-        insights.push(`Curva ABC saudavel: Vendas bem distribuidas, sem concentracao arriscada no item lider.`);
+    const shareProd = data.faturamentoData.total > 0 ? (data.topProducts[0].total / data.faturamentoData.total) * 100 : 0;
+    if (shareProd > 35) {
+        insights.push(`Vulnerabilidade de mix identificada: o item "${data.topProducts[0].name}" concentra alarmantes ${shareProd.toFixed(1)}% da receita. Estrategias de pulverizacao e cross-sell sao vitais para mitigar o risco dessa dependencia isolada.`);
     }
   }
 
-  const insightText = insights.join(' ');
+  if (data.topClients && data.topClients.length > 0) {
+    const shareClient = data.faturamentoData.total > 0 ? (data.topClients[0].total / data.faturamentoData.total) * 100 : 0;
+    if (shareClient > 25) {
+        insights.push(`Alerta de key-account: ${shareClient.toFixed(1)}% de todo o volume financeiro gerado esta atrelado a um unico cliente ("${data.topClients[0].name}"). Reforcar as trincheiras de relacionamento corporativo com esta conta e imperativo.`);
+    }
+  }
+
+  let insightText = insights.join(' ');
+  if (!insightText) {
+      insightText = "O periodo nao apresentou desvios estatisticos significativos que acionassem alertas de intervencao. O volume de operacoes se manteve dentro das margens e margens de seguranca padrao.";
+  }
 
   // INSIGHTS BOX (Dark Premium)
   // Aumentando a altura da caixa para caber um texto mais robusto
-  const insightH = 22;
+  const insightH = 34;
   doc.setFillColor(15, 23, 42);
   doc.roundedRect(margin.left, y, contentW, insightH, 2, 2, 'F');
   doc.setFillColor(C.cyan[0], C.cyan[1], C.cyan[2]);
