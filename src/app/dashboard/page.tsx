@@ -16,7 +16,6 @@ import { YtdSalesCard } from "@/components/dashboard/YtdSalesCard";
 import { getLembretesProspeccao } from "@/app/actions/prospects";
 import { getDashboardChartData, getAvailableYears, ChartDataResponse, ChartViewMode } from "@/app/actions/dashboard";
 import { getBonificacaoComissao, BonificacaoComissaoResult } from "@/app/actions/bonificacaoComissao";
-import { RelatorioExecutivoPDF } from "@/components/dashboard/RelatorioExecutivoPDF";
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
@@ -382,27 +381,18 @@ export default function DashboardPage() {
   const handleExportPDF = async () => {
     setIsExportingPDF(true);
     try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const element = document.getElementById('pdf-report-container');
+      const { generateDashboardPDF } = await import('./pdf-generator');
       
-      if (!element) return;
-
-      // Ensure it's temporarily visible if it was hidden
-      const originalDisplay = element.style.display;
-      element.style.display = 'block';
-
-      const opt: any = {
-        margin:       [10, 0, 10, 0],
-        filename:     `Relatorio_Executivo_${selectedMonth || selectedYear}.pdf`,
-        image:        { type: 'jpeg', quality: 1 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-
-      await html2pdf().set(opt).from(element).save();
+      await generateDashboardPDF({
+        periodName: chartTitle,
+        usuarioNome: usuario?.nome || 'Usuário',
+        stats,
+        faturamentoData,
+        ytdData,
+        faturamentoAnoAnterior,
+        topProducts
+      });
       
-      // Hide again
-      element.style.display = originalDisplay;
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
     } finally {
@@ -694,18 +684,6 @@ export default function DashboardPage() {
         <AIInsightsPanel />
       </Suspense>
 
-      {/* ===== HIDDEN REPORT FOR PDF EXPORT ===== */}
-      <div style={{ display: 'none' }}>
-        <RelatorioExecutivoPDF
-          periodName={chartTitle}
-          usuarioNome={usuario?.nome || 'Usuário'}
-          stats={stats}
-          faturamentoData={faturamentoData}
-          ytdData={ytdData}
-          faturamentoAnoAnterior={faturamentoAnoAnterior}
-          topProducts={topProducts}
-        />
-      </div>
     </div>
   );
 }
