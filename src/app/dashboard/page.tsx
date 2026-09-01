@@ -132,9 +132,17 @@ export default function DashboardPage() {
 
     return {
       total: faturamentoOrders.reduce((acc, o) => acc + Number(o.valorTotal), 0),
-      count: faturamentoOrders.length
+      count: faturamentoOrders.length,
+      orders: faturamentoOrders
     };
   }, [orders, chartView, filterMonth, filterYear, selectedYear, selectedMonth]);
+
+  const divergentOrders = useMemo(() => {
+    const monthlyIds = new Set(monthlyOrders.map(o => o.id));
+    return faturamentoData.orders.filter(o => !monthlyIds.has(o.id));
+  }, [faturamentoData.orders, monthlyOrders]);
+
+  const [showSpilloverModal, setShowSpilloverModal] = useState(false);
 
   // ====== FATURAMENTO ANO ANTERIOR (mesmo mês, ano -1) — para YoySalesCard ======
   const faturamentoAnoAnterior = useMemo(() => {
@@ -482,7 +490,8 @@ export default function DashboardPage() {
       iconBg: 'bg-emerald-500/15',
       iconColor: 'text-emerald-400',
       borderHover: 'hover:border-emerald-500/30',
-      glow: 'group-hover:shadow-emerald-500/10'
+      glow: 'group-hover:shadow-emerald-500/10',
+      onClick: () => setShowSpilloverModal(true)
     },
   ];
 
@@ -559,7 +568,8 @@ export default function DashboardPage() {
         {kpis.map((kpi, i) => (
           <div
             key={i}
-            className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} cursor-default overflow-hidden h-[140px] flex flex-col justify-center`}
+            onClick={kpi.onClick}
+            className={`group relative rounded-2xl border border-white/[0.08] bg-gradient-to-br ${kpi.gradient} p-5 transition-all duration-300 ${kpi.borderHover} shadow-lg shadow-black/20 ${kpi.glow} ${kpi.onClick ? 'cursor-pointer hover:-translate-y-1' : 'cursor-default'} overflow-hidden h-[140px] flex flex-col justify-center`}
           >
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
             <div className="relative z-10 h-full flex flex-col">
@@ -744,6 +754,73 @@ export default function DashboardPage() {
       }>
         <AIInsightsPanel />
       </Suspense>
+
+      {/* ===== MODAL DE FATURAMENTO DIFERENTE DE VENDAS ===== */}
+      {showSpilloverModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 w-full max-w-3xl shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-emerald-400" />
+                  Diferença de Faturamento
+                </h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  Pedidos faturados neste período, mas que foram emitidos em períodos anteriores.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSpilloverModal(false)}
+                className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              {divergentOrders.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                  <p>Nenhum pedido faturado neste período foi emitido em um período diferente.</p>
+                  <p className="text-xs mt-1">O Faturamento está 100% contido nas Vendas Totais.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {divergentOrders.map(order => (
+                    <div key={order.id} className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4 flex justify-between items-center">
+                      <div>
+                        <div className="font-semibold text-white text-sm">Pedido #{order.numeroPedido}</div>
+                        <div className="text-xs text-gray-400 mt-1 truncate max-w-xs">{order.clienteNome}</div>
+                        <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500 font-medium">
+                          <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded">
+                            Emissão: {new Date(order.data).toLocaleDateString('pt-BR')}
+                          </span>
+                          <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded">
+                            Faturado: {new Date(order.dataFaturamento!).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-emerald-400">
+                          R$ {Number(order.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">{order.fabricaNome}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-6 pt-4 border-t border-white/10 flex justify-between items-center">
+              <div className="text-sm text-gray-400">Total Descolado:</div>
+              <div className="text-xl font-bold text-white">
+                R$ {divergentOrders.reduce((acc, o) => acc + Number(o.valorTotal), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
