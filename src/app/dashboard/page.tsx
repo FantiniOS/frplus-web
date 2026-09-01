@@ -44,11 +44,27 @@ export default function DashboardPage() {
   const filterYear = selectedMonth ? parseInt(yearStr) : null;
   const filterMonth = selectedMonth ? parseInt(monthStr) - 1 : null;
 
-  const monthlyOrders = orders.filter(o => {
-    if (!selectedMonth) return true;
-    const orderDate = new Date(o.data);
-    return orderDate.getUTCMonth() === filterMonth && orderDate.getUTCFullYear() === filterYear;
-  });
+  const periodOrders = useMemo(() => {
+    let startOfPeriod: Date | null = null;
+    let endOfPeriod: Date | null = null;
+
+    if (chartView === 'Mensal' && filterYear !== null && filterMonth !== null) {
+      startOfPeriod = new Date(Date.UTC(filterYear, filterMonth, 1, 0, 0, 0));
+      endOfPeriod = new Date(Date.UTC(filterYear, filterMonth + 1, 1, 0, 0, 0));
+    } else if (chartView === 'Anual' && selectedYear !== null) {
+      startOfPeriod = new Date(Date.UTC(selectedYear, 0, 1, 0, 0, 0));
+      endOfPeriod = new Date(Date.UTC(selectedYear + 1, 0, 1, 0, 0, 0));
+    }
+
+    return orders.filter(o => {
+      if (!startOfPeriod || !endOfPeriod) return true;
+      const orderDate = new Date(o.data);
+      return orderDate.getTime() >= startOfPeriod.getTime() && orderDate.getTime() < endOfPeriod.getTime();
+    });
+  }, [orders, chartView, filterYear, filterMonth, selectedYear]);
+
+  // Mantido o nome original da variável (ou fazendo alias) para não quebrar referências
+  const monthlyOrders = periodOrders;
 
   const stats = {
     totalSales: monthlyOrders
