@@ -423,13 +423,13 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
 
   y = (doc as any).lastAutoTable.finalY + 8;
 
-  // TABELA MELHORES CLIENTES DO MÊS
+  // TABELA MELHORES CLIENTES DO PERÍODO
   doc.setFillColor(C.green[0], C.green[1], C.green[2]);
   doc.rect(margin.left, y, 2.5, 4.5, 'F');
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
-  doc.text('MELHORES CLIENTES DO MÊS', margin.left + 5, y + 4);
+  doc.text('MELHORES CLIENTES DO PERÍODO', margin.left + 5, y + 4);
   y += 7;
 
   const tableClientsData = data.topClients.map((c, i) => [
