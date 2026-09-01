@@ -201,51 +201,138 @@ export async function generateDashboardPDF(data: DashboardPDFData) {
 
   y += insightH + 6;
 
-  // KPIs
-  const cardH = 26;
+  // KPIs - 4 CARDS REPLICANDO EXATAMENTE O VISUAL DO SISTEMA
+  const cardH = 28;
   const cardGap = 4;
-  const cardCount = 3; // 3 colunas, 2 linhas
+  const cardCount = 4;
   const cardW = (contentW - cardGap * (cardCount - 1)) / cardCount;
 
-  const kpis = [
-    { label: 'VENDAS EMITIDAS (BRUTO)', value: formatCurrency(data.stats.totalSales), sub: String(data.stats.totalOrders) + ' pedidos', color: C.blue },
-    { label: 'FATURAMENTO REALIZADO', value: formatCurrency(data.faturamentoData.total), sub: String(data.faturamentoData.count) + ' nf-es', color: C.green },
-    { label: 'GAP (VENDAS vs FATURADO)', value: formatCurrency(gapFaturamento), sub: (100 - eficienciaFaturamento).toFixed(1) + '% pendente', color: C.amber },
-    { label: 'TICKET MEDIO (FATURADO)', value: formatCurrency(ticketMedio), sub: 'Ticket Vendas: ' + formatCurrency(ticketMedioVendas), color: C.cyan },
-    { label: 'ACUMULADO DO ANO (YTD)', value: formatCurrency(data.ytdData.currentYtd), sub: crescYTD >= 0 ? '+' + crescYTD.toFixed(1) + '% no ano' : crescYTD.toFixed(1) + '% no ano', color: C.purple },
-    { label: 'YTD PERIODO ANTERIOR', value: formatCurrency(data.ytdData.previousYtd), sub: 'Base historica', color: C.textMuted },
-  ];
+  // Extrair o ano atual para as legendas
+  const currYear = new Date().getFullYear();
+  const prevYear = currYear - 1;
 
-  kpis.forEach((kpi, i) => {
-    // Cálculo para 2 linhas (0, 1, 2 na primeira, 3, 4, 5 na segunda)
-    const row = Math.floor(i / cardCount);
-    const col = i % cardCount;
-    
-    const cx = margin.left + col * (cardW + cardGap);
-    const cy = y + row * (cardH + cardGap);
-    
-    doc.setFillColor(C.bgLight[0], C.bgLight[1], C.bgLight[2]);
-    doc.roundedRect(cx, cy, cardW, cardH, 2, 2, 'F');
-    doc.setFillColor(kpi.color[0], kpi.color[1], kpi.color[2]);
-    doc.rect(cx, cy, 2, cardH, 'F');
-    
-    doc.setFontSize(6);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text(kpi.label, cx + 5, cy + 7);
-    
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
-    doc.text(kpi.value, cx + 5, cy + 16);
-    
-    doc.setFontSize(6);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-    doc.text(kpi.sub, cx + 5, cy + 22);
-  });
+  // Card 1: VENDAS TOTAIS
+  const cx1 = margin.left;
+  doc.setFillColor(C.darkCard[0], C.darkCard[1], C.darkCard[2]);
+  doc.roundedRect(cx1, y, cardW, cardH, 2, 2, 'F');
+  doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
+  doc.rect(cx1, y, 2, cardH, 'F');
+  
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+  doc.text('VENDAS TOTAIS', cx1 + 5, y + 6);
+  
+  doc.setFontSize(11);
+  doc.setTextColor(C.white[0], C.white[1], C.white[2]);
+  doc.text(formatCurrency(data.stats.totalSales), cx1 + 5, y + 14);
+  
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+  doc.text(`${data.stats.totalOrders} pedidos emitidos`, cx1 + 5, y + 22);
 
-  y += (cardH * 2) + cardGap + 8;
+  // Card 2: FATURAMENTO
+  const cx2 = cx1 + cardW + cardGap;
+  doc.setFillColor(C.darkCard[0], C.darkCard[1], C.darkCard[2]);
+  doc.roundedRect(cx2, y, cardW, cardH, 2, 2, 'F');
+  doc.setFillColor(C.green[0], C.green[1], C.green[2]);
+  doc.rect(cx2, y, 2, cardH, 'F');
+  
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+  doc.text('FATURAMENTO', cx2 + 5, y + 6);
+  
+  doc.setFontSize(11);
+  doc.setTextColor(C.white[0], C.white[1], C.white[2]);
+  doc.text(formatCurrency(data.faturamentoData.total), cx2 + 5, y + 14);
+  
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+  doc.text(`${data.faturamentoData.count} pedidos faturados`, cx2 + 5, y + 22);
+
+  // Card 3: COMPARAÇÃO ANO ANTERIOR
+  const cx3 = cx2 + cardW + cardGap;
+  doc.setFillColor(C.darkCard[0], C.darkCard[1], C.darkCard[2]);
+  doc.roundedRect(cx3, y, cardW, cardH, 2, 2, 'F');
+  doc.setFillColor(C.green[0], C.green[1], C.green[2]);
+  doc.rect(cx3, y, 2, cardH, 'F');
+  
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+  doc.text('COMPARAÇÃO ANO ANTERIOR', cx3 + 5, y + 6);
+  
+  doc.setFontSize(14);
+  const colorYoy = crescFaturamento >= 0 ? C.green : [239, 68, 68]; // red-500
+  doc.setTextColor(colorYoy[0], colorYoy[1], colorYoy[2]);
+  doc.text(`${crescFaturamento > 0 ? '+' : ''}${crescFaturamento.toFixed(1)}%`, cx3 + 5, y + 16);
+  
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+  doc.text(`Período atual vs ${prevYear}`, cx3 + 5, y + 22);
+  
+  // Desenhar os mini-gráficos de barra
+  const barW = 6;
+  const maxBarH = 8;
+  const barBaseY = y + 20;
+  const barRightMargin = cx3 + cardW - 5;
+  
+  // Valores normalizados para o gráfico
+  const maxVal = Math.max(data.faturamentoData.total, data.faturamentoAnoAnterior, 1);
+  const h1 = (data.faturamentoAnoAnterior / maxVal) * maxBarH;
+  const h2 = (data.faturamentoData.total / maxVal) * maxBarH;
+  
+  // Barra Ano Anterior (Cinza escuro)
+  doc.setFillColor(50, 50, 60);
+  doc.rect(barRightMargin - barW * 2 - 3, barBaseY - h1, barW, h1, 'F');
+  doc.setFontSize(4);
+  doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+  doc.text(String(prevYear), barRightMargin - barW * 2 - 3 + (barW/2), barBaseY + 3, { align: 'center' });
+  
+  // Barra Ano Atual (Verde ou Vermelho)
+  doc.setFillColor(colorYoy[0], colorYoy[1], colorYoy[2]);
+  doc.rect(barRightMargin - barW, barBaseY - h2, barW, h2, 'F');
+  doc.text(String(currYear), barRightMargin - barW + (barW/2), barBaseY + 3, { align: 'center' });
+
+  // Card 4: ACUMULADO DO ANO (YTD)
+  const cx4 = cx3 + cardW + cardGap;
+  doc.setFillColor(C.darkCard[0], C.darkCard[1], C.darkCard[2]);
+  doc.roundedRect(cx4, y, cardW, cardH, 2, 2, 'F');
+  doc.setFillColor(C.cyan[0], C.cyan[1], C.cyan[2]);
+  doc.rect(cx4, y, 2, cardH, 'F');
+  
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+  doc.text('ACUMULADO DO ANO (YTD)', cx4 + 5, y + 6);
+  
+  doc.setFontSize(11);
+  doc.setTextColor(C.white[0], C.white[1], C.white[2]);
+  doc.text(formatCurrency(data.ytdData.currentYtd), cx4 + 5, y + 12);
+  
+  // Indicador de queda/alta logo abaixo do valor
+  const colorYtd = crescYTD >= 0 ? C.green : [239, 68, 68];
+  doc.setFontSize(5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(colorYtd[0], colorYtd[1], colorYtd[2]);
+  doc.text(`${crescYTD > 0 ? '+' : ''}${crescYTD.toFixed(1)}% vs ano anterior`, cx4 + 5, y + 16);
+  
+  // Linha divisória do rodapé do card
+  doc.setDrawColor(40, 40, 50); // cinza bem escuro para o divisor
+  doc.setLineWidth(0.2);
+  doc.line(cx4 + 5, y + 20, cx4 + cardW - 5, y + 20);
+  
+  doc.setFontSize(4.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
+  doc.text(`${currYear} vs ${prevYear}`, cx4 + 5, y + 24);
+  doc.text(`${formatCurrency(data.ytdData.previousYtd)} no anterior`, cx4 + cardW - 5, y + 24, { align: 'right' });
+
+  y += cardH + 8;
 
   // TABELA TOP PRODUTOS
   doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
