@@ -40,11 +40,18 @@ export interface ApuracaoDashboardData {
 
 // Códigos de produtos da campanha Vinagre 10% OFF
 const CODIGOS_VINAGRE = ['10.01.03.10', '10.01.03.11'];
+const CODIGO_BASE = '10.01.03.10';
 
-// Helper: verifica se o código do produto pertence à campanha de Vinagre
+// Helper: verifica se o código do produto pertence à campanha de Vinagre (Evolução)
 function isVinagreCampanha(codigoProduto: string | null | undefined): boolean {
     if (!codigoProduto) return false;
     return CODIGOS_VINAGRE.includes(codigoProduto);
+}
+
+// Helper: verifica se o código do produto pertence ao histórico (Última Compra)
+function isVinagreBase(codigoProduto: string | null | undefined): boolean {
+    if (!codigoProduto) return false;
+    return codigoProduto === CODIGO_BASE;
 }
 
 function safeToISOString(date: Date | string | null | undefined): string | null {
@@ -158,7 +165,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                     itens: {
                         some: {
                             produto: {
-                                codigo: { in: CODIGOS_VINAGRE }
+                                codigo: CODIGO_BASE
                             }
                         }
                     }
@@ -166,7 +173,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 include: {
                     itens: {
                         where: {
-                            produto: { codigo: { in: CODIGOS_VINAGRE } }
+                            produto: { codigo: CODIGO_BASE }
                         },
                         include: {
                             produto: true
@@ -195,7 +202,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 if (Array.isArray(itens)) {
                     for (const item of itens) {
                         const codigoProduto = item?.produto?.codigo ?? '';
-                        if (isVinagreCampanha(codigoProduto)) {
+                        if (isVinagreBase(codigoProduto)) {
                             qtdVinagre += (Number(item?.quantidade) || 0);
                         }
                     }

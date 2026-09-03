@@ -12,8 +12,6 @@ export interface PedidoVinagre {
     numeroPedido: string;
 }
 
-const CODIGOS_VINAGRE = ['10.01.03.10', '10.01.03.11'];
-
 export async function buscarPedidosVinagre(clienteId: string): Promise<PedidoVinagre[]> {
     const user = await getServerUser();
     if (!user) throw new Error('Não autorizado');
@@ -25,14 +23,14 @@ export async function buscarPedidosVinagre(clienteId: string): Promise<PedidoVin
             tipo: { notIn: ['Bonificacao', 'Bonificação', 'bonificacao', 'bonificação', 'BONIFICACAO', 'BONIFICAÇÃO'] },
             itens: {
                 some: {
-                    produto: { codigo: { in: CODIGOS_VINAGRE } }
+                    produto: { codigo: '10.01.03.10' }
                 }
             }
         },
         include: {
             itens: {
                 where: {
-                    produto: { codigo: { in: CODIGOS_VINAGRE } }
+                    produto: { codigo: '10.01.03.10' }
                 },
                 include: { produto: true }
             }
