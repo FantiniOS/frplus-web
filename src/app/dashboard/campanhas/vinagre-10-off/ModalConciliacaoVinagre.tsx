@@ -120,7 +120,8 @@ export default function ModalConciliacaoVinagre({ clienteId, clienteNome, onClos
                                     <th className="py-3 px-2 text-left">Data</th>
                                     <th className="py-3 px-2 text-left">Nº Pedido</th>
                                     <th className="py-3 px-2 text-left">Status</th>
-                                    <th className="py-3 px-2 text-right">Volume (cx)</th>
+                                    <th className="py-3 px-2 text-right">Álcool (cx)</th>
+                                    <th className="py-3 px-2 text-right">Colorido (cx)</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
@@ -161,8 +162,19 @@ export default function ModalConciliacaoVinagre({ clienteId, clienteNome, onClos
                                                     {p.status}
                                                 </span>
                                             </td>
-                                            <td className="py-3 px-2 text-right font-bold text-cyan-400 font-mono">
-                                                {p.qtdVinagre}
+                                            <td className="py-3 px-2 text-right font-bold font-mono">
+                                                {p.qtdAlcool > 0 ? (
+                                                    <span className="text-cyan-400">{p.qtdAlcool}</span>
+                                                ) : (
+                                                    <span className="text-gray-600">-</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-2 text-right font-bold font-mono">
+                                                {p.qtdColorido > 0 ? (
+                                                    <span className="text-amber-400">{p.qtdColorido}</span>
+                                                ) : (
+                                                    <span className="text-gray-600">-</span>
+                                                )}
                                             </td>
                                         </tr>
                                     );
