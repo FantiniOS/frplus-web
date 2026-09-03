@@ -16,7 +16,10 @@ export default function ModalConciliacaoVinagre({ clienteId, clienteNome, onClos
     const [pedidos, setPedidos] = useState<PedidoConciliacaoVinagre[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    
+    // Armazena quais produtos estão selecionados para cada pedido
+    // Record<pedidoId, Set<codigoProduto>>
+    const [selectedProducts, setSelectedProducts] = useState<Record<string, Set<string>>>({});
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -26,11 +29,15 @@ export default function ModalConciliacaoVinagre({ clienteId, clienteNome, onClos
                 const data = await buscarPedidosConciliacaoVinagre(clienteId);
                 setPedidos(data);
                 
-                const initialSelected = new Set<string>();
+                const initialSelected: Record<string, Set<string>> = {};
                 data.forEach(p => {
-                    if (p.isLinked) initialSelected.add(p.id);
+                    if (p.isLinked && p.produtosVinculados) {
+                        initialSelected[p.id] = new Set(p.produtosVinculados);
+                    } else {
+                        initialSelected[p.id] = new Set();
+                    }
                 });
-                setSelectedIds(initialSelected);
+                setSelectedProducts(initialSelected);
             } catch (err: any) {
                 setError(err?.message || 'Erro ao buscar pedidos');
             } finally {
@@ -39,11 +46,16 @@ export default function ModalConciliacaoVinagre({ clienteId, clienteNome, onClos
         })();
     }, [clienteId]);
 
-    const handleToggle = (id: string) => {
-        setSelectedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
+    const handleToggleProduct = (pedidoId: string, produtoCodigo: string) => {
+        setSelectedProducts(prev => {
+            const next = { ...prev };
+            const set = new Set(next[pedidoId] || []);
+            if (set.has(produtoCodigo)) {
+                set.delete(produtoCodigo);
+            } else {
+                set.add(produtoCodigo);
+            }
+            next[pedidoId] = set;
             return next;
         });
     };
@@ -51,14 +63,36 @@ export default function ModalConciliacaoVinagre({ clienteId, clienteNome, onClos
     const handleSave = async () => {
         setSaving(true);
         try {
-            const orig = pedidos.filter(p => p.isLinked).map(p => p.id);
-            const selected = Array.from(selectedIds);
+            // Prepara o payload verificando o que mudou
+            const operacoes: { pedidoId: string, produtos: string[] }[] = [];
             
-            const vincular = selected.filter(id => !orig.includes(id));
-            const desvincular = orig.filter(id => !selected.includes(id));
+            pedidos.forEach(p => {
+                const origSet = new Set(p.produtosVinculados || []);
+                const currSet = selectedProducts[p.id] || new Set();
+                
+                // Se o tamanho for diferente, mudou
+                // Se algum item do current não estiver no original, mudou
+                let changed = origSet.size !== currSet.size;
+                if (!changed) {
+                    const currArray = Array.from(currSet);
+                    for (let i = 0; i < currArray.length; i++) {
+                        if (!origSet.has(currArray[i])) {
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (changed) {
+                    operacoes.push({
+                        pedidoId: p.id,
+                        produtos: Array.from(currSet)
+                    });
+                }
+            });
 
-            if (vincular.length > 0 || desvincular.length > 0) {
-                await salvarConciliacaoVinagre(vincular, desvincular);
+            if (operacoes.length > 0) {
+                await salvarConciliacaoVinagre(operacoes);
             }
             
             onSaved();
@@ -69,10 +103,16 @@ export default function ModalConciliacaoVinagre({ clienteId, clienteNome, onClos
     };
 
     const totalCaixasSelecionadas = useMemo(() => {
-        return pedidos
-            .filter(p => selectedIds.has(p.id))
-            .reduce((sum, p) => sum + p.qtdVinagre, 0);
-    }, [pedidos, selectedIds]);
+        return pedidos.reduce((sum, p) => {
+            const selected = selectedProducts[p.id];
+            if (!selected) return sum;
+            
+            let itemSum = 0;
+            if (selected.has('10.01.03.10')) itemSum += p.qtdAlcool;
+            if (selected.has('10.01.03.11')) itemSum += p.qtdColorido;
+            return sum + itemSum;
+        }, 0);
+    }, [pedidos, selectedProducts]);
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -116,7 +156,6 @@ export default function ModalConciliacaoVinagre({ clienteId, clienteNome, onClos
                         <table className="w-full text-sm">
                             <thead className="text-xs uppercase text-gray-500 border-b border-white/10 sticky top-0 bg-slate-900 z-10 shadow-sm">
                                 <tr>
-                                    <th className="py-3 pr-2 text-left w-8"></th>
                                     <th className="py-3 px-2 text-left">Data</th>
                                     <th className="py-3 px-2 text-left">Nº Pedido</th>
                                     <th className="py-3 px-2 text-left">Status</th>
@@ -126,25 +165,22 @@ export default function ModalConciliacaoVinagre({ clienteId, clienteNome, onClos
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {pedidos.map(p => {
-                                    const isSelected = selectedIds.has(p.id);
+                                    const selectedSet = selectedProducts[p.id] || new Set();
+                                    const hasAlcool = p.qtdAlcool > 0;
+                                    const hasColorido = p.qtdColorido > 0;
+                                    const selectedAlcool = selectedSet.has('10.01.03.10');
+                                    const selectedColorido = selectedSet.has('10.01.03.11');
+                                    const anySelected = selectedAlcool || selectedColorido;
+
                                     return (
                                         <tr
                                             key={p.id}
-                                            onClick={() => handleToggle(p.id)}
-                                            className={`cursor-pointer transition-colors ${
-                                                isSelected
-                                                    ? 'bg-blue-500/10 border-l-2 border-l-blue-500'
+                                            className={`transition-colors ${
+                                                anySelected
+                                                    ? 'bg-blue-500/5 border-l-2 border-l-blue-500'
                                                     : 'hover:bg-white/5'
                                             }`}
                                         >
-                                            <td className="py-3 pr-2 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isSelected}
-                                                    onChange={() => handleToggle(p.id)}
-                                                    className="accent-blue-500 w-4 h-4 rounded border-gray-600 bg-gray-700 focus:ring-blue-500"
-                                                />
-                                            </td>
                                             <td className="py-3 px-2 text-gray-300">
                                                 {new Date(p.data).toLocaleDateString('pt-BR')}
                                             </td>
@@ -162,18 +198,34 @@ export default function ModalConciliacaoVinagre({ clienteId, clienteNome, onClos
                                                     {p.status}
                                                 </span>
                                             </td>
-                                            <td className="py-3 px-2 text-right font-bold font-mono">
-                                                {p.qtdAlcool > 0 ? (
-                                                    <span className="text-cyan-400">{p.qtdAlcool}</span>
+                                            <td className="py-3 px-2 text-right">
+                                                {hasAlcool ? (
+                                                    <label className="inline-flex items-center gap-2 cursor-pointer p-1 hover:bg-white/5 rounded">
+                                                        <span className="font-bold text-cyan-400 font-mono">{p.qtdAlcool}</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedAlcool}
+                                                            onChange={() => handleToggleProduct(p.id, '10.01.03.10')}
+                                                            className="accent-cyan-500 w-4 h-4 rounded border-gray-600 bg-gray-700"
+                                                        />
+                                                    </label>
                                                 ) : (
-                                                    <span className="text-gray-600">-</span>
+                                                    <span className="text-gray-600 font-bold font-mono">-</span>
                                                 )}
                                             </td>
-                                            <td className="py-3 px-2 text-right font-bold font-mono">
-                                                {p.qtdColorido > 0 ? (
-                                                    <span className="text-amber-400">{p.qtdColorido}</span>
+                                            <td className="py-3 px-2 text-right">
+                                                {hasColorido ? (
+                                                    <label className="inline-flex items-center gap-2 cursor-pointer p-1 hover:bg-white/5 rounded">
+                                                        <span className="font-bold text-amber-400 font-mono">{p.qtdColorido}</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedColorido}
+                                                            onChange={() => handleToggleProduct(p.id, '10.01.03.11')}
+                                                            className="accent-amber-500 w-4 h-4 rounded border-gray-600 bg-gray-700"
+                                                        />
+                                                    </label>
                                                 ) : (
-                                                    <span className="text-gray-600">-</span>
+                                                    <span className="text-gray-600 font-bold font-mono">-</span>
                                                 )}
                                             </td>
                                         </tr>

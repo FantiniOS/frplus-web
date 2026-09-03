@@ -12,6 +12,7 @@ export interface PedidoConciliacaoVinagre {
     qtdColorido: number;  // 10.01.03.11
     numeroPedido: string;
     isLinked: boolean;
+    produtosVinculados: string[];
 }
 
 const CODIGOS_VINAGRE = ['10.01.03.10', '10.01.03.11'];
@@ -53,15 +54,28 @@ export async function buscarPedidosConciliacaoVinagre(clienteId: string): Promis
                 else if (codigo === '10.01.03.11') qtdColorido += qtd;
             }
         }
+        
+        let produtosVinculados: string[] = [];
+        if (p.campanha10OffAplicada) {
+            if (p.campanhaVinagreProdutos) {
+                produtosVinculados = p.campanhaVinagreProdutos.split(',');
+            } else {
+                // Retrocompatibilidade: se aplicou antes de ter o campo de granularidade, conta todos que tiverem qtd
+                if (qtdAlcool > 0) produtosVinculados.push('10.01.03.10');
+                if (qtdColorido > 0) produtosVinculados.push('10.01.03.11');
+            }
+        }
+
         return {
             id: p.id,
             data: p.data instanceof Date ? p.data.toISOString() : String(p.data),
             status: p.status || '-',
-            qtdVinagre: qtdAlcool + qtdColorido,
+            qtdVinagre: (produtosVinculados.includes('10.01.03.10') ? qtdAlcool : 0) + (produtosVinculados.includes('10.01.03.11') ? qtdColorido : 0),
             qtdAlcool,
             qtdColorido,
             numeroPedido: p.id.slice(-8).toUpperCase(),
-            isLinked: p.campanha10OffAplicada === true
+            isLinked: p.campanha10OffAplicada === true,
+            produtosVinculados
         };
     });
 }

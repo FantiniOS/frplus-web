@@ -103,6 +103,7 @@ model Pedido {
   pagoAoVendedor           Boolean   @default(false)
   dataPagamentoAoVendedor  DateTime?
   campanha10OffAplicada    Boolean   @default(false)
+  campanhaVinagreProdutos  String?   // Produtos vinculados na campanha (ex: "10.01.03.10,10.01.03.11")
   itens                    ItemPedido[]
   createdAt                DateTime     @default(now())
   updatedAt                DateTime     @updatedAt

@@ -246,9 +246,14 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
 
             pedidosCliente.forEach((pedido: any) => {
                 const itensPedido = Array.isArray(pedido?.itens) ? pedido.itens : [];
+                // Retrocompatibilidade: se nulo, permite todos os códigos da campanha
+                const produtosPermitidos = pedido.campanhaVinagreProdutos 
+                    ? pedido.campanhaVinagreProdutos.split(',') 
+                    : CODIGOS_VINAGRE;
+
                 itensPedido.forEach((item: any) => {
                     const codigoProduto = item?.produto?.codigo ?? '';
-                    if (isVinagreCampanha(codigoProduto)) {
+                    if (isVinagreCampanha(codigoProduto) && produtosPermitidos.includes(codigoProduto)) {
                         const qtd = Number(item?.quantidade) || 0;
                         volumeRealizado += qtd;
                         
