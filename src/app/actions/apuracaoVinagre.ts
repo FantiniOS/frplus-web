@@ -38,10 +38,13 @@ export interface ApuracaoDashboardData {
     campanhaAtiva: boolean;
 }
 
-// Helper: verifica se o código do produto corresponde a "Vinagre de Álcool 750ml"
-function isVinagre750ml(codigoProduto: string | null | undefined): boolean {
+// Códigos de produtos da campanha Vinagre 10% OFF
+const CODIGOS_VINAGRE = ['10.01.03.10', '10.01.03.11'];
+
+// Helper: verifica se o código do produto pertence à campanha de Vinagre
+function isVinagreCampanha(codigoProduto: string | null | undefined): boolean {
     if (!codigoProduto) return false;
-    return codigoProduto === '10.01.03.10';
+    return CODIGOS_VINAGRE.includes(codigoProduto);
 }
 
 function safeToISOString(date: Date | string | null | undefined): string | null {
@@ -96,7 +99,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                             tipo: 'Venda',
                             itens: {
                                 some: { 
-                                    produto: { codigo: '10.01.03.10' },
+                                    produto: { codigo: { in: CODIGOS_VINAGRE } },
                                     precoUnitario: { gt: 0 }
                                 }
                             }
@@ -104,7 +107,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                         include: {
                             itens: {
                                 where: {
-                                    produto: { codigo: '10.01.03.10' },
+                                    produto: { codigo: { in: CODIGOS_VINAGRE } },
                                     precoUnitario: { gt: 0 }
                                 },
                                 include: {
@@ -155,7 +158,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                     itens: {
                         some: {
                             produto: {
-                                codigo: '10.01.03.10'
+                                codigo: { in: CODIGOS_VINAGRE }
                             }
                         }
                     }
@@ -163,7 +166,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 include: {
                     itens: {
                         where: {
-                            produto: { codigo: '10.01.03.10' }
+                            produto: { codigo: { in: CODIGOS_VINAGRE } }
                         },
                         include: {
                             produto: true
@@ -192,7 +195,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 if (Array.isArray(itens)) {
                     for (const item of itens) {
                         const codigoProduto = item?.produto?.codigo ?? '';
-                        if (isVinagre750ml(codigoProduto)) {
+                        if (isVinagreCampanha(codigoProduto)) {
                             qtdVinagre += (Number(item?.quantidade) || 0);
                         }
                     }
@@ -213,9 +216,11 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
         let volumeTotalBase = 0;
         let metaGlobal = 0;
 
-        const produtoVinagre = await prisma.produto.findFirst({
-            where: { codigo: '10.01.03.10' }
+        const produtosVinagre = await prisma.produto.findMany({
+            where: { codigo: { in: CODIGOS_VINAGRE } }
         });
+        // Usar o primeiro produto encontrado como referência de preço
+        const produtoVinagre = produtosVinagre.length > 0 ? produtosVinagre[0] : null;
 
         const hitList: HitListClient[] = clientesAtacado.map(cliente => {
             let volumeRealizado = 0;
@@ -243,7 +248,7 @@ export async function getHitListVinagre(): Promise<ApuracaoDashboardData | { err
                 const itensPedido = Array.isArray(pedido?.itens) ? pedido.itens : [];
                 itensPedido.forEach((item: any) => {
                     const codigoProduto = item?.produto?.codigo ?? '';
-                    if (isVinagre750ml(codigoProduto)) {
+                    if (isVinagreCampanha(codigoProduto)) {
                         const qtd = Number(item?.quantidade) || 0;
                         volumeRealizado += qtd;
                         
