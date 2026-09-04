@@ -136,10 +136,10 @@ export default function MontagemCargasPage() {
     // ORDENAÇÃO: Data do pedido → Volume
     const sortedFilteredOrders = useMemo(() => {
         return [...filteredOrders].sort((a, b) => {
-            // 1º Critério: Data do pedido (mais antigo primeiro)
+            // 1º Critério: Data do pedido (mais recente primeiro)
             const aDate = getDataPedido(a) || '';
             const bDate = getDataPedido(b) || '';
-            if (aDate !== bDate) return aDate.localeCompare(bDate);
+            if (aDate !== bDate) return bDate.localeCompare(aDate);
 
             // 2º Critério: Volume (maior primeiro)
             return getVolume(b) - getVolume(a);
