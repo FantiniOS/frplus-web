@@ -4,10 +4,10 @@ import { DollarSign, Users, ShoppingCart, TrendingUp, Package, Calendar, Award, 
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
-import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
+
 import { InteractiveChart } from "@/components/dashboard/InteractiveChart";
 import { MonthSelector } from "@/components/ui/MonthSelector";
-import { useState, useMemo, Suspense, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, Phone } from "lucide-react";
 import { VisitasCalendar } from "@/components/dashboard/VisitasCalendar";
@@ -746,14 +746,54 @@ export default function DashboardPage() {
           </div>
       </div>
 
-      {/* ===== AI Insights ===== */}
-      <Suspense fallback={
-        <div className="flex justify-center p-8">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      {/* ===== TOP CLIENTES ===== */}
+      <div className="grid grid-cols-1">
+        <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-5 shadow-xl shadow-black/30 flex flex-col min-h-[300px]">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-1.5 rounded-lg bg-amber-500/15">
+              <Users className="h-3.5 w-3.5 text-amber-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-white/90">Top Clientes</h3>
+            <span className="text-[10px] text-gray-600 ml-auto capitalize">{monthName}</span>
+          </div>
+
+          {topClients.length === 0 ? (
+            <p className="text-xs text-gray-600 text-center py-6 flex-1 flex items-center justify-center">Sem dados de vendas neste período</p>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 flex-1 overflow-y-auto pr-1">
+              {topClients.map((client, i) => {
+                const maxTotal = topClients[0]?.total || 1;
+                const barWidth = Math.max((client.total / maxTotal) * 100, 8);
+                const medals = ['🥇', '🥈', '🥉'];
+
+                return (
+                  <div key={i} className="group/item">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm flex-shrink-0">{medals[i] || `#${i + 1}`}</span>
+                        <p className="text-xs font-medium text-white/80 truncate">{client.name}</p>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="text-[10px] text-gray-500 tabular-nums">{client.qtd} ped.</span>
+                        <span className="text-[10px] font-semibold text-gray-400 tabular-nums w-20 text-right">
+                          R$ {(client.total || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="h-1 bg-white/[0.04] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-amber-500/60 to-amber-400/40 transition-all duration-500"
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      }>
-        <AIInsightsPanel />
-      </Suspense>
+      </div>
 
       {/* ===== MODAL DE FATURAMENTO DIFERENTE DE VENDAS ===== */}
       {showSpilloverModal && (
