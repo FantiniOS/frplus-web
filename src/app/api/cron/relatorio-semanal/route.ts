@@ -19,95 +19,101 @@ export async function GET(request: Request) {
         const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
         const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday, 0, 0, 0, 0);
 
-        // BLOCO 1: Termômetro Mensal (Apenas Vendas)
-        const aggregateMes = await prisma.pedido.aggregate({
-            _sum: { valorTotal: true },
-            where: {
-                dataFaturamento: { gte: startOfMonth, lte: now },
-                status: { in: ['Faturado', 'Concluido'] },
-                tipo: 'Venda'
-            }
-        });
-        const totalFaturadoMes = aggregateMes._sum.valorTotal ? Number(aggregateMes._sum.valorTotal) : 0;
-
-        // BLOCO 2: Faturamento da Semana (Apenas Vendas)
-        const aggregateSemanaVendas = await prisma.pedido.aggregate({
-            _sum: { valorTotal: true },
-            _count: { id: true },
-            where: {
-                dataFaturamento: { gte: startOfWeek, lte: now },
-                status: { in: ['Faturado', 'Concluido'] },
-                tipo: 'Venda'
-            }
-        });
-        const totalFaturadoSemana = aggregateSemanaVendas._sum.valorTotal ? Number(aggregateSemanaVendas._sum.valorTotal) : 0;
-        const qtdePedidosVenda = aggregateSemanaVendas._count.id;
-
-        // BLOCO 2: Bonificações da Semana
-        const aggregateSemanaBonif = await prisma.pedido.aggregate({
-            _sum: { valorTotal: true },
-            _count: { id: true },
-            where: {
-                dataFaturamento: { gte: startOfWeek, lte: now },
-                status: { in: ['Faturado', 'Concluido'] },
-                tipo: 'Bonificacao'
-            }
-        });
-        const totalBonificacaoSemana = aggregateSemanaBonif._sum.valorTotal ? Number(aggregateSemanaBonif._sum.valorTotal) : 0;
-        const qtdePedidosBonif = aggregateSemanaBonif._count.id;
-        
-        const totalPedidosSemana = qtdePedidosVenda + qtdePedidosBonif;
-
-        // Top 3 Produtos Mais Vendidos (Curva ABC da Semana) - Apenas Vendas
-        const itensGroup = await prisma.itemPedido.groupBy({
-            by: ['produtoId'],
-            _sum: { quantidade: true, total: true },
-            where: {
-                pedido: {
+        // Disparando todas as consultas principais ao banco de dados em PARALELO
+        // Isso reduz o tempo de execução (que estava batendo 6 segundos) para ~1.5s, evitando o erro de Timeout (10s) da Vercel
+        const [
+            aggregateMes,
+            aggregateSemanaVendas,
+            aggregateSemanaBonif,
+            itensGroup,
+            clientesGroup
+        ] = await Promise.all([
+            // BLOCO 1: Termômetro Mensal (Apenas Vendas)
+            prisma.pedido.aggregate({
+                _sum: { valorTotal: true },
+                where: {
+                    dataFaturamento: { gte: startOfMonth, lte: now },
+                    status: { in: ['Faturado', 'Concluido'] },
+                    tipo: 'Venda'
+                }
+            }),
+            // BLOCO 2: Faturamento da Semana (Apenas Vendas)
+            prisma.pedido.aggregate({
+                _sum: { valorTotal: true },
+                _count: { id: true },
+                where: {
                     dataFaturamento: { gte: startOfWeek, lte: now },
                     status: { in: ['Faturado', 'Concluido'] },
                     tipo: 'Venda'
                 }
-            },
-            orderBy: { _sum: { quantidade: 'desc' } },
-            take: 3
-        });
+            }),
+            // BLOCO 2: Bonificações da Semana
+            prisma.pedido.aggregate({
+                _sum: { valorTotal: true },
+                _count: { id: true },
+                where: {
+                    dataFaturamento: { gte: startOfWeek, lte: now },
+                    status: { in: ['Faturado', 'Concluido'] },
+                    tipo: 'Bonificacao'
+                }
+            }),
+            // Top 3 Produtos Mais Vendidos (Curva ABC da Semana)
+            prisma.itemPedido.groupBy({
+                by: ['produtoId'],
+                _sum: { quantidade: true, total: true },
+                where: {
+                    pedido: {
+                        dataFaturamento: { gte: startOfWeek, lte: now },
+                        status: { in: ['Faturado', 'Concluido'] },
+                        tipo: 'Venda'
+                    }
+                },
+                orderBy: { _sum: { quantidade: 'desc' } },
+                take: 3
+            }),
+            // Top 3 Clientes da Semana
+            prisma.pedido.groupBy({
+                by: ['clienteId'],
+                _sum: { valorTotal: true },
+                where: {
+                    dataFaturamento: { gte: startOfWeek, lte: now },
+                    status: { in: ['Faturado', 'Concluido'] },
+                    tipo: 'Venda'
+                },
+                orderBy: { _sum: { valorTotal: 'desc' } },
+                take: 3
+            })
+        ]);
 
-        const topProdutos = [];
-        for (const p of itensGroup) {
-            const prod = await prisma.produto.findUnique({ where: { id: p.produtoId } });
-            if (prod) {
-                topProdutos.push({
-                    nome: prod.nome,
+        const totalFaturadoMes = aggregateMes._sum.valorTotal ? Number(aggregateMes._sum.valorTotal) : 0;
+        const totalFaturadoSemana = aggregateSemanaVendas._sum.valorTotal ? Number(aggregateSemanaVendas._sum.valorTotal) : 0;
+        const qtdePedidosVenda = aggregateSemanaVendas._count.id;
+        const totalBonificacaoSemana = aggregateSemanaBonif._sum.valorTotal ? Number(aggregateSemanaBonif._sum.valorTotal) : 0;
+        const qtdePedidosBonif = aggregateSemanaBonif._count.id;
+        const totalPedidosSemana = qtdePedidosVenda + qtdePedidosBonif;
+
+        // Buscando os nomes dos Produtos em paralelo
+        const topProdutos = await Promise.all(
+            itensGroup.map(async (p) => {
+                const prod = await prisma.produto.findUnique({ where: { id: p.produtoId } });
+                return {
+                    nome: prod ? prod.nome : 'Produto Desconhecido',
                     quantidade: p._sum.quantidade || 0,
                     valor: p._sum.total ? Number(p._sum.total) : 0
-                });
-            }
-        }
+                };
+            })
+        );
 
-        // Top 3 Clientes da Semana - Apenas Vendas
-        const clientesGroup = await prisma.pedido.groupBy({
-            by: ['clienteId'],
-            _sum: { valorTotal: true },
-            where: {
-                dataFaturamento: { gte: startOfWeek, lte: now },
-                status: { in: ['Faturado', 'Concluido'] },
-                tipo: 'Venda'
-            },
-            orderBy: { _sum: { valorTotal: 'desc' } },
-            take: 3
-        });
-
-        const topClientes = [];
-        for (const c of clientesGroup) {
-            const cli = await prisma.cliente.findUnique({ where: { id: c.clienteId } });
-            if (cli) {
-                topClientes.push({
-                    nome: cli.nomeFantasia || cli.razaoSocial,
+        // Buscando os nomes dos Clientes em paralelo
+        const topClientes = await Promise.all(
+            clientesGroup.map(async (c) => {
+                const cli = await prisma.cliente.findUnique({ where: { id: c.clienteId } });
+                return {
+                    nome: cli ? (cli.nomeFantasia || cli.razaoSocial) : 'Cliente Desconhecido',
                     valor: c._sum.valorTotal ? Number(c._sum.valorTotal) : 0
-                });
-            }
-        }
+                };
+            })
+        );
 
         const formatCurrency = (val: number) => 
             new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
