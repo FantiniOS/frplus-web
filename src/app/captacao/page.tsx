@@ -22,6 +22,7 @@ export default function CaptacaoPage() {
 
   const [selectedCliente, setSelectedCliente] = useState<string>('');
   const [cart, setCart] = useState<{ [produtoId: string]: number }>({});
+  const [priceHistory, setPriceHistory] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -51,6 +52,7 @@ export default function CaptacaoPage() {
     if (!selectedCliente) {
       setProdutos([]);
       setTabelaCliente('');
+      setPriceHistory({});
       setCart({});
       return;
     }
@@ -58,11 +60,23 @@ export default function CaptacaoPage() {
     const fetchProdutos = async () => {
       setLoadingProdutos(true);
       try {
-        const res = await fetch(`/api/captacao?clienteId=${selectedCliente}`);
-        if (!res.ok) throw new Error('Falha ao carregar produtos');
-        const data = await res.json();
+        const [prodRes, histRes] = await Promise.all([
+          fetch(`/api/captacao?clienteId=${selectedCliente}`),
+          fetch(`/api/clients/${selectedCliente}/product-history`)
+        ]);
+
+        if (!prodRes.ok) throw new Error('Falha ao carregar produtos');
+        const data = await prodRes.json();
         setProdutos(data.produtos || []);
         setTabelaCliente(data.tabela || '');
+
+        if (histRes.ok) {
+          const histData = await histRes.json();
+          setPriceHistory(histData || {});
+        } else {
+          setPriceHistory({});
+        }
+
         setCart({}); // Limpa o carrinho ao trocar de cliente
       } catch (err) {
         setError('Erro ao carregar tabela de preços.');
@@ -271,6 +285,7 @@ export default function CaptacaoPage() {
               {produtos.map((produto) => {
                 const qty = cart[produto.id] || 0;
                 const preco = Number(produto.precoUnitario);
+                const lastPrice = priceHistory[produto.id];
                 
                 return (
                   <div
@@ -283,9 +298,16 @@ export default function CaptacaoPage() {
                   >
                     <div className="flex-1 mb-3">
                       <h3 className="font-medium text-gray-200 line-clamp-2">{produto.nome}</h3>
-                      <p className="text-blue-400 font-semibold mt-1">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preco)}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <p className="text-blue-400 font-semibold">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preco)}
+                        </p>
+                        {lastPrice != null && lastPrice > 0 && (
+                          <span className="text-[10px] bg-yellow-400/10 text-yellow-400 px-1.5 py-0.5 rounded border border-yellow-400/20" title="Último preço praticado para este cliente">
+                            Últ: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(lastPrice)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="flex items-center justify-between mt-auto">
