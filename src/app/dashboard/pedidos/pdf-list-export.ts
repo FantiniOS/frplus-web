@@ -127,40 +127,48 @@ export async function generatePedidosListPDF(data: PedidosListPDFData) {
   doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
   doc.roundedRect(margin.left, y, contentW, 16, 2, 2, 'FD');
 
+  const valorVendas = data.orders.reduce((acc, o) => acc + (o.tipo !== 'Bonificacao' ? Number(o.valorTotal) : 0), 0);
+  const valorBonificacoes = data.orders.reduce((acc, o) => acc + (o.tipo === 'Bonificacao' ? Number(o.valorTotal) : 0), 0);
+
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(C.gray[0], C.gray[1], C.gray[2]);
   
-  // Coluna 1
-  doc.text('Total de Registros:', margin.left + 5, y + 6);
+  // Linha 1: Contagens
+  doc.text('Vendas Emitidas:', margin.left + 5, y + 6);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.dark[0], C.dark[1], C.dark[2]);
-  doc.text(String(data.stats.total), margin.left + 35, y + 6);
+  doc.text(String(data.stats.vendas), margin.left + 30, y + 6);
 
-  // Coluna 2
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(C.gray[0], C.gray[1], C.gray[2]);
-  doc.text('Vendas:', margin.left + 60, y + 6);
+  doc.text('Bonificações:', margin.left + 65, y + 6);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.dark[0], C.dark[1], C.dark[2]);
-  doc.text(String(data.stats.vendas), margin.left + 75, y + 6);
+  doc.text(String(data.stats.bonificacoes), margin.left + 85, y + 6);
 
-  // Coluna 3
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(C.gray[0], C.gray[1], C.gray[2]);
-  doc.text('Bonificações:', margin.left + 100, y + 6);
+  doc.text('Total de Registros:', margin.left + 120, y + 6);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.dark[0], C.dark[1], C.dark[2]);
-  doc.text(String(data.stats.bonificacoes), margin.left + 122, y + 6);
+  doc.text(String(data.stats.total), margin.left + 145, y + 6);
 
-  // Faturamento Total (Linha de baixo ou ao lado)
-  doc.setFontSize(10);
+  // Linha 2: Valores
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(C.gray[0], C.gray[1], C.gray[2]);
-  doc.text('Faturamento (Apenas Vendas):', margin.left + 5, y + 12);
+  doc.text('Faturamento (Vendas):', margin.left + 5, y + 12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(C.venda[0], C.venda[1], C.venda[2]);
-  doc.text(formatCurrency(data.stats.valorTotal), margin.left + 53, y + 12);
+  doc.text(formatCurrency(valorVendas), margin.left + 39, y + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(C.gray[0], C.gray[1], C.gray[2]);
+  doc.text('Custo (Bonificações):', margin.left + 75, y + 12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(C.bonif[0], C.bonif[1], C.bonif[2]);
+  doc.text(formatCurrency(valorBonificacoes), margin.left + 107, y + 12);
 
   y += 24;
 
@@ -170,7 +178,6 @@ export async function generatePedidosListPDF(data: PedidosListPDFData) {
     
     return [
       formatDate(rawDate),
-      formatDate(o.dataNotaFiscal || o.dataFaturamento) || '-',
       o.notaFiscal || '-',
       o.nomeCliente || 'Sem Cliente',
       o.tipo === 'Bonificacao' ? 'BONIF' : 'VENDA',
@@ -179,13 +186,13 @@ export async function generatePedidosListPDF(data: PedidosListPDFData) {
   });
 
   if (tableData.length === 0) {
-    tableData.push(['-', '-', '-', 'Nenhum pedido encontrado no período selecionado.', '-', '-']);
+    tableData.push(['-', '-', 'Nenhum pedido encontrado no período selecionado.', '-', '-']);
   }
 
   // Tabela de Pedidos usando autotable
   autoTable(doc, {
     startY: y,
-    head: [["DATA", "DATA NF", "NOTA FISCAL", "CLIENTE", "TIPO", "VALOR TOTAL (R$)"]],
+    head: [["DATA", "NOTA FISCAL", "CLIENTE", "TIPO", "VALOR TOTAL (R$)"]],
     body: tableData,
     theme: "plain",
     styles: {
@@ -208,14 +215,13 @@ export async function generatePedidosListPDF(data: PedidosListPDFData) {
     },
     columnStyles: {
       0: { cellWidth: 20 },
-      1: { cellWidth: 20 },
-      2: { cellWidth: 25 },
-      3: { cellWidth: 'auto', fontStyle: "bold" },
-      4: { cellWidth: 15, halign: "center", fontStyle: "bold" },
-      5: { cellWidth: 35, halign: "right", fontStyle: "bold" },
+      1: { cellWidth: 25 },
+      2: { cellWidth: 'auto', fontStyle: "bold" },
+      3: { cellWidth: 15, halign: "center", fontStyle: "bold" },
+      4: { cellWidth: 35, halign: "right", fontStyle: "bold" },
     },
     didParseCell: function(hookData) {
-        if (hookData.section === 'body' && hookData.column.index === 4) {
+        if (hookData.section === 'body' && hookData.column.index === 3) {
              const type = hookData.cell.raw;
              if (type === 'BONIF') {
                  hookData.cell.styles.textColor = C.bonif;
@@ -223,9 +229,9 @@ export async function generatePedidosListPDF(data: PedidosListPDFData) {
                  hookData.cell.styles.textColor = C.venda;
              }
         }
-        if (hookData.section === 'body' && hookData.column.index === 5) {
+        if (hookData.section === 'body' && hookData.column.index === 4) {
              const rowRaw = hookData.row.raw as string[];
-             const type = rowRaw[4];
+             const type = rowRaw[3];
              if (type === 'BONIF') {
                  hookData.cell.styles.textColor = C.bonif;
              }
