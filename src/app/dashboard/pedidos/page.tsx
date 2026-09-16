@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Plus, Pencil, Trash2, Calendar, DollarSign, FileText, Package, Eye, Printer, Download, Filter, X, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Calendar, DollarSign, FileText, Package, Eye, Printer, Download, Filter, X, ChevronRight, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -12,7 +12,7 @@ import { PedidoExportButton } from "@/components/PedidoExportButton";
 
 export default function PedidosPage() {
     const { orders, fabricas, removeOrder, refreshOrders } = useData();
-    const { isIndustria } = useAuth();
+    const { isIndustria, usuario } = useAuth();
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -89,6 +89,25 @@ export default function PedidosPage() {
     };
 
     const monthName = selectedMonth ? new Date(selectedMonth + '-02').toLocaleString('pt-BR', { month: 'long', year: 'numeric' }) : 'Todo o Histórico';
+
+    const [isExportingList, setIsExportingList] = useState(false);
+
+    const handleExportList = async () => {
+        setIsExportingList(true);
+        try {
+            const { generatePedidosListPDF } = await import('./pdf-list-export');
+            await generatePedidosListPDF({
+                periodName: monthName,
+                usuarioNome: usuario?.nome || 'Usuário',
+                stats,
+                orders: filteredOrders
+            });
+        } catch (error) {
+            console.error("Erro ao gerar PDF:", error);
+        } finally {
+            setIsExportingList(false);
+        }
+    };
 
     return (
         <div className="flex flex-col gap-3 animate-in fade-in duration-500 h-full">
@@ -192,6 +211,16 @@ export default function PedidosPage() {
                         </button>
                     ))}
                 </div>
+
+                {/* Exportar Lista */}
+                <button 
+                    onClick={handleExportList}
+                    disabled={isExportingList || filteredOrders.length === 0}
+                    className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isExportingList ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">{isExportingList ? 'Exportando...' : 'Exportar PDF'}</span>
+                </button>
 
                 {/* Novo Pedido */}
                 {!isIndustria && (
