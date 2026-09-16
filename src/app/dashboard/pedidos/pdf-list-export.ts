@@ -59,16 +59,20 @@ export async function generatePedidosListPDF(data: PedidosListPDFData) {
   const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-  // PALETA CLARA/CORPORATIVA
+  // PALETA PREMIUM (Baseada no padrão existente)
   const C = {
-    dark: [24, 24, 27] as [number, number, number],
+    dark: [10, 10, 14] as [number, number, number],
     primary: [37, 99, 235] as [number, number, number],
+    cyan: [6, 182, 212] as [number, number, number],
     gray: [113, 113, 122] as [number, number, number],
     lightGray: [244, 244, 245] as [number, number, number],
     border: [228, 228, 231] as [number, number, number],
     bonif: [245, 158, 11] as [number, number, number],
     venda: [16, 185, 129] as [number, number, number],
     white: [255, 255, 255] as [number, number, number],
+    textMuted: [100, 116, 139] as [number, number, number],
+    textLight: [203, 213, 225] as [number, number, number],
+    rowAlt: [248, 250, 252] as [number, number, number],
   };
 
   const logoBase64 = await getBase64Image('/logo.png');
@@ -76,34 +80,37 @@ export async function generatePedidosListPDF(data: PedidosListPDFData) {
   // Desenha o cabeçalho
   const drawHeader = () => {
     // Fundo do cabeçalho
-    doc.setFillColor(C.lightGray[0], C.lightGray[1], C.lightGray[2]);
-    doc.rect(0, 0, pageWidth, 35, 'F');
+    doc.setFillColor(C.dark[0], C.dark[1], C.dark[2]);
+    doc.rect(0, 0, pageWidth, 42, 'F');
     
     // Logo
     if (logoBase64 && logoBase64.data) {
-      doc.addImage(logoBase64.data, 'PNG', margin.left, 5, 35, (35 * logoBase64.height) / logoBase64.width);
+      doc.addImage(logoBase64.data, 'PNG', margin.left, 8, 40, (40 * logoBase64.height) / logoBase64.width);
     }
     
     // Textos do cabeçalho
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(C.dark[0], C.dark[1], C.dark[2]);
-    doc.text('LISTAGEM DE PEDIDOS DE VENDA', pageWidth - margin.right, 12, { align: 'right' });
+    doc.setTextColor(C.white[0], C.white[1], C.white[2]);
+    doc.text('LISTAGEM DE PEDIDOS DE VENDA', pageWidth - margin.right, 14, { align: 'right' });
     
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(C.gray[0], C.gray[1], C.gray[2]);
-    doc.text(`Período: ${data.periodName}`, pageWidth - margin.right, 18, { align: 'right' });
+    doc.setTextColor(C.textLight[0], C.textLight[1], C.textLight[2]);
+    doc.text(`Período Selecionado: ${data.periodName}`, pageWidth - margin.right, 20, { align: 'right' });
     
     doc.setFontSize(8);
-    doc.text(`Gerado por: ${data.usuarioNome}`, pageWidth - margin.right, 24, { align: 'right' });
-    doc.text(`Emissão: ${dateStr} às ${timeStr}`, pageWidth - margin.right, 29, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(C.cyan[0], C.cyan[1], C.cyan[2]);
+    doc.text(`Gerado por: ${data.usuarioNome} em ${dateStr} às ${timeStr}`, pageWidth - margin.right, 32, { align: 'right' });
     
     // Linha de detalhe
     doc.setFillColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.rect(0, 35, pageWidth, 1, 'F');
+    doc.rect(0, 38, pageWidth * 0.5, 2, 'F');
+    doc.setFillColor(C.cyan[0], C.cyan[1], C.cyan[2]);
+    doc.rect(pageWidth * 0.5, 38, pageWidth * 0.5, 2, 'F');
     
-    return 45;
+    return 48;
   };
 
   y = drawHeader();
@@ -190,16 +197,14 @@ export async function generatePedidosListPDF(data: PedidosListPDFData) {
       lineWidth: 0.1, // Bordas sutis
     },
     headStyles: {
-      fillColor: C.lightGray,
-      textColor: C.dark,
+      fillColor: C.dark,
+      textColor: C.white,
       fontStyle: "bold",
-      fontSize: 8,
+      fontSize: 7,
       valign: 'middle',
-      lineWidth: 0.1,
-      lineColor: C.border
     },
     alternateRowStyles: {
-      fillColor: [250, 250, 250]
+      fillColor: C.rowAlt
     },
     columnStyles: {
       0: { cellWidth: 20 },
