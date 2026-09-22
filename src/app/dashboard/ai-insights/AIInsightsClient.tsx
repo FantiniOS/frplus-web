@@ -12,6 +12,7 @@ import ConsultoriaPrimeiroPedido from './ConsultoriaPrimeiroPedido';
 
 interface PrestesAComprarClient {
     id: string;
+    radarKey?: string;
     nomeFantasia: string;
     razaoSocial: string;
     comprador?: string | null;
@@ -876,7 +877,7 @@ export default function AIInsightsClient() {
                                                         const diasRestantes = client.diasInativo !== null ? maxWindow - client.diasInativo : 0;
                                                         const alertaColor = diasRestantes <= 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-green-500/20 text-green-400 border-green-500/40';
                                                         return (
-                                                            <tr key={client.id} className="hover:bg-white/5">
+                                                            <tr key={client.radarKey || client.id} className="hover:bg-white/5">
                                                                 <td className="px-4 py-3">
                                                                     <div className="flex flex-wrap items-center gap-2 mb-1">
                                                                         <p className="font-medium text-white">{client.nomeFantasia}</p>
@@ -1011,7 +1012,7 @@ export default function AIInsightsClient() {
                                                 const alertaColor = diasRestantes <= 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-green-500/20 text-green-400 border-green-500/40';
 
                                                 return (
-                                                    <tr key={client.id} className="hover:bg-white/5">
+                                                    <tr key={client.radarKey || client.id} className="hover:bg-white/5">
                                                         <td className="px-4 py-3">
                                                             <div className="flex flex-wrap items-center gap-2 mb-1">
                                                                 <p className="font-medium text-white">{client.nomeFantasia}</p>
@@ -1131,7 +1132,7 @@ export default function AIInsightsClient() {
                                                 </thead>
                                                 <tbody className="divide-y divide-red-500/10">
                                                     {clientesRecuperacao.map(client => (
-                                                        <tr key={client.id} className="hover:bg-red-500/5">
+                                                        <tr key={client.radarKey || client.id} className="hover:bg-red-500/5">
                                                             <td className="px-4 py-3">
                                                                 <div className="flex flex-wrap items-center gap-2 mb-1">
                                                                     <p className="font-medium text-white">{client.nomeFantasia}</p>
@@ -1596,7 +1597,7 @@ export default function AIInsightsClient() {
                                                         const message = getMessageForClient(greetingName);
                                                         const whatsappLink = `https://wa.me/55${(client.celular || client.telefone)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
                                                         return (
-                                                            <tr key={client.id} className="hover:bg-white/5">
+                                                            <tr key={client.radarKey || client.id} className="hover:bg-white/5">
                                                                 <td className="px-4 py-2 text-white">{client.nomeFantasia}</td>
                                                                 <td className="px-4 py-2 text-gray-400 hidden sm:table-cell">{client.comprador || '-'}</td>
                                                                 <td className="px-4 py-2 text-right">
@@ -1935,7 +1936,7 @@ export default function AIInsightsClient() {
                                                 const greetingName = client.comprador?.split(' ')[0] || client.nomeFantasia || 'Cliente';
                                                 return (
                                                     <button
-                                                        key={client.id}
+                                                        key={client.radarKey || client.id}
                                                         onClick={() => dispatchWhatsApp(greetingName, phone)}
                                                         disabled={!phone}
                                                         className="w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed group"
