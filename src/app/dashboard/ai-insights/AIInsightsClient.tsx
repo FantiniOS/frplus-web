@@ -480,7 +480,8 @@ export default function AIInsightsClient() {
     const clientesRadarQuente = useMemo(() =>
         prestesAComprarClients.filter(c => {
             const diasInativo = c.diasInativo ?? 0;
-            const isChurn = diasInativo > LIMITE_RECUPERACAO_DIAS && diasInativo > c.cicloMedioDias;
+            const ciclo = c.cicloAjustado || c.cicloMedioDias;
+            const isChurn = diasInativo > LIMITE_RECUPERACAO_DIAS && diasInativo > ciclo;
             return !isChurn;
         }),
         [prestesAComprarClients]
@@ -489,7 +490,8 @@ export default function AIInsightsClient() {
     const clientesRecuperacao = useMemo(() =>
         prestesAComprarClients.filter(c => {
             const diasInativo = c.diasInativo ?? 0;
-            const isChurn = diasInativo > LIMITE_RECUPERACAO_DIAS && diasInativo > c.cicloMedioDias;
+            const ciclo = c.cicloAjustado || c.cicloMedioDias;
+            const isChurn = diasInativo > LIMITE_RECUPERACAO_DIAS && diasInativo > ciclo;
             return isChurn;
         }),
         [prestesAComprarClients]
@@ -884,7 +886,7 @@ export default function AIInsightsClient() {
                                                                             </span>
                                                                         ) : (
                                                                             <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-green-500/20 text-green-400 border border-green-500/30 break-normal whitespace-nowrap">
-                                                                                Em dia (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - (client.diasInativo ?? 0))} dias)
+                                                                                No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - (client.diasInativo ?? 0))} dias)
                                                                             </span>
                                                                         )}
                                                                     </div>

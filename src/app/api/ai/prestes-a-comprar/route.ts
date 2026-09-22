@@ -16,6 +16,10 @@ const TETO_ANTECEDENCIA_DIAS = 7;
 
 // Percentual de antecedência sobre o giro médio (15%).
 const PERCENTUAL_ANTECEDENCIA = 0.15;
+
+// Prazo médio de entrega em dias. O sistema avisa com essa antecedência extra
+// para que o pedido seja feito e entregue ANTES do estoque acabar.
+const PRAZO_ENTREGA_DIAS = 10;
 // ============================================================================
 
 /**
@@ -98,7 +102,7 @@ export async function GET(request: Request) {
                         status: { in: ['Concluido', 'FATURADO'] }
                     },
                     orderBy: { data: 'desc' },
-                    take: MAX_PEDIDOS_GIRO + 1, // +1 margem para cálculo preciso do giro
+                    take: 8, // Pedidos suficientes para giro (4) + média de volume histórica
                     select: {
                         data: true,
                         valorTotal: true,
@@ -173,10 +177,10 @@ export async function GET(request: Request) {
                     : 1;
 
                 // TRAVAS DE SEGURANÇA:
-                // - Máximo 3x: evita que uma compra 10x maior jogue o ciclo para anos
+                // - Máximo 2x: evita que uma compra muito maior jogue o ciclo para meses
                 // - Mínimo 0.5x: evita que uma compra mínima encurte demais
                 // - Fallback 1.0: se menos de 2 pedidos, sem histórico suficiente para comparar
-                if (fatorVolume > 3) fatorVolume = 3;
+                if (fatorVolume > 2) fatorVolume = 2;
                 if (fatorVolume < 0.5) fatorVolume = 0.5;
                 if (salesOrders.length < 2) fatorVolume = 1;
 
@@ -262,8 +266,9 @@ Abs, Carlos Fantini
                     ? Math.max(0, novoCicloEstimado - daysSinceLastOrder)
                     : 0;
 
-                // ---- Dias de Antecedência (Teto de 7 dias, 15% do giro) ----
-                const diasDeAntecedencia = calcularAntecedencia(cicloMedioDias);
+                // ---- Dias de Antecedência (Teto de 7 dias, 15% do ciclo AJUSTADO) ----
+                // Usa o ciclo ajustado pelo volume para que a antecedência seja proporcional
+                const diasDeAntecedencia = calcularAntecedencia(novoCicloEstimado);
 
                 return {
                     id: client.id,
@@ -295,12 +300,24 @@ Abs, Carlos Fantini
                     valorUltimaCompra: lastOrder ? Number(lastOrder.valorTotal) : null
                 }
             })
-            // When querying a single client, skip the cycle filter to show their status regardless
-            // GATILHO ESTRITO: cliente aparece SOMENTE se diasInativo >= (giro - antecedência)
-            // Antecedência = min(giro * 15%, 7 dias) — nunca mais de 7 dias antes
-            .filter(c => clienteIdParam ? true : (c.diasInativo !== null && c.diasInativo >= (c.cicloMedioDias - c.diasDeAntecedencia)))
-            // ORDENAÇÃO: Quem está mais atrasado aparece primeiro no topo
-            .sort((a, b) => b.diasInativo! - a.diasInativo!)
+            // GATILHO BASEADO EM VOLUME + PRAZO DE ENTREGA
+            // Avisa com (antecedência + prazo de entrega) dias antes do estoque acabar
+            // Assim o representante tem tempo de contatar o cliente, fechar o pedido,
+            // e a mercadoria chegar ANTES do estoque zerar
+            .filter(c => {
+                if (clienteIdParam) return true;
+                if (c.diasInativo === null) return false;
+                const cicloEfetivo = c._novoCicloEstimado; // Ciclo ajustado pelo volume
+                const antecedencia = Math.min(Math.floor(cicloEfetivo * PERCENTUAL_ANTECEDENCIA), TETO_ANTECEDENCIA_DIAS);
+                return c.diasInativo >= (cicloEfetivo - antecedencia - PRAZO_ENTREGA_DIAS);
+            })
+            // ORDENAÇÃO POR URGÊNCIA: Quem está mais atrasado ou mais perto de zerar o estoque aparece no topo
+            // Urgência = (cicloEfetivo - diasInativo) -> Menores valores (mais negativos) primeiro
+            .sort((a, b) => {
+                const urgenciaA = a._novoCicloEstimado - (a.diasInativo || 0);
+                const urgenciaB = b._novoCicloEstimado - (b.diasInativo || 0);
+                return urgenciaA - urgenciaB;
+            })
 
         // Summary stats
         const summary = {
