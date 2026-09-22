@@ -1614,7 +1614,7 @@ export default function AIInsightsClient() {
                                                         const message = getMessageForClient(greetingName);
                                                         const whatsappLink = `https://wa.me/55${(client.celular || client.telefone)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
                                                         return (
-                                                            <tr key={client.radarKey || client.id} className="hover:bg-white/5">
+                                                            <tr key={client.id} className="hover:bg-white/5">
                                                                 <td className="px-4 py-2 text-white">{client.nomeFantasia}</td>
                                                                 <td className="px-4 py-2 text-gray-400 hidden sm:table-cell">{client.comprador || '-'}</td>
                                                                 <td className="px-4 py-2 text-right">
@@ -1953,7 +1953,7 @@ export default function AIInsightsClient() {
                                                 const greetingName = client.comprador?.split(' ')[0] || client.nomeFantasia || 'Cliente';
                                                 return (
                                                     <button
-                                                        key={client.radarKey || client.id}
+                                                        key={client.id}
                                                         onClick={() => dispatchWhatsApp(greetingName, phone)}
                                                         disabled={!phone}
                                                         className="w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed group"
