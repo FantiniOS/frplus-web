@@ -356,7 +356,8 @@ export default function AIInsightsClient() {
             const tableData = dataToExport.map(c => {
                 return [
                     c.nomeFantasia,
-                    c.vendedorNome || 'Sem Vendedor Vinculado',
+                    c.nomeRepresentada || 'Mix Geral',
+                    c.vendedorNome || 'Sem Vendedor',
                     c.ultimaCompra ? new Date(c.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca',
                     c.valorUltimaCompra !== undefined && c.valorUltimaCompra !== null ? formatCurrency(c.valorUltimaCompra) : '-',
                     c.diasInativo !== null ? `${c.diasInativo}d` : '∞',
@@ -366,21 +367,22 @@ export default function AIInsightsClient() {
 
             autoTable(doc, {
                 startY,
-                head: [['Cliente', 'Vendedor', 'Últ. Compra', 'Valor', 'Dias s/ Comprar', 'Giro']],
+                head: [['Cliente', 'Fábrica', 'Vendedor', 'Últ. Compra', 'Valor', 'Dias s/ Comp.', 'Giro']],
                 body: tableData,
                 styles: { fontSize: 8, cellPadding: 3, halign: 'left', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
                 headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4, fontSize: 9 },
                 alternateRowStyles: { fillColor: colors.rowEven },
                 columnStyles: {
-                    0: { fontStyle: 'bold', cellWidth: contentWidth * 0.28 },
-                    1: { cellWidth: contentWidth * 0.18 },
-                    2: { halign: 'center', cellWidth: contentWidth * 0.13 },
-                    3: { halign: 'right', fontStyle: 'bold', cellWidth: contentWidth * 0.15 },
-                    4: { halign: 'center', cellWidth: contentWidth * 0.14 },
-                    5: { halign: 'center', cellWidth: contentWidth * 0.12 }
+                    0: { fontStyle: 'bold', cellWidth: contentWidth * 0.22 },
+                    1: { fontStyle: 'italic', cellWidth: contentWidth * 0.16 },
+                    2: { cellWidth: contentWidth * 0.16 },
+                    3: { halign: 'center', cellWidth: contentWidth * 0.11 },
+                    4: { halign: 'right', fontStyle: 'bold', cellWidth: contentWidth * 0.13 },
+                    5: { halign: 'center', cellWidth: contentWidth * 0.12 },
+                    6: { halign: 'center', cellWidth: contentWidth * 0.10 }
                 },
                 foot: [[
-                    { content: `Total de Clientes Listados: ${dataToExport.length}`, colSpan: 6, styles: { halign: 'left' } }
+                    { content: `Total de Linhas: ${dataToExport.length}`, colSpan: 7, styles: { halign: 'left' } }
                 ]],
                 footStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
                 margin: { top: startY, left: margin.left, right: margin.right },
@@ -764,7 +766,7 @@ export default function AIInsightsClient() {
                                         <span className="text-sm font-semibold text-white uppercase tracking-wider">Regra de Exibição</span>
                                     </div>
                                     <p className="text-sm text-gray-400">
-                                        Esta lista é <strong className="text-white">100% baseada em matemática</strong> e não possui limite de quantidade. O giro é calculado com <strong className="text-cyan-400">Média Simples</strong> dos últimos <strong className="text-white">3-4 pedidos</strong> (adaptação rápida). O cliente aparece quando: <strong className="text-white">dias ausente ≥ (giro − antecedência)</strong>. A antecedência é <strong className="text-cyan-400">15% do giro, máximo 7 dias</strong>.
+                                        Esta lista é <strong className="text-white">100% baseada em matemática</strong> e não possui limite de quantidade. O giro é calculado <strong className="text-cyan-400">por Fábrica</strong>, usando <strong className="text-cyan-400">Média Simples</strong> dos últimos <strong className="text-white">3-4 pedidos de cada fábrica</strong> (adaptação rápida). O cliente aparece quando: <strong className="text-white">dias ausente ≥ (giro − antecedência)</strong>. A antecedência é <strong className="text-cyan-400">15% do giro, máximo 7 dias</strong>. O volume da última compra ajusta o ciclo proporcionalmente (comprou o dobro → estoque dura o dobro).
                                     </p>
                                 </div>
 
@@ -881,6 +883,11 @@ export default function AIInsightsClient() {
                                                                 <td className="px-4 py-3">
                                                                     <div className="flex flex-wrap items-center gap-2 mb-1">
                                                                         <p className="font-medium text-white">{client.nomeFantasia}</p>
+                                                                        {client.nomeRepresentada && (
+                                                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-500/15 text-blue-400 border border-blue-500/25 break-normal whitespace-nowrap">
+                                                                                🏭 {client.nomeRepresentada}
+                                                                            </span>
+                                                                        )}
                                                                         {client.statusCiclo === 'ATRASADO' ? (
                                                                             <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 break-normal whitespace-nowrap">
                                                                                 Ausente {client.diasDeAtraso} {client.diasDeAtraso === 1 ? 'dia' : 'dias'}
@@ -1016,6 +1023,11 @@ export default function AIInsightsClient() {
                                                         <td className="px-4 py-3">
                                                             <div className="flex flex-wrap items-center gap-2 mb-1">
                                                                 <p className="font-medium text-white">{client.nomeFantasia}</p>
+                                                                {client.nomeRepresentada && (
+                                                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-500/15 text-blue-400 border border-blue-500/25 break-normal whitespace-nowrap">
+                                                                        🏭 {client.nomeRepresentada}
+                                                                    </span>
+                                                                )}
                                                                 {client.statusCiclo === 'ATRASADO' ? (
                                                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 break-normal whitespace-nowrap">
                                                                         Ausente {client.diasDeAtraso} {client.diasDeAtraso === 1 ? 'dia' : 'dias'}
@@ -1136,6 +1148,11 @@ export default function AIInsightsClient() {
                                                             <td className="px-4 py-3">
                                                                 <div className="flex flex-wrap items-center gap-2 mb-1">
                                                                     <p className="font-medium text-white">{client.nomeFantasia}</p>
+                                                                    {client.nomeRepresentada && (
+                                                                        <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-500/15 text-blue-400 border border-blue-500/25 break-normal whitespace-nowrap">
+                                                                            🏭 {client.nomeRepresentada}
+                                                                        </span>
+                                                                    )}
                                                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-500/20 text-red-400 border border-red-500/30 break-normal whitespace-nowrap">
                                                                         Inativo há {client.diasInativo} dias
                                                                     </span>

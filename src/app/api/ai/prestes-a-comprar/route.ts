@@ -72,6 +72,7 @@ export async function GET(request: Request) {
                         status: { in: ['Concluido', 'FATURADO'] }
                     },
                     orderBy: { data: 'desc' },
+                    take: 20, // Suficiente para cobrir múltiplas fábricas (MAX_PEDIDOS_GIRO por fábrica)
                     select: {
                         id: true,
                         data: true,
