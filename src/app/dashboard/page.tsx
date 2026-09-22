@@ -796,22 +796,32 @@ export default function DashboardPage() {
       </div>
 
       {/* ===== MODAL DE FATURAMENTO DIFERENTE DE VENDAS ===== */}
-      {showSpilloverModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 w-full max-w-3xl shadow-2xl flex flex-col max-h-[85vh]">
-            <div className="flex justify-between items-center mb-6">
+      {showSpilloverModal && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-start sm:items-center justify-center pt-16 sm:pt-0 p-4 animate-in fade-in duration-200"
+          onClick={() => setShowSpilloverModal(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+          {/* Modal */}
+          <div
+            className="relative bg-[#0f172a] border border-white/10 rounded-2xl p-5 sm:p-6 w-full max-w-3xl shadow-2xl flex flex-col max-h-[80vh] sm:max-h-[85vh] animate-in slide-in-from-bottom-4 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4 sm:mb-6">
               <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                   <DollarSign className="w-5 h-5 text-emerald-400" />
                   Diferença de Faturamento
                 </h3>
-                <p className="text-sm text-gray-400 mt-1">
-                  Pedidos faturados neste período, mas que foram emitidos em períodos anteriores.
+                <p className="text-xs sm:text-sm text-gray-400 mt-1">
+                  Pedidos faturados neste período, mas emitidos em períodos anteriores.
                 </p>
               </div>
               <button
                 onClick={() => setShowSpilloverModal(false)}
-                className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
+                className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors flex-shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -827,11 +837,11 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-3">
                   {divergentOrders.map(order => (
-                    <div key={order.id} className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4 flex justify-between items-center">
-                      <div>
+                    <div key={order.id} className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 sm:p-4 flex justify-between items-center gap-3">
+                      <div className="min-w-0">
                         <div className="font-semibold text-white text-sm">Pedido {order.notaFiscal ? `NF ${order.notaFiscal}` : `#${order.id.slice(0,6).toUpperCase()}`}</div>
-                        <div className="text-xs text-gray-400 mt-1 truncate max-w-xs">{order.nomeCliente}</div>
-                        <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500 font-medium">
+                        <div className="text-xs text-gray-400 mt-1 truncate">{order.nomeCliente}</div>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2 text-[10px] text-gray-500 font-medium">
                           <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded">
                             Emissão: {new Date(order.data).toLocaleDateString('pt-BR')}
                           </span>
@@ -840,8 +850,8 @@ export default function DashboardPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-emerald-400">
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-base sm:text-lg font-bold text-emerald-400">
                           R$ {Number(order.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
@@ -851,14 +861,15 @@ export default function DashboardPage() {
               )}
             </div>
             
-            <div className="mt-6 pt-4 border-t border-white/10 flex justify-between items-center">
+            <div className="mt-4 sm:mt-6 pt-4 border-t border-white/10 flex justify-between items-center">
               <div className="text-sm text-gray-400">Total Descolado:</div>
-              <div className="text-xl font-bold text-white">
+              <div className="text-lg sm:text-xl font-bold text-white">
                 R$ {divergentOrders.reduce((acc, o) => acc + Number(o.valorTotal), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
