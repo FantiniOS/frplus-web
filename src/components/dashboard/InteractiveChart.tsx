@@ -113,7 +113,7 @@ export function InteractiveChart({ data, maxSale, totalSales, monthName, view = 
     const holidayCount = isMensal ? data.filter(d => getDayType(d.date, d.dayOfWeek || 0, holidays).type === 'holiday').length : 0;
 
     return (
-        <div className="md:col-span-4 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-6 h-[420px] flex flex-col shadow-2xl shadow-black/40 relative overflow-hidden">
+        <div className="md:col-span-4 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-6 h-full min-h-[420px] flex flex-col shadow-2xl shadow-black/40 relative overflow-hidden">
             {/* Subtle background glow */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/[0.04] rounded-full blur-3xl pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-500/[0.03] rounded-full blur-3xl pointer-events-none" />
