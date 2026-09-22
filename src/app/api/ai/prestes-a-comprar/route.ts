@@ -134,7 +134,7 @@ export async function GET(request: Request) {
                 });
 
                 // Registrar este pedido para cada fábrica que apareceu nele
-                for (const [fabricaNome, stats] of resumoFabricasNoPedido.entries()) {
+                for (const [fabricaNome, stats] of Array.from(resumoFabricasNoPedido.entries())) {
                     if (!historicoPorFabrica.has(fabricaNome)) {
                         historicoPorFabrica.set(fabricaNome, []);
                     }
@@ -147,7 +147,7 @@ export async function GET(request: Request) {
             });
 
             // 2. Analisar o ciclo de CADA fábrica independentemente
-            for (const [fabricaNome, pedidosVirtuais] of historicoPorFabrica.entries()) {
+            for (const [fabricaNome, pedidosVirtuais] of Array.from(historicoPorFabrica.entries())) {
                 // Ordenar por data mais recente
                 const sortedPedidos = pedidosVirtuais.sort((a, b) => b.data.getTime() - a.data.getTime());
                 const lastOrder = sortedPedidos[0];
