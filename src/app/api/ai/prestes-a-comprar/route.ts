@@ -302,7 +302,12 @@ Abs, Carlos Fantini`;
                         const maxLedgerMemory = 5;
                         const ledgerOcorrencias = mergedOcorrencias.slice(-maxLedgerMemory);
 
-                        let estoqueAtual = 0;
+                        // ADIÇÃO DE ESTOQUE DE SEGURANÇA (BUFFER):
+                        // No atacado, clientes não deixam o estoque zerar para pedir. Eles mantêm uma "reserva de gôndola".
+                        // Adicionar ~20% de buffer inicial impede que o sistema acuse "Esgotado" prematuramente
+                        // e reflete a realidade de que o estoque quase nunca parte do zero absoluto.
+                        const estoqueSeguranca = qtdMediaHistorica * 0.20;
+                        let estoqueAtual = estoqueSeguranca;
                         let ultimaData = ledgerOcorrencias[0].data;
 
                         for (const pedido of ledgerOcorrencias) {
