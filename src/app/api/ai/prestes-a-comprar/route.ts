@@ -243,14 +243,23 @@ Abs, Carlos Fantini`;
                     for (const [prodKey, prodData] of Array.from(historicoPorProduto.entries())) {
                         if (prodData.fabricaNome !== fabricaNome) continue;
 
-                        const ocorrencias = prodData.ocorrencias.sort((a, b) => b.data.getTime() - a.data.getTime());
-                        const totalOcorrencias = ocorrencias.length;
-                        const qtdUltimaCompra = ocorrencias[0].quantidade;
-                        const qtdMediaHistorica = totalOcorrencias > 1
-                            ? ocorrencias.reduce((acc, o) => acc + o.quantidade, 0) / totalOcorrencias
-                            : qtdUltimaCompra;
+                        // 1. Agrupar compras feitas no mesmo dia (ordem cronológica: mais antigo para mais novo)
+                        const ocorrenciasChronological = [...prodData.ocorrencias].sort((a, b) => a.data.getTime() - b.data.getTime());
+                        const mergedOcorrencias: {data: Date, quantidade: number}[] = [];
+                        for (const oc of ocorrenciasChronological) {
+                            const last = mergedOcorrencias[mergedOcorrencias.length - 1];
+                            if (last && last.data.toDateString() === oc.data.toDateString()) {
+                                last.quantidade += oc.quantidade;
+                            } else {
+                                mergedOcorrencias.push({ data: new Date(oc.data), quantidade: oc.quantidade });
+                            }
+                        }
 
-                        if (totalOcorrencias < 2) {
+                        const totalOcorrencias = prodData.ocorrencias.length; // mantemos o total bruto para info
+                        const qtdUltimaCompra = mergedOcorrencias[mergedOcorrencias.length - 1].quantidade;
+                        const qtdMediaHistorica = mergedOcorrencias.reduce((acc, o) => acc + o.quantidade, 0) / mergedOcorrencias.length;
+
+                        if (mergedOcorrencias.length < 2) {
                             produtosDaFabrica.push({
                                 produtoId: prodData.produtoId,
                                 nome: prodData.nome,
@@ -267,23 +276,43 @@ Abs, Carlos Fantini`;
                             continue;
                         }
 
-                        // Calcular ciclo do produto (intervalo entre pedidos que incluíram este produto)
-                        const datasUnicasProduto = Array.from(new Set(ocorrencias.map(o => o.data.getTime())))
-                            .sort((a, b) => b - a)
-                            .map(t => new Date(t));
-
-                        let cicloProduto = cicloBase; // fallback = ciclo da fábrica
-                        if (datasUnicasProduto.length >= 2) {
-                            let somaInterv = 0;
-                            const limitDatas = datasUnicasProduto.slice(0, MAX_PEDIDOS_GIRO);
-                            for (let i = 0; i < limitDatas.length - 1; i++) {
-                                somaInterv += Math.abs(limitDatas[i].getTime() - limitDatas[i + 1].getTime()) / (1000 * 60 * 60 * 24);
+                        // 2. Calcular taxas de consumo (Saída Diária) usando Mediana
+                        const taxasDiarias: number[] = [];
+                        for (let i = 0; i < mergedOcorrencias.length - 1; i++) {
+                            const dias = Math.abs(mergedOcorrencias[i+1].data.getTime() - mergedOcorrencias[i].data.getTime()) / (1000 * 60 * 60 * 24);
+                            if (dias >= 1) {
+                                taxasDiarias.push(mergedOcorrencias[i].quantidade / dias);
                             }
-                            cicloProduto = Math.max(7, Math.round(somaInterv / (limitDatas.length - 1)));
                         }
 
-                        const saidaDiaria = cicloProduto > 0 ? qtdMediaHistorica / cicloProduto : 0;
-                        const estoqueEstimado = Math.max(0, Math.round((qtdUltimaCompra - (daysSinceLastOrder * saidaDiaria)) * 10) / 10);
+                        let saidaDiariaBase = 0;
+                        if (taxasDiarias.length > 0) {
+                            // Mediana (ignora os picos anormais)
+                            taxasDiarias.sort((a, b) => a - b);
+                            const mid = Math.floor(taxasDiarias.length / 2);
+                            saidaDiariaBase = taxasDiarias.length % 2 !== 0 ? taxasDiarias[mid] : (taxasDiarias[mid - 1] + taxasDiarias[mid]) / 2;
+                        } else {
+                            // Fallback caso não haja intervalo de dias úteis
+                            saidaDiariaBase = qtdMediaHistorica / 30;
+                        }
+
+                        // 3. Rodar o Livro-Razão (Ledger) do Estoque Acumulado
+                        let estoqueAtual = 0;
+                        let ultimaData = mergedOcorrencias[0].data;
+
+                        for (const pedido of mergedOcorrencias) {
+                            const diasPassados = Math.abs(pedido.data.getTime() - ultimaData.getTime()) / (1000 * 60 * 60 * 24);
+                            // Consumir estoque
+                            estoqueAtual = Math.max(0, estoqueAtual - (diasPassados * saidaDiariaBase));
+                            // Adicionar nova compra
+                            estoqueAtual += pedido.quantidade;
+                            ultimaData = pedido.data;
+                        }
+
+                        // 4. Consumo até a data de HOJE
+                        const diasAteHoje = Math.max(0, (hoje.getTime() - ultimaData.getTime()) / (1000 * 60 * 60 * 24));
+                        const estoqueEstimado = Math.max(0, Math.round((estoqueAtual - (diasAteHoje * saidaDiariaBase)) * 10) / 10);
+                        const saidaDiaria = saidaDiariaBase;
                         const diasParaEsgotar = saidaDiaria > 0 ? Math.max(0, Math.round(estoqueEstimado / saidaDiaria)) : 999;
 
                         let statusEstoque: 'CRITICO' | 'ATENCAO' | 'OK' = 'OK';
