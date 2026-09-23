@@ -1,14 +1,28 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users, Download, Eye, FileDown, Activity } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, ChevronDown, Package, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users, Download, Eye, FileDown, Activity } from 'lucide-react';
 import { MessageModal } from '@/components/dashboard/MessageModal';
 import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
 import ExpansionProposalGenerator from './ExpansionProposalGenerator';
 import ConsultoriaPrimeiroPedido from './ConsultoriaPrimeiroPedido';
+
+interface ProdutoEstoque {
+    produtoId: string;
+    nome: string;
+    codigo: string;
+    unidade: string;
+    qtdUltimaCompra: number;
+    qtdMediaHistorica: number;
+    saidaDiaria: number;
+    estoqueEstimado: number;
+    diasParaEsgotar: number;
+    statusEstoque: 'CRITICO' | 'ATENCAO' | 'OK' | 'SEM_DADOS';
+    totalOcorrencias: number;
+}
 
 interface PrestesAComprarClient {
     id: string;
@@ -39,6 +53,7 @@ interface PrestesAComprarClient {
     nomeRepresentada?: string;
     vendedorNome?: string | null;
     valorUltimaCompra?: number | null;
+    produtos?: ProdutoEstoque[];
 }
 
 interface Opportunity {
@@ -105,6 +120,7 @@ export default function AIInsightsClient() {
     const [clienteIdSelecionado, setClienteIdSelecionado] = useState('');
     const [consultaIndividualLoading, setConsultaIndividualLoading] = useState(false);
     const [consultaIndividualResult, setConsultaIndividualResult] = useState<PrestesAComprarClient | null>(null);
+    const [expandedRadarRows, setExpandedRadarRows] = useState<Set<string>>(new Set());
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [salesInsights, setSalesInsights] = useState<SalesInsight[]>([]);
 
@@ -475,6 +491,15 @@ export default function AIInsightsClient() {
         alta: 'bg-red-500/10 text-red-400 border-red-500/20',
         media: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
         baixa: 'bg-green-500/10 text-green-400 border-green-500/20'
+    };
+
+    const toggleRadarRow = (key: string) => {
+        setExpandedRadarRows(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
     };
 
     // ---- SPLIT: Radar Quente (≤100d) vs Recuperação (>100d) ----
@@ -1019,9 +1044,13 @@ export default function AIInsightsClient() {
                                                 const alertaColor = diasRestantes <= 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-green-500/20 text-green-400 border-green-500/40';
 
                                                 return (
-                                                    <tr key={client.radarKey || client.id} className="hover:bg-white/5">
+                                                    <React.Fragment key={client.radarKey || client.id}>
+                                                    <tr className="hover:bg-white/5 cursor-pointer" onClick={() => toggleRadarRow(client.radarKey || client.id)}>
                                                         <td className="px-4 py-3">
                                                             <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                <button className="text-gray-500 hover:text-white transition-colors shrink-0">
+                                                                    {expandedRadarRows.has(client.radarKey || client.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                                                </button>
                                                                 <p className="font-medium text-white">{client.nomeFantasia}</p>
                                                                 {client.nomeRepresentada && (
                                                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-500/15 text-blue-400 border border-blue-500/25 break-normal whitespace-nowrap">
@@ -1037,8 +1066,16 @@ export default function AIInsightsClient() {
                                                                         No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - (client.diasInativo ?? 0))} dias)
                                                                     </span>
                                                                 )}
+                                                                {client.produtos && client.produtos.length > 0 && (
+                                                                    <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">
+                                                                        {client.produtos.filter(p => p.statusEstoque === 'CRITICO').length > 0
+                                                                            ? `🔴 ${client.produtos.filter(p => p.statusEstoque === 'CRITICO').length} produto(s) esgotando`
+                                                                            : `📦 ${client.produtos.length} produtos`
+                                                                        }
+                                                                    </span>
+                                                                )}
                                                             </div>
-                                                            <p className="text-xs text-gray-500">{client.razaoSocial}</p>
+                                                            <p className="text-xs text-gray-500 ml-6">{client.razaoSocial}</p>
                                                         </td>
                                                         <td className="px-4 py-3 text-gray-300 hidden lg:table-cell text-xs">{client.vendedorNome || 'Sem Vendedor Vinculado'}</td>
                                                         <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
@@ -1097,7 +1134,7 @@ export default function AIInsightsClient() {
                                                                 {diasRestantes <= 0 ? 'Expirando' : `${diasRestantes} dias na janela`}
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-3 text-right">
+                                                        <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                                             <div className="flex flex-col items-end gap-2">
                                                                 <Link href={`/dashboard/clientes/${client.id}/raio-x`}>
                                                                     <button className="px-4 py-1.5 rounded-lg bg-cyan-600/20 text-cyan-400 text-sm font-medium hover:bg-cyan-600/30 transition-colors inline-flex items-center gap-2">
@@ -1105,10 +1142,80 @@ export default function AIInsightsClient() {
                                                                         Raio X
                                                                     </button>
                                                                 </Link>
-
                                                             </div>
                                                         </td>
                                                     </tr>
+                                                    {/* Linha expansível com produtos */}
+                                                    {expandedRadarRows.has(client.radarKey || client.id) && client.produtos && client.produtos.length > 0 && (
+                                                        <tr>
+                                                            <td colSpan={6} className="px-4 py-3 bg-white/[0.02]">
+                                                                <div className="ml-6 rounded-lg border border-white/10 overflow-hidden">
+                                                                    <div className="flex items-center gap-2 px-4 py-2 bg-white/5">
+                                                                        <Package className="w-4 h-4 text-purple-400" />
+                                                                        <span className="text-xs font-semibold text-white uppercase tracking-wider">Estimativa de Estoque por Produto</span>
+                                                                        <span className="text-[10px] text-gray-500 ml-auto">Baseado no histórico de compras</span>
+                                                                    </div>
+                                                                    <div className="max-h-[300px] overflow-y-auto">
+                                                                        <table className="w-full text-xs">
+                                                                            <thead className="bg-white/5 sticky top-0">
+                                                                                <tr>
+                                                                                    <th className="px-3 py-2 text-left text-gray-400 font-medium">Produto</th>
+                                                                                    <th className="px-3 py-2 text-center text-gray-400 font-medium">Últ. Qtd</th>
+                                                                                    <th className="px-3 py-2 text-center text-gray-400 font-medium hidden sm:table-cell">Saída/dia</th>
+                                                                                    <th className="px-3 py-2 text-center text-gray-400 font-medium">Estoque Est.</th>
+                                                                                    <th className="px-3 py-2 text-center text-gray-400 font-medium">Esgota em</th>
+                                                                                    <th className="px-3 py-2 text-center text-gray-400 font-medium">Status</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody className="divide-y divide-white/5">
+                                                                                {client.produtos.map(prod => {
+                                                                                    const statusConfig = {
+                                                                                        CRITICO: { label: '🔴 Crítico', cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
+                                                                                        ATENCAO: { label: '🟡 Atenção', cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
+                                                                                        OK: { label: '🟢 OK', cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
+                                                                                        SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' }
+                                                                                    };
+                                                                                    const cfg = statusConfig[prod.statusEstoque];
+                                                                                    return (
+                                                                                        <tr key={prod.produtoId} className="hover:bg-white/5">
+                                                                                            <td className="px-3 py-2">
+                                                                                                <p className="text-white font-medium truncate max-w-[200px]">{prod.nome}</p>
+                                                                                                <p className="text-[10px] text-gray-600">{prod.codigo} · {prod.totalOcorrencias} pedido(s)</p>
+                                                                                            </td>
+                                                                                            <td className="px-3 py-2 text-center text-gray-200">{prod.qtdUltimaCompra} {prod.unidade}</td>
+                                                                                            <td className="px-3 py-2 text-center text-gray-300 hidden sm:table-cell">
+                                                                                                {prod.statusEstoque !== 'SEM_DADOS' ? `~${prod.saidaDiaria}/${' dia'}` : '-'}
+                                                                                            </td>
+                                                                                            <td className="px-3 py-2 text-center">
+                                                                                                {prod.statusEstoque !== 'SEM_DADOS' ? (
+                                                                                                    <span className={`font-bold ${prod.estoqueEstimado <= 0 ? 'text-red-400' : 'text-gray-200'}`}>
+                                                                                                        ~{prod.estoqueEstimado} {prod.unidade}
+                                                                                                    </span>
+                                                                                                ) : <span className="text-gray-600">-</span>}
+                                                                                            </td>
+                                                                                            <td className="px-3 py-2 text-center">
+                                                                                                {prod.statusEstoque !== 'SEM_DADOS' ? (
+                                                                                                    <span className={`font-bold ${prod.diasParaEsgotar <= 7 ? 'text-red-400' : prod.diasParaEsgotar <= 15 ? 'text-yellow-400' : 'text-gray-200'}`}>
+                                                                                                        {prod.diasParaEsgotar <= 0 ? 'Esgotado' : `~${prod.diasParaEsgotar} dias`}
+                                                                                                    </span>
+                                                                                                ) : <span className="text-gray-600">-</span>}
+                                                                                            </td>
+                                                                                            <td className="px-3 py-2 text-center">
+                                                                                                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border ${cfg.cls}`}>
+                                                                                                    {cfg.label}
+                                                                                                </span>
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    );
+                                                                                })}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                    </React.Fragment>
                                                 );
                                             })}
                                         </tbody>
@@ -1144,9 +1251,13 @@ export default function AIInsightsClient() {
                                                 </thead>
                                                 <tbody className="divide-y divide-red-500/10">
                                                     {clientesRecuperacao.map(client => (
-                                                        <tr key={client.radarKey || client.id} className="hover:bg-red-500/5">
+                                                        <React.Fragment key={client.radarKey || client.id}>
+                                                        <tr className="hover:bg-red-500/5 cursor-pointer" onClick={() => toggleRadarRow(client.radarKey || client.id)}>
                                                             <td className="px-4 py-3">
                                                                 <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                    <button className="text-gray-500 hover:text-white transition-colors shrink-0">
+                                                                        {expandedRadarRows.has(client.radarKey || client.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                                                    </button>
                                                                     <p className="font-medium text-white">{client.nomeFantasia}</p>
                                                                     {client.nomeRepresentada && (
                                                                         <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-500/15 text-blue-400 border border-blue-500/25 break-normal whitespace-nowrap">
@@ -1157,7 +1268,7 @@ export default function AIInsightsClient() {
                                                                         Inativo há {client.diasInativo} dias
                                                                     </span>
                                                                 </div>
-                                                                <p className="text-xs text-gray-500">{client.razaoSocial}</p>
+                                                                <p className="text-xs text-gray-500 ml-6">{client.razaoSocial}</p>
                                                             </td>
                                                             <td className="px-4 py-3 text-gray-300 hidden lg:table-cell text-xs">{client.vendedorNome || 'Sem Vendedor Vinculado'}</td>
                                                             <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
@@ -1192,7 +1303,7 @@ export default function AIInsightsClient() {
                                                                     </div>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-4 py-3 text-right">
+                                                            <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                                                 <div className="flex flex-col items-end gap-2">
                                                                     <Link href={`/dashboard/clientes/${client.id}/raio-x`}>
                                                                         <button className="px-4 py-1.5 rounded-lg bg-cyan-600/20 text-cyan-400 text-sm font-medium hover:bg-cyan-600/30 transition-colors inline-flex items-center gap-2">
@@ -1200,10 +1311,78 @@ export default function AIInsightsClient() {
                                                                             Raio X
                                                                         </button>
                                                                     </Link>
-
                                                                 </div>
                                                             </td>
                                                         </tr>
+                                                        {expandedRadarRows.has(client.radarKey || client.id) && client.produtos && client.produtos.length > 0 && (
+                                                            <tr>
+                                                                <td colSpan={5} className="px-4 py-3 bg-red-900/5">
+                                                                    <div className="ml-6 rounded-lg border border-white/10 overflow-hidden">
+                                                                        <div className="flex items-center gap-2 px-4 py-2 bg-white/5">
+                                                                            <Package className="w-4 h-4 text-purple-400" />
+                                                                            <span className="text-xs font-semibold text-white uppercase tracking-wider">Estimativa de Estoque por Produto</span>
+                                                                        </div>
+                                                                        <div className="max-h-[300px] overflow-y-auto">
+                                                                            <table className="w-full text-xs">
+                                                                                <thead className="bg-white/5 sticky top-0">
+                                                                                    <tr>
+                                                                                        <th className="px-3 py-2 text-left text-gray-400 font-medium">Produto</th>
+                                                                                        <th className="px-3 py-2 text-center text-gray-400 font-medium">Últ. Qtd</th>
+                                                                                        <th className="px-3 py-2 text-center text-gray-400 font-medium hidden sm:table-cell">Saída/dia</th>
+                                                                                        <th className="px-3 py-2 text-center text-gray-400 font-medium">Estoque Est.</th>
+                                                                                        <th className="px-3 py-2 text-center text-gray-400 font-medium">Esgota em</th>
+                                                                                        <th className="px-3 py-2 text-center text-gray-400 font-medium">Status</th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody className="divide-y divide-white/5">
+                                                                                    {client.produtos.map(prod => {
+                                                                                        const statusConfig = {
+                                                                                            CRITICO: { label: '🔴 Crítico', cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
+                                                                                            ATENCAO: { label: '🟡 Atenção', cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
+                                                                                            OK: { label: '🟢 OK', cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
+                                                                                            SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' }
+                                                                                        };
+                                                                                        const cfg = statusConfig[prod.statusEstoque];
+                                                                                        return (
+                                                                                            <tr key={prod.produtoId} className="hover:bg-white/5">
+                                                                                                <td className="px-3 py-2">
+                                                                                                    <p className="text-white font-medium truncate max-w-[200px]">{prod.nome}</p>
+                                                                                                    <p className="text-[10px] text-gray-600">{prod.codigo} · {prod.totalOcorrencias} pedido(s)</p>
+                                                                                                </td>
+                                                                                                <td className="px-3 py-2 text-center text-gray-200">{prod.qtdUltimaCompra} {prod.unidade}</td>
+                                                                                                <td className="px-3 py-2 text-center text-gray-300 hidden sm:table-cell">
+                                                                                                    {prod.statusEstoque !== 'SEM_DADOS' ? `~${prod.saidaDiaria}/ dia` : '-'}
+                                                                                                </td>
+                                                                                                <td className="px-3 py-2 text-center">
+                                                                                                    {prod.statusEstoque !== 'SEM_DADOS' ? (
+                                                                                                        <span className={`font-bold ${prod.estoqueEstimado <= 0 ? 'text-red-400' : 'text-gray-200'}`}>
+                                                                                                            ~{prod.estoqueEstimado} {prod.unidade}
+                                                                                                        </span>
+                                                                                                    ) : <span className="text-gray-600">-</span>}
+                                                                                                </td>
+                                                                                                <td className="px-3 py-2 text-center">
+                                                                                                    {prod.statusEstoque !== 'SEM_DADOS' ? (
+                                                                                                        <span className={`font-bold ${prod.diasParaEsgotar <= 7 ? 'text-red-400' : prod.diasParaEsgotar <= 15 ? 'text-yellow-400' : 'text-gray-200'}`}>
+                                                                                                            {prod.diasParaEsgotar <= 0 ? 'Esgotado' : `~${prod.diasParaEsgotar} dias`}
+                                                                                                        </span>
+                                                                                                    ) : <span className="text-gray-600">-</span>}
+                                                                                                </td>
+                                                                                                <td className="px-3 py-2 text-center">
+                                                                                                    <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border ${cfg.cls}`}>
+                                                                                                        {cfg.label}
+                                                                                                    </span>
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                        );
+                                                                                    })}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                        </React.Fragment>
                                                     ))}
                                                 </tbody>
                                             </table>
