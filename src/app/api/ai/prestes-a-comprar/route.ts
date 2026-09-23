@@ -211,34 +211,8 @@ export async function GET(request: Request) {
                 const novoCicloEstimado = Math.round(cicloBase * fatorVolume);
                 const antecedencia = calcularAntecedencia(novoCicloEstimado);
 
-                // O Prazo de Entrega foi removido da subtração para não descontar duas vezes.
-                const shouldAppear = daysSinceLastOrder >= (novoCicloEstimado - antecedencia);
-
-                if (clienteIdParam || shouldAppear) {
-                    const dataEsperada = new Date(lastOrderDate.getTime() + novoCicloEstimado * 24 * 60 * 60 * 1000);
-                    const diffTimeAtraso = hoje.getTime() - dataEsperada.getTime();
-                    const diasDeAtraso = Math.max(0, Math.floor(diffTimeAtraso / (1000 * 60 * 60 * 24)));
-
-                    const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
-
-                    let statusCiclo: 'ATRASADO' | 'PRESTES' = 'PRESTES';
-                    if (daysSinceLastOrder >= novoCicloEstimado) {
-                        statusCiclo = 'ATRASADO';
-                    }
-
-                    const baseContext = `Você é o representante comercial Carlos Fantini. Escreva uma mensagem curta de WhatsApp para o cliente. Use os dados:
-- Nome: ${greetingName}
-- Fábrica: ${fabricaNome}
-- Ciclo: ${cicloBase}
-TEXTO BASE (Adapte para ficar natural, sem jargões):
-Fala ${greetingName}, bom dia! Tudo bem? Pelo meu controle de estoque aqui, já faz uns ${daysSinceLastOrder} dias que rodamos o último pedido, então já deve estar na hora de repor a linha da ${fabricaNome}, certo? Tô montando a rota de entregas de hoje, quer que eu já lance o seu pedido para garantir o faturamento? Me dá um alô!
-Abs, Carlos Fantini`;
-
-                    // Para simplificar e não quebrar o frontend, passamos o valor global real para estes campos:
-                    const totalGastoGlobal = client.pedidos.reduce((acc, o) => acc + Number(o.valorTotal), 0);
-                    const valorUltimaCompraGlobal = client.pedidos[0] ? Number(client.pedidos[0].valorTotal) : null;
-
-                    // 3. Calcular estimativa de estoque POR PRODUTO desta fábrica
+                // --- INICIO: CALCULO DE PRODUTOS ---
+                // 3. Calcular estimativa de estoque POR PRODUTO desta fábrica
                     const produtosDaFabrica: any[] = [];
                     for (const [prodKey, prodData] of Array.from(historicoPorProduto.entries())) {
                         if (prodData.fabricaNome !== fabricaNome) continue;
@@ -350,6 +324,37 @@ Abs, Carlos Fantini`;
                         if (b.statusEstoque === 'SEM_DADOS' && a.statusEstoque !== 'SEM_DADOS') return -1;
                         return a.diasParaEsgotar - b.diasParaEsgotar;
                     });
+                // --- FIM: CALCULO DE PRODUTOS ---
+
+                const macroShouldAppear = daysSinceLastOrder >= (novoCicloEstimado - antecedencia);
+                const temProdutoEsgotando = produtosDaFabrica.some(p => p.statusEstoque === 'CRITICO' || p.statusEstoque === 'ATENCAO');
+                const shouldAppear = macroShouldAppear || temProdutoEsgotando;
+
+                
+
+                if (clienteIdParam || shouldAppear) {
+                    const dataEsperada = new Date(lastOrderDate.getTime() + novoCicloEstimado * 24 * 60 * 60 * 1000);
+                    const diffTimeAtraso = hoje.getTime() - dataEsperada.getTime();
+                    const diasDeAtraso = Math.max(0, Math.floor(diffTimeAtraso / (1000 * 60 * 60 * 24)));
+
+                    const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
+
+                    let statusCiclo: 'ATRASADO' | 'PRESTES' = 'PRESTES';
+                    if (daysSinceLastOrder >= novoCicloEstimado) {
+                        statusCiclo = 'ATRASADO';
+                    }
+
+                    const baseContext = `Você é o representante comercial Carlos Fantini. Escreva uma mensagem curta de WhatsApp para o cliente. Use os dados:
+- Nome: ${greetingName}
+- Fábrica: ${fabricaNome}
+- Ciclo: ${cicloBase}
+TEXTO BASE (Adapte para ficar natural, sem jargões):
+Fala ${greetingName}, bom dia! Tudo bem? Pelo meu controle de estoque aqui, já faz uns ${daysSinceLastOrder} dias que rodamos o último pedido, então já deve estar na hora de repor a linha da ${fabricaNome}, certo? Tô montando a rota de entregas de hoje, quer que eu já lance o seu pedido para garantir o faturamento? Me dá um alô!
+Abs, Carlos Fantini`;
+
+                    // Para simplificar e não quebrar o frontend, passamos o valor global real para estes campos:
+                    const totalGastoGlobal = client.pedidos.reduce((acc, o) => acc + Number(o.valorTotal), 0);
+                    const valorUltimaCompraGlobal = client.pedidos[0] ? Number(client.pedidos[0].valorTotal) : null;
 
                     analyzedClients.push({
                         id: client.id,
