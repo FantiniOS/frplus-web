@@ -297,10 +297,15 @@ Abs, Carlos Fantini`;
                         }
 
                         // 3. Rodar o Livro-Razão (Ledger) do Estoque Acumulado
-                        let estoqueAtual = 0;
-                        let ultimaData = mergedOcorrencias[0].data;
+                        // LIMITAR O LEDGER AOS ÚLTIMOS 5 PEDIDOS: Isso atua como um "inventário virtual", 
+                        // impedindo que sobras decimais de anos atrás se acumulem e criem estoque fantasma.
+                        const maxLedgerMemory = 5;
+                        const ledgerOcorrencias = mergedOcorrencias.slice(-maxLedgerMemory);
 
-                        for (const pedido of mergedOcorrencias) {
+                        let estoqueAtual = 0;
+                        let ultimaData = ledgerOcorrencias[0].data;
+
+                        for (const pedido of ledgerOcorrencias) {
                             const diasPassados = Math.abs(pedido.data.getTime() - ultimaData.getTime()) / (1000 * 60 * 60 * 24);
                             // Consumir estoque
                             estoqueAtual = Math.max(0, estoqueAtual - (diasPassados * saidaDiariaBase));
