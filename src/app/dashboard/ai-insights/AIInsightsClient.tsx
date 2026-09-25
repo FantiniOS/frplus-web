@@ -20,7 +20,7 @@ interface ProdutoEstoque {
     saidaDiaria: number;
     estoqueEstimado: number;
     diasParaEsgotar: number;
-    statusEstoque: 'CRITICO' | 'ATENCAO' | 'OK' | 'SEM_DADOS';
+    statusEstoque: 'CRITICO' | 'ATENCAO' | 'OK' | 'SEM_DADOS' | 'INATIVO';
     totalOcorrencias: number;
 }
 
@@ -1032,7 +1032,8 @@ export default function AIInsightsClient() {
                                                                                                 CRITICO: { label: '🔴 Crítico', cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
                                                                                                 ATENCAO: { label: '🟡 Atenção', cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
                                                                                                 OK: { label: '🟢 OK', cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
-                                                                                                SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' }
+                                                                                                SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' },
+                                                                                            INATIVO: { label: '⛔ Sem Giro', cls: 'bg-gray-500/15 text-gray-500 border-gray-500/30' }
                                                                                             };
                                                                                             const cfg = statusConfig[prod.statusEstoque];
                                                                                             return (
@@ -1043,17 +1044,17 @@ export default function AIInsightsClient() {
                                                                                                     </td>
                                                                                                     <td className="px-3 py-2 text-center text-gray-200">{prod.qtdUltimaCompra} {prod.unidade}</td>
                                                                                                     <td className="px-3 py-2 text-center text-gray-300 hidden sm:table-cell">
-                                                                                                        {prod.statusEstoque !== 'SEM_DADOS' ? `~${prod.saidaDiaria}/ dia` : '-'}
+                                                                                                        {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? `~${prod.saidaDiaria}/ dia` : '-'}
                                                                                                     </td>
                                                                                                     <td className="px-3 py-2 text-center">
-                                                                                                        {prod.statusEstoque !== 'SEM_DADOS' ? (
+                                                                                                        {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
                                                                                                             <span className={`font-bold ${prod.estoqueEstimado <= 0 ? 'text-red-400' : 'text-gray-200'}`}>
                                                                                                                 ~{prod.estoqueEstimado} {prod.unidade}
                                                                                                             </span>
                                                                                                         ) : <span className="text-gray-600">-</span>}
                                                                                                     </td>
                                                                                                     <td className="px-3 py-2 text-center">
-                                                                                                        {prod.statusEstoque !== 'SEM_DADOS' ? (
+                                                                                                        {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
                                                                                                             <span className={`font-bold ${prod.diasParaEsgotar <= 7 ? 'text-red-400' : prod.diasParaEsgotar <= 15 ? 'text-yellow-400' : 'text-gray-200'}`}>
                                                                                                                 {prod.diasParaEsgotar <= 0 ? 'Esgotado' : `~${prod.diasParaEsgotar} dias`}
                                                                                                             </span>
@@ -1254,7 +1255,8 @@ export default function AIInsightsClient() {
                                                                                         CRITICO: { label: '🔴 Crítico', cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
                                                                                         ATENCAO: { label: '🟡 Atenção', cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
                                                                                         OK: { label: '🟢 OK', cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
-                                                                                        SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' }
+                                                                                        SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' },
+                                                                                    INATIVO: { label: '⛔ Sem Giro', cls: 'bg-gray-500/15 text-gray-500 border-gray-500/30' }
                                                                                     };
                                                                                     const cfg = statusConfig[prod.statusEstoque];
                                                                                     return (
@@ -1265,17 +1267,17 @@ export default function AIInsightsClient() {
                                                                                             </td>
                                                                                             <td className="px-3 py-2 text-center text-gray-200">{prod.qtdUltimaCompra} {prod.unidade}</td>
                                                                                             <td className="px-3 py-2 text-center text-gray-300 hidden sm:table-cell">
-                                                                                                {prod.statusEstoque !== 'SEM_DADOS' ? `~${prod.saidaDiaria}/${' dia'}` : '-'}
+                                                                                                {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? `~${prod.saidaDiaria}/${' dia'}` : '-'}
                                                                                             </td>
                                                                                             <td className="px-3 py-2 text-center">
-                                                                                                {prod.statusEstoque !== 'SEM_DADOS' ? (
+                                                                                                {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
                                                                                                     <span className={`font-bold ${prod.estoqueEstimado <= 0 ? 'text-red-400' : 'text-gray-200'}`}>
                                                                                                         ~{prod.estoqueEstimado} {prod.unidade}
                                                                                                     </span>
                                                                                                 ) : <span className="text-gray-600">-</span>}
                                                                                             </td>
                                                                                             <td className="px-3 py-2 text-center">
-                                                                                                {prod.statusEstoque !== 'SEM_DADOS' ? (
+                                                                                                {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
                                                                                                     <span className={`font-bold ${prod.diasParaEsgotar <= 7 ? 'text-red-400' : prod.diasParaEsgotar <= 15 ? 'text-yellow-400' : 'text-gray-200'}`}>
                                                                                                         {prod.diasParaEsgotar <= 0 ? 'Esgotado' : `~${prod.diasParaEsgotar} dias`}
                                                                                                     </span>
@@ -1421,7 +1423,8 @@ export default function AIInsightsClient() {
                                                                                             CRITICO: { label: '🔴 Crítico', cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
                                                                                             ATENCAO: { label: '🟡 Atenção', cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
                                                                                             OK: { label: '🟢 OK', cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
-                                                                                            SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' }
+                                                                                            SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' },
+                                                                                        INATIVO: { label: '⛔ Sem Giro', cls: 'bg-gray-500/15 text-gray-500 border-gray-500/30' }
                                                                                         };
                                                                                         const cfg = statusConfig[prod.statusEstoque];
                                                                                         return (
@@ -1432,17 +1435,17 @@ export default function AIInsightsClient() {
                                                                                                 </td>
                                                                                                 <td className="px-3 py-2 text-center text-gray-200">{prod.qtdUltimaCompra} {prod.unidade}</td>
                                                                                                 <td className="px-3 py-2 text-center text-gray-300 hidden sm:table-cell">
-                                                                                                    {prod.statusEstoque !== 'SEM_DADOS' ? `~${prod.saidaDiaria}/ dia` : '-'}
+                                                                                                    {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? `~${prod.saidaDiaria}/ dia` : '-'}
                                                                                                 </td>
                                                                                                 <td className="px-3 py-2 text-center">
-                                                                                                    {prod.statusEstoque !== 'SEM_DADOS' ? (
+                                                                                                    {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
                                                                                                         <span className={`font-bold ${prod.estoqueEstimado <= 0 ? 'text-red-400' : 'text-gray-200'}`}>
                                                                                                             ~{prod.estoqueEstimado} {prod.unidade}
                                                                                                         </span>
                                                                                                     ) : <span className="text-gray-600">-</span>}
                                                                                                 </td>
                                                                                                 <td className="px-3 py-2 text-center">
-                                                                                                    {prod.statusEstoque !== 'SEM_DADOS' ? (
+                                                                                                    {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
                                                                                                         <span className={`font-bold ${prod.diasParaEsgotar <= 7 ? 'text-red-400' : prod.diasParaEsgotar <= 15 ? 'text-yellow-400' : 'text-gray-200'}`}>
                                                                                                             {prod.diasParaEsgotar <= 0 ? 'Esgotado' : `~${prod.diasParaEsgotar} dias`}
                                                                                                         </span>

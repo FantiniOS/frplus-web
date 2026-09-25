@@ -299,9 +299,17 @@ export async function GET(request: Request) {
                         const saidaDiaria = saidaDiariaBase;
                         const diasParaEsgotar = saidaDiaria > 0 ? Math.max(0, Math.round(estoqueEstimado / saidaDiaria)) : 999;
 
-                        let statusEstoque: 'CRITICO' | 'ATENCAO' | 'OK' = 'OK';
-                        if (diasParaEsgotar <= 7) statusEstoque = 'CRITICO';
-                        else if (diasParaEsgotar <= 15) statusEstoque = 'ATENCAO';
+                        let statusEstoque: 'CRITICO' | 'ATENCAO' | 'OK' | 'INATIVO' = 'OK';
+                        
+                        // Se o produto está zerado e o cliente pulou o ciclo de compra há muito tempo,
+                        // consideramos que ele parou de trabalhar com o produto (churn de item)
+                        if (estoqueEstimado === 0 && diasAteHoje > Math.max(90, cicloBase * 1.5)) {
+                            statusEstoque = 'INATIVO';
+                        } else if (diasParaEsgotar <= 7) {
+                            statusEstoque = 'CRITICO';
+                        } else if (diasParaEsgotar <= 15) {
+                            statusEstoque = 'ATENCAO';
+                        }
 
                         produtosDaFabrica.push({
                             produtoId: prodData.produtoId,
