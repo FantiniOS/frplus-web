@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, ChevronDown, Package, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users, Download, Eye, FileDown, Activity } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, TrendingUp, Lightbulb, Phone, Mail, MessageCircle, ChevronRight, ChevronDown, Package, Filter, RefreshCw, X, CheckCircle2, Megaphone, Copy, Zap, Target, Search, Send, Building2, ShoppingBag, Briefcase, Loader2, Bot, Sparkles, Users, Download, Eye, FileDown, Activity, Info } from 'lucide-react';
 import { MessageModal } from '@/components/dashboard/MessageModal';
 import { WhatsAppButton } from '@/components/dashboard/WhatsAppButton';
 import ExpansionProposalGenerator from './ExpansionProposalGenerator';
@@ -45,6 +45,8 @@ interface PrestesAComprarClient {
     confiancaCiclo: 'alta' | 'media' | 'baixa';
     totalGasto: number;
     totalPedidos: number;
+    fatorVolume?: number;
+    diagnostico?: string;
     motivo?: string;
     messageSuggestion?: string;
     contextoParaIA?: string;
@@ -928,10 +930,7 @@ export default function AIInsightsClient() {
                                                                         )}
                                                                         {client.produtos && client.produtos.length > 0 && (
                                                                             <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">
-                                                                                {client.produtos.filter(p => p.statusEstoque === 'CRITICO').length > 0
-                                                                                    ? `🔴 ${client.produtos.filter(p => p.statusEstoque === 'CRITICO').length} produto(s) esgotando`
-                                                                                    : `📦 ${client.produtos.length} produtos`
-                                                                                }
+                                                                                📦 {client.produtos?.length || 0} produtos
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -940,52 +939,40 @@ export default function AIInsightsClient() {
                                                                 <td className="px-4 py-3 text-gray-300 hidden lg:table-cell text-xs">{client.vendedorNome || 'Sem Vendedor Vinculado'}</td>
                                                                 <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
                                                                 <td className="px-4 py-3">
-                                                                    <div className="space-y-1.5 bg-black/20 p-2 rounded-lg border border-white/5">
-                                                                        <div className="flex justify-between items-center text-xs">
-                                                                            <span className="text-gray-500">Última Compra:</span>
-                                                                            <span className="text-gray-200 font-medium ml-2 text-right">
-                                                                                {client.ultimaCompra ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca'}
-                                                                                {client.diasInativo !== null && <span className="text-slate-500 block text-[10px]">há {client.diasInativo} dias</span>}
-                                                                            </span>
+                                                                    <div className="bg-black/20 p-3 rounded-lg border border-white/5 relative group cursor-help">
+                                                                        <div className="absolute top-2 right-2 text-gray-500 hover:text-blue-400 transition-colors">
+                                                                            <Info className="w-4 h-4" />
                                                                         </div>
-                                                                        <div className="flex justify-between items-center text-xs">
-                                                                            <span className="text-gray-500">Valor Última Venda:</span>
-                                                                            <span className="text-green-400 font-medium ml-2">
-                                                                                {client.valorUltimaCompra !== undefined && client.valorUltimaCompra !== null ? formatCurrency(client.valorUltimaCompra) : '-'}
-                                                                            </span>
+                                                                        {/* Tooltip escondido, aparece no hover do group */}
+                                                                        <div className="absolute z-50 invisible opacity-0 group-hover:visible group-hover:opacity-100 bg-gray-900 border border-white/10 p-3 rounded-lg shadow-xl text-[10px] text-gray-300 w-64 top-8 right-0 whitespace-pre-wrap transition-all pointer-events-none">
+                                                                            {client.diagnostico || "Diagnóstico não disponível."}
                                                                         </div>
-                                                                        {client.diasInativo !== null && (
-                                                                            <div className="flex justify-between items-center text-xs">
-                                                                                <span className="text-gray-500">Status Comercial:</span>
-                                                                                {client.statusCiclo === 'ATRASADO' ? (
-                                                                                    <span className="text-red-400 font-bold ml-2">Ausente há {client.diasDeAtraso} dias</span>
-                                                                                ) : (
-                                                                                    <span className="text-green-400 font-medium ml-2">No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - client.diasInativo)} dias)</span>
-                                                                                )}
+                                                                        
+                                                                        <div className="mb-2">
+                                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Diagnóstico Comercial</span>
+                                                                        </div>
+                                                                        
+                                                                        <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[9px] text-gray-500 uppercase">Ritmo Padrão</span>
+                                                                                <span className="text-xs font-medium text-gray-300">{client.cicloMedioDias} dias</span>
                                                                             </div>
-                                                                        )}
-                                                                        <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
-                                                                            <span className="text-gray-500">Giro Médio Atual:</span>
-                                                                            <div className="flex items-center gap-1.5 ml-2">
-                                                                                <span className="text-blue-400 font-medium">a cada {client.cicloMedioDias} dias</span>
-                                                                                <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
-                                                                                    client.confiancaCiclo === 'alta' ? 'bg-green-500/15 text-green-400 border border-green-500/30' :
-                                                                                    client.confiancaCiclo === 'media' ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30' :
-                                                                                    'bg-red-500/15 text-red-400 border border-red-500/30'
-                                                                                }`}>
-                                                                                    {client.confiancaCiclo === 'alta' ? '🟢 Alta' : client.confiancaCiclo === 'media' ? '🟡 Média' : '🔴 Baixa'}
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[9px] text-gray-500 uppercase">Última Carga</span>
+                                                                                <span className={`text-xs font-bold ${(client.fatorVolume || 1) > 1.05 ? 'text-green-400' : (client.fatorVolume || 1) < 0.95 ? 'text-red-400' : 'text-blue-400'}`}>
+                                                                                    {(client.fatorVolume || 1) > 1.05 ? `+${(((client.fatorVolume || 1) - 1) * 100).toFixed(0)}% Acima` : (client.fatorVolume || 1) < 0.95 ? `${(((client.fatorVolume || 1) - 1) * 100).toFixed(0)}% Abaixo` : 'Média Normal'}
                                                                                 </span>
                                                                             </div>
-                                                                        </div>
-                                                                        {client.cicloAjustado && client.cicloAjustado !== client.cicloMedioDias && (
-                                                                            <div className="flex justify-between items-center text-xs mt-1">
-                                                                                <span className="text-gray-500">Ciclo c/ Volume:</span>
-                                                                                <span className="text-purple-400 font-medium ml-2">{client.cicloAjustado} dias</span>
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[9px] text-gray-500 uppercase">Expectativa Limite</span>
+                                                                                <span className="text-xs font-medium text-purple-400">{Math.round((client.cicloMedioDias || 30) * (client.fatorVolume || 1))} dias</span>
                                                                             </div>
-                                                                        )}
-                                                                        <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
-                                                                            <span className="text-gray-500">Antecedência Radar:</span>
-                                                                            <span className="text-cyan-400 font-medium ml-2">{client.diasDeAntecedencia ?? Math.min(Math.floor(client.cicloMedioDias * 0.15), 7)} dias</span>
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[9px] text-gray-500 uppercase">Tempo Decorrido</span>
+                                                                                <span className={`text-xs font-bold ${(client.diasInativo || 0) >= ((client.cicloMedioDias || 30) * (client.fatorVolume || 1) * 0.85) ? 'text-orange-400' : 'text-gray-300'}`}>
+                                                                                    {client.diasInativo} dias
+                                                                                </span>
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </td>
@@ -1118,10 +1105,7 @@ export default function AIInsightsClient() {
                                                                 )}
                                                                 {client.produtos && client.produtos.length > 0 && (
                                                                     <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">
-                                                                        {client.produtos.filter(p => p.statusEstoque === 'CRITICO').length > 0
-                                                                            ? `🔴 ${client.produtos.filter(p => p.statusEstoque === 'CRITICO').length} produto(s) esgotando`
-                                                                            : `📦 ${client.produtos.length} produtos`
-                                                                        }
+                                                                        📦 {client.produtos?.length || 0} produtos
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -1130,55 +1114,43 @@ export default function AIInsightsClient() {
                                                         <td className="px-4 py-3 text-gray-300 hidden lg:table-cell text-xs">{client.vendedorNome || 'Sem Vendedor Vinculado'}</td>
                                                         <td className="px-4 py-3 text-gray-300 hidden sm:table-cell">{client.cidade}</td>
                                                         <td className="px-4 py-3">
-                                                            <div className="space-y-1.5 bg-black/20 p-2 rounded-lg border border-white/5">
-                                                                <div className="flex justify-between items-center text-xs">
-                                                                    <span className="text-gray-500">Última Compra:</span>
-                                                                    <span className="text-gray-200 font-medium ml-2 text-right">
-                                                                        {client.ultimaCompra ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca'}
-                                                                        {client.diasInativo !== null && <span className="text-slate-500 block text-[10px]">há {client.diasInativo} dias</span>}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center text-xs">
-                                                                    <span className="text-gray-500">Valor Última Venda:</span>
-                                                                    <span className="text-green-400 font-medium ml-2">
-                                                                        {client.valorUltimaCompra !== undefined && client.valorUltimaCompra !== null ? formatCurrency(client.valorUltimaCompra) : '-'}
-                                                                    </span>
-                                                                </div>
-                                                                {client.diasInativo !== null && (
-                                                                    <div className="flex justify-between items-center text-xs">
-                                                                        <span className="text-gray-500">Status Comercial:</span>
-                                                                        {client.statusCiclo === 'ATRASADO' ? (
-                                                                            <span className="text-red-400 font-bold ml-2">Ausente há {client.diasDeAtraso} dias</span>
-                                                                        ) : (
-                                                                            <span className="text-green-400 font-medium ml-2">No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - client.diasInativo)} dias)</span>
-                                                                        )}
+                                                            <div className="bg-black/20 p-3 rounded-lg border border-white/5 relative group cursor-help">
+                                                                        <div className="absolute top-2 right-2 text-gray-500 hover:text-blue-400 transition-colors">
+                                                                            <Info className="w-4 h-4" />
+                                                                        </div>
+                                                                        {/* Tooltip escondido, aparece no hover do group */}
+                                                                        <div className="absolute z-50 invisible opacity-0 group-hover:visible group-hover:opacity-100 bg-gray-900 border border-white/10 p-3 rounded-lg shadow-xl text-[10px] text-gray-300 w-64 top-8 right-0 whitespace-pre-wrap transition-all pointer-events-none">
+                                                                            {client.diagnostico || "Diagnóstico não disponível."}
+                                                                        </div>
+                                                                        
+                                                                        <div className="mb-2">
+                                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Diagnóstico Comercial</span>
+                                                                        </div>
+                                                                        
+                                                                        <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[9px] text-gray-500 uppercase">Ritmo Padrão</span>
+                                                                                <span className="text-xs font-medium text-gray-300">{client.cicloMedioDias} dias</span>
+                                                                            </div>
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[9px] text-gray-500 uppercase">Última Carga</span>
+                                                                                <span className={`text-xs font-bold ${(client.fatorVolume || 1) > 1.05 ? 'text-green-400' : (client.fatorVolume || 1) < 0.95 ? 'text-red-400' : 'text-blue-400'}`}>
+                                                                                    {(client.fatorVolume || 1) > 1.05 ? `+${(((client.fatorVolume || 1) - 1) * 100).toFixed(0)}% Acima` : (client.fatorVolume || 1) < 0.95 ? `${(((client.fatorVolume || 1) - 1) * 100).toFixed(0)}% Abaixo` : 'Média Normal'}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[9px] text-gray-500 uppercase">Expectativa Limite</span>
+                                                                                <span className="text-xs font-medium text-purple-400">{Math.round((client.cicloMedioDias || 30) * (client.fatorVolume || 1))} dias</span>
+                                                                            </div>
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[9px] text-gray-500 uppercase">Tempo Decorrido</span>
+                                                                                <span className={`text-xs font-bold ${(client.diasInativo || 0) >= ((client.cicloMedioDias || 30) * (client.fatorVolume || 1) * 0.85) ? 'text-orange-400' : 'text-gray-300'}`}>
+                                                                                    {client.diasInativo} dias
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
-                                                                )}
-                                                                <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
-                                                                    <span className="text-gray-500">Giro Médio Atual:</span>
-                                                                    <div className="flex items-center gap-1.5 ml-2">
-                                                                        <span className="text-blue-400 font-medium">a cada {client.cicloMedioDias} dias</span>
-                                                                        <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
-                                                                            client.confiancaCiclo === 'alta' ? 'bg-green-500/15 text-green-400 border border-green-500/30' :
-                                                                            client.confiancaCiclo === 'media' ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30' :
-                                                                            'bg-red-500/15 text-red-400 border border-red-500/30'
-                                                                        }`}>
-                                                                            {client.confiancaCiclo === 'alta' ? '🟢 Alta' : client.confiancaCiclo === 'media' ? '🟡 Média' : '🔴 Baixa'}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                                {client.cicloAjustado && client.cicloAjustado !== client.cicloMedioDias && (
-                                                                    <div className="flex justify-between items-center text-xs mt-1">
-                                                                        <span className="text-gray-500">Ciclo c/ Volume:</span>
-                                                                        <span className="text-purple-400 font-medium ml-2">{client.cicloAjustado} dias</span>
-                                                                    </div>
-                                                                )}
-                                                                <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
-                                                                    <span className="text-gray-500">Antecedência Radar:</span>
-                                                                    <span className="text-cyan-400 font-medium ml-2">{client.diasDeAntecedencia ?? Math.min(Math.floor(client.cicloMedioDias * 0.15), 7)} dias</span>
-                                                                </div>
-                                                            </div>
-                                                        </td>
+                                                                </td>
                                                         <td className="px-4 py-3 text-center hidden md:table-cell">
                                                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${alertaColor}`}>
                                                                 {diasRestantes <= 0 ? 'Expirando' : `${diasRestantes} dias na janela`}

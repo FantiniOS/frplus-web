@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/getServerUser'
+import { calcularCicloPonderadoPorCarga } from '@/lib/calculoRadar'
 
 // GET /api/ai/prestes-a-comprar - Get clients in the exact buying window
 export const dynamic = 'force-dynamic'
@@ -189,27 +190,18 @@ export async function GET(request: Request) {
                 const diffTime = hoje.getTime() - lastOrderDate.getTime();
                 const daysSinceLastOrder = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-                const pedidosDatas = sortedPedidos.map(o => o.data);
-                const { cicloMedioDias: cicloBase, confianca } = calcularCicloMedio(pedidosDatas);
-
-                // Fator Volume isolado desta Fábrica
-                const volumesPorPedido = sortedPedidos.map(p => p.quantidadeItens);
-                const quantidadeUltimaCompra = volumesPorPedido[0] || 0;
+                const radarCarga = calcularCicloPonderadoPorCarga(client.id, client.razaoSocial, sortedPedidos, hoje);
                 
-                const quantidadeMediaHistorica = volumesPorPedido.length > 1
-                    ? volumesPorPedido.slice(1).reduce((a, b) => a + b, 0) / (volumesPorPedido.length - 1)
-                    : quantidadeUltimaCompra;
-
-                let fatorVolume = quantidadeMediaHistorica > 0
-                    ? quantidadeUltimaCompra / quantidadeMediaHistorica
-                    : 1;
-
-                if (fatorVolume > 2) fatorVolume = 2;
-                if (fatorVolume < 0.5) fatorVolume = 0.5;
-                if (sortedPedidos.length < 2) fatorVolume = 1;
-
-                const novoCicloEstimado = Math.round(cicloBase * fatorVolume);
-                const antecedencia = calcularAntecedencia(novoCicloEstimado);
+                if (!radarCarga) continue; // Pula se não tiver histórico suficiente
+                
+                const {
+                    frequenciaBaseDias,
+                    multiplicadorCarga,
+                    previsaoDuracaoDias,
+                    diasDesdeUltimaCompra,
+                    prestesAComprar,
+                    diagnostico
+                } = radarCarga;
 
                 // --- INICIO: PRODUTOS (APENAS HISTÓRICO) ---
                     const produtosDaFabrica: any[] = [];
@@ -230,27 +222,26 @@ export async function GET(request: Request) {
                     }
                 // --- FIM: PRODUTOS ---
 
-                const macroShouldAppear = daysSinceLastOrder >= (novoCicloEstimado - antecedencia);
-                const shouldAppear = macroShouldAppear;
+                const shouldAppear = prestesAComprar;
 
                 
 
                 if (clienteIdParam || shouldAppear) {
-                    const dataEsperada = new Date(lastOrderDate.getTime() + novoCicloEstimado * 24 * 60 * 60 * 1000);
+                    const dataEsperada = new Date(lastOrderDate.getTime() + previsaoDuracaoDias * 24 * 60 * 60 * 1000);
                     const diffTimeAtraso = hoje.getTime() - dataEsperada.getTime();
                     const diasDeAtraso = Math.max(0, Math.floor(diffTimeAtraso / (1000 * 60 * 60 * 24)));
 
                     const greetingName = client.comprador ? client.comprador.split(' ')[0] : client.nomeFantasia;
 
                     let statusCiclo: 'ATRASADO' | 'PRESTES' = 'PRESTES';
-                    if (daysSinceLastOrder >= novoCicloEstimado) {
+                    if (daysSinceLastOrder >= previsaoDuracaoDias) {
                         statusCiclo = 'ATRASADO';
                     }
 
                     const baseContext = `Você é o representante comercial Carlos Fantini. Escreva uma mensagem curta de WhatsApp para o cliente. Use os dados:
 - Nome: ${greetingName}
 - Fábrica: ${fabricaNome}
-- Ciclo: ${cicloBase}
+- Ciclo: ${frequenciaBaseDias}
 TEXTO BASE (Adapte para ficar natural, sem jargões):
 Fala ${greetingName}, bom dia! Tudo bem? Pelo meu controle de estoque aqui, já faz uns ${daysSinceLastOrder} dias que rodamos o último pedido, então já deve estar na hora de repor a linha da ${fabricaNome}, certo? Tô montando a rota de entregas de hoje, quer que eu já lance o seu pedido para garantir o faturamento? Me dá um alô!
 Abs, Carlos Fantini`;
@@ -273,12 +264,14 @@ Abs, Carlos Fantini`;
                         ultimaCompra: lastOrderDate.toISOString(),
                         dataEsperada: dataEsperada.toISOString(),
                         diasDeAtraso,
-                        cicloMedioDias: cicloBase,
-                        cicloAjustado: novoCicloEstimado,
-                        _novoCicloEstimado: novoCicloEstimado,
-                        diasAteProximaCompra: Math.max(0, novoCicloEstimado - daysSinceLastOrder),
-                        diasDeAntecedencia: antecedencia,
-                        confiancaCiclo: confianca,
+                        cicloMedioDias: frequenciaBaseDias,
+                        cicloAjustado: previsaoDuracaoDias,
+                        fatorVolume: multiplicadorCarga,
+                        diagnostico: diagnostico,
+                        _previsaoDuracaoDias: previsaoDuracaoDias,
+                        diasAteProximaCompra: Math.max(0, previsaoDuracaoDias - daysSinceLastOrder),
+                        diasDeAntecedencia: Math.ceil(previsaoDuracaoDias * 0.15),
+                        confiancaCiclo: 'alta',
                         totalGasto: totalGastoGlobal,
                         totalPedidos: client._count.pedidos,
                         motivo: '',
@@ -296,8 +289,8 @@ Abs, Carlos Fantini`;
 
         // Ordenação por Urgência (Mais atrasado primeiro)
         analyzedClients.sort((a, b) => {
-            const urgenciaA = a._novoCicloEstimado - a.diasInativo;
-            const urgenciaB = b._novoCicloEstimado - b.diasInativo;
+            const urgenciaA = a._previsaoDuracaoDias - a.diasInativo;
+            const urgenciaB = b._previsaoDuracaoDias - b.diasInativo;
             return urgenciaA - urgenciaB;
         });
 
