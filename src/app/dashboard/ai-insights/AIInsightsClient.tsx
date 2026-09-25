@@ -1011,65 +1011,33 @@ export default function AIInsightsClient() {
                                                                         <div className="ml-6 rounded-lg border border-white/10 overflow-hidden">
                                                                             <div className="flex items-center gap-2 px-4 py-2 bg-white/5">
                                                                                 <Package className="w-4 h-4 text-purple-400" />
-                                                                                <span className="text-xs font-semibold text-white uppercase tracking-wider">Estimativa de Estoque por Produto</span>
-                                                                                <span className="text-[10px] text-gray-500 ml-auto">Baseado no histórico de compras</span>
-                                                                            </div>
-                                                                            <div className="max-h-[300px] overflow-y-auto">
-                                                                                <table className="w-full text-xs">
-                                                                                    <thead className="bg-white/5 sticky top-0">
-                                                                                        <tr>
-                                                                                            <th className="px-3 py-2 text-left text-gray-400 font-medium">Produto</th>
-                                                                                            <th className="px-3 py-2 text-center text-gray-400 font-medium">Últ. Qtd</th>
-                                                                                            <th className="px-3 py-2 text-center text-gray-400 font-medium hidden sm:table-cell">Saída/dia</th>
-                                                                                            <th className="px-3 py-2 text-center text-gray-400 font-medium">Estoque Est.</th>
-                                                                                            <th className="px-3 py-2 text-center text-gray-400 font-medium">Esgota em</th>
-                                                                                            <th className="px-3 py-2 text-center text-gray-400 font-medium">Status</th>
-                                                                                        </tr>
-                                                                                    </thead>
-                                                                                    <tbody className="divide-y divide-white/5">
-                                                                                        {client.produtos.map(prod => {
-                                                                                            const statusConfig = {
-                                                                                                CRITICO: { label: '🔴 Crítico', cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
-                                                                                                ATENCAO: { label: '🟡 Atenção', cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
-                                                                                                OK: { label: '🟢 OK', cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
-                                                                                                SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' },
-                                                                                            INATIVO: { label: '⛔ Sem Giro', cls: 'bg-gray-500/15 text-gray-500 border-gray-500/30' }
-                                                                                            };
-                                                                                            const cfg = statusConfig[prod.statusEstoque];
-                                                                                            return (
-                                                                                                <tr key={prod.produtoId} className="hover:bg-white/5">
-                                                                                                    <td className="px-3 py-2">
-                                                                                                        <p className="text-white font-medium truncate max-w-[200px]">{prod.nome}</p>
-                                                                                                        <p className="text-[10px] text-gray-600">{prod.codigo} · {prod.totalOcorrencias} pedido(s)</p>
-                                                                                                    </td>
-                                                                                                    <td className="px-3 py-2 text-center text-gray-200">{prod.qtdUltimaCompra} {prod.unidade}</td>
-                                                                                                    <td className="px-3 py-2 text-center text-gray-300 hidden sm:table-cell">
-                                                                                                        {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? `~${prod.saidaDiaria}/ dia` : '-'}
-                                                                                                    </td>
-                                                                                                    <td className="px-3 py-2 text-center">
-                                                                                                        {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
-                                                                                                            <span className={`font-bold ${prod.estoqueEstimado <= 0 ? 'text-red-400' : 'text-gray-200'}`}>
-                                                                                                                ~{prod.estoqueEstimado} {prod.unidade}
-                                                                                                            </span>
-                                                                                                        ) : <span className="text-gray-600">-</span>}
-                                                                                                    </td>
-                                                                                                    <td className="px-3 py-2 text-center">
-                                                                                                        {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
-                                                                                                            <span className={`font-bold ${prod.diasParaEsgotar <= 7 ? 'text-red-400' : prod.diasParaEsgotar <= 15 ? 'text-yellow-400' : 'text-gray-200'}`}>
-                                                                                                                {prod.diasParaEsgotar <= 0 ? 'Esgotado' : `~${prod.diasParaEsgotar} dias`}
-                                                                                                            </span>
-                                                                                                        ) : <span className="text-gray-600">-</span>}
-                                                                                                    </td>
-                                                                                                    <td className="px-3 py-2 text-center">
-                                                                                                        <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border ${cfg.cls}`}>
-                                                                                                            {cfg.label}
-                                                                                                        </span>
-                                                                                                    </td>
-                                                                                                </tr>
-                                                                                            );
-                                                                                        })}
-                                                                                    </tbody>
-                                                                                </table>
+                                                                                <span className="text-xs font-semibold text-white uppercase tracking-wider">Últimos Produtos Comprados</span>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto">
+                    <table className="w-full text-xs">
+                        <thead className="bg-white/5 text-gray-400">
+                            <tr>
+                                <th className="px-4 py-2 text-left font-medium">Produto</th>
+                                <th className="px-4 py-2 text-center font-medium">Últ. Qtd</th>
+                                <th className="px-4 py-2 text-center font-medium">Data</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {client.produtos?.map((prod: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-white/[0.02]">
+                                    <td className="px-4 py-3 font-medium text-gray-300">
+                                        {prod.nome}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-gray-300">
+                                        {prod.qtdUltimaCompra} {prod.unidade}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-gray-400">
+                                        {new Date(prod.dataUltimaCompra).toLocaleDateString('pt-BR')}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                                                                             </div>
                                                                         </div>
                                                                     </td>
@@ -1234,65 +1202,33 @@ export default function AIInsightsClient() {
                                                                 <div className="ml-6 rounded-lg border border-white/10 overflow-hidden">
                                                                     <div className="flex items-center gap-2 px-4 py-2 bg-white/5">
                                                                         <Package className="w-4 h-4 text-purple-400" />
-                                                                        <span className="text-xs font-semibold text-white uppercase tracking-wider">Estimativa de Estoque por Produto</span>
-                                                                        <span className="text-[10px] text-gray-500 ml-auto">Baseado no histórico de compras</span>
-                                                                    </div>
-                                                                    <div className="max-h-[300px] overflow-y-auto">
-                                                                        <table className="w-full text-xs">
-                                                                            <thead className="bg-white/5 sticky top-0">
-                                                                                <tr>
-                                                                                    <th className="px-3 py-2 text-left text-gray-400 font-medium">Produto</th>
-                                                                                    <th className="px-3 py-2 text-center text-gray-400 font-medium">Últ. Qtd</th>
-                                                                                    <th className="px-3 py-2 text-center text-gray-400 font-medium hidden sm:table-cell">Saída/dia</th>
-                                                                                    <th className="px-3 py-2 text-center text-gray-400 font-medium">Estoque Est.</th>
-                                                                                    <th className="px-3 py-2 text-center text-gray-400 font-medium">Esgota em</th>
-                                                                                    <th className="px-3 py-2 text-center text-gray-400 font-medium">Status</th>
-                                                                                </tr>
-                                                                            </thead>
-                                                                            <tbody className="divide-y divide-white/5">
-                                                                                {client.produtos.map(prod => {
-                                                                                    const statusConfig = {
-                                                                                        CRITICO: { label: '🔴 Crítico', cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
-                                                                                        ATENCAO: { label: '🟡 Atenção', cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
-                                                                                        OK: { label: '🟢 OK', cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
-                                                                                        SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' },
-                                                                                    INATIVO: { label: '⛔ Sem Giro', cls: 'bg-gray-500/15 text-gray-500 border-gray-500/30' }
-                                                                                    };
-                                                                                    const cfg = statusConfig[prod.statusEstoque];
-                                                                                    return (
-                                                                                        <tr key={prod.produtoId} className="hover:bg-white/5">
-                                                                                            <td className="px-3 py-2">
-                                                                                                <p className="text-white font-medium truncate max-w-[200px]">{prod.nome}</p>
-                                                                                                <p className="text-[10px] text-gray-600">{prod.codigo} · {prod.totalOcorrencias} pedido(s)</p>
-                                                                                            </td>
-                                                                                            <td className="px-3 py-2 text-center text-gray-200">{prod.qtdUltimaCompra} {prod.unidade}</td>
-                                                                                            <td className="px-3 py-2 text-center text-gray-300 hidden sm:table-cell">
-                                                                                                {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? `~${prod.saidaDiaria}/${' dia'}` : '-'}
-                                                                                            </td>
-                                                                                            <td className="px-3 py-2 text-center">
-                                                                                                {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
-                                                                                                    <span className={`font-bold ${prod.estoqueEstimado <= 0 ? 'text-red-400' : 'text-gray-200'}`}>
-                                                                                                        ~{prod.estoqueEstimado} {prod.unidade}
-                                                                                                    </span>
-                                                                                                ) : <span className="text-gray-600">-</span>}
-                                                                                            </td>
-                                                                                            <td className="px-3 py-2 text-center">
-                                                                                                {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
-                                                                                                    <span className={`font-bold ${prod.diasParaEsgotar <= 7 ? 'text-red-400' : prod.diasParaEsgotar <= 15 ? 'text-yellow-400' : 'text-gray-200'}`}>
-                                                                                                        {prod.diasParaEsgotar <= 0 ? 'Esgotado' : `~${prod.diasParaEsgotar} dias`}
-                                                                                                    </span>
-                                                                                                ) : <span className="text-gray-600">-</span>}
-                                                                                            </td>
-                                                                                            <td className="px-3 py-2 text-center">
-                                                                                                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border ${cfg.cls}`}>
-                                                                                                    {cfg.label}
-                                                                                                </span>
-                                                                                            </td>
-                                                                                        </tr>
-                                                                                    );
-                                                                                })}
-                                                                            </tbody>
-                                                                        </table>
+                                                                        <span className="text-xs font-semibold text-white uppercase tracking-wider">Últimos Produtos Comprados</span>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto">
+                    <table className="w-full text-xs">
+                        <thead className="bg-white/5 text-gray-400">
+                            <tr>
+                                <th className="px-4 py-2 text-left font-medium">Produto</th>
+                                <th className="px-4 py-2 text-center font-medium">Últ. Qtd</th>
+                                <th className="px-4 py-2 text-center font-medium">Data</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {client.produtos?.map((prod: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-white/[0.02]">
+                                    <td className="px-4 py-3 font-medium text-gray-300">
+                                        {prod.nome}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-gray-300">
+                                        {prod.qtdUltimaCompra} {prod.unidade}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-gray-400">
+                                        {new Date(prod.dataUltimaCompra).toLocaleDateString('pt-BR')}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                                                                     </div>
                                                                 </div>
                                                             </td>
@@ -1403,64 +1339,33 @@ export default function AIInsightsClient() {
                                                                     <div className="ml-6 rounded-lg border border-white/10 overflow-hidden">
                                                                         <div className="flex items-center gap-2 px-4 py-2 bg-white/5">
                                                                             <Package className="w-4 h-4 text-purple-400" />
-                                                                            <span className="text-xs font-semibold text-white uppercase tracking-wider">Estimativa de Estoque por Produto</span>
-                                                                        </div>
-                                                                        <div className="max-h-[300px] overflow-y-auto">
-                                                                            <table className="w-full text-xs">
-                                                                                <thead className="bg-white/5 sticky top-0">
-                                                                                    <tr>
-                                                                                        <th className="px-3 py-2 text-left text-gray-400 font-medium">Produto</th>
-                                                                                        <th className="px-3 py-2 text-center text-gray-400 font-medium">Últ. Qtd</th>
-                                                                                        <th className="px-3 py-2 text-center text-gray-400 font-medium hidden sm:table-cell">Saída/dia</th>
-                                                                                        <th className="px-3 py-2 text-center text-gray-400 font-medium">Estoque Est.</th>
-                                                                                        <th className="px-3 py-2 text-center text-gray-400 font-medium">Esgota em</th>
-                                                                                        <th className="px-3 py-2 text-center text-gray-400 font-medium">Status</th>
-                                                                                    </tr>
-                                                                                </thead>
-                                                                                <tbody className="divide-y divide-white/5">
-                                                                                    {client.produtos.map(prod => {
-                                                                                        const statusConfig = {
-                                                                                            CRITICO: { label: '🔴 Crítico', cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
-                                                                                            ATENCAO: { label: '🟡 Atenção', cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
-                                                                                            OK: { label: '🟢 OK', cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
-                                                                                            SEM_DADOS: { label: '⚪ S/ Dados', cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' },
-                                                                                        INATIVO: { label: '⛔ Sem Giro', cls: 'bg-gray-500/15 text-gray-500 border-gray-500/30' }
-                                                                                        };
-                                                                                        const cfg = statusConfig[prod.statusEstoque];
-                                                                                        return (
-                                                                                            <tr key={prod.produtoId} className="hover:bg-white/5">
-                                                                                                <td className="px-3 py-2">
-                                                                                                    <p className="text-white font-medium truncate max-w-[200px]">{prod.nome}</p>
-                                                                                                    <p className="text-[10px] text-gray-600">{prod.codigo} · {prod.totalOcorrencias} pedido(s)</p>
-                                                                                                </td>
-                                                                                                <td className="px-3 py-2 text-center text-gray-200">{prod.qtdUltimaCompra} {prod.unidade}</td>
-                                                                                                <td className="px-3 py-2 text-center text-gray-300 hidden sm:table-cell">
-                                                                                                    {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? `~${prod.saidaDiaria}/ dia` : '-'}
-                                                                                                </td>
-                                                                                                <td className="px-3 py-2 text-center">
-                                                                                                    {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
-                                                                                                        <span className={`font-bold ${prod.estoqueEstimado <= 0 ? 'text-red-400' : 'text-gray-200'}`}>
-                                                                                                            ~{prod.estoqueEstimado} {prod.unidade}
-                                                                                                        </span>
-                                                                                                    ) : <span className="text-gray-600">-</span>}
-                                                                                                </td>
-                                                                                                <td className="px-3 py-2 text-center">
-                                                                                                    {(prod.statusEstoque !== 'SEM_DADOS' && prod.statusEstoque !== 'INATIVO') ? (
-                                                                                                        <span className={`font-bold ${prod.diasParaEsgotar <= 7 ? 'text-red-400' : prod.diasParaEsgotar <= 15 ? 'text-yellow-400' : 'text-gray-200'}`}>
-                                                                                                            {prod.diasParaEsgotar <= 0 ? 'Esgotado' : `~${prod.diasParaEsgotar} dias`}
-                                                                                                        </span>
-                                                                                                    ) : <span className="text-gray-600">-</span>}
-                                                                                                </td>
-                                                                                                <td className="px-3 py-2 text-center">
-                                                                                                    <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border ${cfg.cls}`}>
-                                                                                                        {cfg.label}
-                                                                                                    </span>
-                                                                                                </td>
-                                                                                            </tr>
-                                                                                        );
-                                                                                    })}
-                                                                                </tbody>
-                                                                            </table>
+                                                                            <span className="text-xs font-semibold text-white uppercase tracking-wider">Últimos Produtos Comprados</span>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto">
+                    <table className="w-full text-xs">
+                        <thead className="bg-white/5 text-gray-400">
+                            <tr>
+                                <th className="px-4 py-2 text-left font-medium">Produto</th>
+                                <th className="px-4 py-2 text-center font-medium">Últ. Qtd</th>
+                                <th className="px-4 py-2 text-center font-medium">Data</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {client.produtos?.map((prod: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-white/[0.02]">
+                                    <td className="px-4 py-3 font-medium text-gray-300">
+                                        {prod.nome}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-gray-300">
+                                        {prod.qtdUltimaCompra} {prod.unidade}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-gray-400">
+                                        {new Date(prod.dataUltimaCompra).toLocaleDateString('pt-BR')}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                                                                         </div>
                                                                     </div>
                                                                 </td>

@@ -211,132 +211,27 @@ export async function GET(request: Request) {
                 const novoCicloEstimado = Math.round(cicloBase * fatorVolume);
                 const antecedencia = calcularAntecedencia(novoCicloEstimado);
 
-                // --- INICIO: CALCULO DE PRODUTOS ---
-                // 3. Calcular estimativa de estoque POR PRODUTO desta fábrica
+                // --- INICIO: PRODUTOS (APENAS HISTÓRICO) ---
                     const produtosDaFabrica: any[] = [];
                     for (const [prodKey, prodData] of Array.from(historicoPorProduto.entries())) {
                         if (prodData.fabricaNome !== fabricaNome) continue;
 
-                        // 1. Agrupar compras feitas no mesmo dia (ordem cronológica: mais antigo para mais novo)
-                        const ocorrenciasChronological = [...prodData.ocorrencias].sort((a, b) => a.data.getTime() - b.data.getTime());
-                        const mergedOcorrencias: {data: Date, quantidade: number}[] = [];
-                        for (const oc of ocorrenciasChronological) {
-                            const last = mergedOcorrencias[mergedOcorrencias.length - 1];
-                            if (last && last.data.toDateString() === oc.data.toDateString()) {
-                                last.quantidade += oc.quantidade;
-                            } else {
-                                mergedOcorrencias.push({ data: new Date(oc.data), quantidade: oc.quantidade });
-                            }
-                        }
-
-                        const totalOcorrencias = prodData.ocorrencias.length; // mantemos o total bruto para info
-                        const qtdUltimaCompra = mergedOcorrencias[mergedOcorrencias.length - 1].quantidade;
-                        const qtdMediaHistorica = mergedOcorrencias.reduce((acc, o) => acc + o.quantidade, 0) / mergedOcorrencias.length;
-
-                        if (mergedOcorrencias.length < 2) {
-                            produtosDaFabrica.push({
-                                produtoId: prodData.produtoId,
-                                nome: prodData.nome,
-                                codigo: prodData.codigo,
-                                unidade: prodData.unidade,
-                                qtdUltimaCompra,
-                                qtdMediaHistorica: Math.round(qtdMediaHistorica * 10) / 10,
-                                saidaDiaria: 0,
-                                estoqueEstimado: qtdUltimaCompra,
-                                diasParaEsgotar: 999,
-                                statusEstoque: 'SEM_DADOS' as const,
-                                totalOcorrencias
-                            });
-                            continue;
-                        }
-
-                        // 2. Calcular taxas de consumo (Saída Diária) usando Mediana
-                        const taxasDiarias: number[] = [];
-                        for (let i = 0; i < mergedOcorrencias.length - 1; i++) {
-                            const dias = Math.abs(mergedOcorrencias[i+1].data.getTime() - mergedOcorrencias[i].data.getTime()) / (1000 * 60 * 60 * 24);
-                            if (dias >= 1) {
-                                taxasDiarias.push(mergedOcorrencias[i].quantidade / dias);
-                            }
-                        }
-
-                        let saidaDiariaBase = 0;
-                        if (taxasDiarias.length > 0) {
-                            // Mediana (ignora os picos anormais)
-                            taxasDiarias.sort((a, b) => a - b);
-                            const mid = Math.floor(taxasDiarias.length / 2);
-                            saidaDiariaBase = taxasDiarias.length % 2 !== 0 ? taxasDiarias[mid] : (taxasDiarias[mid - 1] + taxasDiarias[mid]) / 2;
-                        } else {
-                            // Fallback caso não haja intervalo de dias úteis
-                            saidaDiariaBase = qtdMediaHistorica / 30;
-                        }
-
-                        // 3. Rodar o Livro-Razão (Ledger) do Estoque Acumulado
-                        // LIMITAR O LEDGER AOS ÚLTIMOS 5 PEDIDOS: Isso atua como um "inventário virtual", 
-                        // impedindo que sobras decimais de anos atrás se acumulem e criem estoque fantasma.
-                        const maxLedgerMemory = 5;
-                        const ledgerOcorrencias = mergedOcorrencias.slice(-maxLedgerMemory);
-
-                        // ADIÇÃO DE ESTOQUE DE SEGURANÇA (BUFFER):
-                        // No atacado, clientes não deixam o estoque zerar para pedir. Eles mantêm uma "reserva de gôndola".
-                        // Adicionar ~20% de buffer inicial impede que o sistema acuse "Esgotado" prematuramente
-                        // e reflete a realidade de que o estoque quase nunca parte do zero absoluto.
-                        const estoqueSeguranca = qtdMediaHistorica * 0.20;
-                        let estoqueAtual = estoqueSeguranca;
-                        let ultimaData = ledgerOcorrencias[0].data;
-
-                        for (const pedido of ledgerOcorrencias) {
-                            const diasPassados = Math.abs(pedido.data.getTime() - ultimaData.getTime()) / (1000 * 60 * 60 * 24);
-                            // Consumir estoque
-                            estoqueAtual = Math.max(0, estoqueAtual - (diasPassados * saidaDiariaBase));
-                            // Adicionar nova compra
-                            estoqueAtual += pedido.quantidade;
-                            ultimaData = pedido.data;
-                        }
-
-                        // 4. Consumo até a data de HOJE
-                        const diasAteHoje = Math.max(0, (hoje.getTime() - ultimaData.getTime()) / (1000 * 60 * 60 * 24));
-                        const estoqueEstimado = Math.max(0, Math.round((estoqueAtual - (diasAteHoje * saidaDiariaBase)) * 10) / 10);
-                        const saidaDiaria = saidaDiariaBase;
-                        const diasParaEsgotar = saidaDiaria > 0 ? Math.max(0, Math.round(estoqueEstimado / saidaDiaria)) : 999;
-
-                        let statusEstoque: 'CRITICO' | 'ATENCAO' | 'OK' | 'INATIVO' = 'OK';
-                        
-                        // Se o produto está zerado e o cliente pulou o ciclo de compra há muito tempo,
-                        // consideramos que ele parou de trabalhar com o produto (churn de item)
-                        if (estoqueEstimado === 0 && diasAteHoje > Math.max(90, cicloBase * 1.5)) {
-                            statusEstoque = 'INATIVO';
-                        } else if (diasParaEsgotar <= 7) {
-                            statusEstoque = 'CRITICO';
-                        } else if (diasParaEsgotar <= 15) {
-                            statusEstoque = 'ATENCAO';
-                        }
+                        const ocorrencias = [...prodData.ocorrencias].sort((a, b) => b.data.getTime() - a.data.getTime());
+                        if (ocorrencias.length < 1) continue;
 
                         produtosDaFabrica.push({
                             produtoId: prodData.produtoId,
                             nome: prodData.nome,
                             codigo: prodData.codigo,
                             unidade: prodData.unidade,
-                            qtdUltimaCompra,
-                            qtdMediaHistorica: Math.round(qtdMediaHistorica * 10) / 10,
-                            saidaDiaria: Math.round(saidaDiaria * 100) / 100,
-                            estoqueEstimado,
-                            diasParaEsgotar,
-                            statusEstoque,
-                            totalOcorrencias
+                            qtdUltimaCompra: ocorrencias[0].quantidade,
+                            dataUltimaCompra: ocorrencias[0].data.toISOString()
                         });
                     }
-
-                    // Ordenar: mais urgente primeiro, SEM_DADOS no final
-                    produtosDaFabrica.sort((a, b) => {
-                        if (a.statusEstoque === 'SEM_DADOS' && b.statusEstoque !== 'SEM_DADOS') return 1;
-                        if (b.statusEstoque === 'SEM_DADOS' && a.statusEstoque !== 'SEM_DADOS') return -1;
-                        return a.diasParaEsgotar - b.diasParaEsgotar;
-                    });
-                // --- FIM: CALCULO DE PRODUTOS ---
+                // --- FIM: PRODUTOS ---
 
                 const macroShouldAppear = daysSinceLastOrder >= (novoCicloEstimado - antecedencia);
-                const temProdutoEsgotando = produtosDaFabrica.some(p => p.statusEstoque === 'CRITICO' || p.statusEstoque === 'ATENCAO');
-                const shouldAppear = macroShouldAppear || temProdutoEsgotando;
+                const shouldAppear = macroShouldAppear;
 
                 
 
