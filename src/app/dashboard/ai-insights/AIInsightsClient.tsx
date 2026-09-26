@@ -925,7 +925,7 @@ export default function AIInsightsClient() {
                                                                             </span>
                                                                         ) : (
                                                                             <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-green-500/20 text-green-400 border border-green-500/30 break-normal whitespace-nowrap">
-                                                                                No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - (client.diasInativo ?? 0))} dias)
+                                                                                No prazo (Faltam {Math.round(client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - (client.diasInativo ?? 0)))} dias)
                                                                             </span>
                                                                         )}
                                                                         {client.produtos && client.produtos.length > 0 && (
@@ -955,7 +955,7 @@ export default function AIInsightsClient() {
                                                                         <div className="grid grid-cols-2 gap-x-2 gap-y-3">
                                                                             <div className="flex flex-col">
                                                                                 <span className="text-[9px] text-gray-500 uppercase">Ritmo Padrão</span>
-                                                                                <span className="text-xs font-medium text-gray-300">{client.cicloMedioDias} dias</span>
+                                                                                <span className="text-xs font-medium text-gray-300">{Math.round(client.cicloMedioDias)} dias</span>
                                                                             </div>
                                                                             <div className="flex flex-col">
                                                                                 <span className="text-[9px] text-gray-500 uppercase">Última Carga</span>
@@ -970,7 +970,7 @@ export default function AIInsightsClient() {
                                                                             <div className="flex flex-col">
                                                                                 <span className="text-[9px] text-gray-500 uppercase">Tempo Decorrido</span>
                                                                                 <span className={`text-xs font-bold ${(client.diasInativo || 0) >= ((client.cicloMedioDias || 30) * (client.fatorVolume || 1) * 0.85) ? 'text-orange-400' : 'text-gray-300'}`}>
-                                                                                    {client.diasInativo} dias
+                                                                                    {Math.round(client.diasInativo || 0)} dias
                                                                                 </span>
                                                                             </div>
                                                                         </div>
@@ -1100,7 +1100,7 @@ export default function AIInsightsClient() {
                                                                     </span>
                                                                 ) : (
                                                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 break-normal whitespace-nowrap">
-                                                                        No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - (client.diasInativo ?? 0))} dias)
+                                                                        No prazo (Faltam {Math.round(client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - (client.diasInativo ?? 0)))} dias)
                                                                     </span>
                                                                 )}
                                                                 {client.produtos && client.produtos.length > 0 && (
@@ -1130,7 +1130,7 @@ export default function AIInsightsClient() {
                                                                         <div className="grid grid-cols-2 gap-x-2 gap-y-3">
                                                                             <div className="flex flex-col">
                                                                                 <span className="text-[9px] text-gray-500 uppercase">Ritmo Padrão</span>
-                                                                                <span className="text-xs font-medium text-gray-300">{client.cicloMedioDias} dias</span>
+                                                                                <span className="text-xs font-medium text-gray-300">{Math.round(client.cicloMedioDias)} dias</span>
                                                                             </div>
                                                                             <div className="flex flex-col">
                                                                                 <span className="text-[9px] text-gray-500 uppercase">Última Carga</span>
@@ -1145,7 +1145,7 @@ export default function AIInsightsClient() {
                                                                             <div className="flex flex-col">
                                                                                 <span className="text-[9px] text-gray-500 uppercase">Tempo Decorrido</span>
                                                                                 <span className={`text-xs font-bold ${(client.diasInativo || 0) >= ((client.cicloMedioDias || 30) * (client.fatorVolume || 1) * 0.85) ? 'text-orange-400' : 'text-gray-300'}`}>
-                                                                                    {client.diasInativo} dias
+                                                                                    {Math.round(client.diasInativo || 0)} dias
                                                                                 </span>
                                                                             </div>
                                                                         </div>
@@ -1256,7 +1256,7 @@ export default function AIInsightsClient() {
                                                                         </span>
                                                                     )}
                                                                     <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-500/20 text-red-400 border border-red-500/30 break-normal whitespace-nowrap">
-                                                                        Inativo há {client.diasInativo} dias
+                                                                        Inativo há {Math.round(client.diasInativo || 0)} dias
                                                                     </span>
                                                                 </div>
                                                                 <p className="text-xs text-gray-500 ml-6">{client.razaoSocial}</p>
@@ -1269,7 +1269,7 @@ export default function AIInsightsClient() {
                                                                         <span className="text-gray-500">Última Compra:</span>
                                                                         <span className="text-gray-200 font-medium ml-2 text-right">
                                                                             {client.ultimaCompra ? new Date(client.ultimaCompra).toLocaleDateString('pt-BR') : 'Nunca'}
-                                                                            {client.diasInativo !== null && <span className="text-slate-500 block text-[10px]">há {client.diasInativo} dias</span>}
+                                                                            {client.diasInativo !== null && <span className="text-slate-500 block text-[10px]">há {Math.round(client.diasInativo || 0)} dias</span>}
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex justify-between items-center text-xs">
@@ -1284,13 +1284,13 @@ export default function AIInsightsClient() {
                                                                             {client.statusCiclo === 'ATRASADO' ? (
                                                                                 <span className="text-red-400 font-bold ml-2">Ausente há {client.diasDeAtraso} dias</span>
                                                                             ) : (
-                                                                                <span className="text-green-400 font-medium ml-2">No prazo (Faltam {client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - client.diasInativo)} dias)</span>
+                                                                                <span className="text-green-400 font-medium ml-2">No prazo (Faltam {Math.round(client.diasAteProximaCompra ?? Math.max(0, client.cicloMedioDias - client.diasInativo))} dias)</span>
                                                                             )}
                                                                         </div>
                                                                     )}
                                                                     <div className="flex justify-between items-center text-xs border-t border-white/5 pt-1 mt-1">
                                                                         <span className="text-gray-500">Giro Médio Atual:</span>
-                                                                        <span className="text-blue-400 font-medium ml-2">a cada {client.cicloMedioDias} dias</span>
+                                                                        <span className="text-blue-400 font-medium ml-2">a cada {Math.round(client.cicloMedioDias)} dias</span>
                                                                     </div>
                                                                 </div>
                                                             </td>
