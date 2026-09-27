@@ -101,12 +101,12 @@ export function calcularCicloPonderadoPorCarga(
     const diferencaMedia = ((multiplicadorCarga - 1) * 100).toFixed(0);
     const statusCarga = multiplicadorCarga > 1.05 ? `+\${diferencaMedia}% Acima da média` : multiplicadorCarga < 0.95 ? `\${diferencaMedia}% Abaixo da média` : `Na média histórica`;
 
-    const diagnostico = `**Ritmo de Compra:** \${frequenciaBaseDias.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} dias\n` +
-                        `**Carga Média Histórica:** R$ \${cargaMediaHistorica.toFixed(2)}\n` +
-                        `**Última Carga:** R$ \${valorUltimaCompra.toFixed(2)} (\${statusCarga})\n` +
-                        `**Previsão de Duração Ponderada:** \${previsaoDuracaoDias.toFixed(1)} dias\n` +
-                        `**Já se passaram:** \${diasDesdeUltimaCompra.toFixed(1)} dias\n` +
-                        `**Gatilho do Radar (85%):** \${limiarRadar.toFixed(1)} dias\n\n` +
+    const diagnostico = `**Ritmo de Compra:** ${frequenciaBaseDias.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} dias\n` +
+                        `**Carga Média Histórica:** R$ ${cargaMediaHistorica.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
+                        `**Última Carga:** R$ ${valorUltimaCompra.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${statusCarga})\n` +
+                        `**Previsão de Duração Ponderada:** ${previsaoDuracaoDias.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} dias\n` +
+                        `**Já se passaram:** ${diasDesdeUltimaCompra.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} dias\n` +
+                        `**Gatilho do Radar (85%):** ${limiarRadar.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} dias\n\n` +
                         (prestesAComprar ? `✅ Cliente entrou na zona de recompra.` : `⏳ Aguardando prazo.`);
 
     return {
