@@ -903,7 +903,7 @@ export default function AIInsightsClient() {
                                                     {(() => {
                                                         const client = consultaIndividualResult;
                                                         const maxWindow = client.cicloMedioDias + 5;
-                                                        const diasRestantes = client.diasInativo !== null ? maxWindow - client.diasInativo : 0;
+                                                        const diasRestantes = client.diasInativo !== null ? Math.round(maxWindow - client.diasInativo) : 0;
                                                         const alertaColor = diasRestantes <= 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-green-500/20 text-green-400 border-green-500/40';
                                                         return (
                                                             <React.Fragment key={client.radarKey || client.id}>
@@ -1077,7 +1077,7 @@ export default function AIInsightsClient() {
                                         <tbody className="divide-y divide-white/5">
                                             {(clienteIdSelecionado === '' ? clientesRadarQuente : clientesRadarQuente.filter(c => c.id === clienteIdSelecionado)).map(client => {
                                                 const maxWindow = client.cicloMedioDias + 5;
-                                                const diasRestantes = client.diasInativo !== null ? maxWindow - client.diasInativo : 0;
+                                                const diasRestantes = client.diasInativo !== null ? Math.round(maxWindow - client.diasInativo) : 0;
                                                 const alertaColor = diasRestantes <= 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-green-500/20 text-green-400 border-green-500/40';
 
                                                 return (
