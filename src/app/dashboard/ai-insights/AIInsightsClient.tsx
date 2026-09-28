@@ -944,7 +944,7 @@ export default function AIInsightsClient() {
                                                                             <Info className="w-4 h-4" />
                                                                         </div>
                                                                         {/* Tooltip escondido, aparece no hover do group */}
-                                                                        <div className="absolute z-50 invisible opacity-0 group-hover:visible group-hover:opacity-100 bg-gray-900 border border-white/10 p-3 rounded-lg shadow-xl text-[10px] text-gray-300 w-64 top-8 right-0 whitespace-pre-wrap transition-all pointer-events-none">
+                                                                        <div className="absolute z-50 invisible opacity-0 group-hover:visible group-hover:opacity-100 bg-gray-900 border border-white/10 p-4 rounded-lg shadow-xl text-xs text-gray-200 w-80 top-8 right-0 whitespace-pre-wrap transition-all pointer-events-none z-50 leading-relaxed">
                                                                             {client.diagnostico || "Diagnóstico não disponível."}
                                                                         </div>
                                                                         
@@ -1119,7 +1119,7 @@ export default function AIInsightsClient() {
                                                                             <Info className="w-4 h-4" />
                                                                         </div>
                                                                         {/* Tooltip escondido, aparece no hover do group */}
-                                                                        <div className="absolute z-50 invisible opacity-0 group-hover:visible group-hover:opacity-100 bg-gray-900 border border-white/10 p-3 rounded-lg shadow-xl text-[10px] text-gray-300 w-64 top-8 right-0 whitespace-pre-wrap transition-all pointer-events-none">
+                                                                        <div className="absolute z-50 invisible opacity-0 group-hover:visible group-hover:opacity-100 bg-gray-900 border border-white/10 p-4 rounded-lg shadow-xl text-xs text-gray-200 w-80 top-8 right-0 whitespace-pre-wrap transition-all pointer-events-none z-50 leading-relaxed">
                                                                             {client.diagnostico || "Diagnóstico não disponível."}
                                                                         </div>
                                                                         
