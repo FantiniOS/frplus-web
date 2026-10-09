@@ -2,8 +2,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Tags, X, Store, Loader2, Building2, UserCircle2, CalendarDays, TrendingDown, BadgeDollarSign, Edit2, Trash2, CheckCircle } from 'lucide-react';
+import { Search, Plus, Tags, X, Store, Loader2, Building2, UserCircle2, CalendarDays, TrendingDown, BadgeDollarSign, Edit2, Trash2, CheckCircle, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface MarcaConcorrente {
     id: string;
@@ -143,10 +145,18 @@ export default function CentralPrecosAdminPage() {
     const stats = useMemo(() => {
         const seteDiasAtras = Date.now() - 7 * 24 * 60 * 60 * 1000;
         const ultimos7 = registros.filter(r => new Date(r.dataColeta).getTime() >= seteDiasAtras).length;
-        const menorPreco = filteredRegistros.length
-            ? Math.min(...filteredRegistros.map(r => r.precoPrateleira))
-            : 0;
-        return { total: registros.length, ultimos7, menorPreco };
+        
+        let menorRegistro: RegistroPreco | null = null;
+        if (filteredRegistros.length > 0) {
+            menorRegistro = filteredRegistros.reduce((min, curr) => curr.precoPrateleira < min.precoPrateleira ? curr : min, filteredRegistros[0]);
+        }
+
+        return { 
+            total: registros.length, 
+            ultimos7, 
+            menorPreco: menorRegistro?.precoPrateleira || 0,
+            menorLocal: menorRegistro?.marcaConcorrente?.nome || ''
+        };
     }, [registros, filteredRegistros]);
 
     const resetFormPreco = () => {
@@ -281,6 +291,36 @@ export default function CentralPrecosAdminPage() {
         }
     };
 
+    const handleExportPDF = () => {
+        const doc = new jsPDF();
+        
+        doc.setFontSize(16);
+        doc.text('Relatório - Central de Preços', 14, 20);
+        
+        doc.setFontSize(10);
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 28);
+
+        const tableColumn = ["Data", "Cliente", "Produto", "Concorrente", "Preço", "Quem Coletou"];
+        const tableRows = filteredRegistros.map(r => [
+            new Date(r.dataColeta).toLocaleDateString('pt-BR'),
+            r.cliente ? (r.cliente.nomeFantasia || r.cliente.razaoSocial) : '-',
+            r.produtoBase,
+            r.marcaConcorrente.nome,
+            formatBRL(r.precoPrateleira),
+            r.vendedor ? r.vendedor.nome : 'Admin'
+        ]);
+
+        autoTable(doc, {
+            startY: 35,
+            head: [tableColumn],
+            body: tableRows,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [41, 128, 185] },
+        });
+
+        doc.save('central-precos.pdf');
+    };
+
     return (
         <div className="flex flex-col gap-3 animate-in fade-in duration-500 h-full">
 
@@ -296,6 +336,14 @@ export default function CentralPrecosAdminPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleExportPDF}
+                        className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+                    >
+                        <Download className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Exportar PDF</span>
+                        <span className="sm:hidden">PDF</span>
+                    </button>
                     <button
                         onClick={() => { setErroMarca(''); setShowMarcas(true); }}
                         className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white transition-all"
@@ -334,7 +382,10 @@ export default function CentralPrecosAdminPage() {
                     <div className="p-2 rounded-lg bg-amber-500/10"><TrendingDown className="h-4 w-4 text-amber-400" /></div>
                     <div>
                         <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Menor Preço (filtro atual)</p>
-                        <p className="text-lg font-bold text-white tabular-nums">{stats.menorPreco ? formatBRL(stats.menorPreco) : '-'}</p>
+                        <p className="text-lg font-bold text-white tabular-nums">
+                            {stats.menorPreco ? formatBRL(stats.menorPreco) : '-'}
+                            {stats.menorLocal && <span className="text-[10px] font-normal text-amber-500/80 ml-2">em {stats.menorLocal}</span>}
+                        </p>
                     </div>
                 </div>
             </div>
