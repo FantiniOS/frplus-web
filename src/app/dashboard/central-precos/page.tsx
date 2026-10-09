@@ -46,7 +46,7 @@ export default function CentralPrecosAdminPage() {
     const [marcaFilter, setMarcaFilter] = useState('');
     const [coletorFilter, setColetorFilter] = useState('');
 
-    // Modal: Registrar PreÃ§o
+    // Modal: Registrar Preço
     const [showRegistrar, setShowRegistrar] = useState(false);
     const [editRegistroId, setEditRegistroId] = useState<string | null>(null);
     const [formClienteId, setFormClienteId] = useState('');
@@ -61,7 +61,7 @@ export default function CentralPrecosAdminPage() {
     const [novaMarca, setNovaMarca] = useState('');
     const [savingMarca, setSavingMarca] = useState(false);
     const [erroMarca, setErroMarca] = useState('');
-    
+
     // Edição de Marca inline
     const [editMarcaId, setEditMarcaId] = useState<string | null>(null);
     const [editMarcaNome, setEditMarcaNome] = useState('');
@@ -72,7 +72,7 @@ export default function CentralPrecosAdminPage() {
             const data = await res.json();
             setRegistros(data.registros || []);
         } catch (e) {
-            console.error('Erro ao buscar central de preÃ§os:', e);
+            console.error('Erro ao buscar central de preços:', e);
         } finally {
             setLoading(false);
         }
@@ -90,7 +90,7 @@ export default function CentralPrecosAdminPage() {
 
     const fetchClientes = async () => {
         try {
-            // Reutiliza a rota existente de captaÃ§Ã£o (Admin recebe todos os clientes ativos)
+            // Reutiliza a rota existente de captação (Admin recebe todos os clientes ativos)
             const res = await fetch('/api/captacao');
             const data = await res.json();
             setClientes(data.clientes || []);
@@ -116,7 +116,7 @@ export default function CentralPrecosAdminPage() {
         fetchProdutos();
     }, []);
 
-    // Lista de coletores presentes no histÃ³rico (para o filtro)
+    // Lista de coletores presentes no histórico (para o filtro)
     const coletores = useMemo(() => {
         const map = new Map<string, string>();
         registros.forEach(r => {
@@ -200,7 +200,7 @@ export default function CentralPrecosAdminPage() {
             });
             const data = await res.json();
             if (!res.ok) {
-                setErroPreco(data.error || 'Erro ao registrar preÃ§o.');
+                setErroPreco(data.error || 'Erro ao registrar preço.');
                 return;
             }
             setShowRegistrar(false);
@@ -208,13 +208,56 @@ export default function CentralPrecosAdminPage() {
             fetchRegistros();
             fetchMarcas();
         } catch (e) {
-            setErroPreco('Erro de conexÃ£o ao registrar preÃ§o.');
+            setErroPreco('Erro de conexão ao registrar preço.');
         } finally {
             setSavingPreco(false);
         }
     };
 
-    const handleSalvarMarcaEditada = async () => { if (!editMarcaNome.trim() || !editMarcaId) return; setSavingMarca(true); setErroMarca(''); try { const res = await fetch(`/api/marcas-concorrentes/${editMarcaId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: editMarcaNome }) }); const data = await res.json(); if (!res.ok) { setErroMarca(data.error || 'Erro ao editar marca.'); return; } setEditMarcaId(null); fetchMarcas(); } catch (e) { setErroMarca('Erro de conexão ao editar marca.'); } finally { setSavingMarca(false); } }; const handleDeleteMarca = async (id: string) => { if (!confirm('Deseja realmente excluir esta marca?')) return; setSavingMarca(true); setErroMarca(''); try { const res = await fetch(`/api/marcas-concorrentes/${id}`, { method: 'DELETE' }); const data = await res.json(); if (!res.ok) { setErroMarca(data.error || 'Erro ao excluir marca.'); return; } fetchMarcas(); } catch (e) { setErroMarca('Erro ao excluir marca.'); } finally { setSavingMarca(false); } }; const handleCriarMarca = async () => {
+    const handleSalvarMarcaEditada = async () => {
+        if (!editMarcaNome.trim() || !editMarcaId) return;
+        setSavingMarca(true);
+        setErroMarca('');
+        try {
+            const res = await fetch(`/api/marcas-concorrentes/${editMarcaId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome: editMarcaNome })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                setErroMarca(data.error || 'Erro ao editar marca.');
+                return;
+            }
+            setEditMarcaId(null);
+            fetchMarcas();
+        } catch (e) {
+            setErroMarca('Erro de conexão ao editar marca.');
+        } finally {
+            setSavingMarca(false);
+        }
+    };
+
+    const handleDeleteMarca = async (id: string) => {
+        if (!confirm('Deseja realmente excluir esta marca?')) return;
+        setSavingMarca(true);
+        setErroMarca('');
+        try {
+            const res = await fetch(`/api/marcas-concorrentes/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) {
+                setErroMarca(data.error || 'Erro ao excluir marca.');
+                return;
+            }
+            fetchMarcas();
+        } catch (e) {
+            setErroMarca('Erro ao excluir marca.');
+        } finally {
+            setSavingMarca(false);
+        }
+    };
+
+    const handleCriarMarca = async () => {
         if (!novaMarca.trim()) return;
         setSavingMarca(true);
         setErroMarca('');
@@ -232,7 +275,7 @@ export default function CentralPrecosAdminPage() {
             setNovaMarca('');
             fetchMarcas();
         } catch (e) {
-            setErroMarca('Erro de conexÃ£o ao cadastrar marca.');
+            setErroMarca('Erro de conexão ao cadastrar marca.');
         } finally {
             setSavingMarca(false);
         }
@@ -241,15 +284,15 @@ export default function CentralPrecosAdminPage() {
     return (
         <div className="flex flex-col gap-3 animate-in fade-in duration-500 h-full">
 
-            {/* â•â•â•â•â•â•â•â•â•â•â• HEADER â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════ HEADER ═══════════ */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/20">
                         <Tags className="h-5 w-5 text-emerald-400" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-white tracking-tight">Central de PreÃ§os</h1>
-                        <p className="text-xs text-gray-500">Monitoramento de preÃ§os de prateleira da concorrÃªncia</p>
+                        <h1 className="text-xl font-bold text-white tracking-tight">Central de Preços</h1>
+                        <p className="text-xs text-gray-500">Monitoramento de preços de prateleira da concorrência</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -265,13 +308,13 @@ export default function CentralPrecosAdminPage() {
                         className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
                     >
                         <Plus className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Registrar PreÃ§o Coletado</span>
+                        <span className="hidden sm:inline">Registrar Preço Coletado</span>
                         <span className="sm:hidden">Registrar</span>
                     </button>
                 </div>
             </div>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â• KPIs â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════ KPIs ═══════════ */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
                     <div className="p-2 rounded-lg bg-blue-500/10"><BadgeDollarSign className="h-4 w-4 text-blue-400" /></div>
@@ -283,20 +326,20 @@ export default function CentralPrecosAdminPage() {
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
                     <div className="p-2 rounded-lg bg-emerald-500/10"><CalendarDays className="h-4 w-4 text-emerald-400" /></div>
                     <div>
-                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Ãšltimos 7 dias</p>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Últimos 7 dias</p>
                         <p className="text-lg font-bold text-white tabular-nums">{stats.ultimos7}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
                     <div className="p-2 rounded-lg bg-amber-500/10"><TrendingDown className="h-4 w-4 text-amber-400" /></div>
                     <div>
-                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Menor PreÃ§o (filtro atual)</p>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Menor Preço (filtro atual)</p>
                         <p className="text-lg font-bold text-white tabular-nums">{stats.menorPreco ? formatBRL(stats.menorPreco) : '-'}</p>
                     </div>
                 </div>
             </div>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â• FILTER BAR â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════ FILTER BAR ═══════════ */}
             <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06] backdrop-blur-sm">
                 <div className="relative flex-1 min-w-[180px]">
                     <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
@@ -324,19 +367,19 @@ export default function CentralPrecosAdminPage() {
                     className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500/50"
                 >
                     <option value="" className="bg-[#111]">Todos os coletores</option>
-                    <option value="admin" className="bg-[#111]">VocÃª (Administrador)</option>
+                    <option value="admin" className="bg-[#111]">Você (Administrador)</option>
                     {coletores.map(([id, nome]) => (
                         <option key={id} value={id} className="bg-[#111]">{nome}</option>
                     ))}
                 </select>
             </div>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â• MASTER TABLE â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════ MASTER TABLE ═══════════ */}
             <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm overflow-hidden flex-1 flex flex-col">
                 <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-emerald-500/10 to-transparent border-b border-white/[0.06]">
                     <div className="flex items-center gap-2">
                         <div className="w-1 h-4 rounded-full bg-emerald-500"></div>
-                        <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">HistÃ³rico de Coletas</span>
+                        <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Histórico de Coletas</span>
                         <span className="text-[10px] text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">{filteredRegistros.length} registros</span>
                     </div>
                 </div>
@@ -349,15 +392,15 @@ export default function CentralPrecosAdminPage() {
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Cliente</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Produto</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Concorrente</th>
-                                <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">PreÃ§o</th>
+                                <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Preço</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Quem Coletou</th>
-                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">A��es</th>
+                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={7} className="text-center py-12 text-gray-600">
+                                    <td colSpan={6} className="text-center py-12 text-gray-600">
                                         <div className="flex items-center justify-center gap-2">
                                             <div className="h-4 w-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
                                             Carregando...
@@ -366,9 +409,9 @@ export default function CentralPrecosAdminPage() {
                                 </tr>
                             ) : filteredRegistros.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="text-center py-12 text-gray-600">
+                                    <td colSpan={6} className="text-center py-12 text-gray-600">
                                         <Tags className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                                        <p className="text-sm">Nenhum preÃ§o coletado encontrado</p>
+                                        <p className="text-sm">Nenhum preço coletado encontrado</p>
                                     </td>
                                 </tr>
                             ) : (
@@ -419,7 +462,7 @@ export default function CentralPrecosAdminPage() {
                                                 ) : (
                                                     <span className="inline-flex items-center gap-1.5 text-xs text-blue-400 font-medium">
                                                         <UserCircle2 className="h-3.5 w-3.5" />
-                                                        VocÃª (Admin)
+                                                        Você (Admin)
                                                     </span>
                                                 )}
                                             </td>
@@ -442,7 +485,7 @@ export default function CentralPrecosAdminPage() {
                 </div>
             </div>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â• MODAL â€” Registrar PreÃ§o Coletado â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════ MODAL — Registrar Preço Coletado ═══════════ */}
             <AnimatePresence>
                 {showRegistrar && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -509,7 +552,7 @@ export default function CentralPrecosAdminPage() {
                                     )}
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">PreÃ§o de Prateleira (R$)</label>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Preço de Prateleira (R$)</label>
                                     <input
                                         type="number"
                                         step="0.01"
@@ -537,7 +580,7 @@ export default function CentralPrecosAdminPage() {
                                     className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {savingPreco && <Loader2 className="h-4 w-4 animate-spin" />}
-                                    {savingPreco ? 'Salvando...' : (editRegistroId ? 'Salvar AlteraÃ§Ãµes' : 'Salvar Coleta')}
+                                    {savingPreco ? 'Salvando...' : (editRegistroId ? 'Salvar Alterações' : 'Salvar Coleta')}
                                 </button>
                             </div>
                         </motion.div>
@@ -545,7 +588,7 @@ export default function CentralPrecosAdminPage() {
                 )}
             </AnimatePresence>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â• MODAL â€” Gerenciar Marcas â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════ MODAL — Gerenciar Marcas ═══════════ */}
             <AnimatePresence>
                 {showMarcas && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
