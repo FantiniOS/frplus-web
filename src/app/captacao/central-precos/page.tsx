@@ -42,6 +42,7 @@ export default function CentralPrecosVendedorPage() {
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [produtosSistema, setProdutosSistema] = useState<{id: string; nome: string}[]>([]);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMural, setLoadingMural] = useState(false);
@@ -50,7 +51,7 @@ export default function CentralPrecosVendedorPage() {
 
   // Form
   const [clienteId, setClienteId] = useState('');
-  const [produtoBase, setProdutoBase] = useState('');
+  const [produtoBaseNome, setProdutoBaseNome] = useState('');
   const [marcaId, setMarcaId] = useState('');
   const [preco, setPreco] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,9 +80,10 @@ export default function CentralPrecosVendedorPage() {
   useEffect(() => {
     const init = async () => {
       try {
-        const [cliRes, marRes] = await Promise.all([
+        const [cliRes, marRes, prodRes] = await Promise.all([
           fetch('/api/captacao'), // Reutiliza rota existente: retorna apenas a carteira do vendedor
-          fetch('/api/marcas-concorrentes')
+          fetch('/api/marcas-concorrentes'),
+          fetch('/api/products?ativo=true')
         ]);
         if (cliRes.ok) {
           const d = await cliRes.json();
@@ -90,6 +92,10 @@ export default function CentralPrecosVendedorPage() {
         if (marRes.ok) {
           const d = await marRes.json();
           setMarcas(d.marcas || []);
+        }
+        if (prodRes.ok) {
+          const d = await prodRes.json();
+          setProdutosSistema(Array.isArray(d) ? d : []);
         }
       } catch {
         setError('Erro ao carregar dados do sistema.');
@@ -114,7 +120,7 @@ export default function CentralPrecosVendedorPage() {
 
   const handleSubmit = async () => {
     if (!clienteId) return setError('Selecione o cliente onde o preço foi coletado.');
-    if (!produtoBase.trim()) return setError('Informe o produto base.');
+    if (!produtoBaseNome) return setError('Selecione o produto base.');
     if (!marcaId) return setError('Selecione a marca concorrente.');
     if (!preco || Number(preco.replace(',', '.')) <= 0) return setError('Informe um preço válido.');
 
@@ -126,7 +132,7 @@ export default function CentralPrecosVendedorPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clienteId,
-          produtoBase: produtoBase.trim(),
+          produtoBase: produtoBaseNome,
           marcaConcorrenteId: marcaId,
           precoPrateleira: preco
         })
@@ -135,7 +141,7 @@ export default function CentralPrecosVendedorPage() {
       if (!res.ok) throw new Error(data.error || 'Falha ao registrar');
 
       // Mantém o cliente selecionado para agilizar múltiplas coletas no mesmo PDV
-      setProdutoBase('');
+      setProdutoBaseNome('');
       setMarcaId('');
       setPreco('');
       setShowSuccess(true);
@@ -250,13 +256,16 @@ export default function CentralPrecosVendedorPage() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wider">2. Produto Base</label>
-              <input
-                type="text"
-                value={produtoBase}
-                onChange={(e) => setProdutoBase(e.target.value)}
-                placeholder="Ex: Vinagre de Álcool 750ml"
+              <select
+                value={produtoBaseNome}
+                onChange={(e) => setProdutoBaseNome(e.target.value)}
                 className={inputClass}
-              />
+              >
+                <option value="">-- Selecione nosso produto --</option>
+                {produtosSistema.map((p) => (
+                  <option key={p.id} value={p.nome}>{p.nome}</option>
+                ))}
+              </select>
             </div>
 
             <div>

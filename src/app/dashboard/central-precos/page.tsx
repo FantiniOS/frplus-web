@@ -38,6 +38,7 @@ export default function CentralPrecosAdminPage() {
     const [registros, setRegistros] = useState<RegistroPreco[]>([]);
     const [marcas, setMarcas] = useState<MarcaConcorrente[]>([]);
     const [clientes, setClientes] = useState<ClienteOption[]>([]);
+    const [produtosSistema, setProdutosSistema] = useState<{id: string; nome: string}[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Filtros
@@ -48,7 +49,7 @@ export default function CentralPrecosAdminPage() {
     // Modal: Registrar Preço
     const [showRegistrar, setShowRegistrar] = useState(false);
     const [formClienteId, setFormClienteId] = useState('');
-    const [formProduto, setFormProduto] = useState('');
+    const [formProdutoNome, setFormProdutoNome] = useState('');
     const [formMarcaId, setFormMarcaId] = useState('');
     const [formPreco, setFormPreco] = useState('');
     const [savingPreco, setSavingPreco] = useState(false);
@@ -93,10 +94,21 @@ export default function CentralPrecosAdminPage() {
         }
     };
 
+    const fetchProdutos = async () => {
+        try {
+            const res = await fetch('/api/products?ativo=true');
+            const data = await res.json();
+            setProdutosSistema(Array.isArray(data) ? data : []);
+        } catch (e) {
+            console.error('Erro ao buscar produtos:', e);
+        }
+    };
+
     useEffect(() => {
         fetchRegistros();
         fetchMarcas();
         fetchClientes();
+        fetchProdutos();
     }, []);
 
     // Lista de coletores presentes no histórico (para o filtro)
@@ -134,14 +146,14 @@ export default function CentralPrecosAdminPage() {
 
     const resetFormPreco = () => {
         setFormClienteId('');
-        setFormProduto('');
+        setFormProdutoNome('');
         setFormMarcaId('');
         setFormPreco('');
         setErroPreco('');
     };
 
     const handleRegistrarPreco = async () => {
-        if (!formProduto.trim() || !formMarcaId || !formPreco) return;
+        if (!formProdutoNome || !formMarcaId || !formPreco) return;
         setSavingPreco(true);
         setErroPreco('');
         try {
@@ -150,7 +162,7 @@ export default function CentralPrecosAdminPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     clienteId: formClienteId || null,
-                    produtoBase: formProduto.trim(),
+                    produtoBase: formProdutoNome,
                     marcaConcorrenteId: formMarcaId,
                     precoPrateleira: formPreco
                 })
@@ -429,13 +441,16 @@ export default function CentralPrecosAdminPage() {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Produto Base</label>
-                                    <input
-                                        type="text"
-                                        value={formProduto}
-                                        onChange={(e) => setFormProduto(e.target.value)}
-                                        placeholder="Ex: Vinagre de Álcool 750ml"
+                                    <select
+                                        value={formProdutoNome}
+                                        onChange={(e) => setFormProdutoNome(e.target.value)}
                                         className={inputClass}
-                                    />
+                                    >
+                                        <option value="">Selecione o produto nosso...</option>
+                                        {produtosSistema.map(p => (
+                                            <option key={p.id} value={p.nome}>{p.nome}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Marca Concorrente</label>
@@ -476,7 +491,7 @@ export default function CentralPrecosAdminPage() {
                                 </button>
                                 <button
                                     onClick={handleRegistrarPreco}
-                                    disabled={savingPreco || !formProduto.trim() || !formMarcaId || !formPreco}
+                                    disabled={savingPreco || !formProdutoNome || !formMarcaId || !formPreco}
                                     className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {savingPreco && <Loader2 className="h-4 w-4 animate-spin" />}
