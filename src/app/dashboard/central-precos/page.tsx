@@ -155,7 +155,7 @@ export default function CentralPrecosAdminPage() {
             total: registros.length, 
             ultimos7, 
             menorPreco: menorRegistro?.precoPrateleira || 0,
-            menorLocal: menorRegistro?.marcaConcorrente?.nome || ''
+            menorLocal: menorRegistro ? `${menorRegistro.marcaConcorrente?.nome || ''} no cliente ${menorRegistro.cliente ? (menorRegistro.cliente.nomeFantasia || menorRegistro.cliente.razaoSocial) : 'Sem cliente'}` : ''
         };
     }, [registros, filteredRegistros]);
 
