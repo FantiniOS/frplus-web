@@ -1,8 +1,8 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Tags, X, Store, Loader2, Building2, UserCircle2, CalendarDays, TrendingDown, BadgeDollarSign, Edit2, Trash2 } from 'lucide-react';
+import { Search, Plus, Tags, X, Store, Loader2, Building2, UserCircle2, CalendarDays, TrendingDown, BadgeDollarSign, Edit2, Trash2, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MarcaConcorrente {
@@ -61,6 +61,10 @@ export default function CentralPrecosAdminPage() {
     const [novaMarca, setNovaMarca] = useState('');
     const [savingMarca, setSavingMarca] = useState(false);
     const [erroMarca, setErroMarca] = useState('');
+    
+    // Edição de Marca inline
+    const [editMarcaId, setEditMarcaId] = useState<string | null>(null);
+    const [editMarcaNome, setEditMarcaNome] = useState('');
 
     const fetchRegistros = async () => {
         try {
@@ -210,7 +214,7 @@ export default function CentralPrecosAdminPage() {
         }
     };
 
-    const handleCriarMarca = async () => {
+    const handleSalvarMarcaEditada = async () => { if (!editMarcaNome.trim() || !editMarcaId) return; setSavingMarca(true); setErroMarca(''); try { const res = await fetch(`/api/marcas-concorrentes/${editMarcaId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: editMarcaNome }) }); const data = await res.json(); if (!res.ok) { setErroMarca(data.error || 'Erro ao editar marca.'); return; } setEditMarcaId(null); fetchMarcas(); } catch (e) { setErroMarca('Erro de conexão ao editar marca.'); } finally { setSavingMarca(false); } }; const handleDeleteMarca = async (id: string) => { if (!confirm('Deseja realmente excluir esta marca?')) return; setSavingMarca(true); setErroMarca(''); try { const res = await fetch(`/api/marcas-concorrentes/${id}`, { method: 'DELETE' }); const data = await res.json(); if (!res.ok) { setErroMarca(data.error || 'Erro ao excluir marca.'); return; } fetchMarcas(); } catch (e) { setErroMarca('Erro ao excluir marca.'); } finally { setSavingMarca(false); } }; const handleCriarMarca = async () => {
         if (!novaMarca.trim()) return;
         setSavingMarca(true);
         setErroMarca('');
@@ -604,10 +608,40 @@ export default function CentralPrecosAdminPage() {
                                             key={m.id}
                                             className={`flex items-center justify-between px-3 py-2 border-b border-white/[0.03] ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'}`}
                                         >
-                                            <span className="text-sm text-gray-200">{m.nome}</span>
-                                            <span className="text-[10px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
-                                                {m._count?.centralPrecos ?? 0} coletas
-                                            </span>
+                                            {editMarcaId === m.id ? (
+                                                <div className="flex w-full items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={editMarcaNome}
+                                                        onChange={(e) => setEditMarcaNome(e.target.value)}
+                                                        onKeyDown={(e) => { if (e.key === 'Enter') handleSalvarMarcaEditada(); }}
+                                                        className="w-full rounded-lg bg-black/40 border border-white/10 p-1 px-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                    />
+                                                    <button onClick={handleSalvarMarcaEditada} className="p-1 rounded text-emerald-400 hover:bg-emerald-400/10" title="Salvar">
+                                                        <CheckCircle className="h-4 w-4" />
+                                                    </button>
+                                                    <button onClick={() => setEditMarcaId(null)} className="p-1 rounded text-gray-400 hover:bg-white/10" title="Cancelar">
+                                                        <X className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <span className="text-sm text-gray-200">{m.nome}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-[10px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
+                                                            {m._count?.centralPrecos ?? 0} coletas
+                                                        </span>
+                                                        <div className="flex items-center gap-1">
+                                                            <button onClick={() => { setEditMarcaId(m.id); setEditMarcaNome(m.nome); }} className="text-gray-500 hover:text-blue-400 p-1">
+                                                                <Edit2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                            <button onClick={() => handleDeleteMarca(m.id)} className="text-gray-500 hover:text-red-400 p-1">
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     ))
                                 )}
