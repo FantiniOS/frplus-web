@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { FilePlus, History } from 'lucide-react';
+import { FilePlus, History, Tags } from 'lucide-react';
 
 export default function CaptacaoLayout({
   children,
@@ -39,6 +39,16 @@ export default function CaptacaoLayout({
           >
             <History className="h-5 w-5" />
             <span className="text-[10px] font-semibold uppercase tracking-wider">Histórico</span>
+          </button>
+
+          <button
+            onClick={() => router.push('/captacao/central-precos')}
+            className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
+              pathname.includes('/central-precos') ? 'text-blue-500' : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            <Tags className="h-5 w-5" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider">Preços</span>
           </button>
         </div>
       </div>

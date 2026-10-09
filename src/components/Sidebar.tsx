@@ -23,6 +23,7 @@ import {
   Target,
   Wine,
   PackageSearch,
+  Tags,
 } from "lucide-react";
 import NextImage from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -93,6 +94,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { icon: Wallet, label: "Controle de Verbas", href: "/dashboard/verbas" },
         { icon: Filter, label: "Curva ABC", href: "/dashboard/curva-abc" },
         { icon: PackageSearch, label: "Captação", href: "/dashboard/captacao", showBadge: true },
+        { icon: Tags, label: "Central de Preços", href: "/dashboard/central-precos" },
         { icon: Truck, label: "Sugestão de Cargas", href: "/dashboard/cargas", separated: true },
       ]
     },

@@ -74,6 +74,7 @@ model Cliente {
   updatedAt         DateTime         @updatedAt
   contatoClientes   ContatoCliente[]
   metasCampanhas    MetaCampanha[]
+  centralPrecos     CentralPrecos[]
 }
 
 model Pedido {
@@ -218,6 +219,7 @@ model Vendedor {
   pedidos            Pedido[]
   prePedidos         PrePedido[]
   comissaoVigencias  ComissaoVigencia[]
+  centralPrecos      CentralPrecos[]
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -284,4 +286,37 @@ model ItemPrePedido {
   produto       Produto   @relation(fields: [produtoId], references: [id])
   quantidade    Int
   precoUnitario Decimal   @db.Decimal(10, 2)
+}
+
+// ═══════════════════════════════════════════════════════════
+// CENTRAL DE PREÇOS (Omnichannel: Admin PC + App Vendedor)
+// ═══════════════════════════════════════════════════════════
+
+// Lista fechada de concorrentes (evita digitação livre/duplicada)
+model MarcaConcorrente {
+  id            String          @id @default(cuid())
+  nome          String          @unique
+  centralPrecos CentralPrecos[]
+  createdAt     DateTime        @default(now())
+}
+
+// Histórico de preços de prateleira coletados em campo
+// vendedorId NULL = coletado pelo Administrador (PC)
+model CentralPrecos {
+  id                 String           @id @default(cuid())
+  dataColeta         DateTime         @default(now())
+  clienteId          String?
+  cliente            Cliente?         @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  vendedorId         String?
+  vendedor           Vendedor?        @relation(fields: [vendedorId], references: [id], onDelete: SetNull)
+  produtoBase        String
+  marcaConcorrenteId String
+  marcaConcorrente   MarcaConcorrente @relation(fields: [marcaConcorrenteId], references: [id])
+  precoPrateleira    Float
+  createdAt          DateTime         @default(now())
+
+  @@index([dataColeta])
+  @@index([clienteId])
+  @@index([vendedorId])
+  @@index([marcaConcorrenteId])
 }
