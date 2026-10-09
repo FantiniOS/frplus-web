@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error('Logout error:', error);
         } finally {
             setUsuario(null);
-            router.push('/');
+            window.location.href = '/';
         }
     };
 
