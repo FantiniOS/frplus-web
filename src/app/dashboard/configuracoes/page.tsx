@@ -11,8 +11,8 @@ import Papa from "papaparse";
 import { getPerfilEmpresa, savePerfilEmpresa } from "@/app/actions/perfilEmpresa";
 
 export default function ConfiguracoesPage() {
-    const { logout, showToast, fabricas, refreshData } = useData();
-    const { isIndustria, usuario, isAdmin, refreshSession } = useAuth() as any;
+    const { showToast, fabricas, refreshData } = useData();
+    const { isIndustria, usuario, isAdmin, refreshSession, logout } = useAuth() as any;
     const router = useRouter();
     const [companyName, setCompanyName] = useState("Minha Empresa");
     const [isSaving, setIsSaving] = useState(false);
@@ -207,7 +207,6 @@ export default function ConfiguracoesPage() {
 
     const handleLogout = () => {
         logout();
-        router.push('/');
     }
 
     const handleSave = async (e?: React.FormEvent) => {
