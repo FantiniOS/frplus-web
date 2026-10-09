@@ -1,38 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Função para buscar e converter a imagem para Base64 (mesmo padrão do sistema)
-async function getBase64Image(url: string): Promise<{ data: string; width: number; height: number } | null> {
-    return new Promise((resolve) => {
-        if (!url) return resolve(null);
-        let finalUrl = url;
-        if (url.startsWith('/')) {
-            finalUrl = window.location.origin + url;
-        }
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-                ctx.drawImage(img, 0, 0);
-                resolve({ data: canvas.toDataURL('image/png'), width: img.width, height: img.height });
-            } else {
-                resolve(null);
-            }
-        };
-        img.onerror = () => resolve(null);
-        img.src = finalUrl;
-    });
-}
-
-function formatCurrency(val: number) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-}
-
-// Tipo simplificado com base no RegistroPreco do page.tsx
 export interface PrecoPDFData {
     registros: any[];
     filtros: {
@@ -48,152 +16,244 @@ export interface PrecoPDFData {
     };
 }
 
+const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    }).format(value);
+};
+
+const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('pt-BR');
+};
+
 export async function generateCentralPrecosPDF(data: PrecoPDFData) {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+    });
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = { left: 14, right: 14 };
+    const contentWidth = pageWidth - margin.left - margin.right;
 
-    const contentW = pageWidth - margin.left - margin.right;
-    let y = 0;
-
-    const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-    // PALETA PREMIUM (Padrão do sistema)
-    const C = {
-        dark: [10, 10, 14] as [number, number, number],
-        blue: [37, 99, 235] as [number, number, number],
-        cyan: [6, 182, 212] as [number, number, number],
-        amber: [245, 158, 11] as [number, number, number],
+    // ====== PREMIUM COLOR PALETTE ======
+    const colors = {
+        headerDark: [10, 10, 14] as [number, number, number],
+        headerMid: [18, 18, 26] as [number, number, number],
+        accentBlue: [37, 99, 235] as [number, number, number],
+        accentCyan: [6, 182, 212] as [number, number, number],
+        accentGold: [245, 158, 11] as [number, number, number],
+        textDark: [20, 20, 30] as [number, number, number],
+        textMuted: [120, 120, 140] as [number, number, number],
+        textLight: [200, 200, 220] as [number, number, number],
         white: [255, 255, 255] as [number, number, number],
-        border: [226, 232, 240] as [number, number, number],
-        rowAlt: [248, 250, 252] as [number, number, number],
-        textDark: [15, 23, 42] as [number, number, number],
-        textBody: [51, 65, 85] as [number, number, number],
-        textMuted: [100, 116, 139] as [number, number, number],
-        textLight: [203, 213, 225] as [number, number, number],
-        bgLight: [255, 255, 255] as [number, number, number],
+        rowEven: [250, 251, 254] as [number, number, number],
+        rowOdd: [255, 255, 255] as [number, number, number],
+        factoryBg: [235, 238, 248] as [number, number, number],
+        factoryAccent: [30, 64, 175] as [number, number, number],
+        greenAccent: [16, 185, 129] as [number, number, number],
+        purpleAccent: [124, 58, 237] as [number, number, number],
+        tableBorder: [226, 232, 240] as [number, number, number],
     };
 
-    const logoBase64 = await getBase64Image('/logo.png');
+    // ====== LOGO LOADER ======
+    const loadLogo = (): Promise<{ data: string; width: number; height: number } | null> => {
+        return new Promise((resolve) => {
+            const logoImg = new Image();
+            logoImg.crossOrigin = 'anonymous';
+            logoImg.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = logoImg.width;
+                canvas.height = logoImg.height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(logoImg, 0, 0);
+                resolve({ data: canvas.toDataURL('image/png'), width: logoImg.width, height: logoImg.height });
+            };
+            logoImg.onerror = () => resolve(null);
+            let url = '/logo.png';
+            if (url.startsWith('/')) {
+                url = window.location.origin + url;
+            }
+            logoImg.src = url;
+        });
+    };
 
-    const drawHeader = () => {
-        doc.setFillColor(C.dark[0], C.dark[1], C.dark[2]);
-        doc.rect(0, 0, pageWidth, 42, 'F');
+    const logoResult = await loadLogo();
+    const logoData = logoResult?.data || null;
 
-        if (logoBase64 && logoBase64.data) {
-            doc.addImage(logoBase64.data, 'PNG', margin.left, 8, 40, (40 * logoBase64.height) / logoBase64.width);
+    // ====== DRAW PREMIUM HEADER ======
+    const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
+        const headerHeight = 38;
+
+        // Dark gradient header background
+        pageDoc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
+        pageDoc.rect(0, 0, pageWidth, headerHeight, 'F');
+
+        // Subtle gradient band at bottom of header
+        pageDoc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+        pageDoc.rect(0, headerHeight, pageWidth, 1.5, 'F');
+        // Cyan accent fade
+        pageDoc.setFillColor(colors.accentCyan[0], colors.accentCyan[1], colors.accentCyan[2]);
+        pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.5, 'F');
+
+        // Logo
+        if (logoData) {
+            try {
+                const logoH = 19.5;
+                let logoW = 19.5;
+                if (logoResult) {
+                    const aspect = logoResult.width / logoResult.height;
+                    logoW = logoH * aspect;
+                }
+                pageDoc.addImage(logoData, 'PNG', margin.left, 6, logoW, logoH);
+            } catch { /* ignore logo errors */ }
         }
 
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(C.white[0], C.white[1], C.white[2]);
-        doc.text('RELATÓRIO DE MONITORAMENTO', pageWidth - margin.right, 14, { align: 'right' });
+        // Report title
+        pageDoc.setFontSize(13);
+        pageDoc.setFont('helvetica', 'bold');
+        pageDoc.setTextColor(255, 255, 255);
+        pageDoc.text('Relatório da Central de Preços', pageWidth - margin.right, 14, { align: 'right' });
 
-        doc.setFontSize(9);
+        // Date & meta info
+        pageDoc.setFontSize(7);
+        pageDoc.setFont('helvetica', 'normal');
+        pageDoc.setTextColor(colors.textLight[0], colors.textLight[1], colors.textLight[2]);
+        const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+        pageDoc.text(`Emitido em ${dateStr}`, pageWidth - margin.right, 20, { align: 'right' });
+
+        if (pageNum > 1) {
+            pageDoc.setFontSize(7);
+            pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+            pageDoc.text(`(Continuação)`, pageWidth - margin.right, 25, { align: 'right' });
+        }
+
+        return headerHeight + 5;
+    };
+
+    // ====== DRAW PREMIUM FOOTER ======
+    const drawFooter = (pageDoc: typeof doc, pageNum: number, totalPages: number) => {
+        const footerY = pageHeight - 12;
+
+        pageDoc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
+        pageDoc.setLineWidth(0.3);
+        pageDoc.line(margin.left, footerY - 3, pageWidth - margin.right, footerY - 3);
+
+        pageDoc.setFontSize(7);
+        pageDoc.setFont('helvetica', 'normal');
+        pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+        pageDoc.text('FRPlus — Gestão Comercial Inteligente', margin.left, footerY);
+        pageDoc.text('Documento confidencial • Central de Preços', pageWidth / 2, footerY, { align: 'center' });
+
+        pageDoc.setFont('helvetica', 'bold');
+        pageDoc.text(`${pageNum} / ${totalPages}`, pageWidth - margin.right, footerY, { align: 'right' });
+    };
+
+    // ====== HELPER: Draw KPI Card ======
+    const drawKpiCard = (x: number, y: number, w: number, h: number, label: string, value: string, color: [number, number, number], subvalue?: string) => {
+        doc.setFillColor(colors.rowEven[0], colors.rowEven[1], colors.rowEven[2]);
+        doc.roundedRect(x, y, w, h, 2, 2, 'F');
+
+        doc.setFillColor(color[0], color[1], color[2]);
+        doc.rect(x, y, 2.5, h, 'F');
+
+        doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(C.textLight[0], C.textLight[1], C.textLight[2]);
-        doc.text('Central de Preços', pageWidth - margin.right, 20, { align: 'right' });
+        doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+        doc.text(label.toUpperCase(), x + 6, y + 6);
 
-        doc.setFontSize(7);
-        doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-        doc.text(`Gerado em: ${dateStr} às ${timeStr}`, pageWidth - margin.right, 26, { align: 'right' });
-    };
-
-    const drawFooter = (pageNumber: number, pageCount: number) => {
-        const footerY = pageHeight - 10;
-        doc.setFontSize(7);
-        doc.setTextColor(C.textMuted[0], C.textMuted[1], C.textMuted[2]);
-        doc.text('FRPlus - Inteligência Comercial', margin.left, footerY);
-        doc.text(`Página ${pageNumber} de ${pageCount}`, pageWidth - margin.right, footerY, { align: 'right' });
-    };
-
-    drawHeader();
-    y = 50;
-
-    // Resumo e Filtros Aplicados
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
-    doc.text('RESUMO DE COLETA', margin.left, y);
-    y += 5;
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(C.textBody[0], C.textBody[1], C.textBody[2]);
-    
-    const filtrosTexto = [];
-    if (data.filtros.busca) filtrosTexto.push(`Busca: ${data.filtros.busca}`);
-    if (data.filtros.marca) filtrosTexto.push(`Marca: ${data.filtros.marca}`);
-    if (data.filtros.coletor) filtrosTexto.push(`Coletor: ${data.filtros.coletor}`);
-    
-    doc.text(`Filtros: ${filtrosTexto.length ? filtrosTexto.join(' | ') : 'Nenhum filtro aplicado'}`, margin.left, y);
-    y += 5;
-    doc.text(`Total de Registros (nesta visualização): ${data.stats.total}`, margin.left, y);
-    y += 5;
-    doc.text(`Menor Preço (nesta visualização): ${data.stats.menorPreco ? formatCurrency(data.stats.menorPreco) : '-'} ${data.stats.menorLocal ? `(${data.stats.menorLocal})` : ''}`, margin.left, y);
-    y += 10;
-
-    // Tabela de Dados
-    doc.setFillColor(C.blue[0], C.blue[1], C.blue[2]);
-    doc.rect(margin.left, y, 2.5, 4.5, 'F');
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(C.textDark[0], C.textDark[1], C.textDark[2]);
-    doc.text('HISTÓRICO DE PREÇOS', margin.left + 5, y + 4);
-    y += 7;
-
-    const tableData = data.registros.length > 0 ? data.registros.map(r => {
-        const dataStr = new Date(r.dataColeta).toLocaleDateString('pt-BR');
-        const clienteNome = r.cliente ? (r.cliente.nomeFantasia || r.cliente.razaoSocial) : '-';
-        const vendedorNome = r.vendedor ? r.vendedor.nome : 'Admin';
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
+        doc.text(value, x + 6, y + 13);
         
-        return [
-            dataStr,
-            clienteNome,
-            r.produtoBase,
-            r.marcaConcorrente?.nome || '',
-            formatCurrency(r.precoPrateleira),
-            vendedorNome
-        ];
-    }) : [['-', 'Nenhum registro encontrado', '-', '-', '-', '-']];
+        if (subvalue) {
+            doc.setFontSize(6.5);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(colors.accentGold[0], colors.accentGold[1], colors.accentGold[2]);
+            const splitSubvalue = doc.splitTextToSize(subvalue, w - 10);
+            doc.text(splitSubvalue, x + 6, y + 17);
+        }
+    };
 
+    let startY = drawHeader(doc, 1);
+
+    // ---- KPI SUMMARY CARDS ----
+    startY += 2;
+    const gap = 4;
+    const cardW = (contentWidth - gap * 2) / 3;
+    const cardH = 22; // Slightly taller to fit subvalue
+
+    drawKpiCard(margin.left, startY, cardW, cardH, 'Total de Coletas',
+        `${data.stats.total}`,
+        colors.accentBlue);
+        
+    drawKpiCard(margin.left + cardW + gap, startY, cardW, cardH, 'Últimos 7 dias',
+        `${data.stats.ultimos7}`,
+        colors.greenAccent);
+        
+    drawKpiCard(margin.left + (cardW + gap) * 2, startY, cardW, cardH, 'Menor Preço',
+        data.stats.menorPreco ? formatCurrency(data.stats.menorPreco) : '-',
+        colors.accentGold,
+        data.stats.menorLocal ? `em ${data.stats.menorLocal}` : '');
+
+    startY += cardH + 6;
+
+    // Subtitle badge for Filters info
+    doc.setFillColor(colors.factoryBg[0], colors.factoryBg[1], colors.factoryBg[2]);
+    doc.roundedRect(margin.left, startY, contentWidth, 9, 1.5, 1.5, 'F');
+    doc.setFontSize(8);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(colors.factoryAccent[0], colors.factoryAccent[1], colors.factoryAccent[2]);
+    
+    const filtrosAtivos = [];
+    if (data.filtros.busca) filtrosAtivos.push(`Busca: ${data.filtros.busca}`);
+    if (data.filtros.marca) filtrosAtivos.push(`Marca: ${data.filtros.marca}`);
+    if (data.filtros.coletor) filtrosAtivos.push(`Coletor: ${data.filtros.coletor}`);
+    
+    const filtrosStr = filtrosAtivos.length > 0 ? filtrosAtivos.join('  |  ') : 'Nenhum filtro aplicado';
+    doc.text(`Filtros: ${filtrosStr}`, margin.left + 5, startY + 6);
+    
+    startY += 12;
+
+    // ---- TABLE DATA ----
     autoTable(doc, {
-        startY: y,
-        head: [["DATA", "CLIENTE", "PRODUTO", "CONCORRENTE", "PREÇO", "QUEM COLETOU"]],
-        body: tableData,
-        theme: "plain",
-        styles: {
-            fontSize: 8,
-            minCellHeight: 8,
-            valign: 'middle',
-            textColor: C.textBody,
-            lineColor: C.border,
-            lineWidth: 0.1,
+        startY,
+        head: [['Data', 'Cliente', 'Produto Base', 'Concorrente', 'Preço', 'Coletor']],
+        body: data.registros.map(d => [
+            formatDate(d.dataColeta),
+            d.cliente ? (d.cliente.nomeFantasia || d.cliente.razaoSocial) : '-',
+            d.produtoBase,
+            d.marcaConcorrente?.nome || '',
+            d.precoPrateleira ? formatCurrency(d.precoPrateleira) : '-',
+            d.vendedor ? d.vendedor.nome : 'Admin'
+        ]),
+        styles: { fontSize: 8, cellPadding: 3, halign: 'left', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
+        headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4, halign: 'center' },
+        alternateRowStyles: { fillColor: colors.rowEven },
+        columnStyles: {
+            0: { halign: 'center', cellWidth: 20 },
+            1: { halign: 'left', cellWidth: 40 },
+            2: { halign: 'left', cellWidth: 40 },
+            3: { halign: 'left' },
+            4: { halign: 'right', fontStyle: 'bold', textColor: colors.accentBlue },
+            5: { halign: 'center' }
         },
-        headStyles: {
-            fillColor: C.bgLight,
-            textColor: C.textDark,
-            fontStyle: 'bold',
-            lineWidth: { bottom: 0.5 },
-            lineColor: C.border,
-        },
-        alternateRowStyles: {
-            fillColor: C.rowAlt,
-        },
-        didDrawPage: (data) => {
-            if (data.pageNumber > 1) {
-                drawHeader();
-            }
-        },
-        margin: { top: 45, left: margin.left, right: margin.right, bottom: 15 },
+        margin: { top: startY, left: margin.left, right: margin.right },
+        didDrawPage: (dataObj: { pageNumber: number }) => {
+            if (dataObj.pageNumber > 1) drawHeader(doc, dataObj.pageNumber);
+        }
     });
 
+    // FOOTERS
     const pages = doc.getNumberOfPages();
     for (let i = 1; i <= pages; i++) {
         doc.setPage(i);
-        drawFooter(i, pages);
+        drawFooter(doc, i, pages);
     }
 
     doc.save(`central-precos-${new Date().getTime()}.pdf`);
