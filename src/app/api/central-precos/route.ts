@@ -69,6 +69,7 @@ export async function POST(request: Request) {
         const produtoBase = String(body?.produtoBase || '').trim()
         const marcaConcorrenteId = String(body?.marcaConcorrenteId || '').trim()
         const clienteId = body?.clienteId ? String(body.clienteId) : null
+        const localNaoCadastrado = body?.localNaoCadastrado ? String(body.localNaoCadastrado).trim() : null;
         const precoPrateleira = Number(String(body?.precoPrateleira ?? '').replace(',', '.'))
 
         if (!produtoBase) {
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
                 marcaConcorrenteId,
                 precoPrateleira: Math.round(precoPrateleira * 100) / 100,
                 clienteId,
+                localNaoCadastrado,
                 vendedorId: vendedor ? vendedor.id : null,
                 ...(dataColeta ? { dataColeta } : {})
             },

@@ -313,6 +313,7 @@ model CentralPrecos {
   marcaConcorrenteId String
   marcaConcorrente   MarcaConcorrente @relation(fields: [marcaConcorrenteId], references: [id])
   precoPrateleira    Float
+  localNaoCadastrado String?
   createdAt          DateTime         @default(now())
 
   @@index([dataColeta])

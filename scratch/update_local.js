@@ -1,0 +1,1 @@
+const fs = require('fs'); let c = fs.readFileSync('src/app/dashboard/central-precos/page.tsx', 'utf8'); c = c.replace(/menorLocal: menorRegistro\?\.marcaConcorrente\?\.nome \|\| ''/, 'menorLocal: menorRegistro ? \\ no cliente \\ : '''); fs.writeFileSync('src/app/dashboard/central-precos/page.tsx', c, 'utf8');

@@ -19,6 +19,7 @@ interface RegistroPreco {
     precoPrateleira: number;
     clienteId: string | null;
     vendedorId: string | null;
+    localNaoCadastrado: string | null;
     cliente: { id: string; nomeFantasia: string; razaoSocial: string; cidade: string } | null;
     vendedor: { id: string; nome: string } | null;
     marcaConcorrente: { id: string; nome: string };
@@ -50,6 +51,7 @@ export default function CentralPrecosAdminPage() {
     const [showRegistrar, setShowRegistrar] = useState(false);
     const [editRegistroId, setEditRegistroId] = useState<string | null>(null);
     const [formClienteId, setFormClienteId] = useState('');
+    const [formLocalNaoCadastrado, setFormLocalNaoCadastrado] = useState('');
     const [formProdutoNome, setFormProdutoNome] = useState('');
     const [formMarcaId, setFormMarcaId] = useState('');
     const [formPreco, setFormPreco] = useState('');
@@ -153,13 +155,14 @@ export default function CentralPrecosAdminPage() {
             total: registros.length, 
             ultimos7, 
             menorPreco: menorRegistro?.precoPrateleira || 0,
-            menorLocal: menorRegistro ? `${menorRegistro.marcaConcorrente?.nome || ''} no cliente ${menorRegistro.cliente ? (menorRegistro.cliente.nomeFantasia || menorRegistro.cliente.razaoSocial) : 'Sem cliente'}` : ''
+            menorLocal: menorRegistro ? `${menorRegistro.marcaConcorrente?.nome || ''} no local ${menorRegistro.cliente ? (menorRegistro.cliente.nomeFantasia || menorRegistro.cliente.razaoSocial) : (menorRegistro.localNaoCadastrado || 'Não informado')}` : ''
         };
     }, [registros, filteredRegistros]);
 
     const resetFormPreco = () => {
         setEditRegistroId(null);
         setFormClienteId('');
+        setFormLocalNaoCadastrado('');
         setFormProdutoNome('');
         setFormMarcaId('');
         setFormPreco('');
@@ -169,6 +172,7 @@ export default function CentralPrecosAdminPage() {
     const handleEditClick = (registro: RegistroPreco) => {
         setEditRegistroId(registro.id);
         setFormClienteId(registro.clienteId || '');
+        setFormLocalNaoCadastrado(registro.localNaoCadastrado || '');
         setFormProdutoNome(registro.produtoBase);
         setFormMarcaId(registro.marcaConcorrente?.id || '');
         setFormPreco(registro.precoPrateleira.toString().replace('.', ','));
@@ -201,6 +205,7 @@ export default function CentralPrecosAdminPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     clienteId: formClienteId || null,
+                    localNaoCadastrado: formLocalNaoCadastrado || null,
                     produtoBase: formProdutoNome,
                     marcaConcorrenteId: formMarcaId,
                     precoPrateleira: formPreco
@@ -460,7 +465,7 @@ export default function CentralPrecosAdminPage() {
                             ) : (
                                 filteredRegistros.map((r, index) => {
                                     const data = new Date(r.dataColeta);
-                                    const clienteNome = r.cliente ? (r.cliente.nomeFantasia || r.cliente.razaoSocial) : null;
+                                    const clienteNome = r.cliente ? (r.cliente.nomeFantasia || r.cliente.razaoSocial) : (r.localNaoCadastrado || null);
                                     return (
                                         <tr
                                             key={r.id}
@@ -558,14 +563,27 @@ export default function CentralPrecosAdminPage() {
                             </div>
 
                             <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Cliente / PDV (opcional)</label>
-                                    <select value={formClienteId} onChange={(e) => setFormClienteId(e.target.value)} className={inputClass}>
-                                        <option value="">Sem cliente vinculado</option>
-                                        {clientes.map(c => (
-                                            <option key={c.id} value={c.id}>{c.nomeFantasia || c.razaoSocial}</option>
-                                        ))}
-                                    </select>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Cliente / PDV (se cadastrado)</label>
+                                        <select value={formClienteId} onChange={(e) => { setFormClienteId(e.target.value); setFormLocalNaoCadastrado(''); }} className={inputClass}>
+                                            <option value="">Nenhum (usar Local Avulso)</option>
+                                            {clientes.map(c => (
+                                                <option key={c.id} value={c.id}>{c.nomeFantasia || c.razaoSocial}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-400 mb-1.5">Local Avulso (não cadastrado)</label>
+                                        <input
+                                            type="text"
+                                            value={formLocalNaoCadastrado}
+                                            onChange={(e) => setFormLocalNaoCadastrado(e.target.value)}
+                                            placeholder="Ex: Supermercado Zezinho"
+                                            className={inputClass}
+                                            disabled={!!formClienteId}
+                                        />
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Produto Base</label>

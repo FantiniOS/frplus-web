@@ -51,6 +51,7 @@ export default function CentralPrecosVendedorPage() {
 
   // Form
   const [clienteId, setClienteId] = useState('');
+  const [localNaoCadastrado, setLocalNaoCadastrado] = useState('');
   const [produtoBaseNome, setProdutoBaseNome] = useState('');
   const [marcaId, setMarcaId] = useState('');
   const [preco, setPreco] = useState('');
@@ -131,7 +132,8 @@ export default function CentralPrecosVendedorPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clienteId,
+          clienteId: clienteId || null,
+          localNaoCadastrado: localNaoCadastrado || null,
           produtoBase: produtoBaseNome,
           marcaConcorrenteId: marcaId,
           precoPrateleira: preco
@@ -241,18 +243,30 @@ export default function CentralPrecosVendedorPage() {
           <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-5">
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wider">1. Cliente / PDV</label>
-              <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} className={inputClass}>
-                <option value="">-- Selecione --</option>
+              <select value={clienteId} onChange={(e) => { setClienteId(e.target.value); setLocalNaoCadastrado(''); }} className={inputClass}>
+                <option value="">-- Usar Local Avulso --</option>
                 {clientes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nomeFantasia || c.razaoSocial}
                   </option>
                 ))}
               </select>
-              {clientes.length === 0 && (
-                <p className="text-xs text-yellow-500 mt-2">Você não possui clientes vinculados à sua carteira.</p>
-              )}
-            </div>
+                {clientes.length === 0 && (
+                  <p className="text-xs text-yellow-500 mt-2">Você não possui clientes vinculados à sua carteira.</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wider">Local Avulso</label>
+                <input
+                  type="text"
+                  value={localNaoCadastrado}
+                  onChange={(e) => setLocalNaoCadastrado(e.target.value)}
+                  placeholder="Ex: Supermercado Zezinho"
+                  className={inputClass}
+                  disabled={!!clienteId}
+                />
+              </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wider">2. Produto Base</label>

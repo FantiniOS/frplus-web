@@ -11,7 +11,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
         const id = params.id
         const body = await request.json()
-        const { precoPrateleira, produtoBase, marcaConcorrenteId, clienteId } = body
+        const { precoPrateleira, produtoBase, marcaConcorrenteId, clienteId, localNaoCadastrado } = body
 
         if (!precoPrateleira) {
             return NextResponse.json({ error: 'Preço é obrigatório' }, { status: 400 })
@@ -26,6 +26,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         if (produtoBase) dataUpdate.produtoBase = produtoBase;
         if (marcaConcorrenteId) dataUpdate.marcaConcorrenteId = marcaConcorrenteId;
         if (clienteId !== undefined) dataUpdate.clienteId = clienteId || null;
+        if (localNaoCadastrado !== undefined) dataUpdate.localNaoCadastrado = localNaoCadastrado || null;
 
         const registro = await prisma.centralPrecos.update({
             where: { id },
