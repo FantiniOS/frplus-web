@@ -1,8 +1,8 @@
-/* eslint-disable */
+﻿/* eslint-disable */
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Tags, X, Store, Loader2, Building2, UserCircle2, CalendarDays, TrendingDown, BadgeDollarSign } from 'lucide-react';
+import { Search, Plus, Tags, X, Store, Loader2, Building2, UserCircle2, CalendarDays, TrendingDown, BadgeDollarSign, Edit2, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MarcaConcorrente {
@@ -46,8 +46,9 @@ export default function CentralPrecosAdminPage() {
     const [marcaFilter, setMarcaFilter] = useState('');
     const [coletorFilter, setColetorFilter] = useState('');
 
-    // Modal: Registrar Preço
+    // Modal: Registrar PreÃ§o
     const [showRegistrar, setShowRegistrar] = useState(false);
+    const [editRegistroId, setEditRegistroId] = useState<string | null>(null);
     const [formClienteId, setFormClienteId] = useState('');
     const [formProdutoNome, setFormProdutoNome] = useState('');
     const [formMarcaId, setFormMarcaId] = useState('');
@@ -67,7 +68,7 @@ export default function CentralPrecosAdminPage() {
             const data = await res.json();
             setRegistros(data.registros || []);
         } catch (e) {
-            console.error('Erro ao buscar central de preços:', e);
+            console.error('Erro ao buscar central de preÃ§os:', e);
         } finally {
             setLoading(false);
         }
@@ -85,7 +86,7 @@ export default function CentralPrecosAdminPage() {
 
     const fetchClientes = async () => {
         try {
-            // Reutiliza a rota existente de captação (Admin recebe todos os clientes ativos)
+            // Reutiliza a rota existente de captaÃ§Ã£o (Admin recebe todos os clientes ativos)
             const res = await fetch('/api/captacao');
             const data = await res.json();
             setClientes(data.clientes || []);
@@ -111,7 +112,7 @@ export default function CentralPrecosAdminPage() {
         fetchProdutos();
     }, []);
 
-    // Lista de coletores presentes no histórico (para o filtro)
+    // Lista de coletores presentes no histÃ³rico (para o filtro)
     const coletores = useMemo(() => {
         const map = new Map<string, string>();
         registros.forEach(r => {
@@ -145,6 +146,7 @@ export default function CentralPrecosAdminPage() {
     }, [registros, filteredRegistros]);
 
     const resetFormPreco = () => {
+        setEditRegistroId(null);
         setFormClienteId('');
         setFormProdutoNome('');
         setFormMarcaId('');
@@ -152,13 +154,38 @@ export default function CentralPrecosAdminPage() {
         setErroPreco('');
     };
 
+    const handleEditClick = (registro: RegistroPreco) => {
+        setEditRegistroId(registro.id);
+        setFormClienteId(registro.clienteId || '');
+        setFormProdutoNome(registro.produtoBase);
+        setFormMarcaId(registro.marcaConcorrente?.id || '');
+        setFormPreco(registro.precoPrateleira.toString().replace('.', ','));
+        setErroPreco('');
+        setShowRegistrar(true);
+    };
+
+    const handleDeleteClick = async (id: string) => {
+        if (!confirm('Deseja realmente excluir este registro?')) return;
+        try {
+            const res = await fetch(`/api/central-precos/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Falha ao excluir');
+            fetchRegistros();
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao excluir registro');
+        }
+    };
+
     const handleRegistrarPreco = async () => {
         if (!formProdutoNome || !formMarcaId || !formPreco) return;
         setSavingPreco(true);
         setErroPreco('');
         try {
-            const res = await fetch('/api/central-precos', {
-                method: 'POST',
+            const url = editRegistroId ? `/api/central-precos/${editRegistroId}` : '/api/central-precos';
+            const method = editRegistroId ? 'PUT' : 'POST';
+            
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     clienteId: formClienteId || null,
@@ -169,7 +196,7 @@ export default function CentralPrecosAdminPage() {
             });
             const data = await res.json();
             if (!res.ok) {
-                setErroPreco(data.error || 'Erro ao registrar preço.');
+                setErroPreco(data.error || 'Erro ao registrar preÃ§o.');
                 return;
             }
             setShowRegistrar(false);
@@ -177,7 +204,7 @@ export default function CentralPrecosAdminPage() {
             fetchRegistros();
             fetchMarcas();
         } catch (e) {
-            setErroPreco('Erro de conexão ao registrar preço.');
+            setErroPreco('Erro de conexÃ£o ao registrar preÃ§o.');
         } finally {
             setSavingPreco(false);
         }
@@ -201,7 +228,7 @@ export default function CentralPrecosAdminPage() {
             setNovaMarca('');
             fetchMarcas();
         } catch (e) {
-            setErroMarca('Erro de conexão ao cadastrar marca.');
+            setErroMarca('Erro de conexÃ£o ao cadastrar marca.');
         } finally {
             setSavingMarca(false);
         }
@@ -210,15 +237,15 @@ export default function CentralPrecosAdminPage() {
     return (
         <div className="flex flex-col gap-3 animate-in fade-in duration-500 h-full">
 
-            {/* ═══════════ HEADER ═══════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â• HEADER â•â•â•â•â•â•â•â•â•â•â• */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/20">
                         <Tags className="h-5 w-5 text-emerald-400" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-white tracking-tight">Central de Preços</h1>
-                        <p className="text-xs text-gray-500">Monitoramento de preços de prateleira da concorrência</p>
+                        <h1 className="text-xl font-bold text-white tracking-tight">Central de PreÃ§os</h1>
+                        <p className="text-xs text-gray-500">Monitoramento de preÃ§os de prateleira da concorrÃªncia</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -234,13 +261,13 @@ export default function CentralPrecosAdminPage() {
                         className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
                     >
                         <Plus className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Registrar Preço Coletado</span>
+                        <span className="hidden sm:inline">Registrar PreÃ§o Coletado</span>
                         <span className="sm:hidden">Registrar</span>
                     </button>
                 </div>
             </div>
 
-            {/* ═══════════ KPIs ═══════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â• KPIs â•â•â•â•â•â•â•â•â•â•â• */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
                     <div className="p-2 rounded-lg bg-blue-500/10"><BadgeDollarSign className="h-4 w-4 text-blue-400" /></div>
@@ -252,20 +279,20 @@ export default function CentralPrecosAdminPage() {
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
                     <div className="p-2 rounded-lg bg-emerald-500/10"><CalendarDays className="h-4 w-4 text-emerald-400" /></div>
                     <div>
-                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Últimos 7 dias</p>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Ãšltimos 7 dias</p>
                         <p className="text-lg font-bold text-white tabular-nums">{stats.ultimos7}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
                     <div className="p-2 rounded-lg bg-amber-500/10"><TrendingDown className="h-4 w-4 text-amber-400" /></div>
                     <div>
-                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Menor Preço (filtro atual)</p>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Menor PreÃ§o (filtro atual)</p>
                         <p className="text-lg font-bold text-white tabular-nums">{stats.menorPreco ? formatBRL(stats.menorPreco) : '-'}</p>
                     </div>
                 </div>
             </div>
 
-            {/* ═══════════ FILTER BAR ═══════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â• FILTER BAR â•â•â•â•â•â•â•â•â•â•â• */}
             <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06] backdrop-blur-sm">
                 <div className="relative flex-1 min-w-[180px]">
                     <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
@@ -293,19 +320,19 @@ export default function CentralPrecosAdminPage() {
                     className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500/50"
                 >
                     <option value="" className="bg-[#111]">Todos os coletores</option>
-                    <option value="admin" className="bg-[#111]">Você (Administrador)</option>
+                    <option value="admin" className="bg-[#111]">VocÃª (Administrador)</option>
                     {coletores.map(([id, nome]) => (
                         <option key={id} value={id} className="bg-[#111]">{nome}</option>
                     ))}
                 </select>
             </div>
 
-            {/* ═══════════ MASTER TABLE ═══════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â• MASTER TABLE â•â•â•â•â•â•â•â•â•â•â• */}
             <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm overflow-hidden flex-1 flex flex-col">
                 <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-emerald-500/10 to-transparent border-b border-white/[0.06]">
                     <div className="flex items-center gap-2">
                         <div className="w-1 h-4 rounded-full bg-emerald-500"></div>
-                        <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Histórico de Coletas</span>
+                        <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">HistÃ³rico de Coletas</span>
                         <span className="text-[10px] text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">{filteredRegistros.length} registros</span>
                     </div>
                 </div>
@@ -318,14 +345,14 @@ export default function CentralPrecosAdminPage() {
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Cliente</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Produto</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Concorrente</th>
-                                <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Preço</th>
-                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Quem Coletou</th>
+                                <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">PreÃ§o</th>
+                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Quem Coletou</th>`n                                <th className="text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-12 text-gray-600">
+                                    <td colSpan={7} className="text-center py-12 text-gray-600">
                                         <div className="flex items-center justify-center gap-2">
                                             <div className="h-4 w-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
                                             Carregando...
@@ -334,9 +361,9 @@ export default function CentralPrecosAdminPage() {
                                 </tr>
                             ) : filteredRegistros.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-12 text-gray-600">
+                                    <td colSpan={7} className="text-center py-12 text-gray-600">
                                         <Tags className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                                        <p className="text-sm">Nenhum preço coletado encontrado</p>
+                                        <p className="text-sm">Nenhum preÃ§o coletado encontrado</p>
                                     </td>
                                 </tr>
                             ) : (
@@ -387,9 +414,19 @@ export default function CentralPrecosAdminPage() {
                                                 ) : (
                                                     <span className="inline-flex items-center gap-1.5 text-xs text-blue-400 font-medium">
                                                         <UserCircle2 className="h-3.5 w-3.5" />
-                                                        Você (Admin)
+                                                        VocÃª (Admin)
                                                     </span>
                                                 )}
+                                            </td>
+                                            <td className="px-3 py-2.5 text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button onClick={() => handleEditClick(r)} className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded transition-colors" title="Editar">
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteClick(r.id)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors" title="Excluir">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -400,7 +437,7 @@ export default function CentralPrecosAdminPage() {
                 </div>
             </div>
 
-            {/* ═══════════ MODAL — Registrar Preço Coletado ═══════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â• MODAL â€” Registrar PreÃ§o Coletado â•â•â•â•â•â•â•â•â•â•â• */}
             <AnimatePresence>
                 {showRegistrar && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -422,7 +459,7 @@ export default function CentralPrecosAdminPage() {
                                     <div className="rounded-full bg-emerald-500/10 p-3 text-emerald-500">
                                         <Tags className="h-6 w-6" />
                                     </div>
-                                    <h3 className="text-xl font-bold text-white">Registrar Preço Coletado</h3>
+                                    <h3 className="text-xl font-bold text-white">{editRegistroId ? 'Editar Preço' : 'Registrar Preço Coletado'}</h3>
                                 </div>
                                 <button onClick={() => setShowRegistrar(false)} className="p-1.5 rounded-md text-gray-500 hover:text-white hover:bg-white/5">
                                     <X className="h-4 w-4" />
@@ -467,7 +504,7 @@ export default function CentralPrecosAdminPage() {
                                     )}
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Preço de Prateleira (R$)</label>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">PreÃ§o de Prateleira (R$)</label>
                                     <input
                                         type="number"
                                         step="0.01"
@@ -495,7 +532,7 @@ export default function CentralPrecosAdminPage() {
                                     className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {savingPreco && <Loader2 className="h-4 w-4 animate-spin" />}
-                                    {savingPreco ? 'Salvando...' : 'Salvar Coleta'}
+                                    {savingPreco ? 'Salvando...' : (editRegistroId ? 'Salvar AlteraÃ§Ãµes' : 'Salvar Coleta')}
                                 </button>
                             </div>
                         </motion.div>
@@ -503,7 +540,7 @@ export default function CentralPrecosAdminPage() {
                 )}
             </AnimatePresence>
 
-            {/* ═══════════ MODAL — Gerenciar Marcas ═══════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â• MODAL â€” Gerenciar Marcas â•â•â•â•â•â•â•â•â•â•â• */}
             <AnimatePresence>
                 {showMarcas && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
