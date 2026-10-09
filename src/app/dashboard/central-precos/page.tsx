@@ -4,8 +4,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Tags, X, Store, Loader2, Building2, UserCircle2, CalendarDays, TrendingDown, BadgeDollarSign, Edit2, Trash2, CheckCircle, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 interface MarcaConcorrente {
     id: string;
@@ -291,34 +289,27 @@ export default function CentralPrecosAdminPage() {
         }
     };
 
-    const handleExportPDF = () => {
-        const doc = new jsPDF();
-        
-        doc.setFontSize(16);
-        doc.text('Relatório - Central de Preços', 14, 20);
-        
-        doc.setFontSize(10);
-        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 28);
+    const [isExportingPDF, setIsExportingPDF] = useState(false);
 
-        const tableColumn = ["Data", "Cliente", "Produto", "Concorrente", "Preço", "Quem Coletou"];
-        const tableRows = filteredRegistros.map(r => [
-            new Date(r.dataColeta).toLocaleDateString('pt-BR'),
-            r.cliente ? (r.cliente.nomeFantasia || r.cliente.razaoSocial) : '-',
-            r.produtoBase,
-            r.marcaConcorrente.nome,
-            formatBRL(r.precoPrateleira),
-            r.vendedor ? r.vendedor.nome : 'Admin'
-        ]);
-
-        autoTable(doc, {
-            startY: 35,
-            head: [tableColumn],
-            body: tableRows,
-            styles: { fontSize: 8 },
-            headStyles: { fillColor: [41, 128, 185] },
-        });
-
-        doc.save('central-precos.pdf');
+    const handleExportPDF = async () => {
+        setIsExportingPDF(true);
+        try {
+            const { generateCentralPrecosPDF } = await import('./pdf-generator');
+            await generateCentralPrecosPDF({
+                registros: filteredRegistros,
+                filtros: {
+                    busca: searchTerm,
+                    marca: marcaFilter,
+                    coletor: coletorFilter
+                },
+                stats
+            });
+        } catch (error) {
+            console.error("Erro ao gerar PDF:", error);
+            alert("Erro ao gerar PDF.");
+        } finally {
+            setIsExportingPDF(false);
+        }
     };
 
     return (
@@ -338,9 +329,10 @@ export default function CentralPrecosAdminPage() {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={handleExportPDF}
-                        className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+                        disabled={isExportingPDF || filteredRegistros.length === 0}
+                        className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <Download className="h-3.5 w-3.5" />
+                        {isExportingPDF ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                         <span className="hidden sm:inline">Exportar PDF</span>
                         <span className="sm:hidden">PDF</span>
                     </button>
