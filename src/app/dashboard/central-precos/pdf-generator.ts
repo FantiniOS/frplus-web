@@ -15,6 +15,7 @@ export interface PrecoPDFData {
         menorLocal: string;
         menorMarca?: string;
         menorLocalNome?: string;
+        menorId?: string | null;
     };
 }
 

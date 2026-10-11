@@ -68,6 +68,9 @@ export default function CentralPrecosAdminPage() {
     const [editMarcaId, setEditMarcaId] = useState<string | null>(null);
     const [editMarcaNome, setEditMarcaNome] = useState('');
 
+    // Destaque e scroll do Menor Preço na tabela
+    const [highlightedRegistroId, setHighlightedRegistroId] = useState<string | null>(null);
+
     const fetchRegistros = async () => {
         try {
             const res = await fetch('/api/central-precos');
@@ -159,11 +162,28 @@ export default function CentralPrecosAdminPage() {
             total: registros.length, 
             ultimos7, 
             menorPreco: menorRegistro?.precoPrateleira || 0,
+            menorId: menorRegistro?.id || null,
             menorMarca,
             menorLocalNome,
             menorLocal
         };
     }, [registros, filteredRegistros]);
+
+    const handleScrollToMenorPreco = () => {
+        if (!stats.menorId) return;
+        setHighlightedRegistroId(stats.menorId);
+
+        setTimeout(() => {
+            const el = document.getElementById(`registro-${stats.menorId}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 50);
+
+        setTimeout(() => {
+            setHighlightedRegistroId((curr) => (curr === stats.menorId ? null : curr));
+        }, 4000);
+    };
 
     const resetFormPreco = () => {
         setEditRegistroId(null);
@@ -381,11 +401,28 @@ export default function CentralPrecosAdminPage() {
                         <p className="text-lg font-bold text-white tabular-nums">{stats.ultimos7}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
-                    <div className="p-2 rounded-lg bg-amber-500/10 flex-shrink-0"><TrendingDown className="h-4 w-4 text-amber-400" /></div>
+                <div
+                    onClick={handleScrollToMenorPreco}
+                    className={`flex items-center gap-3 p-3 rounded-xl bg-[#0a0f1a]/80 border transition-all duration-200 select-none ${
+                        stats.menorId
+                            ? 'cursor-pointer border-amber-500/20 hover:border-amber-500/50 hover:bg-amber-500/[0.05] hover:shadow-lg hover:shadow-amber-500/10 active:scale-[0.99] group'
+                            : 'border-white/[0.06]'
+                    }`}
+                    title={stats.menorId ? "Clique para localizar o menor preço na tabela" : undefined}
+                >
+                    <div className="p-2 rounded-lg bg-amber-500/10 flex-shrink-0 transition-transform group-hover:scale-110">
+                        <TrendingDown className="h-4 w-4 text-amber-400" />
+                    </div>
                     <div className="min-w-0 flex-1">
-                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Menor Preço (filtro atual)</p>
-                        <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
+                        <div className="flex items-center justify-between gap-1">
+                            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Menor Preço (filtro atual)</p>
+                            {stats.menorId && (
+                                <span className="text-[9px] text-amber-400/80 group-hover:text-amber-300 font-medium flex items-center gap-0.5 transition-colors">
+                                    Localizar na lista &darr;
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mt-0.5">
                             <span className="text-lg font-bold text-white tabular-nums">
                                 {stats.menorPreco ? formatBRL(stats.menorPreco) : '-'}
                             </span>
@@ -466,7 +503,7 @@ export default function CentralPrecosAdminPage() {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-12 text-gray-600">
+                                    <td colSpan={7} className="text-center py-12 text-gray-600">
                                         <div className="flex items-center justify-center gap-2">
                                             <div className="h-4 w-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
                                             Carregando...
@@ -475,7 +512,7 @@ export default function CentralPrecosAdminPage() {
                                 </tr>
                             ) : filteredRegistros.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-12 text-gray-600">
+                                    <td colSpan={7} className="text-center py-12 text-gray-600">
                                         <Tags className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                         <p className="text-sm">Nenhum preço coletado encontrado</p>
                                     </td>
@@ -484,10 +521,18 @@ export default function CentralPrecosAdminPage() {
                                 filteredRegistros.map((r, index) => {
                                     const data = new Date(r.dataColeta);
                                     const clienteNome = r.cliente ? (r.cliente.nomeFantasia || r.cliente.razaoSocial) : (r.localNaoCadastrado || null);
+                                    const isHighlighted = highlightedRegistroId === r.id;
                                     return (
                                         <tr
                                             key={r.id}
-                                            className={`border-b border-white/[0.03] transition-all duration-150 ${index % 2 === 0 ? 'bg-transparent hover:bg-white/[0.03]' : 'bg-white/[0.015] hover:bg-white/[0.04]'}`}
+                                            id={`registro-${r.id}`}
+                                            className={`border-b border-white/[0.03] transition-all duration-300 ${
+                                                isHighlighted
+                                                    ? 'bg-amber-500/20 ring-1 ring-amber-400/60 shadow-lg shadow-amber-500/10'
+                                                    : index % 2 === 0
+                                                    ? 'bg-transparent hover:bg-white/[0.03]'
+                                                    : 'bg-white/[0.015] hover:bg-white/[0.04]'
+                                            }`}
                                         >
                                             <td className="px-3 py-2.5">
                                                 <div className="flex flex-col">
@@ -517,7 +562,14 @@ export default function CentralPrecosAdminPage() {
                                                 </span>
                                             </td>
                                             <td className="px-3 py-2.5 text-right">
-                                                <span className="text-sm font-bold tabular-nums text-emerald-400">{formatBRL(r.precoPrateleira)}</span>
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    {isHighlighted && (
+                                                        <span className="text-[9px] font-bold text-amber-300 bg-amber-500/25 border border-amber-400/50 px-1.5 py-0.5 rounded-full animate-pulse shadow-sm whitespace-nowrap">
+                                                            ★ Menor Preço
+                                                        </span>
+                                                    )}
+                                                    <span className="text-sm font-bold tabular-nums text-emerald-400">{formatBRL(r.precoPrateleira)}</span>
+                                                </div>
                                             </td>
                                             <td className="px-3 py-2.5 hidden md:table-cell">
                                                 {r.vendedor ? (
