@@ -151,11 +151,17 @@ export default function CentralPrecosAdminPage() {
             menorRegistro = filteredRegistros.reduce((min, curr) => curr.precoPrateleira < min.precoPrateleira ? curr : min, filteredRegistros[0]);
         }
 
+        const menorMarca = menorRegistro?.marcaConcorrente?.nome || '';
+        const menorLocalNome = menorRegistro ? (menorRegistro.cliente ? (menorRegistro.cliente.nomeFantasia || menorRegistro.cliente.razaoSocial) : (menorRegistro.localNaoCadastrado || 'Não informado')) : '';
+        const menorLocal = menorRegistro ? `${menorMarca} no local ${menorLocalNome}` : '';
+
         return { 
             total: registros.length, 
             ultimos7, 
             menorPreco: menorRegistro?.precoPrateleira || 0,
-            menorLocal: menorRegistro ? `${menorRegistro.marcaConcorrente?.nome || ''} no local ${menorRegistro.cliente ? (menorRegistro.cliente.nomeFantasia || menorRegistro.cliente.razaoSocial) : (menorRegistro.localNaoCadastrado || 'Não informado')}` : ''
+            menorMarca,
+            menorLocalNome,
+            menorLocal
         };
     }, [registros, filteredRegistros]);
 
@@ -376,13 +382,25 @@ export default function CentralPrecosAdminPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06]">
-                    <div className="p-2 rounded-lg bg-amber-500/10"><TrendingDown className="h-4 w-4 text-amber-400" /></div>
-                    <div>
+                    <div className="p-2 rounded-lg bg-amber-500/10 flex-shrink-0"><TrendingDown className="h-4 w-4 text-amber-400" /></div>
+                    <div className="min-w-0 flex-1">
                         <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Menor Preço (filtro atual)</p>
-                        <p className="text-lg font-bold text-white tabular-nums">
-                            {stats.menorPreco ? formatBRL(stats.menorPreco) : '-'}
-                            {stats.menorLocal && <span className="text-[10px] font-normal text-amber-500/80 ml-2">em {stats.menorLocal}</span>}
-                        </p>
+                        <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
+                            <span className="text-lg font-bold text-white tabular-nums">
+                                {stats.menorPreco ? formatBRL(stats.menorPreco) : '-'}
+                            </span>
+                            {stats.menorMarca && (
+                                <div className="inline-flex items-center flex-wrap gap-1 text-[11px]">
+                                    <span className="font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded shadow-sm">
+                                        {stats.menorMarca}
+                                    </span>
+                                    <span className="text-gray-400 text-[10px] font-medium">em</span>
+                                    <span className="font-semibold text-cyan-300 bg-cyan-500/10 border border-cyan-500/25 px-1.5 py-0.5 rounded shadow-sm truncate max-w-[160px]" title={stats.menorLocalNome}>
+                                        {stats.menorLocalNome}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -13,6 +13,8 @@ export interface PrecoPDFData {
         ultimos7: number;
         menorPreco: number;
         menorLocal: string;
+        menorMarca?: string;
+        menorLocalNome?: string;
     };
 }
 
