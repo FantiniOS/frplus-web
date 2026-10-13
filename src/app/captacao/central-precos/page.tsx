@@ -14,6 +14,7 @@ type Registro = {
   produtoBase: string;
   precoPrateleira: number;
   vendedorId: string | null;
+  localNaoCadastrado?: string | null;
   cliente: { id: string; nomeFantasia: string; razaoSocial: string; cidade: string } | null;
   vendedor: { id: string; nome: string } | null;
   marcaConcorrente: { id: string; nome: string };
@@ -114,13 +115,15 @@ export default function CentralPrecosVendedorPage() {
     return registros.filter(r =>
       r.produtoBase.toLowerCase().includes(t) ||
       r.marcaConcorrente.nome.toLowerCase().includes(t) ||
-      (r.cliente?.nomeFantasia || r.cliente?.razaoSocial || '').toLowerCase().includes(t) ||
+      (r.cliente?.nomeFantasia || r.cliente?.razaoSocial || r.localNaoCadastrado || '').toLowerCase().includes(t) ||
       (r.vendedor?.nome || '').toLowerCase().includes(t)
     );
   }, [registros, busca]);
 
   const handleSubmit = async () => {
-    if (!clienteId) return setError('Selecione o cliente onde o preço foi coletado.');
+    if (!clienteId && !localNaoCadastrado.trim()) {
+      return setError('Selecione o cliente ou digite o local avulso onde o preço foi coletado.');
+    }
     if (!produtoBaseNome) return setError('Selecione o produto base.');
     if (!marcaId) return setError('Selecione a marca concorrente.');
     if (!preco || Number(preco.replace(',', '.')) <= 0) return setError('Informe um preço válido.');
@@ -359,7 +362,9 @@ export default function CentralPrecosVendedorPage() {
             ) : (
               registrosFiltrados.map((r) => {
                 const isMine = r.vendedorId === usuario.id;
-                const clienteNome = r.cliente ? (r.cliente.nomeFantasia || r.cliente.razaoSocial) : 'Sem cliente vinculado';
+                const clienteNome = r.cliente
+                  ? (r.cliente.nomeFantasia || r.cliente.razaoSocial)
+                  : (r.localNaoCadastrado || 'Sem cliente vinculado');
                 return (
                   <article
                     key={r.id}
