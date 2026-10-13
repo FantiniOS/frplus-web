@@ -29,14 +29,28 @@ export async function GET() {
         const pedidos = await prisma.prePedido.findMany({
             include: {
                 cliente: {
-                    select: { razaoSocial: true, nomeFantasia: true, cnpj: true }
+                    select: {
+                        id: true,
+                        razaoSocial: true,
+                        nomeFantasia: true,
+                        cnpj: true,
+                        endereco: true,
+                        numero: true,
+                        bairro: true,
+                        cidade: true,
+                        estado: true,
+                        cep: true,
+                        telefone: true,
+                        celular: true,
+                        tabelaPreco: true
+                    }
                 },
                 vendedor: {
-                    select: { nome: true }
+                    select: { id: true, nome: true }
                 },
                 itens: {
                     include: {
-                        produto: { select: { nome: true, unidade: true } }
+                        produto: { select: { id: true, codigo: true, nome: true, unidade: true } }
                     }
                 }
             },
