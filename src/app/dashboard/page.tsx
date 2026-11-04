@@ -471,7 +471,7 @@ export default function DashboardPage() {
 
   const kpis = [
     {
-      label: 'Vendas Totais',
+      label: 'VOLUME TOTAL (C/ BONIFICAÇÃO)',
       value: `R$ ${stats.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       sub: `${stats.totalOrders} pedidos emitidos`,
       icon: ShoppingCart,
@@ -482,9 +482,9 @@ export default function DashboardPage() {
       glow: 'group-hover:shadow-blue-500/10'
     },
     {
-      label: 'Faturamento',
+      label: 'FATURAMENTO LÍQUIDO',
       value: `R$ ${faturamentoData.total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      sub: `${faturamentoData.count} pedidos faturados`,
+      sub: '*Exclui bonificações (Base Comissão)',
       icon: DollarSign,
       gradient: 'from-emerald-500/20 to-emerald-500/[0.02]',
       iconBg: 'bg-emerald-500/15',
