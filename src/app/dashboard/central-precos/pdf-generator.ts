@@ -4,9 +4,13 @@ import autoTable from 'jspdf-autotable';
 export interface PrecoPDFData {
     registros: any[];
     filtros: {
-        busca: string;
-        marca: string;
-        coletor: string;
+        busca?: string;
+        dataInicio?: string;
+        dataFim?: string;
+        produto?: string;
+        marca?: string;
+        cliente?: string;
+        coletor?: string;
     };
     stats: {
         total: number;
@@ -206,30 +210,46 @@ export async function generateCentralPrecosPDF(data: PrecoPDFData) {
     startY += cardH + 6;
 
     // Subtitle badge for Filters info
-    doc.setFillColor(colors.factoryBg[0], colors.factoryBg[1], colors.factoryBg[2]);
-    doc.roundedRect(margin.left, startY, contentWidth, 9, 1.5, 1.5, 'F');
-    doc.setFontSize(8);
+    const filtrosAtivos: string[] = [];
+    if (data.filtros.dataInicio || data.filtros.dataFim) {
+        if (data.filtros.dataInicio && data.filtros.dataFim) {
+            const dIni = new Date(data.filtros.dataInicio + 'T12:00:00').toLocaleDateString('pt-BR');
+            const dFim = new Date(data.filtros.dataFim + 'T12:00:00').toLocaleDateString('pt-BR');
+            filtrosAtivos.push(`Período: ${dIni} até ${dFim}`);
+        } else if (data.filtros.dataInicio) {
+            const dIni = new Date(data.filtros.dataInicio + 'T12:00:00').toLocaleDateString('pt-BR');
+            filtrosAtivos.push(`A partir de: ${dIni}`);
+        } else if (data.filtros.dataFim) {
+            const dFim = new Date(data.filtros.dataFim + 'T12:00:00').toLocaleDateString('pt-BR');
+            filtrosAtivos.push(`Até: ${dFim}`);
+        }
+    }
+    if (data.filtros.produto) filtrosAtivos.push(`Produto: ${data.filtros.produto}`);
+    if (data.filtros.marca) filtrosAtivos.push(`Marca: ${data.filtros.marca}`);
+    if (data.filtros.cliente) filtrosAtivos.push(`Cliente/Local: ${data.filtros.cliente}`);
+    if (data.filtros.coletor) filtrosAtivos.push(`Coletor: ${data.filtros.coletor}`);
+    if (data.filtros.busca) filtrosAtivos.push(`Busca: ${data.filtros.busca}`);
 
+    const filtrosStr = filtrosAtivos.length > 0 ? filtrosAtivos.join('   |   ') : 'Nenhum filtro aplicado (Todos os dados)';
+    const splitFiltros = doc.splitTextToSize(`Filtros: ${filtrosStr}`, contentWidth - 10);
+    const badgeHeight = Math.max(9, splitFiltros.length * 4.5 + 4);
+
+    doc.setFillColor(colors.factoryBg[0], colors.factoryBg[1], colors.factoryBg[2]);
+    doc.roundedRect(margin.left, startY, contentWidth, badgeHeight, 1.5, 1.5, 'F');
+    doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(colors.factoryAccent[0], colors.factoryAccent[1], colors.factoryAccent[2]);
-    
-    const filtrosAtivos = [];
-    if (data.filtros.busca) filtrosAtivos.push(`Busca: ${data.filtros.busca}`);
-    if (data.filtros.marca) filtrosAtivos.push(`Marca: ${data.filtros.marca}`);
-    if (data.filtros.coletor) filtrosAtivos.push(`Coletor: ${data.filtros.coletor}`);
-    
-    const filtrosStr = filtrosAtivos.length > 0 ? filtrosAtivos.join('  |  ') : 'Nenhum filtro aplicado';
-    doc.text(`Filtros: ${filtrosStr}`, margin.left + 5, startY + 6);
-    
-    startY += 12;
+    doc.text(splitFiltros, margin.left + 5, startY + 5.5);
+
+    startY += badgeHeight + 4;
 
     // ---- TABLE DATA ----
     autoTable(doc, {
         startY,
-        head: [['Data', 'Cliente', 'Produto Base', 'Concorrente', 'Preço', 'Coletor']],
+        head: [['Data', 'Cliente / Local', 'Produto Base', 'Concorrente', 'Preço', 'Coletor']],
         body: data.registros.map(d => [
             formatDate(d.dataColeta),
-            d.cliente ? (d.cliente.nomeFantasia || d.cliente.razaoSocial) : '-',
+            d.cliente ? (d.cliente.nomeFantasia || d.cliente.razaoSocial) : (d.localNaoCadastrado || '-'),
             d.produtoBase,
             d.marcaConcorrente?.nome || '',
             d.precoPrateleira ? formatCurrency(d.precoPrateleira) : '-',
@@ -240,11 +260,11 @@ export async function generateCentralPrecosPDF(data: PrecoPDFData) {
         alternateRowStyles: { fillColor: colors.rowEven },
         columnStyles: {
             0: { halign: 'center', cellWidth: 20 },
-            1: { halign: 'left', cellWidth: 40 },
-            2: { halign: 'left', cellWidth: 40 },
-            3: { halign: 'left' },
-            4: { halign: 'right', fontStyle: 'bold', textColor: colors.accentBlue },
-            5: { halign: 'center' }
+            1: { halign: 'left', cellWidth: 42 },
+            2: { halign: 'left', cellWidth: 42 },
+            3: { halign: 'left', cellWidth: 32 },
+            4: { halign: 'right', cellWidth: 22, fontStyle: 'bold', textColor: colors.accentBlue },
+            5: { halign: 'center', cellWidth: 24 }
         },
         margin: { top: startY, left: margin.left, right: margin.right },
         didDrawPage: (dataObj: { pageNumber: number }) => {

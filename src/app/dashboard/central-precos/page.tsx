@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Tags, X, Store, Loader2, Building2, UserCircle2, CalendarDays, TrendingDown, BadgeDollarSign, Edit2, Trash2, CheckCircle, Download } from 'lucide-react';
+import { Search, Plus, Tags, X, Store, Loader2, Building2, UserCircle2, CalendarDays, Calendar, TrendingDown, BadgeDollarSign, Edit2, Trash2, CheckCircle, Download, FileSpreadsheet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MarcaConcorrente {
@@ -43,9 +43,13 @@ export default function CentralPrecosAdminPage() {
     const [loading, setLoading] = useState(true);
 
     // Filtros
-    const [searchTerm, setSearchTerm] = useState('');
+    const [dataInicio, setDataInicio] = useState('');
+    const [dataFim, setDataFim] = useState('');
+    const [produtoFilter, setProdutoFilter] = useState('');
     const [marcaFilter, setMarcaFilter] = useState('');
+    const [clienteFilter, setClienteFilter] = useState('');
     const [coletorFilter, setColetorFilter] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Modal: Registrar Preço
     const [showRegistrar, setShowRegistrar] = useState(false);
@@ -130,20 +134,88 @@ export default function CentralPrecosAdminPage() {
         return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
     }, [registros]);
 
-    const filteredRegistros = useMemo(() => {
-        const term = searchTerm.toLowerCase().trim();
-        return registros.filter(r => {
-            const clienteNome = (r.cliente?.nomeFantasia || r.cliente?.razaoSocial || '').toLowerCase();
-            const matchesSearch = !term ||
-                r.produtoBase.toLowerCase().includes(term) ||
-                clienteNome.includes(term) ||
-                r.marcaConcorrente.nome.toLowerCase().includes(term);
-            const matchesMarca = !marcaFilter || r.marcaConcorrente.id === marcaFilter;
-            const matchesColetor = !coletorFilter ||
-                (coletorFilter === 'admin' ? !r.vendedorId : r.vendedorId === coletorFilter);
-            return matchesSearch && matchesMarca && matchesColetor;
+    // Lista de produtos disponíveis (combinando coletas registradas e catálogo do sistema)
+    const produtosDisponiveis = useMemo(() => {
+        const set = new Set<string>();
+        registros.forEach(r => {
+            if (r.produtoBase) set.add(r.produtoBase.trim());
         });
-    }, [registros, searchTerm, marcaFilter, coletorFilter]);
+        produtosSistema.forEach(p => {
+            if (p.nome) set.add(p.nome.trim());
+        });
+        return Array.from(set).sort((a, b) => a.localeCompare(b));
+    }, [registros, produtosSistema]);
+
+    const filteredRegistros = useMemo(() => {
+        const search = searchTerm.toLowerCase().trim();
+        const clienteTerm = clienteFilter.toLowerCase().trim();
+
+        return registros.filter(r => {
+            // 1. Filtro de Período (Data Inicial e Data Final)
+            if (dataInicio || dataFim) {
+                const itemDateStr = new Date(r.dataColeta).toLocaleDateString('en-CA');
+                if (dataInicio && itemDateStr < dataInicio) return false;
+                if (dataFim && itemDateStr > dataFim) return false;
+            }
+
+            // 2. Filtro de Produto Base
+            if (produtoFilter && r.produtoBase.toLowerCase().trim() !== produtoFilter.toLowerCase().trim()) {
+                return false;
+            }
+
+            // 3. Filtro de Marca Concorrente
+            if (marcaFilter && r.marcaConcorrente?.id !== marcaFilter) {
+                return false;
+            }
+
+            // 4. Filtro por Cliente ou Local Avulso
+            if (clienteTerm) {
+                const clienteNome = (r.cliente?.nomeFantasia || r.cliente?.razaoSocial || '').toLowerCase();
+                const localAvulso = (r.localNaoCadastrado || '').toLowerCase();
+                const cidade = (r.cliente?.cidade || '').toLowerCase();
+                if (!clienteNome.includes(clienteTerm) && !localAvulso.includes(clienteTerm) && !cidade.includes(clienteTerm)) {
+                    return false;
+                }
+            }
+
+            // 5. Filtro de Coletor
+            if (coletorFilter) {
+                if (coletorFilter === 'admin') {
+                    if (r.vendedorId) return false;
+                } else if (r.vendedorId !== coletorFilter) {
+                    return false;
+                }
+            }
+
+            // 6. Busca Geral rápida
+            if (search) {
+                const clienteNome = (r.cliente?.nomeFantasia || r.cliente?.razaoSocial || '').toLowerCase();
+                const localAvulso = (r.localNaoCadastrado || '').toLowerCase();
+                const matches = r.produtoBase.toLowerCase().includes(search) ||
+                    (r.marcaConcorrente?.nome || '').toLowerCase().includes(search) ||
+                    clienteNome.includes(search) ||
+                    localAvulso.includes(search) ||
+                    (r.vendedor?.nome || '').toLowerCase().includes(search);
+                if (!matches) return false;
+            }
+
+            return true;
+        });
+    }, [registros, dataInicio, dataFim, produtoFilter, marcaFilter, clienteFilter, coletorFilter, searchTerm]);
+
+    const hasActiveFilters = Boolean(
+        dataInicio || dataFim || produtoFilter || marcaFilter || clienteFilter || coletorFilter || searchTerm
+    );
+
+    const handleClearFilters = () => {
+        setDataInicio('');
+        setDataFim('');
+        setProdutoFilter('');
+        setMarcaFilter('');
+        setClienteFilter('');
+        setColetorFilter('');
+        setSearchTerm('');
+    };
 
     const stats = useMemo(() => {
         const seteDiasAtras = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -322,16 +394,82 @@ export default function CentralPrecosAdminPage() {
 
     const [isExportingPDF, setIsExportingPDF] = useState(false);
 
+    const handleExportCSV = () => {
+        if (filteredRegistros.length === 0) return;
+
+        const headers = [
+            'Data',
+            'Hora',
+            'Cliente / PDV',
+            'Cidade',
+            'Produto Base',
+            'Marca Concorrente',
+            'Preço de Prateleira (R$)',
+            'Quem Coletou'
+        ];
+
+        const rows = filteredRegistros.map(r => {
+            const d = new Date(r.dataColeta);
+            const dataStr = d.toLocaleDateString('pt-BR');
+            const horaStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const clienteStr = r.cliente 
+                ? (r.cliente.nomeFantasia || r.cliente.razaoSocial) 
+                : (r.localNaoCadastrado || 'Não informado');
+            const cidadeStr = r.cliente?.cidade || '-';
+            const produtoStr = r.produtoBase.replace(/;/g, ',');
+            const marcaStr = (r.marcaConcorrente?.nome || '').replace(/;/g, ',');
+            const precoStr = r.precoPrateleira.toFixed(2).replace('.', ',');
+            const coletorStr = r.vendedor ? r.vendedor.nome : 'Administrador';
+
+            return [
+                dataStr,
+                horaStr,
+                `"${clienteStr.replace(/"/g, '""')}"`,
+                `"${cidadeStr.replace(/"/g, '""')}"`,
+                `"${produtoStr.replace(/"/g, '""')}"`,
+                `"${marcaStr.replace(/"/g, '""')}"`,
+                precoStr,
+                `"${coletorStr.replace(/"/g, '""')}"`
+            ];
+        });
+
+        const csvContent = [
+            headers.join(';'),
+            ...rows.map(row => row.join(';'))
+        ].join('\r\n');
+
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const dataHoje = new Date().toISOString().split('T')[0];
+        link.download = `central_precos_${dataHoje}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     const handleExportPDF = async () => {
         setIsExportingPDF(true);
         try {
             const { generateCentralPrecosPDF } = await import('./pdf-generator');
+            
+            const marcaNome = marcas.find(m => m.id === marcaFilter)?.nome;
+            const coletorNome = coletorFilter === 'admin' 
+                ? 'Você (Administrador)' 
+                : coletores.find(([id]) => id === coletorFilter)?.[1];
+
             await generateCentralPrecosPDF({
                 registros: filteredRegistros,
                 filtros: {
                     busca: searchTerm,
-                    marca: marcaFilter,
-                    coletor: coletorFilter
+                    dataInicio,
+                    dataFim,
+                    produto: produtoFilter,
+                    marca: marcaNome || '',
+                    cliente: clienteFilter,
+                    coletor: coletorNome || ''
                 },
                 stats
             });
@@ -357,14 +495,25 @@ export default function CentralPrecosAdminPage() {
                         <p className="text-xs text-gray-500">Monitoramento de preços de prateleira da concorrência</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        onClick={handleExportCSV}
+                        disabled={filteredRegistros.length === 0}
+                        title="Exportar dados filtrados em formato Excel / CSV"
+                        className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                        <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" />
+                        <span className="hidden sm:inline">Exportar Excel/CSV</span>
+                        <span className="sm:hidden">CSV</span>
+                    </button>
                     <button
                         onClick={handleExportPDF}
                         disabled={isExportingPDF || filteredRegistros.length === 0}
+                        title="Exportar dados filtrados no layout padrão PDF"
                         className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isExportingPDF ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                        <span className="hidden sm:inline">Exportar PDF</span>
+                        {isExportingPDF ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" /> : <Download className="h-3.5 w-3.5" />}
+                        <span className="hidden sm:inline">{isExportingPDF ? 'Gerando...' : 'Exportar PDF'}</span>
                         <span className="sm:hidden">PDF</span>
                     </button>
                     <button
@@ -442,39 +591,136 @@ export default function CentralPrecosAdminPage() {
                 </div>
             </div>
 
-            {/* ═══════════ FILTER BAR ═══════════ */}
-            <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06] backdrop-blur-sm">
-                <div className="relative flex-1 min-w-[180px]">
-                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
-                    <input
-                        type="text"
-                        placeholder="Buscar por produto, cliente ou concorrente..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all"
-                    />
+            {/* ═══════════ BARRA DE FILTROS DINÂMICOS ═══════════ */}
+            <div className="p-3 rounded-xl bg-[#0a0f1a]/80 border border-white/[0.06] backdrop-blur-sm space-y-2.5">
+                {/* Controles Principais de Filtro */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
+                    {/* Data Inicial */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-emerald-400" />
+                            Data Inicial
+                        </label>
+                        <input
+                            type="date"
+                            value={dataInicio}
+                            onChange={(e) => setDataInicio(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
+                        />
+                    </div>
+
+                    {/* Data Final */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-emerald-400" />
+                            Data Final
+                        </label>
+                        <input
+                            type="date"
+                            value={dataFim}
+                            onChange={(e) => setDataFim(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
+                        />
+                    </div>
+
+                    {/* Produto Base */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                            Produto Base
+                        </label>
+                        <select
+                            value={produtoFilter}
+                            onChange={(e) => setProdutoFilter(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500/50 truncate"
+                        >
+                            <option value="" className="bg-[#111]">Todos os produtos</option>
+                            {produtosDisponiveis.map(p => (
+                                <option key={p} value={p} className="bg-[#111]">{p}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Marca Concorrente */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                            Marca Concorrente
+                        </label>
+                        <select
+                            value={marcaFilter}
+                            onChange={(e) => setMarcaFilter(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500/50 truncate"
+                        >
+                            <option value="" className="bg-[#111]">Todas as marcas</option>
+                            {marcas.map(m => (
+                                <option key={m.id} value={m.id} className="bg-[#111]">{m.nome}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Cliente / Local */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                            Cliente / Local
+                        </label>
+                        <div className="relative">
+                            <Store className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
+                            <input
+                                type="text"
+                                placeholder="Nome ou local..."
+                                value={clienteFilter}
+                                onChange={(e) => setClienteFilter(e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Quem Coletou */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                            Quem Coletou
+                        </label>
+                        <select
+                            value={coletorFilter}
+                            onChange={(e) => setColetorFilter(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500/50 truncate"
+                        >
+                            <option value="" className="bg-[#111]">Todos os coletores</option>
+                            <option value="admin" className="bg-[#111]">Você (Administrador)</option>
+                            {coletores.map(([id, nome]) => (
+                                <option key={id} value={id} className="bg-[#111]">{nome}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
-                <select
-                    value={marcaFilter}
-                    onChange={(e) => setMarcaFilter(e.target.value)}
-                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500/50"
-                >
-                    <option value="" className="bg-[#111]">Todas as marcas</option>
-                    {marcas.map(m => (
-                        <option key={m.id} value={m.id} className="bg-[#111]">{m.nome}</option>
-                    ))}
-                </select>
-                <select
-                    value={coletorFilter}
-                    onChange={(e) => setColetorFilter(e.target.value)}
-                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500/50"
-                >
-                    <option value="" className="bg-[#111]">Todos os coletores</option>
-                    <option value="admin" className="bg-[#111]">Você (Administrador)</option>
-                    {coletores.map(([id, nome]) => (
-                        <option key={id} value={id} className="bg-[#111]">{nome}</option>
-                    ))}
-                </select>
+
+                {/* Linha Inferior: Busca Rápida e Resumo de Registros */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/[0.04]">
+                    <div className="relative flex-1 min-w-[220px] max-w-md">
+                        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
+                        <input
+                            type="text"
+                            placeholder="Busca rápida geral..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-all"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-gray-400">
+                            Exibindo <strong className="text-white">{filteredRegistros.length}</strong> de <strong className="text-gray-300">{registros.length}</strong> coletas
+                        </span>
+                        {hasActiveFilters && (
+                            <button
+                                onClick={handleClearFilters}
+                                className="flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-2 py-1 rounded-lg transition-all"
+                            >
+                                <X className="h-3 w-3" />
+                                Limpar filtros
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* ═══════════ MASTER TABLE ═══════════ */}
@@ -492,7 +738,7 @@ export default function CentralPrecosAdminPage() {
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-[#0c1220] border-b border-white/[0.08]">
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Data</th>
-                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Cliente</th>
+                                <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5 hidden md:table-cell">Cliente / Local</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Produto</th>
                                 <th className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Concorrente</th>
                                 <th className="text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2.5">Preço</th>
