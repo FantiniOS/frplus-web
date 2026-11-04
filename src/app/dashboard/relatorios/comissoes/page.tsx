@@ -58,7 +58,16 @@ const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL',
-    }).format(value);
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(value || 0);
+};
+
+const formatDecimal = (value: number) => {
+    return (value || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
 };
 
 const formatDate = (dateStr: string) => {
@@ -193,17 +202,18 @@ export default function ComissoesPage() {
                     totalVendidoAPagar += d.valorVenda;
                 }
             });
+            const round2 = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
             return {
                 ...prev,
                 detalhamento: updatedDetalhamento,
-                totalComissoesPago: pago,
-                totalComissoesAPagar: aPagar,
+                totalComissoesPago: round2(pago),
+                totalComissoesAPagar: round2(aPagar),
                 // Make the "totals" reflect ONLY the unpaid ones so the PDF and Resumo Financeiro update automatically
-                totalComissoes: aPagar,
-                totalDescontoIR: irAPagar,
-                totalDescontoISSQN: issqnAPagar,
-                totalLiquido: aPagar - irAPagar - issqnAPagar,
-                totalVendido: totalVendidoAPagar,
+                totalComissoes: round2(aPagar),
+                totalDescontoIR: round2(irAPagar),
+                totalDescontoISSQN: round2(issqnAPagar),
+                totalLiquido: round2(aPagar - irAPagar - issqnAPagar),
+                totalVendido: round2(totalVendidoAPagar),
             };
         });
         startTransition(async () => {
@@ -384,10 +394,10 @@ export default function ComissoesPage() {
             const cardH = 18;
 
             drawKpiCard(margin.left, startY, cardW, cardH, 'Total Vendido',
-                `R$ ${report.totalVendido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                `R$ ${formatDecimal(report.totalVendido)}`,
                 colors.accentBlue);
             drawKpiCard(margin.left + cardW + gap, startY, cardW, cardH, 'Comissões a Pagar',
-                `R$ ${report.totalComissoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                `R$ ${formatDecimal(report.totalComissoes)}`,
                 colors.accentGold);
 
             startY += cardH + 6;
@@ -417,8 +427,8 @@ export default function ComissoesPage() {
                     d.vendedorNome,
                     `${d.percentualAplicado.toFixed(1)}%`,
                     d.notaFiscal || '—',
-                    `R$ ${d.valorVenda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-                    `R$ ${d.valorComissao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                    `R$ ${formatDecimal(d.valorVenda)}`,
+                    `R$ ${formatDecimal(d.valorComissao)}`
                 ]),
                 styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
                 headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
@@ -433,8 +443,8 @@ export default function ComissoesPage() {
                     6: { halign: 'right', fontStyle: 'bold', textColor: colors.accentGold }
                 },
                 foot: [['', '', '', '', 'TOTAL', 
-                    `R$ ${report.totalVendido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-                    `R$ ${report.totalComissoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]],
+                    `R$ ${formatDecimal(report.totalVendido)}`,
+                    `R$ ${formatDecimal(report.totalComissoes)}`]],
                 footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
                 margin: { top: startY, left: margin.left, right: margin.right },
                 didDrawPage: (data: { pageNumber: number }) => {
@@ -453,20 +463,20 @@ export default function ComissoesPage() {
             
             let currentY = finalY + 6;
             doc.text('Comissões Pendentes:', pageWidth - margin.right - 80, currentY);
-            doc.text(`R$ ${report.totalComissoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
+            doc.text(`R$ ${formatDecimal(report.totalComissoes)}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
             
             if (report.totalDescontoIR > 0) {
                 currentY += 6;
                 doc.setTextColor(239, 68, 68); // Red-500
                 doc.text('(-) Retenção IR (1,5%):', pageWidth - margin.right - 80, currentY);
-                doc.text(`- R$ ${report.totalDescontoIR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
+                doc.text(`- R$ ${formatDecimal(report.totalDescontoIR)}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
             }
             
             if (report.totalDescontoISSQN > 0) {
                 currentY += 6;
                 doc.setTextColor(239, 68, 68); // Red-500
                 doc.text('(-) Retenção ISSQN (2,5%):', pageWidth - margin.right - 80, currentY);
-                doc.text(`- R$ ${report.totalDescontoISSQN.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
+                doc.text(`- R$ ${formatDecimal(report.totalDescontoISSQN)}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
             }
             
             currentY += 8;
@@ -478,7 +488,7 @@ export default function ComissoesPage() {
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(colors.greenAccent[0], colors.greenAccent[1], colors.greenAccent[2]);
             doc.text('LÍQUIDO A RECEBER:', pageWidth - margin.right - 80, currentY);
-            doc.text(`R$ ${report.totalLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
+            doc.text(`R$ ${formatDecimal(report.totalLiquido)}`, pageWidth - margin.right - 5, currentY, { align: 'right' });
 
             // ====== APPLY FOOTERS TO ALL PAGES ======
             const pageCount = (doc as any).internal.getNumberOfPages();

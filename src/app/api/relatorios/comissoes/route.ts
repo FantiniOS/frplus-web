@@ -152,16 +152,18 @@ export async function GET(request: Request) {
             let ir = 0
             let issqn = 0
 
+            const round2 = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100
+
             if (resolvedVendedor) {
                 percentualAplicado = getPercentualVigente(
                     resolvedVendedor.comissaoVigencias,
                     dataPedido,
                     Number(resolvedVendedor.percentualComissao) || 0
                 )
-                comissao = valorVenda * (percentualAplicado / 100)
+                comissao = round2(valorVenda * (percentualAplicado / 100))
                 
-                ir = comissao * (Number(resolvedVendedor.taxaRetencaoIR) / 100)
-                issqn = comissao * (Number(resolvedVendedor.taxaRetencaoISSQN) / 100)
+                ir = round2(comissao * (Number(resolvedVendedor.taxaRetencaoIR) / 100))
+                issqn = round2(comissao * (Number(resolvedVendedor.taxaRetencaoISSQN) / 100))
                 
                 if (!p.pagoAoVendedor) {
                     totalDescontoIR += ir
@@ -196,9 +198,19 @@ export async function GET(request: Request) {
             }
         })
 
+        const round2 = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100
+        totalVendidoBruto = round2(totalVendidoBruto)
+        totalVendido = round2(totalVendido)
+        totalComissoesBruto = round2(totalComissoesBruto)
+        totalComissoes = round2(totalComissoes)
+        totalComissoesPago = round2(totalComissoesPago)
+        totalComissoesAPagar = round2(totalComissoesAPagar)
+        totalDescontoIR = round2(totalDescontoIR)
+        totalDescontoISSQN = round2(totalDescontoISSQN)
+
         console.log(`[Comissoes API] totalComissoesBruto: ${totalComissoesBruto}, totalComissoesAPagar: ${totalComissoesAPagar}`)
 
-        const totalLiquido = totalComissoes - totalDescontoIR - totalDescontoISSQN
+        const totalLiquido = round2(totalComissoes - totalDescontoIR - totalDescontoISSQN)
 
         return NextResponse.json({
             totalVendidoBruto,

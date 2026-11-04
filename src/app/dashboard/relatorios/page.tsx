@@ -14,6 +14,10 @@ import { useReactToPrint } from 'react-to-print';
 import { PrintHeader } from '@/components/ui/PrintHeader';
 import { getHitListVinagre, ApuracaoDashboardData } from '@/app/actions/apuracaoVinagre';
 
+const formatMoney = (val: number) => {
+    return (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 export default function RelatoriosPage() {
     const { orders, clients, products, fabricas, refreshData } = useData();
     const searchParams = useSearchParams();
@@ -461,13 +465,13 @@ export default function RelatoriosPage() {
                 const gap = 3;
 
                 drawKpiCard(margin.left, startY, cardW, cardH, 'Faturamento Total',
-                    `R$ ${estatisticasVendas.totalVendas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                    `R$ ${formatMoney(estatisticasVendas.totalVendas)}`,
                     colors.greenAccent);
                 drawKpiCard(margin.left + cardW + gap, startY, cardW, cardH, 'Total de Pedidos',
                     `${estatisticasVendas.totalPedidos}`,
                     colors.accentBlue);
                 drawKpiCard(margin.left + (cardW + gap) * 2, startY, cardW, cardH, 'Ticket Médio',
-                    `R$ ${estatisticasVendas.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                    `R$ ${formatMoney(estatisticasVendas.ticketMedio)}`,
                     colors.purpleAccent);
                 drawKpiCard(margin.left + (cardW + gap) * 3, startY, cardW, cardH, 'Clientes Ativos',
                     `${new Set(pedidosFiltrados.map(o => o.clienteId)).size}`,
@@ -486,7 +490,7 @@ export default function RelatoriosPage() {
                             new Date(o.data).toLocaleDateString('pt-BR'),
                             o.tipo === 'Bonificacao' ? 'Bonificação' : 'Venda',
                             o.itens.length.toString(),
-                            `R$ ${o.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                            `R$ ${formatMoney(o.valorTotal)}`
                         ]),
                     styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle', lineColor: colors.tableBorder, lineWidth: 0.2 },
                     headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
@@ -497,7 +501,7 @@ export default function RelatoriosPage() {
                         3: { cellWidth: 22 },
                         5: { halign: 'right', fontStyle: 'bold', textColor: colors.greenAccent }
                     },
-                    foot: [['', '', '', '', 'TOTAL', `R$ ${estatisticasVendas.totalVendas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]],
+                    foot: [['', '', '', '', 'TOTAL', `R$ ${formatMoney(estatisticasVendas.totalVendas)}`]],
                     footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
                     margin: { top: startY, left: margin.left, right: margin.right },
                     didDrawPage: (data: { pageNumber: number }) => {
@@ -524,7 +528,7 @@ export default function RelatoriosPage() {
                             (i + 1).toString(),
                             p.nome,
                             p.qtd.toString(),
-                            `R$ ${p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                            `R$ ${formatMoney(p.valor)}`,
                             `${pct}%`
                         ];
                     }),
@@ -538,7 +542,7 @@ export default function RelatoriosPage() {
                         4: { cellWidth: 22, textColor: colors.accentBlue }
                     },
                     foot: [['', 'TOTAL GERAL', estatisticasProdutos.reduce((a, p) => a + p.qtd, 0).toString(),
-                        `R$ ${estatisticasProdutos.reduce((a, p) => a + p.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '100%']],
+                        `R$ ${formatMoney(estatisticasProdutos.reduce((a, p) => a + p.valor, 0))}`, '100%']],
                     footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
                     margin: { top: startY, left: margin.left, right: margin.right },
                     didDrawPage: (data: { pageNumber: number }) => {
@@ -569,7 +573,7 @@ export default function RelatoriosPage() {
                             c.nome,
                             c.tabelaPreco,
                             c.pedidos.toString(),
-                            `R$ ${c.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                            `R$ ${formatMoney(c.valor)}`,
                             `${pct}%`
                         ];
                     }),
@@ -584,7 +588,7 @@ export default function RelatoriosPage() {
                         5: { cellWidth: 20, textColor: colors.accentBlue }
                     },
                     foot: [['', 'TOTAL GERAL', '', clientesFiltrados.reduce((a, c) => a + c.pedidos, 0).toString(),
-                        `R$ ${clientesFiltrados.reduce((a, c) => a + c.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '100%']],
+                        `R$ ${formatMoney(clientesFiltrados.reduce((a, c) => a + c.valor, 0))}`, '100%']],
                     footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
                     margin: { top: startY, left: margin.left, right: margin.right },
                     didDrawPage: (data: { pageNumber: number }) => {
@@ -954,7 +958,7 @@ export default function RelatoriosPage() {
                             <div>
                                 <p className="text-xs text-gray-400">Total Vendas</p>
                                 <p className="text-xl font-bold text-white print:text-black">
-                                    R$ {estatisticasVendas.totalVendas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    R$ {formatMoney(estatisticasVendas.totalVendas)}
                                 </p>
                             </div>
                         </div>
@@ -978,7 +982,7 @@ export default function RelatoriosPage() {
                             <div>
                                 <p className="text-xs text-gray-400">Ticket Médio</p>
                                 <p className="text-xl font-bold text-white print:text-black">
-                                    R$ {estatisticasVendas.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    R$ {formatMoney(estatisticasVendas.ticketMedio)}
                                 </p>
                             </div>
                         </div>
@@ -1027,7 +1031,7 @@ export default function RelatoriosPage() {
                                                                 {clientesTexto || '-'}
                                                             </td>
                                                             <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
-                                                                R$ {valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                R$ {formatMoney(valor)}
                                                             </td>
                                                         </tr>
                                                     );
@@ -1079,10 +1083,10 @@ export default function RelatoriosPage() {
                                                                 <div className="flex items-center justify-end gap-2">
                                                                     {order.tipo === 'Bonificacao' ? (
                                                                         <span className="text-gray-500 line-through decoration-gray-600">
-                                                                            R$ {order.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                            R$ {formatMoney(order.valorTotal)}
                                                                         </span>
                                                                     ) : (
-                                                                        <span>R$ {order.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                                        <span>R$ {formatMoney(order.valorTotal)}</span>
                                                                     )}
                                                                     <button
                                                                         onClick={(e) => {
@@ -1190,7 +1194,7 @@ export default function RelatoriosPage() {
                                                 <td className="py-2 text-white print:text-black font-medium">{p.nome}</td>
                                                 <td className="py-2 text-center text-gray-400 print:text-gray-600">{p.qtd}</td>
                                                 <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
-                                                    R$ {p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    R$ {formatMoney(p.valor)}
                                                 </td>
                                             </tr>
                                         ))}
@@ -1202,7 +1206,7 @@ export default function RelatoriosPage() {
                                                 {estatisticasProdutos.reduce((acc, p) => acc + p.qtd, 0)}
                                             </td>
                                             <td className="py-2 text-right font-bold text-green-400 print:text-green-600">
-                                                R$ {estatisticasProdutos.reduce((acc, p) => acc + p.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                R$ {formatMoney(estatisticasProdutos.reduce((acc, p) => acc + p.valor, 0))}
                                             </td>
                                         </tr>
                                     </tfoot>
@@ -1269,7 +1273,7 @@ export default function RelatoriosPage() {
                                                     </td>
                                                     <td className="py-2 text-center text-gray-400 print:text-gray-600">{c.pedidos}</td>
                                                     <td className="py-2 text-right text-green-400 print:text-green-600 font-medium">
-                                                        R$ {c.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        R$ {formatMoney(c.valor)}
                                                     </td>
                                                 </tr>
                                                 {expandedClientId === c.id && (
@@ -1379,7 +1383,7 @@ export default function RelatoriosPage() {
                                                 {estatisticasClientes.reduce((acc, c) => acc + c.pedidos, 0)}
                                             </td>
                                             <td className="py-2 text-right font-bold text-green-400 print:text-green-600">
-                                                R$ {estatisticasClientes.reduce((acc, c) => acc + c.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                R$ {formatMoney(estatisticasClientes.reduce((acc, c) => acc + c.valor, 0))}
                                             </td>
                                         </tr>
                                     </tfoot>
@@ -1605,7 +1609,7 @@ export default function RelatoriosPage() {
                                         <div className="bg-[#1a1a24] p-5 rounded-xl border border-purple-500/20 flex flex-col justify-between">
                                             <h3 className="text-gray-400 font-medium text-sm">Receita Total Gerada</h3>
                                             <p className="text-3xl font-bold text-purple-400 mt-2">
-                                                R$ {hitListData.receitaTotalGerada.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                R$ {formatMoney(hitListData.receitaTotalGerada)}
                                             </p>
                                         </div>
                                         <div className="bg-[#1a1a24] p-5 rounded-xl border border-amber-500/20 flex flex-col justify-between">

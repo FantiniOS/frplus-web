@@ -30,6 +30,10 @@ interface VerbaDetail {
     pedidos: PedidoVinculado[];
 }
 
+const formatMoney = (val: number) => {
+    return (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 export default function VerbaDetailPage() {
     const { isIndustria } = useAuth();
     const params = useParams();
@@ -284,13 +288,13 @@ export default function VerbaDetailPage() {
             const gap = 3;
 
             drawKpiCard(margin.left, startY, cardW, cardH, 'Valor Liberado',
-                `R$ ${verba.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                `R$ ${formatMoney(verba.valorTotal)}`,
                 colors.purpleAccent);
             drawKpiCard(margin.left + cardW + gap, startY, cardW, cardH, 'Valor Consumido',
-                `R$ ${verba.consumido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                `R$ ${formatMoney(verba.consumido)}`,
                 colors.accentGold);
             drawKpiCard(margin.left + (cardW + gap) * 2, startY, cardW, cardH, 'Saldo Atual',
-                `R$ ${verba.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                `R$ ${formatMoney(verba.saldo)}`,
                 colors.greenAccent);
 
             startY += cardH + 8;
@@ -310,7 +314,7 @@ export default function VerbaDetailPage() {
                     new Date(p.data).toLocaleDateString('pt-BR'),
                     p.notaFiscal || '-',
                     `#${p.id.slice(-6)}`,
-                    `R$ ${p.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                    `R$ ${formatMoney(p.valorTotal)}`
                 ]),
                 styles: { fontSize: 8, cellPadding: 3, halign: 'center', lineColor: colors.tableBorder, lineWidth: 0.2 },
                 headStyles: { fillColor: colors.headerDark, textColor: 255, fontStyle: 'bold', cellPadding: 4 },
@@ -322,7 +326,7 @@ export default function VerbaDetailPage() {
                     3: { cellWidth: 28, fontStyle: 'bold' },
                     4: { halign: 'right', fontStyle: 'bold', textColor: colors.greenAccent }
                 },
-                foot: [['', '', '', 'TOTAL', `R$ ${verba.consumido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]],
+                foot: [['', '', '', 'TOTAL', `R$ ${formatMoney(verba.consumido)}`]],
                 footStyles: { fillColor: colors.headerDark, textColor: colors.white, fontStyle: 'bold', halign: 'right', cellPadding: 4 },
                 margin: { left: margin.left, right: margin.right },
                 didDrawPage: (data: { pageNumber: number }) => {
@@ -432,7 +436,7 @@ export default function VerbaDetailPage() {
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">Valor Liberado</p>
-                            <p className="text-lg font-bold text-white">R$ {verba.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-lg font-bold text-white">R$ {formatMoney(verba.valorTotal)}</p>
                         </div>
                     </div>
                 </div>
@@ -443,7 +447,7 @@ export default function VerbaDetailPage() {
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">Valor Consumido</p>
-                            <p className="text-lg font-bold text-amber-400">R$ {verba.consumido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-lg font-bold text-amber-400">R$ {formatMoney(verba.consumido)}</p>
                         </div>
                     </div>
                 </div>
@@ -455,7 +459,7 @@ export default function VerbaDetailPage() {
                         <div>
                             <p className="text-xs text-gray-500">Saldo Restante</p>
                             <p className={`text-lg font-bold ${verba.saldo > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                R$ {verba.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                R$ {formatMoney(verba.saldo)}
                             </p>
                         </div>
                     </div>
@@ -519,7 +523,7 @@ export default function VerbaDetailPage() {
                                             </td>
                                             <td className="px-3 py-2.5 text-right">
                                                 <span className="text-sm text-emerald-400 font-bold font-mono">
-                                                    R$ {p.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    R$ {formatMoney(p.valorTotal)}
                                                 </span>
                                             </td>
                                             <td className="px-3 py-2.5 text-center">
@@ -542,7 +546,7 @@ export default function VerbaDetailPage() {
                                             <span className="text-xs text-gray-500 uppercase font-semibold">Total Consumido</span>
                                         </td>
                                         <td className="px-3 py-2.5 text-right">
-                                            <span className="text-base text-amber-400 font-bold">R$ {verba.consumido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                            <span className="text-base text-amber-400 font-bold">R$ {formatMoney(verba.consumido)}</span>
                                         </td>
                                         <td></td>
                                     </tr>
@@ -627,7 +631,7 @@ export default function VerbaDetailPage() {
                                                         <span className="text-xs text-gray-500 ml-2">{new Date(p.data).toLocaleDateString('pt-BR')}</span>
                                                     </div>
                                                     <span className="text-sm font-bold text-amber-400 tabular-nums">
-                                                        R$ {p.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        R$ {formatMoney(p.valorTotal)}
                                                     </span>
                                                 </div>
                                             </label>
@@ -639,7 +643,7 @@ export default function VerbaDetailPage() {
                             {pedidosDisponiveis.length > 0 && (
                                 <div className="flex items-center justify-between p-4 border-t border-white/10">
                                     <span className="text-xs text-gray-500">
-                                        {selectedPedidos.size} selecionado(s) • R$ {pedidosDisponiveis.filter(p => selectedPedidos.has(p.id)).reduce((acc, p) => acc + p.valorTotal, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        {selectedPedidos.size} selecionado(s) • R$ {formatMoney(pedidosDisponiveis.filter(p => selectedPedidos.has(p.id)).reduce((acc, p) => acc + p.valorTotal, 0))}
                                     </span>
                                     <button
                                         onClick={handleVincular}

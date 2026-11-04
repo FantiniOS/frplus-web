@@ -257,7 +257,7 @@ export function PedidoExportButton({ order }: PedidoExportButtonProps) {
                 doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
                 doc.text('Valor Bruto:', totalsX + 5, currentY);
                 doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
-                doc.text(`R$ ${valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
+                doc.text(`R$ ${valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
                 
                 // Linha 3: Desconto
                 currentY += 6;
@@ -265,7 +265,7 @@ export function PedidoExportButton({ order }: PedidoExportButtonProps) {
                 doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
                 doc.text('Desconto:', totalsX + 5, currentY);
                 doc.setTextColor(239, 68, 68); // Red
-                doc.text(`- R$ ${desconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
+                doc.text(`- R$ ${desconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
                 
                 // Espaço extra antes do total
                 currentY += 9;
@@ -276,7 +276,7 @@ export function PedidoExportButton({ order }: PedidoExportButtonProps) {
                 doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
                 doc.text('Valor Bruto:', totalsX + 5, currentY);
                 doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
-                doc.text(`R$ ${valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
+                doc.text(`R$ ${valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
                 
                 // Espaço extra antes do total
                 currentY += 9;
@@ -288,7 +288,7 @@ export function PedidoExportButton({ order }: PedidoExportButtonProps) {
             doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
             doc.text('VALOR TOTAL:', totalsX + 5, currentY);
             doc.setTextColor(16, 185, 129); // Emerald
-            doc.text(`R$ ${Number(order.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
+            doc.text(`R$ ${Number(order.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
 
 
             // Observações

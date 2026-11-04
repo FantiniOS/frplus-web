@@ -279,7 +279,7 @@ export async function gerarPdfPrePedido(prePedido: PrePedidoPDFData) {
     doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
     doc.text('VALOR TOTAL:', totalsX + 5, currentY);
     doc.setTextColor(16, 185, 129); // Emerald
-    doc.text(`R$ ${valorCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
+    doc.text(`R$ ${valorCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, totalsX + totalsWidth - 5, currentY, { align: 'right' });
 
     // Observações ou Motivo da Rejeição se houver
     if (prePedido.motivoRejeicao) {

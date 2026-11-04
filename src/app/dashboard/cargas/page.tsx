@@ -11,6 +11,7 @@ interface CargaResult {
     id: number;
     orders: any[];
     totalVolume: number;
+    totalValor?: number;
     capacity: number;
     occupancyPct: number;
     isPalletized?: boolean;
@@ -74,16 +75,47 @@ export default function MontagemCargasPage() {
         }
     };
 
-    const getVolume = (order: any) => order.itens?.reduce((acc: number, i: any) => acc + (Number(i.quantidade) || 0), 0) || 0;
+    const getVolume = (order: any): number => {
+        if (!order) return 0;
+        if (typeof order.volume === 'number') return order.volume;
+        const itensVol = order.itens?.reduce((acc: number, i: any) => acc + (Number(i.quantidade) || 0), 0);
+        if (typeof itensVol === 'number' && itensVol > 0) return itensVol;
+        return Number(order.volume) || Number(order.quantidadeTotal) || 0;
+    };
 
     // Valor financeiro do pedido (soma de quantidade × precoUnitario de cada item)
     const getOrderValue = (order: any): number => {
+        if (!order) return 0;
+        if (typeof order.valor === 'number') return order.valor;
+        if ((!order.itens || !Array.isArray(order.itens) || order.itens.length === 0) && order.valorTotal) {
+            return Number(order.valorTotal) || 0;
+        }
         if (!order.itens || !Array.isArray(order.itens)) return 0;
         return order.itens.reduce((acc: number, i: any) => {
             const qty = Number(i.quantidade) || 0;
-            const price = Number(i.precoUnitario) || 0;
+            const price = Number(i.precoUnitario) || (qty > 0 && i.total ? Number(i.total) / qty : 0);
             return acc + (qty * price);
         }, 0);
+    };
+
+    // Valor financeiro de um bloco ou linha alocada no caminhão
+    const getBlockValue = (block: any): number => {
+        if (!block) return 0;
+        if (typeof block.valor === 'number') return block.valor;
+        if (block.orders && Array.isArray(block.orders)) {
+            return block.orders.reduce((acc: number, o: any) => {
+                return acc + (typeof o.valor === 'number' ? o.valor : getOrderValue(o));
+            }, 0);
+        }
+        return getOrderValue(block);
+    };
+
+    // Valor financeiro total de um caminhão (somatório exato das linhas internas)
+    const getTruckValue = (truck: CargaResult): number => {
+        if (!truck) return 0;
+        if (typeof truck.totalValor === 'number') return truck.totalValor;
+        if (!truck.orders) return 0;
+        return truck.orders.reduce((acc: number, block: any) => acc + getBlockValue(block), 0);
     };
 
     const formatBRL = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -196,13 +228,14 @@ export default function MontagemCargasPage() {
     const gerarRomaneio = () => {
         if (selectedOrdersList.length === 0) return;
 
-        const capacityNormal = Number(truckCapacity) || 1360;
-        const capacityPallet = Number(truckPalletCapacity) || 1080;
+        const capacityNormal = Number(truckCapacity) > 0 ? Number(truckCapacity) : 1360;
+        const capacityPallet = Number(truckPalletCapacity) > 0 ? Number(truckPalletCapacity) : 1080;
 
         // PASSO 1: AGRUPAMENTO POR CLIENTE E ZONA GEOGRÁFICA (Pre-processing)
         const clientGroups: Record<string, {
             nomeCliente: string;
             totalVolume: number;
+            totalValor: number;
             isPalletized: boolean;
             orders: any[];
             cepPrefix: string;
@@ -219,6 +252,7 @@ export default function MontagemCargasPage() {
                 clientGroups[clientName] = {
                     nomeCliente: clientName,
                     totalVolume: 0,
+                    totalValor: 0,
                     isPalletized: false,
                     orders: [],
                     cepPrefix,
@@ -227,6 +261,7 @@ export default function MontagemCargasPage() {
             }
             clientGroups[clientName].orders.push(order);
             clientGroups[clientName].totalVolume += getVolume(order);
+            clientGroups[clientName].totalValor += getOrderValue(order);
             if (isOrderPalletized(order)) {
                 clientGroups[clientName].isPalletized = true;
             }
@@ -240,36 +275,154 @@ export default function MontagemCargasPage() {
             }
         });
 
-        // PASSO 2: TRATAMENTO DE CLIENTES GIGANTES (Overflow)
+        // PASSO 2: TRATAMENTO DE CLIENTES GIGANTES (Overflow & Fracionamento Real por Itens)
         const blocksToPack: any[] = [];
         
         Object.values(clientGroups).forEach(group => {
-            let remainingVolume = group.totalVolume;
             const limit = group.isPalletized ? capacityPallet : capacityNormal;
 
-            while (remainingVolume > 0) {
-                if (remainingVolume > limit) {
+            // Prepara fila de pedidos com seus itens e saldos reais a alocar
+            const pendingOrders = group.orders.map(order => {
+                const orderVol = getVolume(order);
+                const orderVal = getOrderValue(order);
+
+                let items = (order.itens && Array.isArray(order.itens) && order.itens.length > 0)
+                    ? order.itens.map((i: any) => {
+                        const qty = Number(i.quantidade) || 0;
+                        const unitPrice = Number(i.precoUnitario) || (qty > 0 && i.total ? Number(i.total) / qty : 0);
+                        const totalItemVal = typeof i.total === 'number' && i.total > 0 ? Number(i.total) : qty * unitPrice;
+                        return {
+                            id: i.id,
+                            produtoId: i.produtoId || '',
+                            nomeProduto: i.nomeProduto || 'Item',
+                            unidade: i.unidade,
+                            quantidadeOriginal: qty,
+                            quantidadeRestante: qty,
+                            precoUnitario: unitPrice,
+                            valorOriginal: totalItemVal,
+                            valorRestante: totalItemVal,
+                        };
+                    }).filter((i: any) => i.quantidadeRestante > 0)
+                    : [];
+
+                // Fallback para pedidos sem array de itens detalhado mas com volume/valor
+                if (items.length === 0 && (orderVol > 0 || orderVal > 0)) {
+                    const fallbackVol = orderVol > 0 ? orderVol : 1;
+                    const unitPrice = orderVal / fallbackVol;
+                    items = [{
+                        id: order.id,
+                        produtoId: 'geral',
+                        nomeProduto: 'Itens do Pedido',
+                        unidade: 'cx',
+                        quantidadeOriginal: fallbackVol,
+                        quantidadeRestante: fallbackVol,
+                        precoUnitario: unitPrice,
+                        valorOriginal: orderVal,
+                        valorRestante: orderVal,
+                    }];
+                }
+
+                return {
+                    originalOrder: order,
+                    items,
+                    totalInitialVolume: orderVol > 0 ? orderVol : items.reduce((acc: number, it: any) => acc + it.quantidadeOriginal, 0),
+                    totalInitialValue: orderVal,
+                };
+            }).filter(o => o.items.some((it: any) => it.quantidadeRestante > 0));
+
+            // Enquanto houver pedidos ou itens pendentes de alocação para este cliente
+            while (pendingOrders.some(po => po.items.some((it: any) => it.quantidadeRestante > 0))) {
+                let blockRemainingSpace = limit;
+                let currentBlockVolume = 0;
+                let currentBlockValor = 0;
+                const currentBlockOrders: any[] = [];
+                let blockDataProg: string | null = null;
+
+                for (const pOrder of pendingOrders) {
+                    if (blockRemainingSpace <= 0) break;
+
+                    const hasRemaining = pOrder.items.some((it: any) => it.quantidadeRestante > 0);
+                    if (!hasRemaining) continue;
+
+                    const allocatedItems: any[] = [];
+                    let orderAllocatedVol = 0;
+                    let orderAllocatedVal = 0;
+
+                    for (const item of pOrder.items) {
+                        if (blockRemainingSpace <= 0) break;
+                        if (item.quantidadeRestante <= 0) continue;
+
+                        const qtyToTake = Math.min(item.quantidadeRestante, blockRemainingSpace);
+                        if (qtyToTake > 0) {
+                            let itemVal = 0;
+                            if (qtyToTake === item.quantidadeRestante) {
+                                // Consome todo o saldo restante do item, garantindo preservação exata dos centavos
+                                itemVal = item.valorRestante;
+                                item.valorRestante = 0;
+                                item.quantidadeRestante = 0;
+                            } else {
+                                // Alocação fracionada baseada estritamente no preço unitário real do item
+                                itemVal = Math.round(qtyToTake * item.precoUnitario * 100) / 100;
+                                if (itemVal > item.valorRestante) itemVal = item.valorRestante;
+                                item.valorRestante = Math.round((item.valorRestante - itemVal) * 100) / 100;
+                                item.quantidadeRestante -= qtyToTake;
+                            }
+
+                            allocatedItems.push({
+                                id: item.id,
+                                produtoId: item.produtoId,
+                                nomeProduto: item.nomeProduto,
+                                unidade: item.unidade,
+                                quantidade: qtyToTake,
+                                precoUnitario: item.precoUnitario,
+                                total: itemVal,
+                            });
+
+                            blockRemainingSpace -= qtyToTake;
+                            orderAllocatedVol += qtyToTake;
+                            orderAllocatedVal = Math.round((orderAllocatedVal + itemVal) * 100) / 100;
+                        }
+                    }
+
+                    if (allocatedItems.length > 0) {
+                        const isFracionado = orderAllocatedVol < pOrder.totalInitialVolume;
+
+                        currentBlockOrders.push({
+                            id: pOrder.originalOrder.id,
+                            clienteId: pOrder.originalOrder.clienteId,
+                            nomeCliente: pOrder.originalOrder.nomeCliente || group.nomeCliente,
+                            notaFiscal: pOrder.originalOrder.notaFiscal,
+                            dataPedido: getDataPedido(pOrder.originalOrder) || undefined,
+                            dataEntregaProgramada: getDataProgramada(pOrder.originalOrder),
+                            isFracionado,
+                            volume: orderAllocatedVol,
+                            valor: orderAllocatedVal,
+                            itens: allocatedItems,
+                        });
+
+                        currentBlockVolume += orderAllocatedVol;
+                        currentBlockValor = Math.round((currentBlockValor + orderAllocatedVal) * 100) / 100;
+
+                        const prog = getDataProgramada(pOrder.originalOrder);
+                        if (prog) {
+                            if (!blockDataProg || new Date(prog) < new Date(blockDataProg)) {
+                                blockDataProg = prog;
+                            }
+                        }
+                    }
+                }
+
+                if (currentBlockVolume > 0) {
                     blocksToPack.push({
                         nomeCliente: group.nomeCliente,
-                        volume: limit,
+                        volume: currentBlockVolume,
+                        valor: currentBlockValor,
                         isPalletized: group.isPalletized,
                         isBlock: true,
-                        orders: [...group.orders],
+                        orders: currentBlockOrders,
                         cepPrefix: group.cepPrefix,
-                        dataEntregaProgramada: group.dataEntregaProgramada
+                        dataEntregaProgramada: blockDataProg || group.dataEntregaProgramada,
                     });
-                    remainingVolume -= limit;
-                } else {
-                    blocksToPack.push({
-                        nomeCliente: group.nomeCliente,
-                        volume: remainingVolume,
-                        isPalletized: group.isPalletized,
-                        isBlock: true,
-                        orders: [...group.orders],
-                        cepPrefix: group.cepPrefix,
-                        dataEntregaProgramada: group.dataEntregaProgramada
-                    });
-                    remainingVolume = 0;
                 }
             }
         });
@@ -359,9 +512,10 @@ export default function MontagemCargasPage() {
             }
         }
 
-        // Calcular porcentagem de ocupação
+        // Calcular porcentagem de ocupação e valor total por caminhão
         trucks.forEach(t => {
             t.occupancyPct = Math.round((t.totalVolume / t.capacity) * 100);
+            t.totalValor = Math.round(t.orders.reduce((acc, b) => acc + (b.valor || 0), 0) * 100) / 100;
         });
 
         setGeneratedTrucks(trucks);
@@ -471,8 +625,9 @@ export default function MontagemCargasPage() {
             doc.setFont('helvetica', 'bold');
             const facName = selectedFabrica === 'todas' ? 'Todas' : fabricas.find(f => f.id === selectedFabrica)?.nome || selectedFabrica;
             doc.text(`Fábrica: ${facName}`, margin.left, startY + 5);
-            doc.text(`Veículos: ${generatedTrucks.length}`, margin.left + 50, startY + 5);
-            doc.text(`Vol. Alocado: ${generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} cxs`, margin.left + 85, startY + 5);
+            doc.text(`Veículos: ${generatedTrucks.length}`, margin.left + 45, startY + 5);
+            doc.text(`Vol: ${generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} cxs`, margin.left + 72, startY + 5);
+            doc.text(`Valor: ${formatBRL(generatedTrucks.reduce((acc, t) => acc + getTruckValue(t), 0))}`, margin.left + 105, startY + 5);
             
 
             
@@ -506,7 +661,7 @@ export default function MontagemCargasPage() {
                     return [cName, nfs || '—', o.isBlock ? o.volume.toString() : getVolume(o).toString()];
                 });
 
-                let truckTitle = `Caminhão ${truck.id} — Ocupação: ${truck.occupancyPct}% — Vol: ${truck.totalVolume}/${truck.capacity} cxs ${truck.isPalletized ? '(Paletizado)' : ''}`;
+                let truckTitle = `Caminhão ${truck.id} — Ocupação: ${truck.occupancyPct}% — Vol: ${truck.totalVolume}/${truck.capacity} cxs — Valor: ${formatBRL(getTruckValue(truck))} ${truck.isPalletized ? '(Paletizado)' : ''}`;
 
                 autoTable(doc, {
                     startY,
@@ -787,13 +942,7 @@ export default function MontagemCargasPage() {
                                 Volume: {generatedTrucks.reduce((acc, t) => acc + t.totalVolume, 0)} Cxs
                             </span>
                             <span className="text-xs bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-lg text-emerald-400 font-semibold shadow-inner">
-                                Valor: {formatBRL(generatedTrucks.reduce((acc, t) => {
-                                    const truckVal = t.orders.reduce((oAcc: number, block: any) => {
-                                        const blockOrders = block.orders || [block];
-                                        return oAcc + blockOrders.reduce((bAcc: number, o: any) => bAcc + getOrderValue(o), 0);
-                                    }, 0);
-                                    return acc + truckVal;
-                                }, 0))}
+                                Valor: {formatBRL(generatedTrucks.reduce((acc, t) => acc + getTruckValue(t), 0))}
                             </span>
                         </div>
                     </div>
@@ -868,7 +1017,7 @@ export default function MontagemCargasPage() {
                                                             </td>
                                                             <td className="px-3 py-2 text-right">
                                                                 <span className="font-mono text-emerald-400 text-[9px] font-semibold">
-                                                                    {formatBRL((order.orders || [order]).reduce((acc: number, o: any) => acc + getOrderValue(o), 0))}
+                                                                    {formatBRL(getBlockValue(order))}
                                                                 </span>
                                                             </td>
                                                         </tr>
@@ -884,10 +1033,7 @@ export default function MontagemCargasPage() {
                                             <DollarSign className="h-3 w-3" /> Valor da Carga
                                         </span>
                                         <span className="text-xs font-bold text-emerald-400">
-                                            {formatBRL(truck.orders.reduce((acc: number, block: any) => {
-                                                const blockOrders = block.orders || [block];
-                                                return acc + blockOrders.reduce((bAcc: number, o: any) => bAcc + getOrderValue(o), 0);
-                                            }, 0))}
+                                            {formatBRL(getTruckValue(truck))}
                                         </span>
                                     </div>
                                 </div>
