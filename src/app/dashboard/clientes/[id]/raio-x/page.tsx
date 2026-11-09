@@ -130,44 +130,44 @@ export default function ClienteRaioXPage({ params }: Props) {
 
             // ═══════ HEADER ═══════
             const drawHeader = (pageDoc: typeof doc, pageNum: number) => {
-                const headerHeight = 38;
+                const headerHeight = 32;
                 pageDoc.setFillColor(colors.headerDark[0], colors.headerDark[1], colors.headerDark[2]);
                 pageDoc.rect(0, 0, pageWidth, headerHeight, 'F');
                 pageDoc.setFillColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
-                pageDoc.rect(0, headerHeight, pageWidth, 1.5, 'F');
+                pageDoc.rect(0, headerHeight, pageWidth, 1.2, 'F');
                 pageDoc.setFillColor(colors.emerald[0], colors.emerald[1], colors.emerald[2]);
-                pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.5, 'F');
+                pageDoc.rect(pageWidth * 0.4, headerHeight, pageWidth * 0.6, 1.2, 'F');
 
                 if (logoData) {
                     try {
-                        const logoH = 19.5;
-                        let logoW = 19.5;
+                        const logoH = 16;
+                        let logoW = 16;
                         if (logoResult) {
                             const aspect = logoResult.width / logoResult.height;
                             logoW = logoH * aspect;
                         }
-                        pageDoc.addImage(logoData, 'PNG', margin.left, 6, logoW, logoH);
+                        pageDoc.addImage(logoData, 'PNG', margin.left, 5, logoW, logoH);
                     } catch { /* ignore */ }
                 }
 
-                pageDoc.setFontSize(12);
+                pageDoc.setFontSize(11);
                 pageDoc.setFont('helvetica', 'bold');
                 pageDoc.setTextColor(255, 255, 255);
-                pageDoc.text(`RAIO-X DO CLIENTE`, pageWidth - margin.right, 13, { align: 'right' });
+                pageDoc.text(`RAIO-X DO CLIENTE`, pageWidth - margin.right, 11, { align: 'right' });
 
-                pageDoc.setFontSize(8);
+                pageDoc.setFontSize(7.5);
                 pageDoc.setFont('helvetica', 'normal');
                 pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
-                pageDoc.text(`${perfilEmpresa.nomeEmpresa}`, pageWidth - margin.right, 19, { align: 'right' });
-                pageDoc.text(`Gerado em: ${dataGeracao}`, pageWidth - margin.right, 24, { align: 'right' });
+                pageDoc.text(`${perfilEmpresa.nomeEmpresa}`, pageWidth - margin.right, 16.5, { align: 'right' });
+                pageDoc.text(`Gerado em: ${dataGeracao}`, pageWidth - margin.right, 21.5, { align: 'right' });
 
                 if (pageNum > 1) {
                     pageDoc.setFontSize(7);
                     pageDoc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
-                    pageDoc.text('(Continuação)', pageWidth - margin.right, 30, { align: 'right' });
+                    pageDoc.text('(Continuação)', pageWidth - margin.right, 26, { align: 'right' });
                 }
 
-                return headerHeight + 5;
+                return headerHeight + 3;
             };
 
             // ═══════ FOOTER ═══════
@@ -186,34 +186,35 @@ export default function ClienteRaioXPage({ params }: Props) {
             };
 
             drawHeader(doc, 1);
-            startY += 26;
+            startY += 16;
 
             // ═══════ DADOS DO CLIENTE ═══════
+            const dadosBoxH = 16;
             doc.setFillColor(colors.factoryBg[0], colors.factoryBg[1], colors.factoryBg[2]);
-            doc.roundedRect(margin.left, startY, contentWidth, 20, 1.5, 1.5, 'F');
+            doc.roundedRect(margin.left, startY, contentWidth, dadosBoxH, 1.5, 1.5, 'F');
             doc.setDrawColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
             doc.setLineWidth(1);
-            doc.line(margin.left, startY + 2, margin.left, startY + 18);
+            doc.line(margin.left, startY + 2, margin.left, startY + dadosBoxH - 2);
 
-            doc.setFontSize(7);
+            doc.setFontSize(6.5);
             doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
             doc.setFont('helvetica', 'normal');
-            doc.text('DADOS DO CLIENTE', margin.left + 5, startY + 5.5);
+            doc.text('DADOS DO CLIENTE', margin.left + 5, startY + 4.2);
 
-            doc.setFontSize(10);
+            doc.setFontSize(9.5);
             doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
             doc.setFont('helvetica', 'bold');
-            doc.text(`${data.cliente.razaoSocial}`, margin.left + 5, startY + 10.5);
+            doc.text(`${data.cliente.razaoSocial}`, margin.left + 5, startY + 9);
 
-            doc.setFontSize(8);
+            doc.setFontSize(7.5);
             doc.setFont('helvetica', 'normal');
-            doc.text(`Fantasia: ${data.cliente.nomeFantasia}  |  CNPJ: ${data.cliente.cnpj}  |  Cidade: ${data.cliente.cidade}/${data.cliente.estado}`, margin.left + 5, startY + 15.5);
+            doc.text(`Fantasia: ${data.cliente.nomeFantasia}  |  CNPJ: ${data.cliente.cnpj}  |  Cidade: ${data.cliente.cidade}/${data.cliente.estado}`, margin.left + 5, startY + 13.5);
 
-            startY += 26;
+            startY += dadosBoxH + 3.5;
 
             // ═══════ SÍNTESE DO DOSSIÊ (PDF) ═══════
             {
-                const sinteseLineHeight = 5;
+                const sinteseLineHeight = 4.2;
                 const sinteseBoxX = margin.left;
                 const sinteseInnerX = sinteseBoxX + 5;
                 const sinteseMaxWidth = contentWidth - 7;
@@ -274,7 +275,7 @@ export default function ClienteRaioXPage({ params }: Props) {
                     wrappedLinesArr.push(wrapped);
                     totalWrappedLines += wrapped.length;
                 }
-                const sinteseBoxH = 10 + (totalWrappedLines * sinteseLineHeight) + (sinteseLines.length - 1) * 1.5;
+                const sinteseBoxH = 7 + (totalWrappedLines * sinteseLineHeight) + (sinteseLines.length - 1) * 0.8;
 
                 // Draw background
                 doc.setFillColor(245, 247, 252);
@@ -342,17 +343,18 @@ export default function ClienteRaioXPage({ params }: Props) {
                     bulletY += 1.5; // gap between bullets
                 }
 
-                startY += sinteseBoxH + 6;
+                startY += sinteseBoxH + 3.5;
             }
 
             // ═══════ KPIs ═══════
-            doc.setFontSize(9);
+            doc.setFontSize(8.5);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
             doc.text('INDICADORES DE DESEMPENHO (12 MESES)', margin.left, startY);
-            startY += 5;
+            startY += 3.5;
 
             const kpiWidth = (contentWidth - 6) / 4;
+            const kpiH = 12;
             const kpis = [
                 { label: 'Ticket Médio', value: `R$ ${data.kpis.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
                 { label: 'Giro Médio', value: `${data.kpis.giroMedioDias} dias` },
@@ -363,28 +365,28 @@ export default function ClienteRaioXPage({ params }: Props) {
             kpis.forEach((kpi, idx) => {
                 const kpiX = margin.left + idx * (kpiWidth + 2);
                 doc.setDrawColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
-                doc.setLineWidth(0.3);
+                doc.setLineWidth(0.25);
                 doc.setFillColor(252, 253, 255);
-                doc.roundedRect(kpiX, startY, kpiWidth, 14, 1, 1, 'FD');
+                doc.roundedRect(kpiX, startY, kpiWidth, kpiH, 1, 1, 'FD');
 
-                doc.setFontSize(6);
+                doc.setFontSize(5.5);
                 doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
                 doc.setFont('helvetica', 'normal');
-                doc.text(kpi.label.toUpperCase(), kpiX + 3, startY + 5);
+                doc.text(kpi.label.toUpperCase(), kpiX + 3, startY + 4);
 
-                doc.setFontSize(9);
+                doc.setFontSize(8.5);
                 doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
                 doc.setFont('helvetica', 'bold');
-                doc.text(kpi.value, kpiX + 3, startY + 11);
+                doc.text(kpi.value, kpiX + 3, startY + 9.5);
             });
 
             if (quantidadeLojas > 1) {
-                startY += 16;
+                startY += kpiH + 2;
+                const subKpiH = 11;
                 const mediaFatFmt = `R$ ${mediaFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 const mediaVolFmt = mediaVolume % 1 === 0
                     ? `${mediaVolume.toLocaleString('pt-BR')} un.`
                     : `${mediaVolume.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} un.`;
-                const ticketMedioLojaFmt = `R$ ${(data.kpis.ticketMedio / quantidadeLojas).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
                 const mediaVolMensalFmt = mediaVolumeMensal % 1 === 0
                     ? `${mediaVolumeMensal.toLocaleString('pt-BR')} un.`
@@ -402,34 +404,34 @@ export default function ClienteRaioXPage({ params }: Props) {
                     doc.setDrawColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
                     doc.setLineWidth(0.2);
                     doc.setFillColor(248, 250, 255);
-                    doc.roundedRect(kpiX, startY, kpiWidth, 13, 1, 1, 'FD');
+                    doc.roundedRect(kpiX, startY, kpiWidth, subKpiH, 1, 1, 'FD');
 
-                    doc.setFontSize(5.5);
+                    doc.setFontSize(5);
                     doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
                     doc.setFont('helvetica', 'normal');
-                    doc.text(subKpi.label, kpiX + 3, startY + 4.5);
+                    doc.text(subKpi.label, kpiX + 3, startY + 3.8);
 
-                    doc.setFontSize(8);
+                    doc.setFontSize(7.5);
                     doc.setTextColor(subKpi.color[0], subKpi.color[1], subKpi.color[2]);
                     doc.setFont('helvetica', 'bold');
-                    doc.text(subKpi.value, kpiX + 3, startY + 10);
+                    doc.text(subKpi.value, kpiX + 3, startY + 8.8);
                 });
 
-                startY += 19;
+                startY += subKpiH + 4;
             } else {
-                startY += 24;
+                startY += kpiH + 5;
             }
 
             // ═══════ GRÁFICO DE BARRAS ═══════
-            const chartHeight = 45;
+            const chartHeight = 31; // Redução de ~31% para garantir folha única
             const chartWidth = contentWidth;
             const chartStartX = margin.left;
 
-            doc.setFontSize(9);
+            doc.setFontSize(8.5);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
             doc.text('EVOLUÇÃO FINANCEIRA MENSAL', margin.left, startY);
-            startY += 5;
+            startY += 3.5;
 
             doc.setFillColor(250, 250, 254);
             doc.setDrawColor(colors.tableBorder[0], colors.tableBorder[1], colors.tableBorder[2]);
@@ -437,59 +439,58 @@ export default function ClienteRaioXPage({ params }: Props) {
             doc.roundedRect(chartStartX, startY, chartWidth, chartHeight, 1, 1, 'FD');
 
             const maxVal = Math.max(...data.volumesMensais.map(v => v.valorTotal), 1);
-            for (let i = 1; i <= 4; i++) {
-                const lineY = startY + chartHeight - (chartHeight * i / 5);
+            for (let i = 1; i <= 3; i++) {
+                const lineY = startY + chartHeight - (chartHeight * i / 4);
                 doc.setDrawColor(230, 232, 240);
                 doc.setLineWidth(0.1);
                 doc.line(chartStartX + 2, lineY, chartStartX + chartWidth - 2, lineY);
 
-                const labelValue = Math.round(maxVal * i / 5);
-                doc.setFontSize(5);
+                const labelValue = Math.round(maxVal * i / 4);
+                doc.setFontSize(4.5);
                 doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
                 doc.setFont('helvetica', 'normal');
-                // Formata K para ficar mais curto
                 const formattedLabel = labelValue >= 1000 ? `${(labelValue / 1000).toFixed(1)}k` : String(labelValue);
                 doc.text(formattedLabel, chartStartX + 3, lineY - 0.5);
             }
 
             const barCount = data.volumesMensais.length;
             const barSpacing = (chartWidth - 8) / barCount;
-            const barWidth = Math.min(barSpacing - 2, 10);
+            const barWidth = Math.min(barSpacing - 2, 9);
 
             data.volumesMensais.forEach((vol, idx) => {
-                const barH = maxVal > 0 ? (vol.valorTotal / maxVal) * (chartHeight - 12) : 0;
+                const barH = maxVal > 0 ? (vol.valorTotal / maxVal) * (chartHeight - 9) : 0;
                 const barX = chartStartX + 4 + (idx * barSpacing) + (barSpacing - barWidth) / 2;
-                const barY = startY + chartHeight - barH - 4;
+                const barY = startY + chartHeight - barH - 3.5;
 
                 if (vol.valorTotal > 0) {
                     doc.setFillColor(colors.emerald[0], colors.emerald[1], colors.emerald[2]);
                     doc.roundedRect(barX, barY, barWidth, barH, 0.5, 0.5, 'F');
 
-                    doc.setFontSize(4.5);
+                    doc.setFontSize(4.2);
                     doc.setTextColor(colors.emerald[0], colors.emerald[1], colors.emerald[2]);
                     doc.setFont('helvetica', 'bold');
                     const valText = vol.valorTotal >= 1000 ? `${(vol.valorTotal / 1000).toFixed(1)}k` : String(vol.valorTotal);
-                    doc.text(valText, barX + barWidth / 2, barY - 1, { align: 'center' });
+                    doc.text(valText, barX + barWidth / 2, barY - 0.8, { align: 'center' });
                 } else {
                     doc.setFillColor(230, 230, 240);
-                    doc.rect(barX, startY + chartHeight - 5, barWidth, 1, 'F');
+                    doc.rect(barX, startY + chartHeight - 4, barWidth, 0.8, 'F');
                 }
 
                 const [mesNome] = vol.mes.split('/');
-                doc.setFontSize(5);
+                doc.setFontSize(4.5);
                 doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
                 doc.setFont('helvetica', 'normal');
                 doc.text(mesNome, barX + barWidth / 2, startY + chartHeight - 0.5, { align: 'center' });
             });
 
-            startY += chartHeight + 8;
+            startY += chartHeight + 4.5;
 
             // ═══════ TABELA DE CURVA ABC ═══════
-            doc.setFontSize(9);
+            doc.setFontSize(8.5);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
             doc.text('CURVA ABC INTERNA (PRODUTOS MAIS COMPRADOS - 12M)', margin.left, startY);
-            startY += 4;
+            startY += 3;
 
             const tableData = data.curvaABC.map((p) => [
                 p.codigo,
@@ -505,18 +506,18 @@ export default function ClienteRaioXPage({ params }: Props) {
                 head: [['CÓD', 'PRODUTO', 'CATEGORIA', 'QTD', 'PREÇO MÉDIO', 'TOTAL (R$)']],
                 body: tableData,
                 styles: {
-                    fontSize: 7.5,
-                    cellPadding: 2.5,
+                    fontSize: 7,
+                    cellPadding: 1.5, // Compactado de 2.5 para 1.5
                     valign: 'middle',
                     lineColor: colors.tableBorder,
-                    lineWidth: 0.2,
+                    lineWidth: 0.15,
                     textColor: colors.textDark
                 },
                 headStyles: {
                     fillColor: colors.headerDark,
                     textColor: 255,
                     fontStyle: 'bold',
-                    cellPadding: 3
+                    cellPadding: 1.8 // Compactado de 3 para 1.8
                 },
                 alternateRowStyles: { fillColor: colors.rowEven },
                 columnStyles: {
@@ -527,7 +528,7 @@ export default function ClienteRaioXPage({ params }: Props) {
                     4: { cellWidth: 25, halign: 'right' },
                     5: { cellWidth: 25, halign: 'right', fontStyle: 'bold', textColor: colors.emerald },
                 },
-                margin: { top: 35, bottom: 20, left: margin.left, right: margin.right },
+                margin: { top: 32, bottom: 12, left: margin.left, right: margin.right },
                 didDrawPage: (pageData: { pageNumber: number }) => {
                     if (pageData.pageNumber > 1) drawHeader(doc, pageData.pageNumber);
                 }
@@ -902,7 +903,7 @@ export default function ClienteRaioXPage({ params }: Props) {
                     </div>
                 </div>
 
-                <div className="w-full rounded-xl p-3 pb-1 flex items-end justify-between gap-[3px] relative bg-white/[0.02] border border-white/[0.04] print:bg-gray-50 print:border-gray-200" style={{ height: '220px' }}>
+                <div className="w-full rounded-xl p-3 pb-1 flex items-end justify-between gap-[3px] relative bg-white/[0.02] border border-white/[0.04] print:bg-gray-50 print:border-gray-200 print:!h-[150px]" style={{ height: '200px' }}>
                     <div className="absolute inset-x-0 top-3 bottom-8 flex flex-col justify-between pointer-events-none px-3">
                         {[0, 1, 2, 3].map(i => (
                             <div key={i} className="w-full border-t border-dashed border-white/[0.06] print:border-gray-200" />
@@ -962,27 +963,27 @@ export default function ClienteRaioXPage({ params }: Props) {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-white/5 print:border-gray-200">
-                                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Cód</th>
-                                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Produto</th>
-                                    <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Qtd</th>
-                                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Preço Médio</th>
-                                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Total (R$)</th>
+                                    <th className="px-4 py-2.5 print:py-1 print:px-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Cód</th>
+                                    <th className="px-4 py-2.5 print:py-1 print:px-2 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Produto</th>
+                                    <th className="px-4 py-2.5 print:py-1 print:px-2 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Qtd</th>
+                                    <th className="px-4 py-2.5 print:py-1 print:px-2 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Preço Médio</th>
+                                    <th className="px-4 py-2.5 print:py-1 print:px-2 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Total (R$)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {curvaABC.map((prod) => (
                                     <tr key={prod.produtoId} className="border-b border-white/[0.03] hover:bg-white/[0.03] transition-colors print:border-gray-100 print:hover:bg-transparent">
-                                        <td className="px-4 py-2.5 text-gray-400 print:text-gray-600 tabular-nums">{prod.codigo}</td>
-                                        <td className="px-4 py-2.5 text-white print:text-black font-medium max-w-[250px] truncate" title={prod.nome}>
+                                        <td className="px-4 py-2.5 print:py-1 print:px-2 text-gray-400 print:text-gray-600 tabular-nums">{prod.codigo}</td>
+                                        <td className="px-4 py-2.5 print:py-1 print:px-2 text-white print:text-black font-medium max-w-[250px] truncate" title={prod.nome}>
                                             <Link href={`/dashboard/produtos/${prod.produtoId}/saidas`} className="hover:text-indigo-400 hover:underline print:no-underline transition-colors">
                                                 {prod.nome}
                                             </Link>
                                         </td>
-                                        <td className="px-4 py-2.5 text-center font-bold text-blue-400 print:text-blue-600 tabular-nums">{prod.quantidadeTotal}</td>
-                                        <td className="px-4 py-2.5 text-right text-gray-300 print:text-gray-700 tabular-nums">
+                                        <td className="px-4 py-2.5 print:py-1 print:px-2 text-center font-bold text-blue-400 print:text-blue-600 tabular-nums">{prod.quantidadeTotal}</td>
+                                        <td className="px-4 py-2.5 print:py-1 print:px-2 text-right text-gray-300 print:text-gray-700 tabular-nums">
                                             R$ {prod.precoMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                         </td>
-                                        <td className="px-4 py-2.5 text-right font-semibold text-emerald-400 print:text-emerald-600 tabular-nums">
+                                        <td className="px-4 py-2.5 print:py-1 print:px-2 text-right font-semibold text-emerald-400 print:text-emerald-600 tabular-nums">
                                             R$ {prod.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
@@ -990,12 +991,12 @@ export default function ClienteRaioXPage({ params }: Props) {
                             </tbody>
                             <tfoot>
                                 <tr className="border-t border-white/10 bg-white/[0.02] print:border-gray-300 print:bg-gray-50">
-                                    <td colSpan={2} className="px-4 py-3 text-sm font-semibold text-white print:text-black">Total</td>
-                                    <td className="px-4 py-3 text-center font-bold text-blue-400 print:text-blue-600 tabular-nums">
+                                    <td colSpan={2} className="px-4 py-3 print:py-1.5 print:px-2 text-sm font-semibold text-white print:text-black">Total</td>
+                                    <td className="px-4 py-3 print:py-1.5 print:px-2 text-center font-bold text-blue-400 print:text-blue-600 tabular-nums">
                                         {curvaABC.reduce((acc, p) => acc + p.quantidadeTotal, 0).toLocaleString('pt-BR')}
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-400 print:text-gray-500">—</td>
-                                    <td className="px-4 py-3 text-right font-bold text-emerald-400 print:text-emerald-600 tabular-nums">
+                                    <td className="px-4 py-3 print:py-1.5 print:px-2 text-right text-gray-400 print:text-gray-500">—</td>
+                                    <td className="px-4 py-3 print:py-1.5 print:px-2 text-right font-bold text-emerald-400 print:text-emerald-600 tabular-nums">
                                         R$ {curvaABC.reduce((acc, p) => acc + p.valorTotal, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                     </td>
                                 </tr>
