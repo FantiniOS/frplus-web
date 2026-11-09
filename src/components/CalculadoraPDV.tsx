@@ -118,7 +118,7 @@ export function CalculadoraPDV({ cnpj, faturamentoPeriodo, volumePeriodo }: Calc
                         <span className="text-indigo-400/60 mx-1.5">|</span>
                         <span className="text-emerald-400 print:text-emerald-700 font-bold">{volumeFmt} und/loja no ano</span>
                         <span className="text-indigo-300/80 font-normal ml-1 print:text-gray-700">
-                            (Aprox. <strong className="text-emerald-300 print:text-emerald-800 font-semibold">{volumeMensalFmt} und/mês</strong> por loja)
+                            (Aprox. <strong className="text-red-400 print:text-red-600 font-bold">{volumeMensalFmt} und/mês</strong> por loja)
                         </span>
                     </span>
                 </div>

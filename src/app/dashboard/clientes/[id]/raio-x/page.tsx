@@ -398,29 +398,56 @@ export default function ClienteRaioXPage({ params }: Props) {
                     ? `${mediaVolumeMensal.toLocaleString('pt-BR')} un.`
                     : `${mediaVolumeMensal.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} un.`;
 
+                const redAlert = {
+                    border: [239, 68, 68] as [number, number, number],      // border-red-500
+                    bg: [254, 242, 242] as [number, number, number],        // bg-red-50 (fundo vermelho sutil)
+                    title: [220, 38, 38] as [number, number, number],       // text-red-600 (título em vermelho)
+                    value: [220, 38, 38] as [number, number, number],       // text-red-600 font-bold (valor em vermelho forte)
+                };
+
                 const subKpis = [
-                    { label: 'TOTAL DE LOJAS (PDV)', value: `${quantidadeLojas} PDVs`, color: colors.accentBlue },
-                    { label: 'FATURAMENTO / LOJA', value: mediaFatFmt, color: colors.emerald },
-                    { label: 'VOLUME ANUAL / LOJA', value: mediaVolFmt, color: colors.accentBlue },
-                    { label: 'VOLUME MENSAL / LOJA', value: `${mediaVolMensalFmt}/mês`, color: colors.emerald },
+                    { label: 'TOTAL DE LOJAS (PDV)', value: `${quantidadeLojas} PDVs`, color: colors.accentBlue, isAlert: false },
+                    { label: 'FATURAMENTO / LOJA', value: mediaFatFmt, color: colors.emerald, isAlert: false },
+                    { label: 'VOLUME ANUAL / LOJA', value: mediaVolFmt, color: colors.accentBlue, isAlert: false },
+                    { label: 'VOLUME MENSAL / LOJA', value: `${mediaVolMensalFmt}/mês`, color: redAlert.value, isAlert: true },
                 ];
 
                 subKpis.forEach((subKpi, idx) => {
                     const kpiX = margin.left + idx * (kpiWidth + 2);
-                    doc.setDrawColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
-                    doc.setLineWidth(0.2);
-                    doc.setFillColor(248, 250, 255);
-                    doc.roundedRect(kpiX, startY, kpiWidth, subKpiH, 1, 1, 'FD');
 
-                    doc.setFontSize(5);
-                    doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
-                    doc.setFont('helvetica', 'normal');
-                    doc.text(subKpi.label, kpiX + 3, startY + 3.8);
+                    if (subKpi.isAlert) {
+                        // Alerta visual de gargalo de vendas com destaque em vermelho
+                        doc.setDrawColor(redAlert.border[0], redAlert.border[1], redAlert.border[2]);
+                        doc.setLineWidth(0.35);
+                        doc.setFillColor(redAlert.bg[0], redAlert.bg[1], redAlert.bg[2]);
+                        doc.roundedRect(kpiX, startY, kpiWidth, subKpiH, 1, 1, 'FD');
 
-                    doc.setFontSize(7.5);
-                    doc.setTextColor(subKpi.color[0], subKpi.color[1], subKpi.color[2]);
-                    doc.setFont('helvetica', 'bold');
-                    doc.text(subKpi.value, kpiX + 3, startY + 8.8);
+                        doc.setFontSize(5);
+                        doc.setTextColor(redAlert.title[0], redAlert.title[1], redAlert.title[2]);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(subKpi.label, kpiX + 3, startY + 3.8);
+
+                        doc.setFontSize(7.5);
+                        doc.setTextColor(redAlert.value[0], redAlert.value[1], redAlert.value[2]);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(subKpi.value, kpiX + 3, startY + 8.8);
+                    } else {
+                        // Demais quadros mantêm 100% o estilo e cores originais
+                        doc.setDrawColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                        doc.setLineWidth(0.2);
+                        doc.setFillColor(248, 250, 255);
+                        doc.roundedRect(kpiX, startY, kpiWidth, subKpiH, 1, 1, 'FD');
+
+                        doc.setFontSize(5);
+                        doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(subKpi.label, kpiX + 3, startY + 3.8);
+
+                        doc.setFontSize(7.5);
+                        doc.setTextColor(subKpi.color[0], subKpi.color[1], subKpi.color[2]);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(subKpi.value, kpiX + 3, startY + 8.8);
+                    }
                 });
 
                 startY += subKpiH + 4;
