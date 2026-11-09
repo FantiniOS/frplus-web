@@ -265,7 +265,11 @@ export default function ClienteRaioXPage({ params }: Props) {
                     sinteseLines.push(`Aguardando dados de faturamento para o ano de ${anoSelecionado}. Nenhum pedido registrado neste período.`);
                 }
 
-                // Calculate box height
+                // Calculate box height with adequate padding bottom
+                const firstBulletOffset = 9.0;
+                const bulletGap = 1.2;
+                const paddingBottom = 4.0;
+
                 let totalWrappedLines = 0;
                 const wrappedLinesArr: string[][] = [];
                 doc.setFontSize(7.5);
@@ -275,7 +279,7 @@ export default function ClienteRaioXPage({ params }: Props) {
                     wrappedLinesArr.push(wrapped);
                     totalWrappedLines += wrapped.length;
                 }
-                const sinteseBoxH = 7 + (totalWrappedLines * sinteseLineHeight) + (sinteseLines.length - 1) * 0.8;
+                const sinteseBoxH = firstBulletOffset + (totalWrappedLines * sinteseLineHeight) + ((sinteseLines.length - 1) * bulletGap) + paddingBottom;
 
                 // Draw background
                 doc.setFillColor(245, 247, 252);
@@ -303,7 +307,7 @@ export default function ClienteRaioXPage({ params }: Props) {
                 doc.text(badgeText, badgeX + 3, startY + 6);
 
                 // Render bullet lines
-                let bulletY = startY + 10;
+                let bulletY = startY + firstBulletOffset;
                 doc.setFontSize(7.5);
                 doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
 
@@ -321,15 +325,15 @@ export default function ClienteRaioXPage({ params }: Props) {
                         const restPart = firstLine.substring(colonIdx + 1);
                         doc.setFont('helvetica', 'bold');
                         doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
-                        doc.text(labelPart, sinteseInnerX + 4, bulletY + 2);
+                        doc.text(labelPart, sinteseInnerX + 4, bulletY + 1.8);
                         const labelW = doc.getTextWidth(labelPart);
                         doc.setFont('helvetica', 'normal');
                         doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
-                        doc.text(restPart, sinteseInnerX + 4 + labelW, bulletY + 2);
+                        doc.text(restPart, sinteseInnerX + 4 + labelW, bulletY + 1.8);
                     } else {
                         doc.setFont('helvetica', 'normal');
                         doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
-                        doc.text(firstLine, sinteseInnerX + 4, bulletY + 2);
+                        doc.text(firstLine, sinteseInnerX + 4, bulletY + 1.8);
                     }
                     bulletY += sinteseLineHeight;
 
@@ -337,13 +341,15 @@ export default function ClienteRaioXPage({ params }: Props) {
                     for (let wl = 1; wl < wrapped.length; wl++) {
                         doc.setFont('helvetica', 'normal');
                         doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
-                        doc.text(wrapped[wl], sinteseInnerX + 4, bulletY + 2);
+                        doc.text(wrapped[wl], sinteseInnerX + 4, bulletY + 1.8);
                         bulletY += sinteseLineHeight;
                     }
-                    bulletY += 1.5; // gap between bullets
+                    if (li < wrappedLinesArr.length - 1) {
+                        bulletY += bulletGap; // gap between bullets
+                    }
                 }
 
-                startY += sinteseBoxH + 3.5;
+                startY += sinteseBoxH + 5.5; // Margem superior segura para o título não sobrepor o rodapé da Síntese
             }
 
             // ═══════ KPIs ═══════
@@ -351,7 +357,7 @@ export default function ClienteRaioXPage({ params }: Props) {
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(colors.textDark[0], colors.textDark[1], colors.textDark[2]);
             doc.text('INDICADORES DE DESEMPENHO (12 MESES)', margin.left, startY);
-            startY += 3.5;
+            startY += 4.0;
 
             const kpiWidth = (contentWidth - 6) / 4;
             const kpiH = 12;
@@ -682,7 +688,7 @@ export default function ClienteRaioXPage({ params }: Props) {
                         : { label: 'Cliente Inativo', color: 'text-red-400', bg: 'bg-red-500/10' };
 
                 return (
-                    <div className="bg-slate-800/40 border-l-4 border-l-blue-500 rounded-r-xl p-5 mb-2 animate-in print:border print:border-gray-300 print:bg-gray-50 print:border-l-blue-600" style={{ animationDelay: '0.07s' }}>
+                    <div className="bg-slate-800/40 border-l-4 border-l-blue-500 rounded-r-xl p-5 mb-5 animate-in print:border print:border-gray-300 print:bg-gray-50 print:border-l-blue-600 print:mb-5 print:p-4" style={{ animationDelay: '0.07s' }}>
                         <div className="flex items-center gap-2 mb-3 text-slate-300 print:text-gray-700">
                             <Brain className="w-5 h-5 text-blue-500 print:text-blue-600" />
                             <h3 className="text-sm font-bold uppercase tracking-wider">Síntese do Dossiê</h3>
@@ -839,7 +845,7 @@ export default function ClienteRaioXPage({ params }: Props) {
                 );
             })()}
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in" style={{ animationDelay: '0.1s' }}>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in mt-4" style={{ animationDelay: '0.1s' }}>
                 <div className="bg-white/[0.02] p-4 rounded-xl border border-white/5 shadow-lg shadow-black/10 print:border-gray-200 print:bg-gray-50 print:shadow-none">
                     <div className="flex items-center gap-2 mb-2 text-indigo-400 print:text-indigo-600">
                         <DollarSign className="h-4 w-4" />
