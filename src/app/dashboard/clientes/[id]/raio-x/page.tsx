@@ -13,6 +13,7 @@ import { getClienteRaioX, ClienteRaioXResponse } from "@/app/actions/clienteRaio
 import { getPerfilEmpresa } from "@/app/actions/perfilEmpresa";
 import { gerarAnaliseClienteIA } from "@/app/actions/analiseClienteIA";
 import { PrintHeader } from "@/components/ui/PrintHeader";
+import { CalculadoraPDV } from "@/components/CalculadoraPDV";
 
 interface Props {
     params: { id: string };
@@ -805,6 +806,13 @@ export default function ClienteRaioXPage({ params }: Props) {
                     <p className="text-[10px] text-gray-500 mt-1 relative z-10">Ref. ano {anoSelecionado}</p>
                 </div>
             </div>
+
+            {/* Calculadora Macro de Penetração de PDV */}
+            <CalculadoraPDV
+                cnpj={cliente.cnpj}
+                faturamentoPeriodo={kpis.faturamentoAno}
+                volumePeriodo={curvaABC.reduce((acc, p) => acc + p.quantidadeTotal, 0)}
+            />
 
             {/* ═══════ GRÁFICO BARRAS (FINANCEIRO) ═══════ */}
             <div ref={chartRef} className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0f1729] to-[#0a0f1a] p-6 shadow-2xl shadow-black/40 relative overflow-hidden animate-in print:border print:border-gray-300 print:bg-white print:shadow-none" style={{ animationDelay: '0.2s' }}>
