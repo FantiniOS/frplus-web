@@ -70,6 +70,29 @@ export default function ClienteRaioXPage({ params }: Props) {
             const contentWidth = pageWidth - margin.left - margin.right;
             let startY = 20;
 
+            // Leitura de quantidadeLojas no localStorage (chave: pdv_lojas_${cnpj})
+            let quantidadeLojas = 1;
+            try {
+                const cleanCnpj = data.cliente.cnpj ? data.cliente.cnpj.replace(/\D/g, '') : '';
+                const storageKey = cleanCnpj ? `pdv_lojas_${cleanCnpj}` : (data.cliente.cnpj ? `pdv_lojas_${data.cliente.cnpj}` : '');
+                if (storageKey) {
+                    const saved = localStorage.getItem(storageKey);
+                    if (saved) {
+                        const parsed = parseInt(saved, 10);
+                        if (!isNaN(parsed) && parsed > 1) {
+                            quantidadeLojas = parsed;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao ler pdv_lojas no export PDF:', err);
+            }
+
+            const faturamentoPeriodo = data.kpis.faturamentoAno;
+            const volumePeriodo = data.curvaABC.reduce((acc, p) => acc + p.quantidadeTotal, 0);
+            const mediaFaturamento = quantidadeLojas > 1 ? faturamentoPeriodo / quantidadeLojas : 0;
+            const mediaVolume = quantidadeLojas > 1 ? volumePeriodo / quantidadeLojas : 0;
+
             const colors = {
                 headerDark: [15, 23, 42] as [number, number, number],
                 textDark: [30, 41, 59] as [number, number, number],
@@ -224,6 +247,14 @@ export default function ClienteRaioXPage({ params }: Props) {
                         sinteseLines.push(`Curva A: O produto de maior tração foi ${top.nome}, totalizando R$ ${top.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${top.quantidadeTotal} un.).`);
                     }
 
+                    if (quantidadeLojas > 1) {
+                        const mediaFatFmt = `R$ ${mediaFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                        const mediaVolFmt = mediaVolume % 1 === 0
+                            ? `${mediaVolume.toLocaleString('pt-BR')} un.`
+                            : `${mediaVolume.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} un.`;
+                        sinteseLines.push(`Penetração (PDV): O volume total foi diluído em ${quantidadeLojas} lojas físicas, gerando uma média de ${mediaFatFmt} e ${mediaVolFmt} por loja no período.`);
+                    }
+
                     sinteseLines.push(`Status: ${statusLabel}${diasAus > 60 ? ' — atenção recomendada, cliente ausente há mais de 60 dias.' : '.'}`);
                 } else {
                     sinteseLines.push(`Aguardando dados de faturamento para o ano de ${anoSelecionado}. Nenhum pedido registrado neste período.`);
@@ -343,7 +374,43 @@ export default function ClienteRaioXPage({ params }: Props) {
                 doc.text(kpi.value, kpiX + 3, startY + 11);
             });
 
-            startY += 24;
+            if (quantidadeLojas > 1) {
+                startY += 16;
+                const mediaFatFmt = `R$ ${mediaFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const mediaVolFmt = mediaVolume % 1 === 0
+                    ? `${mediaVolume.toLocaleString('pt-BR')} un.`
+                    : `${mediaVolume.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} un.`;
+                const ticketMedioLojaFmt = `R$ ${(data.kpis.ticketMedio / quantidadeLojas).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+                const subKpis = [
+                    { label: 'TOTAL DE LOJAS (PDV)', value: `${quantidadeLojas} PDVs`, color: colors.accentBlue },
+                    { label: 'FATURAMENTO / LOJA', value: mediaFatFmt, color: colors.emerald },
+                    { label: 'VOLUME / LOJA', value: mediaVolFmt, color: colors.accentBlue },
+                    { label: 'TICKET MÉDIO / LOJA', value: ticketMedioLojaFmt, color: colors.emerald },
+                ];
+
+                subKpis.forEach((subKpi, idx) => {
+                    const kpiX = margin.left + idx * (kpiWidth + 2);
+                    doc.setDrawColor(colors.accentBlue[0], colors.accentBlue[1], colors.accentBlue[2]);
+                    doc.setLineWidth(0.2);
+                    doc.setFillColor(248, 250, 255);
+                    doc.roundedRect(kpiX, startY, kpiWidth, 13, 1, 1, 'FD');
+
+                    doc.setFontSize(5.5);
+                    doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(subKpi.label, kpiX + 3, startY + 4.5);
+
+                    doc.setFontSize(8);
+                    doc.setTextColor(subKpi.color[0], subKpi.color[1], subKpi.color[2]);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(subKpi.value, kpiX + 3, startY + 10);
+                });
+
+                startY += 19;
+            } else {
+                startY += 24;
+            }
 
             // ═══════ GRÁFICO DE BARRAS ═══════
             const chartHeight = 45;
