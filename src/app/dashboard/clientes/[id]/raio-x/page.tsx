@@ -92,6 +92,7 @@ export default function ClienteRaioXPage({ params }: Props) {
             const volumePeriodo = data.curvaABC.reduce((acc, p) => acc + p.quantidadeTotal, 0);
             const mediaFaturamento = quantidadeLojas > 1 ? faturamentoPeriodo / quantidadeLojas : 0;
             const mediaVolume = quantidadeLojas > 1 ? volumePeriodo / quantidadeLojas : 0;
+            const mediaVolumeMensal = quantidadeLojas > 1 ? mediaVolume / 12 : 0;
 
             const colors = {
                 headerDark: [15, 23, 42] as [number, number, number],
@@ -252,7 +253,10 @@ export default function ClienteRaioXPage({ params }: Props) {
                         const mediaVolFmt = mediaVolume % 1 === 0
                             ? `${mediaVolume.toLocaleString('pt-BR')} un.`
                             : `${mediaVolume.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} un.`;
-                        sinteseLines.push(`Penetração (PDV): O volume total foi diluído em ${quantidadeLojas} lojas físicas, gerando uma média de ${mediaFatFmt} e ${mediaVolFmt} por loja no período.`);
+                        const mediaVolMensalFmt = mediaVolumeMensal % 1 === 0
+                            ? `${mediaVolumeMensal.toLocaleString('pt-BR')} un.`
+                            : `${mediaVolumeMensal.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} un.`;
+                        sinteseLines.push(`Penetração (PDV): O volume diluído em ${quantidadeLojas} lojas físicas resultou numa média de ${mediaFatFmt} por loja no período, equivalente a apenas ${mediaVolMensalFmt}/mês por filial.`);
                     }
 
                     sinteseLines.push(`Status: ${statusLabel}${diasAus > 60 ? ' — atenção recomendada, cliente ausente há mais de 60 dias.' : '.'}`);
@@ -382,11 +386,15 @@ export default function ClienteRaioXPage({ params }: Props) {
                     : `${mediaVolume.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} un.`;
                 const ticketMedioLojaFmt = `R$ ${(data.kpis.ticketMedio / quantidadeLojas).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+                const mediaVolMensalFmt = mediaVolumeMensal % 1 === 0
+                    ? `${mediaVolumeMensal.toLocaleString('pt-BR')} un.`
+                    : `${mediaVolumeMensal.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} un.`;
+
                 const subKpis = [
                     { label: 'TOTAL DE LOJAS (PDV)', value: `${quantidadeLojas} PDVs`, color: colors.accentBlue },
                     { label: 'FATURAMENTO / LOJA', value: mediaFatFmt, color: colors.emerald },
-                    { label: 'VOLUME / LOJA', value: mediaVolFmt, color: colors.accentBlue },
-                    { label: 'TICKET MÉDIO / LOJA', value: ticketMedioLojaFmt, color: colors.emerald },
+                    { label: 'VOLUME ANUAL / LOJA', value: mediaVolFmt, color: colors.accentBlue },
+                    { label: 'VOLUME MENSAL / LOJA', value: `${mediaVolMensalFmt}/mês`, color: colors.emerald },
                 ];
 
                 subKpis.forEach((subKpi, idx) => {

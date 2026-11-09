@@ -60,6 +60,8 @@ export function CalculadoraPDV({ cnpj, faturamentoPeriodo, volumePeriodo }: Calc
     // Cálculos em tempo real baseados nas métricas macro do período
     const faturamentoPorLoja = quantidadeLojas > 0 ? faturamentoPeriodo / quantidadeLojas : 0;
     const volumePorLoja = quantidadeLojas > 0 ? volumePeriodo / quantidadeLojas : 0;
+    // Volume médio mensal por loja (assumindo base de 12 meses do Raio-X)
+    const mediaVolumeMensal = volumePorLoja / 12;
 
     const faturamentoFmt = faturamentoPorLoja.toLocaleString('pt-BR', {
         minimumFractionDigits: 2,
@@ -69,6 +71,10 @@ export function CalculadoraPDV({ cnpj, faturamentoPeriodo, volumePeriodo }: Calc
     const volumeFmt = volumePorLoja % 1 === 0
         ? volumePorLoja.toLocaleString('pt-BR')
         : volumePorLoja.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+    const volumeMensalFmt = mediaVolumeMensal % 1 === 0
+        ? mediaVolumeMensal.toLocaleString('pt-BR')
+        : mediaVolumeMensal.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
     return (
         <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors print:border-gray-200 print:bg-gray-50">
@@ -104,12 +110,16 @@ export function CalculadoraPDV({ cnpj, faturamentoPeriodo, volumePeriodo }: Calc
 
             {/* Cálculo em tempo real quando quantidadeLojas > 1 */}
             {quantidadeLojas > 1 ? (
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-xs font-semibold text-indigo-200 print:border-indigo-300 print:bg-indigo-50 print:text-indigo-900 animate-in">
+                <div className="inline-flex flex-wrap items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-xs font-semibold text-indigo-200 print:border-indigo-300 print:bg-indigo-50 print:text-indigo-900 animate-in">
                     <Target className="h-3.5 w-3.5 text-indigo-400 print:text-indigo-600 flex-shrink-0" />
                     <span>
-                        🎯 Penetração: <span className="text-white print:text-black font-bold">R$ {faturamentoFmt}/loja</span>
+                        🎯 Penetração:{' '}
+                        <span className="text-white print:text-black font-bold">R$ {faturamentoFmt}/loja no ano</span>
                         <span className="text-indigo-400/60 mx-1.5">|</span>
-                        <span className="text-emerald-400 print:text-emerald-700 font-bold">{volumeFmt} und/loja</span> no período
+                        <span className="text-emerald-400 print:text-emerald-700 font-bold">{volumeFmt} und/loja no ano</span>
+                        <span className="text-indigo-300/80 font-normal ml-1 print:text-gray-700">
+                            (Aprox. <strong className="text-emerald-300 print:text-emerald-800 font-semibold">{volumeMensalFmt} und/mês</strong> por loja)
+                        </span>
                     </span>
                 </div>
             ) : (
